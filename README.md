@@ -170,6 +170,7 @@ yamamoto-ryuzo
 
 ## 🔗 関連リンク
 
-- [RE:EARTH 公式サイト](https://reearth.io/)
-- [RE:EARTH ドキュメント](https://docs.reearth.io/)
-- [RE:EARTH Plugin API](https://github.com/reearth/reearth-plugin-api)
+
+### 参考: プラグイン API リファレンス
+- ReEarth Web のプラグイン型定義（開発時の参照に便利）
+  - https://github.com/reearth/reearth-web/blob/main/src/components/molecules/Visualizer/Plugin/types.ts

@@ -115,6 +115,8 @@ function render(list, basemaps) {
   const withScript = html + `
     <script>
     (function(){
+      // Notify WASM side that iframe UI is ready
+      try { window.parent.postMessage({ type: 'ready' }, '*'); } catch(_) {}
       const btn = document.getElementById('refresh');
       if(btn){
         btn.addEventListener('click', function(){
@@ -173,8 +175,19 @@ function render(list, basemaps) {
     })();
     </script>
   `;
-  reearth.ui.show(withScript);
-  reearth.ui.postMessage({ type: "ready" });
+    // Buffer messages until iframe signals 'ready'
+    let uiReady = false;
+    let messageBuffer = [];
+    function safePost(msg){
+      try {
+        if (uiReady) {
+          reearth.ui.postMessage(msg);
+        } else {
+          messageBuffer.push(msg);
+        }
+      } catch(_) {}
+    }
+  try { reearth.ui.show(withScript); } catch(_) {}
 }
 
 function escapeHtml(str) {
@@ -226,10 +239,16 @@ function collectBaseMaps(sceneProp) {
 
 function getSceneTilesSync() {
   try {
-    var vis = (reearth && reearth.visualizer) ? reearth.visualizer : null;
-    var prop = vis && vis.property ? vis.property : null;
+    var scene = (reearth && reearth.scene) ? reearth.scene : null;
+    var prop = scene && scene.property ? scene.property : null;
     var tiles = prop && prop.tiles ? prop.tiles : null;
+    if (!tiles) return [];
     if (Array.isArray(tiles)) return tiles;
+    if (typeof tiles === 'string') return [ { name: 'scene-tile-1', url: tiles } ];
+    if (typeof tiles === 'object') {
+      var u = tiles.url || tiles.urlTemplate || tiles.uri;
+      if (typeof u === 'string' && u) return [ { name: tiles.name || 'scene-tile-1', url: u } ];
+    }
   } catch (_) {}
   return [];
 }
@@ -267,7 +286,7 @@ async function refresh() {
   var visualTiles = getBasemapsFromVisualizer();
   var finalBase = enrichedBase;
   if (!finalBase.length && visualTiles.length) finalBase = visualTiles;
-  render(infos, enrichedBase);
+  render(infos, finalBase);
   // Also push inspect summary proactively so UI can show without a button
   try {
     const prop = (scene && scene.property) || {};
@@ -305,7 +324,7 @@ async function refresh() {
       basemapCandidates: basemapCandidates,
       tiles: tileSummary
     };
-    reearth.ui.postMessage({ type: 'inspect-result', summary });
+    safePost({ type: 'inspect-result', summary });
   } catch(_) {}
 }
 
@@ -350,18 +369,28 @@ try {
             basemapCandidates: basemapCandidates,
             tiles: tileSummary
           };
-          reearth.ui.postMessage({ type: 'inspect-result', summary });
+          safePost({ type: 'inspect-result', summary });
         } catch (e) {
-          reearth.ui.postMessage({ type: 'inspect-result', error: String(e) });
+          safePost({ type: 'inspect-result', error: String(e) });
         }
       }
     };
     reearth.ui.on("message", handler);
+    // Mark UI ready and flush buffer on 'ready'
+    reearth.ui.on("message", msg => {
+      if (msg && (msg.type === 'ready' || msg === 'ready')) {
+        uiReady = true;
+        if (messageBuffer.length) {
+          const toSend = messageBuffer.slice();
+          messageBuffer = [];
+          toSend.forEach(m => { try { reearth.ui.postMessage(m); } catch(_) {} });
+        }
+      }
+    });
     // Fallback for environments using onmessage instead of event emitter API
     try { reearth.ui.onmessage = handler; } catch(_) {}
   }
 } catch (_) {}
 
 refresh();
-// Optional auto-refresh every 5 seconds to keep UI in sync
-try { setInterval(refresh, 5000); } catch(_) {}
+// Disable auto-refresh to avoid message port timing issues
