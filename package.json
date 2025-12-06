@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint src --ext .js",
     "package": "python scripts/package_plugin.py --plugin-id",
-    "zip": "powershell -ExecutionPolicy Bypass -File scripts/package-plugin.ps1"
+    "zip": "powershell -ExecutionPolicy Bypass -File scripts/package-plugin.ps1",
+    "build:geo_suite": "node ./node_modules/typescript/bin/tsc -p geo_suite"
   },
   "keywords": [
     "reearth",
@@ -17,7 +18,8 @@
   "author": "yamamoto-ryuzo",
   "license": "MIT",
   "devDependencies": {
-    "eslint": "^8.54.0"
+    "eslint": "^8.54.0",
+    "typescript": "^5.6.3"
   },
   "dependencies": {}
 }

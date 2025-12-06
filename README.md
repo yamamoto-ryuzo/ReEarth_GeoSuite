@@ -181,6 +181,29 @@ yamamoto-ryuzo
 - マニフェストのJSONスキーマ
   - https://github.com/reearth/reearth-backend/blob/main/schemas/plugin_manifest.json
 
+### 実装ベストプラクティス（重要）
+- UI通信の基本: `reearth`（WASM/QuickJS）と iframe は `postMessage`/`on('message')` で連携します。ペイロードはJSONシリアライズ可能な値のみを使用してください（Blob/ArrayBuffer不可）。
+- Listenerの順序: `reearth.ui.on('message', handler)` を `reearth.ui.show(html)` より前に登録し、iframe側は `parent.postMessage({type:'ready'})` を送ることで同期を確立します。
+- 競合対策: iframeの `ready` は0msと数百ms後に再送し、WASM側は `uiReady` 到達前の送信をバッファリングして `ready` 受信後にフラッシュします。最終フォールバックとして一定時間後に `uiReady=true` を採用することで「読み込み中」停滞や「message port closed」頻度を下げられます。
+- ベースタイル取得: まず `reearth.scene.property.tiles` を優先し、存在しない場合のみビジュアライザ由来の情報へフォールバックする設計が安定的です。
+- Ionの扱い: Cesium Ion はトークン必須で 401 を返すことがあります。UI上で Ion を既定で除外し、必要時にトグルで表示切替、バッジでトークン要否を明示するとUXが向上します。
+
+## Basemap Simple (TS)
+- `geo_suite/basemap-simple.ts`: Re:Earth のシーン/ビジュアライザ/レイヤーからベースマップURLを包括的に収集する最小ウィジェットの TypeScript 実装。
+- Web の `Visualizer/Plugin/types.ts` を参考に、`tiles`/`imageryProvider`/`source`/`options.provider` 等の代表的キーを探索します。
+
+### ビルド（TS → JS 生成）
+`geo_suite` 配下のTSを個別コンパイルします：
+
+```powershell
+# geo_suite/tsconfig.json を使用
+npx tsc -p geo_suite
+
+# 成果物: geo_suite/basemap-simple.js が同ディレクトリに生成されます
+```
+
+webpack を使う場合は `webpack.config.js` に `geo_suite/basemap-simple.ts` をエントリ追加し、生成された JS を ZIP に同梱してください。
+
 主なポイント（スキーマから抜粋）
 - `id`, `name`, `version` は必須。`extensions` 配下にウィジェット/ブロックなどを定義。
 - `widgets[].entry` などのエントリポイントは、WASM側JS（QuickJS）から開始される前提。

@@ -18,5 +18,17 @@
               { "zone": "outer", "section": "left", "area": "top" },
           },
       },
+      {
+        "id": "basemap-simple",
+        "type": "widget",
+        "name": "Basemap Simple",
+        "description": "List basemap tiles from scene.property.tiles (non-Ion preferred)",
+        "entry": "basemap-simple.js",
+        "widgetLayout":
+          {
+            "defaultLocation":
+              { "zone": "outer", "section": "left", "area": "top" },
+          },
+      },
     ],
 }
