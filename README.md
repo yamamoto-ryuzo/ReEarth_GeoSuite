@@ -1,10 +1,10 @@
-# RE:EARTH Plugin Collection
+# ReEarth_GeoSuite
 
-yamamoto-ryuzo による RE:EARTH プラグイン集の開発環境
+Re:Earth版 geo_suite を目指す統合プラグイン／ツール集
 
 ## 📋 概要
 
-このリポジトリは、RE:EARTH プラットフォーム向けのプラグインを効率的に開発・管理するための環境です。JS（JavaScript）を標準とし、ビルド不要で素早く動かせる構成です。
+このリポジトリは、Re:Earth プラットフォーム向けの「geo_suite」相当機能の実装・統合を目指す開発基盤です。JS（JavaScript）中心、軽量で素早く動かせる構成です。
 
 ## 🚀 クイックスタート
 

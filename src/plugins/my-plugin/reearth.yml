@@ -1,11 +1,11 @@
-id: my-plugin
-name: My plugin
+id: reearth-geosuite
+name: ReEarth_GeoSuite
 version: 1.0.0
 extensions:
   - id: layers-and-tiles-list
     type: widget
     name: Layers & Tiles
-    description: List layers and basemap tiles in the scene
+    description: ReEarth_GeoSuite: List layers and basemap tiles in the scene
     entry: layers-and-tiles-list.js
     widgetLayout:
       defaultLocation:
