@@ -174,3 +174,15 @@ yamamoto-ryuzo
 ### 参考: プラグイン API リファレンス
 - ReEarth Web のプラグイン型定義（開発時の参照に便利）
   - https://github.com/reearth/reearth-web/blob/main/src/components/molecules/Visualizer/Plugin/types.ts
+
+### 参考: プラグインマニフェスト（バックエンド）
+- マニフェスト例（builtin manifest）
+  - https://github.com/reearth/reearth-backend/blob/main/pkg/builtin/manifest.yml
+- マニフェストのJSONスキーマ
+  - https://github.com/reearth/reearth-backend/blob/main/schemas/plugin_manifest.json
+
+主なポイント（スキーマから抜粋）
+- `id`, `name`, `version` は必須。`extensions` 配下にウィジェット/ブロックなどを定義。
+- `widgets[].entry` などのエントリポイントは、WASM側JS（QuickJS）から開始される前提。
+- `ui` はiframe側のHTML文字列または外部URL参照。静的アセットはzip同梱不可のため、埋め込みまたは外部ホスト参照。
+- `postMessage` のペイロードはJSONシリアライズ可能な値のみ（Blob/ArrayBuffer不可）。

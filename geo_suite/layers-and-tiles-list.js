@@ -55,6 +55,10 @@ function pickUrl(obj) {
   return typeof nested === "string" ? nested : "";
 }
 
+function isIonUrl(url){
+  try { return typeof url === 'string' && /api\.cesium\.com/i.test(url); } catch(_) { return false; }
+}
+
 function layerInfo(layer) {
   const type = layer.type || layer.layerType || "";
   const data = layer.data || layer.tile || layer.property || {};
@@ -286,6 +290,9 @@ async function refresh() {
   var visualTiles = getBasemapsFromVisualizer();
   var finalBase = enrichedBase;
   if (!finalBase.length && visualTiles.length) finalBase = visualTiles;
+  // Prefer non-Ion URLs to avoid 401 noise
+  var nonIon = finalBase.filter(function(b){ return !isIonUrl(b && b.url); });
+  if (nonIon.length) finalBase = nonIon;
   render(infos, finalBase);
   // Also push inspect summary proactively so UI can show without a button
   try {
