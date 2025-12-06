@@ -4,7 +4,7 @@ yamamoto-ryuzo による RE:EARTH プラグイン集の開発環境
 
 ## 📋 概要
 
-このリポジトリは、RE:EARTH プラットフォーム向けのプラグインを効率的に開発・管理するための環境です。TypeScript + Webpack を使用し、複数のプラグインを一括管理できます。
+このリポジトリは、RE:EARTH プラットフォーム向けのプラグインを効率的に開発・管理するための環境です。JS（JavaScript）を標準とし、ビルド不要で素早く動かせる構成です。
 
 ## 🚀 クイックスタート
 
@@ -13,31 +13,19 @@ yamamoto-ryuzo による RE:EARTH プラグイン集の開発環境
 - Node.js 18.x 以上
 - npm または yarn
 
-### インストール
+### パッケージング（ZIP作成）
 
-```bash
-npm install
-```
+```powershell
+# Python版
+python scripts/package_plugin.py --plugin-id <plugin-id>
 
-### ビルド
-
-```bash
-# 全プラグインをビルド
-npm run build
-
-# 開発モード（ウォッチモード）
-npm run dev
-```
-
-### 型チェック
-
-```bash
-npm run type-check
+# PowerShell版
+.\n+scripts\package-plugin.ps1 -PluginId <plugin-id>
 ```
 
 ### リント
 
-```bash
+```powershell
 npm run lint
 ```
 
@@ -50,9 +38,7 @@ yr_re_earth_plugin/
 │   │   └── hello-world/   # サンプルプラグイン
 │   │       ├── index.ts
 │   │       └── reearth.yml
-│   ├── types/             # 型定義
-│   │   └── reearth.ts
-│   └── utils/             # ユーティリティ
+│   └── utils/             # ユーティリティ（任意）
 │       └── helpers.ts
 ├── templates/             # プラグインテンプレート
 │   └── plugin-template/
@@ -65,41 +51,35 @@ yr_re_earth_plugin/
 └── README.md
 ```
 
-## 🔧 新しいプラグインの作成
+### 新しいプラグインの作成
 
-PowerShell スクリプトを使用して簡単に新しいプラグインを作成できます：
+PowerShell スクリプトでJSテンプレートから作成できます：
 
 ```powershell
-.\scripts\create-plugin.ps1 -PluginName "My Plugin" -Description "My awesome plugin"
+.
+scripts\create-plugin.ps1 -PluginName "My Plugin" -Description "My awesome plugin"
 ```
 
 または手動で作成：
 
 1. `src/plugins/` に新しいディレクトリを作成
-2. `index.ts` - プラグインのメインコード
+2. `index.js` - プラグインのメインコード
 3. `reearth.yml` - プラグイン設定ファイル
 
 ## 📦 プラグインの構造
 
-### index.ts
+### index.js
 
-```typescript
-import type { ReearthAPI } from '../../types/reearth';
-import { logger } from '../../utils/helpers';
-
-export default function (reearth: ReearthAPI) {
-  logger.info('Plugin initialized');
-  
-  // プラグインロジックを実装
+```javascript
+export default function (reearth) {
   const html = `
-    <!DOCTYPE html>
-    <html>
-    <body>
-      <h1>My Plugin</h1>
-    </body>
-    </html>
+    <style>
+      @import url("https://reearth.github.io/visualizer-plugin-sample-data/public/css/preset-ui.css");
+    </style>
+    <div class="primary-background text-center p-16 rounded-sm">
+      <p class="text-3xl font-bold">My Plugin</p>
+    </div>
   `;
-  
   reearth.ui.show(html);
 }
 ```
@@ -125,24 +105,17 @@ export default function (reearth: ReearthAPI) {
 
 ## 🛠️ 開発ガイド
 
-### RE:EARTH API
-
-プラグインから利用可能な主なAPI：
+### RE:EARTH API（主なもの）
 
 - `reearth.ui.show(html)` - UI を表示
-- `reearth.layers.add(layer)` - レイヤーを追加
-- `reearth.viewer.camera.flyTo(position)` - カメラを移動
-- `reearth.plugin.property.get(key)` - プロパティを取得
+- `reearth.ui.postMessage(message)` / `reearth.on('message', handler)` - UI連携
+- `reearth.layers.select(layerId)` - レイヤー選択
+- `reearth.viewer.camera.flyTo(position)` - カメラ移動
+- `reearth.plugin.property.get/set(key, value)` - 設定取得/保存
 
-詳細は `src/types/reearth.ts` を参照してください。
+### ユーティリティ（任意）
 
-### ユーティリティ関数
-
-`src/utils/helpers.ts` に便利な関数があります：
-
-- `logger` - ログ出力
-- `getProperty` - 安全なプロパティ取得
-- `setProperty` - 安全なプロパティ設定
+- ログや設定ヘルパーを必要に応じてJSで用意してください
 
 ## 📝 含まれるプラグイン
 
@@ -152,19 +125,25 @@ export default function (reearth: ReearthAPI) {
 
 ## 🔍 トラブルシューティング
 
-### ビルドエラー
+### パッケージングの失敗
 
-```bash
-npm run clean
-npm install
-npm run build
+```powershell
+python scripts/package_plugin.py --plugin-id <plugin-id>
+# または
+.
+scripts\package-plugin.ps1 -PluginId <plugin-id>
 ```
 
-### 型エラー
+## 🗺️ シーン選択と権限の確認
 
-```bash
-npm run type-check
-```
+- **正しいシーンを開く:** RE:EARTH にログイン後、対象の「プロジェクト」を開き、左サイドバーの「シーン一覧」からアップロード先のシーンを選択して開きます。画面右上のシーン名で現在開いているシーンを必ず確認してください。
+- **組織/スペースの確認:** 画面上部の組織（またはワークスペース）が目的のものになっているか確認します。別組織・別スペースのシーンにはアップロードできません。
+- **必要な権限:** プラグインのアップロードや有効化には通常 `Admin` または `Editor` 権限が必要です。`Viewer` 権限ではアップロードできません。アップロードボタンや「プラグイン」メニューが見えない場合は権限不足の可能性があります。
+- **アップロード場所:** 対象シーンを開いた状態で「設定」→「プラグイン」（または「プラグイン管理」）から ZIP をアップロードします。別のシーンを開いたままアップロードすると `invalid scene id` が発生することがあります。
+- **ZIP の構成:** ZIP のルート直下に `reearth.yml` と `index.js`（その他アセット）が存在する必要があります。フォルダ階層が一段余分（例: `my-plugin/` の下にファイル）になっていないか確認してください。付属の `scripts/package-plugin.ps1` は正しい構成で圧縮します。
+- **よくある原因:** 目的と異なるシーンを開いている／権限不足／ZIP ルート構造不正／`reearth.yml` の形式不正（YAML が壊れている）。
+- **チェックリスト:** 現在のシーン名・組織/プロジェクト・自身のロール（Admin/Editor）・ZIP ルート構成・`reearth.yml` の `id` とフォルダ名の整合性。
+- **エラー対応:** `invalid scene id` が出る場合は、正しいシーンに切り替えてから再アップロードし、権限が不足していないか管理者へ確認、ZIP を再作成して再試行してください。
 
 ## 📄 ライセンス
 

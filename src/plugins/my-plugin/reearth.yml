@@ -1,0 +1,14 @@
+id: my-plugin
+name: My plugin
+version: 1.0.0
+extensions:
+  - id: demo-widget
+    type: widget
+    name: Demo Widget
+    description: Demo widget
+    entry: demo-widget.js
+    widgetLayout:
+      defaultLocation:
+        zone: outer
+        section: left
+        area: top

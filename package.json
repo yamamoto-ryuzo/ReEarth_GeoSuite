@@ -1,14 +1,12 @@
 {
   "name": "yr-re-earth-plugins",
   "version": "1.0.0",
-  "description": "RE:EARTH plugin collection by yamamoto-ryuzo",
-  "main": "dist/index.js",
+  "description": "RE:EARTH plugin collection (JS-first setup)",
+  "main": "index.js",
   "scripts": {
-    "build": "webpack --mode production",
-    "dev": "webpack --mode development --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "lint": "eslint src --ext .js",
+    "package": "python scripts/package_plugin.py --plugin-id",
+    "zip": "powershell -ExecutionPolicy Bypass -File scripts/package-plugin.ps1"
   },
   "keywords": [
     "reearth",
@@ -19,17 +17,7 @@
   "author": "yamamoto-ryuzo",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
-    "eslint": "^8.54.0",
-    "rimraf": "^5.0.5",
-    "ts-loader": "^9.5.1",
-    "typescript": "^5.3.2",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
+    "eslint": "^8.54.0"
   },
-  "dependencies": {
-    "@reearth/plugin-types": "^0.1.0"
-  }
+  "dependencies": {}
 }
