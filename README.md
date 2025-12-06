@@ -23,6 +23,21 @@ python scripts/package_plugin.py --plugin-id <plugin-id>
 .\n+scripts\package-plugin.ps1 -PluginId <plugin-id>
 ```
 
+#### geo_suite をZIP化する
+
+```powershell
+# 既定のソース: C:\github\ReEarth_GeoSuite\geo_suite
+python scripts/package_geo_suite.py
+
+# ソースや出力を指定
+python scripts/package_geo_suite.py -s C:\github\ReEarth_GeoSuite\geo_suite -o artifacts\geo_suite.zip
+
+# 除外パターンの追加: geo_suite\ .geosuiteignore に記載
+# 例)
+#   dist/**/*.map
+#   **/*.md
+```
+
 ### リント
 
 ```powershell

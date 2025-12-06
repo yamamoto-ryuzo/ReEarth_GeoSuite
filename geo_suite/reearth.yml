@@ -1,0 +1,22 @@
+{
+  "id": "geo_suite",
+  "name": "ReEarth_GeoSuite",
+  "version": "1.0.0",
+  "description": "Integrated tools: list layers and basemap tiles",
+  "author": "yamamoto-ryuzo",
+  "extensions":
+    [
+      {
+        "id": "layers-and-tiles-list",
+        "type": "widget",
+        "name": "Layers & Tiles",
+        "description": "List layers and basemap tiles in the scene",
+        "entry": "layers-and-tiles-list.js",
+        "widgetLayout":
+          {
+            "defaultLocation":
+              { "zone": "outer", "section": "left", "area": "top" },
+          },
+      },
+    ],
+}

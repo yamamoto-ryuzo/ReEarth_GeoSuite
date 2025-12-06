@@ -6,6 +6,43 @@ function collectLayers(layer, out) {
   const children = layer.children || layer.layers || [];
   for (const c of children) collectLayers(c, out);
 }
+function getLayerRoots(scene){
+  try {
+    if (!scene) return [];
+    if (Array.isArray(scene.layers)) return scene.layers;
+    if (scene.root && Array.isArray(scene.root.children)) return scene.root.children;
+  } catch(_) {}
+  return [];
+}
+
+function flattenAllLayers(scene){
+  var all = [];
+  try {
+    var flat = (reearth.layers && Array.isArray(reearth.layers.layers)) ? reearth.layers.layers : [];
+    if (flat && flat.length) {
+      for (var i=0;i<flat.length;i++) collectLayers(flat[i], all);
+      return all;
+    }
+  } catch(_) {}
+  var roots = getLayerRoots(scene);
+  for (var j=0;j<roots.length;j++) collectLayers(roots[j], all);
+  return all;
+}
+
+function getBasemapsFromVisualizer(){
+  var vis = (reearth && reearth.visualizer) ? reearth.visualizer : null;
+  var prop = vis && vis.property ? vis.property : null;
+  var tiles = prop && prop.tiles ? prop.tiles : [];
+  var arr = [];
+  if (Array.isArray(tiles)) {
+    for (var i=0;i<tiles.length;i++) {
+      var t = tiles[i] || {};
+      var url = pickUrl(t) || pickUrl(t.property || {}) || '';
+      arr.push({ name: t.name || ('tile-'+(i+1)), url: url, type: detailType(t), zoom: pickZoom(t), opacity: pickOpacity(t) });
+    }
+  }
+  return arr;
+}
 
 function pickUrl(obj) {
   if (!obj || typeof obj !== "object") return "";
@@ -187,42 +224,86 @@ function collectBaseMaps(sceneProp) {
   return basemaps;
 }
 
-function refresh() {
-  const scene = reearth.scene;
-  const all = [];
+function getSceneTilesSync() {
   try {
-    // Prefer flattened API
-    const flatLayers = (reearth.layers && Array.isArray(reearth.layers.layers)) ? reearth.layers.layers : [];
-    if (flatLayers.length > 0) {
-      for (const l of flatLayers) collectLayers(l, all);
-    } else {
-      const roots = (scene && (scene.layers || scene.root?.children)) || [];
-      if (Array.isArray(roots)) {
-        for (const r of roots) collectLayers(r, all);
-      } else if (roots) {
-        collectLayers(roots, all);
-      }
-    }
-  } catch (e) {
-    return render([], []);
-  }
+    var vis = (reearth && reearth.visualizer) ? reearth.visualizer : null;
+    var prop = vis && vis.property ? vis.property : null;
+    var tiles = prop && prop.tiles ? prop.tiles : null;
+    if (Array.isArray(tiles)) return tiles;
+  } catch (_) {}
+  return [];
+}
+
+function detailType(obj){
+  const t = guessType(obj);
+  const fmt = (obj && (obj.format || obj.style || obj.scheme)) || '';
+  return [t, fmt].filter(Boolean).join(':');
+}
+
+function pickZoom(obj){
+  if (!obj || typeof obj !== 'object') return undefined;
+  const z = obj.zoomLevel ?? obj.zoom ?? obj.maxZoom ?? obj.minZoom;
+  return typeof z === 'number' ? z : undefined;
+}
+
+function pickOpacity(obj){
+  if (!obj || typeof obj !== 'object') return undefined;
+  const o = obj.opacity ?? obj.alpha ?? obj.transparency;
+  return typeof o === 'number' ? o : undefined;
+}
+
+async function refresh() {
+  const scene = reearth.scene;
+  var all = flattenAllLayers(scene);
   const infos = all.map(layerInfo);
-  const basemaps = collectBaseMaps(scene?.property);
-  render(infos, basemaps);
+  const basemaps = collectBaseMaps((scene && scene.property) || {});
+  // enrich basemaps with zoom/opacity if present
+  const enrichedBase = basemaps.map(function(b){
+    const zm = pickZoom(b);
+    const op = pickOpacity(b);
+    return Object.assign({}, b, { zoom: zm, opacity: op, type: detailType(b) });
+  });
+  // merge visualizer tiles as basemap candidates if not detected
+  var visualTiles = getBasemapsFromVisualizer();
+  var finalBase = enrichedBase;
+  if (!finalBase.length && visualTiles.length) finalBase = visualTiles;
+  render(infos, enrichedBase);
   // Also push inspect summary proactively so UI can show without a button
   try {
-    const prop = scene?.property || {};
+    const prop = (scene && scene.property) || {};
     const excerpt = {};
     const keys = Object.keys(prop).slice(0, 100);
     for (const k of keys) excerpt[k] = prop[k];
-    const basemapCandidates = collectBaseMaps(prop);
+    const basemapCandidatesRaw = collectBaseMaps(prop);
+    const basemapCandidates = basemapCandidatesRaw.map(b => ({
+      name: b.name,
+      url: b.url,
+      type: detailType(b),
+      zoom: pickZoom(b),
+      opacity: pickOpacity(b)
+    }));
+    var tiles = getSceneTilesSync();
+    if (!tiles.length && visualTiles.length) {
+      // fall back to visualizer-derived tiles as candidates
+      tiles = visualTiles;
+    }
+    const tileSummary = tiles.map(t => ({
+      id: t.id || t.name || '',
+      url: pickUrl(t),
+      type: detailType(t),
+      zoom: pickZoom(t),
+      opacity: pickOpacity(t)
+    }));
     const summary = {
-      sceneKeys: Object.keys(scene||{}),
-      hasLayers: Array.isArray(scene?.layers),
-      layerCount: Array.isArray(scene?.layers) ? scene.layers.length : (scene?.root?.children?.length || 0),
+      sceneId: (scene && scene.id) || '',
+      sceneName: (scene && scene.name) || '',
+      sceneKeys: Object.keys(scene || {}),
+      hasLayers: Array.isArray(scene && scene.layers),
+      layerCount: Array.isArray(scene && scene.layers) ? scene.layers.length : (((scene && scene.root && scene.root.children) ? scene.root.children.length : 0)),
       propertyKeys: Object.keys(prop),
       propertyExcerpt: excerpt,
-      basemapCandidates
+      basemapCandidates: basemapCandidates,
+      tiles: tileSummary
     };
     reearth.ui.postMessage({ type: 'inspect-result', summary });
   } catch(_) {}
@@ -230,7 +311,7 @@ function refresh() {
 
 try {
   if (reearth.ui && typeof reearth.ui.on === "function") {
-    const handler = (msg) => {
+    const handler = async (msg) => {
       if (msg && msg.type === "refresh") refresh();
       else if (msg && msg.type === "inspect") {
         try {
@@ -239,14 +320,35 @@ try {
           const excerpt = {};
           const keys = Object.keys(prop).slice(0, 100);
           for (const k of keys) excerpt[k] = prop[k];
-          const basemapCandidates = collectBaseMaps(prop);
+          const basemapCandidatesRaw = collectBaseMaps(prop);
+          const basemapCandidates = basemapCandidatesRaw.map(b => ({
+            name: b.name,
+            url: b.url,
+            type: detailType(b),
+            zoom: pickZoom(b),
+            opacity: pickOpacity(b)
+          }));
+          var tiles = getSceneTilesSync();
+          if (!tiles.length) {
+            tiles = getBasemapsFromVisualizer();
+          }
+          const tileSummary = tiles.map(t => ({
+            id: t.id || t.name || '',
+            url: pickUrl(t),
+            type: detailType(t),
+            zoom: pickZoom(t),
+            opacity: pickOpacity(t)
+          }));
           const summary = {
+            sceneId: (scene && scene.id) || '',
+            sceneName: (scene && scene.name) || '',
             sceneKeys: Object.keys(scene),
             hasLayers: Array.isArray(scene.layers),
-            layerCount: Array.isArray(scene.layers) ? scene.layers.length : (scene.root?.children?.length || 0),
+            layerCount: Array.isArray(scene.layers) ? scene.layers.length : (((scene && scene.root && scene.root.children) ? scene.root.children.length : 0)),
             propertyKeys: Object.keys(prop),
             propertyExcerpt: excerpt,
-            basemapCandidates
+            basemapCandidates: basemapCandidates,
+            tiles: tileSummary
           };
           reearth.ui.postMessage({ type: 'inspect-result', summary });
         } catch (e) {
