@@ -95,13 +95,18 @@ if (-not $entryFound) {
 }
 
 Write-Host "Packaging plugin '$PluginId' to $zipPath" -ForegroundColor Cyan
-<#
-    Re:Earth 側はZIPのトップレベルに「プラグインフォルダ名/…」という
-    階層があることを前提にしている可能性があります。
-    これまでの実装（'*' で中身のみを圧縮）はフォルダを落としてしまうため、
-    手動ZIPでは再現しないエラー（undefined.split など）につながり得ます。
-    そのため、ディレクトリそのものを圧縮対象に指定して、
-    ZIP内にプラグインフォルダを保持します。
-#>
-Compress-Archive -Path $pluginDir -DestinationPath $zipPath -Force
+
+# ステージングディレクトリを作り、ZIPのルート直下に reearth.yml 等を配置する
+$stageDir = Join-Path $outDir ".$PluginId-stage"
+if (Test-Path $stageDir) { Remove-Item -Recurse -Force $stageDir }
+New-Item -ItemType Directory -Path $stageDir | Out-Null
+
+# プラグイン中身を丸ごとステージへコピー（隠しファイル除外）
+Copy-Item -Path (Join-Path $pluginDir '*') -Destination $stageDir -Recurse -Force
+
+# 最終ZIPはステージ配下のファイルをルートにして作成
+Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -Force
+
+# ステージ片付け
+Remove-Item -Recurse -Force $stageDir
 Write-Host "Done. Upload ZIP to RE:EARTH: $zipPath" -ForegroundColor Green
