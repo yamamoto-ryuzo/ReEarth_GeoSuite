@@ -104,7 +104,10 @@ function render(list, basemaps) {
   const baseRows = (basemaps || []).map((b, i) => {
     const nameFull = (b && (b.name || b.title || b.id)) || (`Base ${i + 1}`);
     const nameShort = truncate(nameFull, 60);
-    return `<tr><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td></tr>`;
+    // prefer type; if not present, fall back to url
+    const detailFull = (b && b.type) ? b.type : (b && b.url ? b.url : '');
+    const detailShort = truncate(detailFull, 80);
+    return `<tr><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td><td class="col-type break-all" title="${escapeHtml(detailFull)}">${escapeHtml(detailShort)}</td></tr>`;
   });
 
   const html = `
@@ -141,7 +144,7 @@ function render(list, basemaps) {
     ${baseRows.length === 0
       ? `<div class="empty">ない</div>`
       : `<table>
-           <thead><tr><th class="col-name">名称</th></tr></thead>
+           <thead><tr><th class="col-name">名称</th><th class="col-type">タイプ/URL</th></tr></thead>
            <tbody>${baseRows.join("")}</tbody>
          </table>`}
   </div>`;
