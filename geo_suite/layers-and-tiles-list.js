@@ -13,6 +13,9 @@ function safePost(msg){
   } catch(_) {}
 }
 
+// Snapshot of scene tiles so toggling can restore them (best-effort)
+let savedSceneTiles = null;
+
 function collectLayers(layer, out) {
   if (!layer) return;
   out.push(layer);
@@ -89,7 +92,9 @@ function layerInfo(layer) {
   const data = layer.data || layer.tile || layer.property || {};
   const url = pickUrl(data);
   const name = layer.title || layer.name || layer.id || "";
-  return { name, type, url };
+  const id = layer.id || layer.name || name || '';
+  const visible = (typeof layer.visible === 'boolean') ? layer.visible : true;
+  return { id, name, type, url, visible };
 }
 
 function render(list, basemaps) {
@@ -98,16 +103,19 @@ function render(list, basemaps) {
   const rows = list.map((info) => {
     const nameFull = (info && (info.name || info.title || info.id)) || "";
     const nameShort = truncate(nameFull, 60);
-    return `<tr><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td></tr>`;
+    const id = info && info.id ? info.id : '';
+    const checked = info && info.visible ? 'checked' : '';
+    return `<tr><td style="width:36px"><input type="checkbox" class="layer-toggle" data-layer-id="${escapeHtml(id)}" ${checked}></td><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td></tr>`;
   });
 
   const baseRows = (basemaps || []).map((b, i) => {
     const nameFull = (b && (b.name || b.title || b.id)) || (`Base ${i + 1}`);
     const nameShort = truncate(nameFull, 60);
-    // prefer type; if not present, fall back to url
     const detailFull = (b && b.type) ? b.type : (b && b.url ? b.url : '');
     const detailShort = truncate(detailFull, 80);
-    return `<tr><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td><td class="col-type break-all" title="${escapeHtml(detailFull)}">${escapeHtml(detailShort)}</td></tr>`;
+    const checked = b && b._visible !== false ? 'checked' : '';
+    // store index in data attribute so host can identify
+    return `<tr><td style="width:36px"><input type="checkbox" class="tile-toggle" data-tile-index="${i}" ${checked}></td><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td><td class="col-type break-all" title="${escapeHtml(detailFull)}">${escapeHtml(detailShort)}</td></tr>`;
   });
 
   const html = `
@@ -161,6 +169,35 @@ function render(list, basemaps) {
           try { window.parent.postMessage({ type: 'refresh' }, '*'); } catch(e) {}
         });
       }
+      // layer checkbox handlers
+      function wireLayerToggles(){
+        try{
+          const checks = document.querySelectorAll('.layer-toggle');
+          checks.forEach(function(ch){
+            ch.addEventListener('change', function(ev){
+              const id = ch.getAttribute('data-layer-id');
+              const visible = ch.checked;
+              try{ window.parent.postMessage({ type: 'toggle-layer', id: id, visible: visible }, '*'); }catch(_){ }
+            });
+          });
+        }catch(_){}
+      }
+      // tile checkbox handlers
+      function wireTileToggles(){
+        try{
+          const checks = document.querySelectorAll('.tile-toggle');
+          checks.forEach(function(ch){
+            ch.addEventListener('change', function(ev){
+              const idx = Number(ch.getAttribute('data-tile-index'));
+              const visible = ch.checked;
+              try{ window.parent.postMessage({ type: 'toggle-tile', index: idx, visible: visible }, '*'); }catch(_){ }
+            });
+          });
+        }catch(_){}
+      }
+      // wire toggles initially
+      wireLayerToggles();
+      wireTileToggles();
       const inspect = document.getElementById('inspect');
       if(inspect){
         inspect.addEventListener('click', function(){
@@ -334,6 +371,8 @@ async function refresh() {
       // fall back to visualizer-derived tiles as candidates
       tiles = visualTiles;
     }
+    // Save a snapshot of tiles for restore operations (best-effort)
+    try { savedSceneTiles = JSON.parse(JSON.stringify(tiles || [])); } catch(_) { savedSceneTiles = tiles || []; }
     const tileSummary = tiles.map(t => ({
       id: t.id || t.name || '',
       url: pickUrl(t),
@@ -360,6 +399,71 @@ try {
   if (reearth.ui && typeof reearth.ui.on === "function") {
     const handler = async (msg) => {
       if (msg && msg.type === "refresh") refresh();
+      else if (msg && msg.type === 'toggle-layer') {
+        try {
+          const id = msg.id;
+          const visible = !!msg.visible;
+          if (visible) {
+            if (reearth.layers && typeof reearth.layers.show === 'function') reearth.layers.show(id);
+          } else {
+            if (reearth.layers && typeof reearth.layers.hide === 'function') reearth.layers.hide(id);
+          }
+        } catch (e) { safePost({ type: 'toggle-layer-result', error: String(e) }); }
+      }
+      else if (msg && msg.type === 'toggle-tile') {
+        try {
+          const idx = Number(msg.index);
+          const visible = !!msg.visible;
+          const scene = reearth.scene || {};
+          const prop = scene.property || {};
+          var current = getSceneTilesSync();
+          if (!current || !current.length) current = getBasemapsFromVisualizer();
+          // restore snapshot if needed
+          if (visible) {
+            if (savedSceneTiles && savedSceneTiles.length) {
+              var newTiles = JSON.parse(JSON.stringify(savedSceneTiles));
+            } else {
+              // nothing to restore
+              safePost({ type: 'toggle-tile-result', info: 'no saved tiles to restore' });
+              return;
+            }
+          } else {
+            // hide: remove index if possible, otherwise set empty
+            var newTiles = Array.isArray(current) ? current.slice() : [];
+            if (Number.isFinite(idx) && idx >= 0 && idx < newTiles.length) {
+              newTiles.splice(idx, 1);
+            } else {
+              newTiles = [];
+            }
+          }
+          // Try several APIs to update tiles (best-effort)
+          var updated = false;
+          try {
+            if (reearth.scene && typeof reearth.scene.update === 'function') {
+              reearth.scene.update({ property: Object.assign({}, prop, { tiles: newTiles }) });
+              updated = true;
+            }
+          } catch(_){}
+          try {
+            if (!updated && reearth.scene && typeof reearth.scene.updateProperty === 'function') {
+              reearth.scene.updateProperty('tiles', newTiles);
+              updated = true;
+            }
+          } catch(_){}
+          try {
+            if (!updated && reearth.viewer && typeof reearth.viewer.setViewerProperty === 'function') {
+              var vp = (reearth.viewer.getViewerProperty && typeof reearth.viewer.getViewerProperty==='function') ? reearth.viewer.getViewerProperty() : (reearth.viewer.property || {});
+              reearth.viewer.setViewerProperty(Object.assign({}, vp, { tiles: newTiles }));
+              updated = true;
+            }
+          } catch(_){}
+          if (!updated) {
+            safePost({ type: 'toggle-tile-result', error: 'no API available to update tiles in this environment' });
+          } else {
+            safePost({ type: 'toggle-tile-result', ok: true });
+          }
+        } catch (e) { safePost({ type: 'toggle-tile-result', error: String(e) }); }
+      }
       else if (msg && msg.type === "inspect") {
         try {
           const scene = reearth.scene || {};
