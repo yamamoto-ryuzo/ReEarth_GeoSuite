@@ -27,7 +27,7 @@ yamamoto-ryuzo
 - マニフェストのJSONスキーマ
   - https://github.com/reearth/reearth-backend/blob/main/schemas/plugin_manifest.json
  
-  - ## 免責事項
+## 免責事項
 
 本システムは個人のPCで作成・テストされたものです。  
 ご利用によるいかなる損害も責任を負いません。
