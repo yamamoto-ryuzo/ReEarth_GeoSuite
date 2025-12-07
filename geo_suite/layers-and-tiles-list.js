@@ -80,11 +80,12 @@ function layerInfo(layer) {
 }
 
 function render(list, basemaps) {
+  // Prepare rows showing only layer names (with tooltip for full name)
+  const truncate = function(s, n){ if (!s) return ""; return s.length > n ? s.slice(0, n-1) + '…' : s; };
   const rows = list.map((info) => {
-    const name = info.name || "";
-    const type = info.type || "";
-    const url = info.url || "";
-    return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(type)}</td><td class="break-all">${escapeHtml(url)}</td></tr>`;
+    const nameFull = (info && (info.name || info.title || info.id)) || "";
+    const nameShort = truncate(nameFull, 60);
+    return `<tr><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td></tr>`;
   });
 
   const baseRows = (basemaps || []).map((b, i) => {
@@ -104,6 +105,11 @@ function render(list, basemaps) {
     .break-all { word-break: break-all; }
     .empty { padding: 8px 0; color: #666; }
     .actions { display:flex; gap:8px; }
+    /* compact truncation styles */
+    .col-name { max-width: 240px; }
+    .col-type { max-width: 120px; }
+    .col-url { max-width: 420px; }
+    td.col-name, td.col-type, td.col-url { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
   <div class="container">
     <div class="banner">Widget is active — UI heartbeat <span id="clickCount">0</span></div>
@@ -115,8 +121,8 @@ function render(list, basemaps) {
     ${rows.length === 0
       ? `<div class="empty">ない</div>`
       : `<table>
-           <thead><tr><th>レイヤー名</th><th>タイプ</th><th>URL</th></tr></thead>
-           <tbody>${rows.join("")}</tbody>
+           <thead><tr><th class="col-name">レイヤー名</th></tr></thead>
+           <tbody>${rows.join('')}</tbody>
          </table>`}
 
     <div style="font-weight:bold;margin-top:16px;margin-bottom:6px;">ベースタイル</div>
