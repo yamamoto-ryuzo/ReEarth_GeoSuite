@@ -144,7 +144,7 @@ function render(list, basemaps) {
     ${rows.length === 0
       ? `<div class="empty">ない</div>`
       : `<table>
-           <thead><tr><th class="col-name">レイヤー名</th></tr></thead>
+           <thead><tr><th style="width:36px"></th><th class="col-name">レイヤー名</th></tr></thead>
            <tbody>${rows.join('')}</tbody>
          </table>`}
 
@@ -152,7 +152,7 @@ function render(list, basemaps) {
     ${baseRows.length === 0
       ? `<div class="empty">ない</div>`
       : `<table>
-           <thead><tr><th class="col-name">名称</th><th class="col-type">タイプ/URL</th></tr></thead>
+           <thead><tr><th style="width:36px"></th><th class="col-name">名称</th><th class="col-type">タイプ/URL</th></tr></thead>
            <tbody>${baseRows.join("")}</tbody>
          </table>`}
   </div>`;
