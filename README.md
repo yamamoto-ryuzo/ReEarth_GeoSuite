@@ -199,7 +199,7 @@ yamamoto-ryuzo
 # geo_suite/tsconfig.json を使用
 npx tsc -p geo_suite
 
-# 成果物: geo_suite/basemap-simple.js が同ディレクトリに生成されます
+# (任意) TypeScript をコンパイルすると同ディレクトリに JS ファイルが生成されます
 ```
 
 webpack を使う場合は `webpack.config.js` に `geo_suite/basemap-simple.ts` をエントリ追加し、生成された JS を ZIP に同梱してください。
