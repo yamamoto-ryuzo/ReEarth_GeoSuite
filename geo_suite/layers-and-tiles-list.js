@@ -30,9 +30,21 @@ function flattenAllLayers(scene){
 }
 
 function getBasemapsFromVisualizer(){
+  // Prefer viewer-level tiles if available (safe guarded), otherwise fall back to visualizer.property.tiles
   var vis = (reearth && reearth.visualizer) ? reearth.visualizer : null;
-  var prop = vis && vis.property ? vis.property : null;
-  var tiles = prop && prop.tiles ? prop.tiles : [];
+  var viewerProp = {};
+  try {
+    if (typeof (reearth && reearth.viewer && reearth.viewer.getViewerProperty) === 'function') {
+      viewerProp = reearth.viewer.getViewerProperty() || {};
+    } else if (reearth && reearth.viewer && reearth.viewer.property) {
+      viewerProp = reearth.viewer.property || {};
+    }
+  } catch (_) { viewerProp = {}; }
+
+  var tiles = (viewerProp && viewerProp.tiles) ? viewerProp.tiles : (vis && vis.property && vis.property.tiles ? vis.property.tiles : []);
+  // Debug: show what tiles we detected (can be removed later)
+  try { if (typeof console !== 'undefined' && console.log) console.log('getBasemapsFromVisualizer - tiles:', tiles); } catch(_) {}
+
   var arr = [];
   if (Array.isArray(tiles)) {
     for (var i=0;i<tiles.length;i++) {
