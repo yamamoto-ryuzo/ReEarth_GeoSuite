@@ -192,6 +192,11 @@ function render(list, basemaps) {
               const id = ch.getAttribute('data-tile-id');
               const visible = ch.checked;
               try{ window.parent.postMessage({ type: 'toggle-tile', id: id, visible: visible }, '*'); }catch(_){ }
+              // Also send as JSON string and wrapped message to maximize compatibility with host forwarders
+              try{ window.parent.postMessage(JSON.stringify({ type: 'toggle-tile', id: id, visible: visible }), '*'); } catch(_) {}
+              try{ window.parent.postMessage({ __from_geo_suite_ui: true, payload: { type: 'toggle-tile', id: id, visible: visible } }, '*'); } catch(_) {}
+              // also attempt to call parent reearth bridge if available (some hosts expose this)
+              try { if (window.parent && window.parent.reearth && window.parent.reearth.ui && typeof window.parent.reearth.ui.postMessage === 'function') { window.parent.reearth.ui.postMessage({ type: 'toggle-tile', id: id, visible: visible }); } } catch(_) {}
             });
           });
         }catch(_){}
@@ -214,6 +219,9 @@ function render(list, basemaps) {
               const visible = !!t.checked;
               try { console.log && console.log('UI: layer-toggle (delegated)', lid, visible); } catch(_){}
               try{ window.parent.postMessage({ type: 'toggle-layer', id: lid, visible: visible }, '*'); }catch(_){ }
+              try{ window.parent.postMessage(JSON.stringify({ type: 'toggle-layer', id: lid, visible: visible }), '*'); }catch(_){ }
+              try{ window.parent.postMessage({ __from_geo_suite_ui: true, payload: { type: 'toggle-layer', id: lid, visible: visible } }, '*'); }catch(_){ }
+              try { if (window.parent && window.parent.reearth && window.parent.reearth.ui && typeof window.parent.reearth.ui.postMessage === 'function') { window.parent.reearth.ui.postMessage({ type: 'toggle-layer', id: lid, visible: visible }); } } catch(_) {}
             }
           } catch(_){}
         }, false);
@@ -540,6 +548,24 @@ try {
       }
     };
     reearth.ui.on("message", handler);
+    // Also listen for raw window messages on host side and forward to handler (may show iframe posts)
+    try {
+      if (typeof window !== 'undefined' && window && typeof window.addEventListener === 'function') {
+        window.addEventListener('message', function(ev){
+          try { if (typeof console !== 'undefined' && console.log) console.log('host raw window message:', ev && ev.data); } catch(_) {}
+          try {
+            var d = ev && ev.data;
+            if (typeof d === 'string') {
+              try { d = JSON.parse(d); } catch(_) {}
+            }
+            // forward to existing handler if looks like our message
+            if (d && (d.type === 'toggle-tile' || d.type === 'toggle-layer' || d.type === 'refresh' || d.type === 'inspect')) {
+              try { handler(d); } catch(_) {}
+            }
+          } catch(_){}
+        });
+      }
+    } catch(_) {}
     // Mark UI ready and flush buffer on 'ready'
     reearth.ui.on("message", msg => {
       if (msg && (msg.type === 'ready' || msg === 'ready')) {
