@@ -114,8 +114,9 @@ function render(list, basemaps) {
     const detailFull = (b && b.type) ? b.type : (b && b.url ? b.url : '');
     const detailShort = truncate(detailFull, 80);
     const checked = b && b._visible !== false ? 'checked' : '';
-    // store index in data attribute so host can identify
-    return `<tr><td style="width:36px"><input type="checkbox" class="tile-toggle" data-tile-index="${i}" ${checked}></td><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td><td class="col-type break-all" title="${escapeHtml(detailFull)}">${escapeHtml(detailShort)}</td></tr>`;
+    // determine tile id to use for toggle (prefer explicit id, then name, then index)
+    const tileId = b && (b.id || b.tileId || b.name) ? (b.id || b.tileId || b.name) : (`tile-${i}`);
+    return `<tr><td style="width:36px"><input type="checkbox" class="tile-toggle" data-tile-id="${escapeHtml(tileId)}" ${checked}></td><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td><td class="col-type break-all" title="${escapeHtml(detailFull)}">${escapeHtml(detailShort)}</td></tr>`;
   });
 
   const html = `
@@ -188,9 +189,9 @@ function render(list, basemaps) {
           const checks = document.querySelectorAll('.tile-toggle');
           checks.forEach(function(ch){
             ch.addEventListener('change', function(ev){
-              const idx = Number(ch.getAttribute('data-tile-index'));
+              const id = ch.getAttribute('data-tile-id');
               const visible = ch.checked;
-              try{ window.parent.postMessage({ type: 'toggle-tile', index: idx, visible: visible }, '*'); }catch(_){ }
+              try{ window.parent.postMessage({ type: 'toggle-tile', id: id, visible: visible }, '*'); }catch(_){ }
             });
           });
         }catch(_){}
@@ -198,6 +199,25 @@ function render(list, basemaps) {
       // wire toggles initially
       wireLayerToggles();
       wireTileToggles();
+      // Add delegated listener as a fallback to ensure dynamically replaced nodes are handled
+      try {
+        document.addEventListener('change', function(ev){
+          try {
+            const t = ev.target || {};
+            if (t.classList && t.classList.contains && t.classList.contains('tile-toggle')){
+              const id = t.getAttribute('data-tile-id');
+              const visible = !!t.checked;
+              try { console.log && console.log('UI: tile-toggle (delegated)', id, visible); } catch(_){}
+              try{ window.parent.postMessage({ type: 'toggle-tile', id: id, visible: visible }, '*'); }catch(_){ }
+            } else if (t.classList && t.classList.contains && t.classList.contains('layer-toggle')){
+              const lid = t.getAttribute('data-layer-id');
+              const visible = !!t.checked;
+              try { console.log && console.log('UI: layer-toggle (delegated)', lid, visible); } catch(_){}
+              try{ window.parent.postMessage({ type: 'toggle-layer', id: lid, visible: visible }, '*'); }catch(_){ }
+            }
+          } catch(_){}
+        }, false);
+      } catch(_){}
       const inspect = document.getElementById('inspect');
       if(inspect){
         inspect.addEventListener('click', function(){
@@ -398,6 +418,7 @@ async function refresh() {
 try {
   if (reearth.ui && typeof reearth.ui.on === "function") {
     const handler = async (msg) => {
+      try { if (typeof console !== 'undefined' && console.log) console.log('host handler received message:', msg); } catch(_) {}
       if (msg && msg.type === "refresh") refresh();
       else if (msg && msg.type === 'toggle-layer') {
         try {
@@ -412,51 +433,62 @@ try {
       }
       else if (msg && msg.type === 'toggle-tile') {
         try {
-          const idx = Number(msg.index);
+          const tileId = msg.id;
           const visible = !!msg.visible;
-          const scene = reearth.scene || {};
-          const prop = scene.property || {};
           var current = getSceneTilesSync();
           if (!current || !current.length) current = getBasemapsFromVisualizer();
-          // restore snapshot if needed
-          if (visible) {
-            if (savedSceneTiles && savedSceneTiles.length) {
-              var newTiles = JSON.parse(JSON.stringify(savedSceneTiles));
-            } else {
-              // nothing to restore
-              safePost({ type: 'toggle-tile-result', info: 'no saved tiles to restore' });
-              return;
+
+          if (!Array.isArray(current)) current = [];
+
+          // Prepare newTiles by adjusting per-tile opacity (do not remove elements)
+          let newTiles = current.map(t => {
+            const idMatch = (t && (t.id || t.name || t.tileId)) ? (t.id || t.name || t.tileId) : undefined;
+            if (!idMatch) return t;
+            if (idMatch === tileId) {
+              if (!visible) {
+                return Object.assign({}, t, { tile_opacity: 0 });
+              } else {
+                // restore original opacity from savedSceneTiles if available
+                let orig = 1;
+                try {
+                  if (savedSceneTiles && savedSceneTiles.length) {
+                    const found = savedSceneTiles.find(s => (s && (s.id || s.name || s.tileId)) && ((s.id || s.name || s.tileId) === tileId));
+                    if (found) orig = (found.tile_opacity ?? found.opacity ?? found.alpha ?? 1);
+                  }
+                } catch(_){}
+                return Object.assign({}, t, { tile_opacity: orig });
+              }
             }
-          } else {
-            // hide: remove index if possible, otherwise set empty
-            var newTiles = Array.isArray(current) ? current.slice() : [];
-            if (Number.isFinite(idx) && idx >= 0 && idx < newTiles.length) {
-              newTiles.splice(idx, 1);
-            } else {
-              newTiles = [];
-            }
-          }
-          // Try several APIs to update tiles (best-effort)
+            return t;
+          });
+
+          // Try viewer.overrideProperty first (preferred)
           var updated = false;
           try {
-            if (reearth.scene && typeof reearth.scene.update === 'function') {
-              reearth.scene.update({ property: Object.assign({}, prop, { tiles: newTiles }) });
+            if (reearth.viewer && typeof reearth.viewer.overrideProperty === 'function') {
+              reearth.viewer.overrideProperty({ tiles: newTiles });
               updated = true;
             }
           } catch(_){}
-          try {
-            if (!updated && reearth.scene && typeof reearth.scene.updateProperty === 'function') {
-              reearth.scene.updateProperty('tiles', newTiles);
-              updated = true;
-            }
-          } catch(_){}
+
+          // Fallbacks: setViewerProperty or update scene property
           try {
             if (!updated && reearth.viewer && typeof reearth.viewer.setViewerProperty === 'function') {
-              var vp = (reearth.viewer.getViewerProperty && typeof reearth.viewer.getViewerProperty==='function') ? reearth.viewer.getViewerProperty() : (reearth.viewer.property || {});
+              var vp = (reearth.viewer.getViewerProperty && typeof reearth.viewer.getViewerProperty === 'function') ? reearth.viewer.getViewerProperty() : (reearth.viewer.property || {});
               reearth.viewer.setViewerProperty(Object.assign({}, vp, { tiles: newTiles }));
               updated = true;
             }
           } catch(_){}
+
+          try {
+            if (!updated && reearth.scene && typeof reearth.scene.update === 'function') {
+              const scene = reearth.scene || {};
+              const prop = scene.property || {};
+              reearth.scene.update({ property: Object.assign({}, prop, { tiles: newTiles }) });
+              updated = true;
+            }
+          } catch(_){}
+
           if (!updated) {
             safePost({ type: 'toggle-tile-result', error: 'no API available to update tiles in this environment' });
           } else {
