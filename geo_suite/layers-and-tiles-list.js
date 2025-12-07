@@ -1,5 +1,18 @@
 // Lists all layers and basemap tiles with name, type, and URL
 
+// Global UI message buffer state so host code and render() share it
+let uiReady = false;
+let messageBuffer = [];
+function safePost(msg){
+  try {
+    if (uiReady && reearth && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+      reearth.ui.postMessage(msg);
+    } else {
+      messageBuffer.push(msg);
+    }
+  } catch(_) {}
+}
+
 function collectLayers(layer, out) {
   if (!layer) return;
   out.push(layer);
@@ -89,10 +102,9 @@ function render(list, basemaps) {
   });
 
   const baseRows = (basemaps || []).map((b, i) => {
-    const name = b.name || `Base ${i + 1}`;
-    const type = b.type || "";
-    const url = b.url || "";
-    return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(type)}</td><td class="break-all">${escapeHtml(url)}</td></tr>`;
+    const nameFull = (b && (b.name || b.title || b.id)) || (`Base ${i + 1}`);
+    const nameShort = truncate(nameFull, 60);
+    return `<tr><td class="col-name" title="${escapeHtml(nameFull)}">${escapeHtml(nameShort)}</td></tr>`;
   });
 
   const html = `
@@ -129,7 +141,7 @@ function render(list, basemaps) {
     ${baseRows.length === 0
       ? `<div class="empty">ない</div>`
       : `<table>
-           <thead><tr><th>名称</th><th>タイプ</th><th>URL</th></tr></thead>
+           <thead><tr><th class="col-name">名称</th></tr></thead>
            <tbody>${baseRows.join("")}</tbody>
          </table>`}
   </div>`;
@@ -197,18 +209,6 @@ function render(list, basemaps) {
     })();
     </script>
   `;
-    // Buffer messages until iframe signals 'ready'
-    let uiReady = false;
-    let messageBuffer = [];
-    function safePost(msg){
-      try {
-        if (uiReady) {
-          reearth.ui.postMessage(msg);
-        } else {
-          messageBuffer.push(msg);
-        }
-      } catch(_) {}
-    }
   try { reearth.ui.show(withScript); } catch(_) {}
 }
 
