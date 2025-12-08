@@ -17,7 +17,7 @@ yamamoto-ryuzo
 ## 🔗 関連リンク
 
 ## Visualizer
-Visualizerユーザーマニュアル＜ビジュアライザープラグインとは？＞　　
+Visualizerユーザーマニュアル＜ビジュアライザープラグインとは？＞  
 https://eukarya.notion.site/19616e0fb165802491f4e091b5e8e754  
 開発者向けサイト※対応言語は英語のみです。  
 https://visualizer.developer.reearth.io/ja/  
