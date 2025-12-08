@@ -16,16 +16,12 @@ yamamoto-ryuzo
 
 ## 🔗 関連リンク
 
-
-### 参考: プラグイン API リファレンス
-- ReEarth Web のプラグイン型定義（開発時の参照に便利）
-  - https://github.com/reearth/reearth-web/blob/main/src/components/molecules/Visualizer/Plugin/types.ts
-
-### 参考: プラグインマニフェスト（バックエンド）
-- マニフェスト例（builtin manifest）
-  - https://github.com/reearth/reearth-backend/blob/main/pkg/builtin/manifest.yml
-- マニフェストのJSONスキーマ
-  - https://github.com/reearth/reearth-backend/blob/main/schemas/plugin_manifest.json
+## Visualizer
+Visualizerユーザーマニュアル＜ビジュアライザープラグインとは？＞　　
+https://eukarya.notion.site/19616e0fb165802491f4e091b5e8e754  
+開発者向けサイト※対応言語は英語のみです。  
+https://visualizer.developer.reearth.io/ja/  
+※プラグイン開発・レイヤー操作・API 挙動の最新情報はこちらにまとめられております。  
  
 ## 免責事項
 
