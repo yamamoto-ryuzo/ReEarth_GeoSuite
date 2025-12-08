@@ -22,6 +22,8 @@ https://eukarya.notion.site/19616e0fb165802491f4e091b5e8e754
 開発者向けサイト※対応言語は英語のみです。  
 https://visualizer.developer.reearth.io/ja/  
 ※プラグイン開発・レイヤー操作・API 挙動の最新情報はこちらにまとめられております。  
+### API
+https://visualizer.developer.reearth.io/ja/plugin-api/viewer/  
  
 ## 免責事項
 
