@@ -11,10 +11,12 @@
       const id = t && (t.id || t.name || t.tileId) ? (t.id || t.name || t.tileId) : (t.url || `tile-${i}`);
       const base = Object.assign({}, t);
       if (id === targetId || base.url === targetId || String(i) === String(targetId)) {
-        base.opacity = 0;
-        console.log('Setting opacity=0 for', id, base);
+        // Toggle opacity: if currently 0 -> set to 1, otherwise set to 0
+        const currentOpacity = (typeof base.opacity === 'number') ? base.opacity : 1;
+        base.opacity = (currentOpacity === 0) ? 1 : 0;
+        console.log('Toggling opacity for', id, 'from', currentOpacity, 'to', base.opacity, base);
       } else {
-        if (typeof base.opacity !== 'number') base.opacity = (typeof base.opacity === 'number' ? base.opacity : 1);
+        if (typeof base.opacity !== 'number') base.opacity = 1;
       }
       return base;
     });
