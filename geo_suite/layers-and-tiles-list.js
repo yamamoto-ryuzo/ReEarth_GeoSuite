@@ -14,7 +14,7 @@ const generateLayerItem = (layer, isPreset) => {
           data-layer-id="${layer.id}"
           ${layer.visible ? "checked" : ""}
         />
-        <button class="btn-primary p-8 move-btn" data-layer-id="${layer.id}"><span class="wide">移動</span></button>
+        <button class="btn-primary p-8 move-btn" data-layer-id="${layer.id}" aria-label="Move"></button>
         ${!isPreset
             ? `<button class="btn-danger p-8"  data-layer-id="${layer.id}">Delete</button>`
             : "" }
@@ -66,23 +66,16 @@ reearth.ui.show(`
     background-color: rgba(255, 255, 255, 0.3);
   }
 
-  /* Move button: horizontally stretched label, minimal height, small horizontal padding */
+  /* Move button: square, minimal height */
   .move-btn{
-    padding: 2px 6px;
-    min-width: 2.4em;
-    height: auto;
+    padding: 0;
+    width: 1.6em;
+    height: 1.6em;
+    min-width: 1.6em;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-  .move-btn .wide {
-    display: inline-block;
-    transform: scaleX(1.35);
-    transform-origin: center;
-    line-height: 1;
-    white-space: nowrap;
-    writing-mode: horizontal-tb;
-    text-orientation: mixed;
+    border-radius: 4px;
   }
 
 </style>
