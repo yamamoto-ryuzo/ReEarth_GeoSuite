@@ -14,7 +14,7 @@ const generateLayerItem = (layer, isPreset) => {
           data-layer-id="${layer.id}"
           ${layer.visible ? "checked" : ""}
         />
-        <button class="btn-primary p-8" data-layer-id="${layer.id}">Flyto</button>
+        <button class="btn-primary p-8 move-btn" data-layer-id="${layer.id}"><span class="wide">移動</span></button>
         ${!isPreset
             ? `<button class="btn-danger p-8"  data-layer-id="${layer.id}">Delete</button>`
             : "" }
@@ -41,9 +41,11 @@ reearth.ui.show(`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 8px 0;
-    padding: 8px 12px;
+    margin: 4px 0;
+    padding: 2px 8px;
+    line-height: 1;
     background-color: rgba(248, 249, 250, 0.6);
+    min-height: 1.2em;
     border-radius: 4px;
   }
 
@@ -64,12 +66,28 @@ reearth.ui.show(`
     background-color: rgba(255, 255, 255, 0.3);
   }
 
+  /* Move button: horizontally stretched label, minimal height, small horizontal padding */
+  .move-btn{
+    padding: 2px 6px;
+    min-width: 2.4em;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .move-btn .wide {
+    display: inline-block;
+    transform: scaleX(1.35);
+    transform-origin: center;
+    line-height: 1;
+    white-space: nowrap;
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+  }
+
 </style>
 
 <div class="primary-background p-16 rounded-sm">
-  <h2 class="m-0">Layers</h2>
-
-  <h3>Preset Layers</h3>
   <ul class="layers-list">
     ${presetLayerItems}
   </ul>
