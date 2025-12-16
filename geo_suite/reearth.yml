@@ -2,7 +2,7 @@
   "id": "geo_suite",
   "name": "ReEarth_GeoSuite",
   "version": "0.1.0",
-  "description": "Integrated tools: list layers and basemap tiles",
+  "description": "Integrated tools:  (WIP) list layers and basemap tiles",
   "author": "yamamoto-ryuzo",
   "extensions":
     [
