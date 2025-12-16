@@ -43,7 +43,7 @@ reearth.ui.show(`
     align-items: center;
     margin: 8px 0;
     padding: 8px 12px;
-    background: #f8f9fa;
+    background-color: rgba(248, 249, 250, 0.6);
     border-radius: 4px;
   }
 
@@ -58,6 +58,11 @@ reearth.ui.show(`
     gap: 8px;
     align-items: center;
     }
+
+  /* Make primary background semi-transparent */
+  .primary-background {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
 
 </style>
 
