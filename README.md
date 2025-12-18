@@ -36,5 +36,22 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
   </a>
 </p>
 
+## 🚀 セットアップと使い方
+
+- **前提**: Node.js と Python3（ビルド用スクリプト実行）がインストールされていることを推奨します。
+
+- **ローカルでの確認**:
+  - `geo_suite/layers-and-tiles-list.js` がプラグイン UI のサンプルです。Re:Earth Visualizer のプラグインとして読み込むと、レイヤー一覧表示・表示切替・FlyTo 操作等の挙動を確認できます。
+
+- **パッケージ作成**:
+  - `scripts/package_geo_suite.py` を使ってパッケージを作成します。生成物は `artifacts/` に出力されます。
+
+- **主要ファイル**:
+  - `geo_suite/layers-and-tiles-list.js`: レイヤー一覧の UI と親フレーム（Visualizer）とのメッセージ連携を実装。
+  - `scripts/package_geo_suite.py`: パッケージ作成用スクリプト（Python）。
+  - `samplejs/`: 動作サンプル／テスト用の JS コード。
+
+- **貢献について**: Issue や Pull Request を歓迎します。変更点の説明と再現手順を添えてください。
+
 
 

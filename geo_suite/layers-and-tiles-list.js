@@ -81,6 +81,14 @@ reearth.ui.show(`
 </style>
 
 <div class="primary-background p-16 rounded-sm">
+  <div class="primary-background flex-column align-center p-16 rounded-sm gap-16" style="margin-bottom:8px;">
+      <label class="toggle">
+        <input type="checkbox" id="toggleSwitch">
+        <span class="slider"></span>
+      </label>
+      <div class="text-md" id="status">Terrain: OFF</div>
+  </div>
+
   <ul class="layers-list">
     ${presetLayerItems}
   </ul>
@@ -88,42 +96,81 @@ reearth.ui.show(`
 </div>
 
 <script>
-  // No plugin delete buttons present.
+  // Terrain toggle: send action messages to parent
+  document.addEventListener('DOMContentLoaded', function() {
+      const toggleSwitch = document.getElementById('toggleSwitch');
+      const status = document.getElementById('status');
 
-  // Add event listener for 'Show/Hide'
-  document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
-    checkbox.addEventListener("change", event => {
-      const layerId = event.target.getAttribute("data-layer-id");
-      const isVisible = event.target.checked;
-
-      if (layerId) {
-        // Send a message to the parent window for show/hide action
-        parent.postMessage({
-          type: isVisible ? "show" : "hide",
-          layerId: layerId
-        }, "*");
+      if (toggleSwitch && status) {
+          toggleSwitch.addEventListener('change', function() {
+              if (this.checked) {
+                  status.textContent = 'Terrain: ON';
+                  if (window.parent) {
+                      window.parent.postMessage({ action: "activateTerrain" }, "*");
+                  }
+              } else {
+                  status.textContent = 'Terrain: OFF';
+                  if (window.parent) {
+                      window.parent.postMessage({ action: "deactivateTerrain" }, "*");
+                  }
+              }
+          });
       }
-    });
-  });
 
-    // Add event listener for 'FlyTo' button
-  document.querySelectorAll(".btn-primary").forEach(button => {
-    button.addEventListener("click", event => {
-      const layerId = event.target.getAttribute("data-layer-id");
-      if (layerId) {
-        // Send a message to the parent window for 'FlyTo' action
-        parent.postMessage({
-          type: "flyTo",
-          layerId: layerId
-        }, "*");
-      }
-    });
+      // Add event listener for 'Show/Hide'
+      document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
+        checkbox.addEventListener("change", event => {
+          const layerId = event.target.getAttribute("data-layer-id");
+          const isVisible = event.target.checked;
+
+          if (layerId) {
+            // Send a message to the parent window for show/hide action
+            parent.postMessage({
+              type: isVisible ? "show" : "hide",
+              layerId: layerId
+            }, "*");
+          }
+        });
+      });
+
+      // Add event listener for 'FlyTo' button
+      document.querySelectorAll(".btn-primary").forEach(button => {
+        button.addEventListener("click", event => {
+          const layerId = event.target.getAttribute("data-layer-id");
+          if (layerId) {
+            // Send a message to the parent window for 'FlyTo' action
+            parent.postMessage({
+              type: "flyTo",
+              layerId: layerId
+            }, "*");
+          }
+        });
+      });
   });
 </script>
 `);
 
+
+
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", (msg) => {
+  // Handle action-based messages from the UI (terrain toggle)
+  if (msg && msg.action) {
+    if (msg.action === "activateTerrain") {
+      reearth.viewer.overrideProperty({
+        terrain: { enabled: true },
+        globe: { depthTestAgainstTerrain: true },
+      });
+    } else if (msg.action === "deactivateTerrain") {
+      reearth.viewer.overrideProperty({
+        terrain: { enabled: false },
+        globe: { depthTestAgainstTerrain: false },
+      });
+    }
+    return;
+  }
+
+  // Backward-compatible handling for messages using `type`
   switch (msg.type) {
     case "delete":
       reearth.layers.delete(msg.layerId);
