@@ -21,8 +21,8 @@ extensions:
         - id: settings
           title: "Settings"
           fields:
-            - id: inspectorText
-              title: "XYZ_Tiles_URL"
+            - id: inspectorUrl
+              title: "XYZ タイル URL"
               type: string
-              placeholder: "テキストを入力してください"
-              ui: multiline
+              placeholder: "https://{s}.example.com/{z}/{x}/{y}.png"
+              ui: string

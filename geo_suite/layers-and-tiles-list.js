@@ -166,6 +166,7 @@ reearth.ui.show(`
 
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", (msg) => {
+  try { console.log("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
   if (msg && msg.action) {
     if (msg.action === "activateTerrain") {
@@ -196,6 +197,82 @@ reearth.extension.on("message", (msg) => {
     case "show":
       reearth.layers.show(msg.layerId);
       break;
+    case "inspectorText":
+      try {
+        const v = msg.value || "";
+        console.log("inspectorText:", v);
+        let url = v;
+        try {
+          // If the inspector sent an encoded URL, decode to show original characters
+          url = decodeURIComponent(v);
+        } catch (e) {
+          // ignore decode errors and keep original
+          url = v;
+        }
+        if (url && /^https?:\/\//.test(url)) {
+          addXyzLayer(url);
+        }
+      } catch (e) {
+        // ignore
+      }
+      break;
     default:
   }
 });
+
+// Read initial inspector property and add layer if URL present
+function tryInitFromProperty() {
+  try {
+    try { console.log('[init] extension.widget:', reearth.extension.widget); } catch(e){}
+    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+    const url = prop?.inspectorUrl || prop?.inspectorText;
+    try { console.log('[init] property:', prop); } catch(e){}
+    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+      try { console.log('[init] found URL -> add layer', url); } catch(e){}
+      addXyzLayer(url);
+    } else {
+      try { console.log('[init] no valid URL found in property'); } catch(e){}
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function addXyzLayer(url) {
+  if (!url || typeof url !== "string") return;
+  const title = `XYZ: ${url}`;
+  const layer = {
+    type: "simple",
+    title: title,
+    visible: true,
+    data: {
+      type: "tiles",
+      // Ensure non-ASCII characters are percent-encoded for a valid request
+      url: encodeURI(url),
+    },
+    tiles: {},
+  };
+  try {
+    const newId = reearth.layers.add(layer);
+    console.log("Added XYZ layer, id:", newId, "(src:", url, ")");
+  } catch (e) {
+    console.error("Failed to add XYZ layer:", e);
+  }
+}
+
+tryInitFromProperty();
+
+// Poll for property changes (Inspector edits) and react to URL changes
+let _lastInspectorUrl = null;
+setInterval(() => {
+  try {
+    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+    const url = prop?.inspectorUrl || prop?.inspectorText;
+    if (url && url !== _lastInspectorUrl && /^https?:\/\//.test(url)) {
+      _lastInspectorUrl = url;
+      addXyzLayer(url);
+    }
+  } catch (e) {
+    // ignore
+  }
+}, 1000);

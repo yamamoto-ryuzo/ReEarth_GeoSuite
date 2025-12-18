@@ -53,6 +53,18 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 
 - **貢献について**: Issue や Pull Request を歓迎します。変更点の説明と再現手順を添えてください。
 
+### Inspector から XYZ タイルを追加する手順
+
+- Visualizer で本プラグイン（`Layers & Tiles` ウィジェット）をシーンに追加し、右側の Inspector（プラグイン設定）を開きます。
+- Inspector 内の「XYZ タイル URL」欄に以下のようなタイル URL を入力します（`{z}/{x}/{y}` プレースホルダを含む）：
+
+  Example:
+
+  https://assets.cms.reearth.io/assets/53/47f197-1c45-484e-8369-fc31420a12ab/用地取得計画/{z}/{x}/{y}.png
+
+- 入力後、数秒以内にプラグインが Inspector のプロパティを読み取り、指定した URL を元に XYZ タイルのレイヤが追加されます。
+- 既存レイヤとの重複チェックは未実装のため、同じ URL を複数回入力すると重複追加される場合があります。重複防止を希望する場合は対応します。
+
 ## 🔧 更新履歴（2025-12-18）
 
 - `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `reearth-geo-suite` に変更しました。
