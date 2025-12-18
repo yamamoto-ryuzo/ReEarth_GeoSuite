@@ -25,7 +25,8 @@ const generateLayerItem = (layer, isPreset) => {
 
 const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
 
-reearth.ui.show(`
+function getUI() {
+  return `
 <style>
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
@@ -101,6 +102,9 @@ reearth.ui.show(`
       </label>
   </div>
 
+  <!-- Debug button removed -->
+
+
   <ul class="layers-list">
     ${presetLayerItems}
   </ul>
@@ -158,15 +162,53 @@ reearth.ui.show(`
           }
         });
       });
+
+      
   });
+
+  // On-screen plugin log removed (logs go to console only)
 </script>
-`);
+`;
+}
+
+// Initial render
+reearth.ui.show(getUI());
 
 
+
+// Helper: forward logs from extension to the UI log panel
+function sendLog(...args) {
+  try {
+    console.log.apply(console, args);
+  } catch (e) {}
+}
+
+function sendError(...args) {
+  try {
+    console.error.apply(console, args);
+  } catch (e) {}
+}
+
+// Safe stringify for debug logging (handles circular refs and functions)
+function safeStringify(obj) {
+  try {
+    const seen = [];
+    return JSON.stringify(obj, function(k, v) {
+      if (typeof v === 'function') return '[Function]';
+      if (v && typeof v === 'object') {
+        if (seen.indexOf(v) !== -1) return '[Circular]';
+        seen.push(v);
+      }
+      return v;
+    }, 2);
+  } catch (e) {
+    try { return String(obj); } catch (e2) { return '[unstringifiable]'; }
+  }
+}
 
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", (msg) => {
-  try { console.log("[extension.message] received:", msg); } catch(e){}
+  try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
   if (msg && msg.action) {
     if (msg.action === "activateTerrain") {
@@ -200,7 +242,7 @@ reearth.extension.on("message", (msg) => {
     case "inspectorText":
       try {
         const v = msg.value || "";
-        console.log("inspectorText:", v);
+        sendLog("inspectorText:", v);
         let url = v;
         try {
           // If the inspector sent an encoded URL, decode to show original characters
@@ -223,15 +265,16 @@ reearth.extension.on("message", (msg) => {
 // Read initial inspector property and add layer if URL present
 function tryInitFromProperty() {
   try {
-    try { console.log('[init] extension.widget:', reearth.extension.widget); } catch(e){}
+    try { sendLog('[init] extension.widget:', reearth.extension.widget); } catch(e){}
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    const url = prop?.inspectorUrl || prop?.inspectorText;
-    try { console.log('[init] property:', prop); } catch(e){}
+    // property may nest inspector values under `settings` (e.g. { settings: { inspectorUrl: "..." } })
+    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
+    try { sendLog('[init] property:', prop); } catch(e){}
     if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-      try { console.log('[init] found URL -> add layer', url); } catch(e){}
+      try { sendLog('[init] found URL -> add layer', url); } catch(e){}
       addXyzLayer(url);
     } else {
-      try { console.log('[init] no valid URL found in property'); } catch(e){}
+      try { sendLog('[init] no valid URL found in property'); } catch(e){}
     }
   } catch (e) {
     // ignore
@@ -241,22 +284,30 @@ function tryInitFromProperty() {
 function addXyzLayer(url) {
   if (!url || typeof url !== "string") return;
   const title = `XYZ: ${url}`;
+  // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
+  const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
   const layer = {
     type: "simple",
     title: title,
     visible: true,
     data: {
       type: "tiles",
-      // Ensure non-ASCII characters are percent-encoded for a valid request
-      url: encodeURI(url),
+      url: encodedUrl,
     },
     tiles: {},
   };
+
   try {
+    sendLog("[addXyzLayer] received url:", url);
+    sendLog("[addXyzLayer] encoded url:", encodedUrl);
+    sendLog("[addXyzLayer] layer object:", layer);
     const newId = reearth.layers.add(layer);
-    console.log("Added XYZ layer, id:", newId, "(src:", url, ")");
+    sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
+    return newId;
   } catch (e) {
-    console.error("Failed to add XYZ layer:", e);
+    try { sendError("Failed to add XYZ layer:", e); } catch (err) {}
+    try { sendError("Layer object was:", layer); } catch (err) {}
+    return null;
   }
 }
 
@@ -264,15 +315,21 @@ tryInitFromProperty();
 
 // Poll for property changes (Inspector edits) and react to URL changes
 let _lastInspectorUrl = null;
+let _lastInspectorApply = null;
+// Poll for property changes more frequently so inspector edits reflect faster.
 setInterval(() => {
   try {
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    const url = prop?.inspectorUrl || prop?.inspectorText;
-    if (url && url !== _lastInspectorUrl && /^https?:\/\//.test(url)) {
-      _lastInspectorUrl = url;
-      addXyzLayer(url);
+    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
+    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+      if (url !== _lastInspectorUrl) {
+        sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
+        _lastInspectorUrl = url;
+        addXyzLayer(url);
+      }
     }
+    // inspectorApply trigger handling removed (debugging helper no longer present)
   } catch (e) {
     // ignore
   }
-}, 1000);
+}, 300);
