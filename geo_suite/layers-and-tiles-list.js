@@ -242,6 +242,8 @@ reearth.extension.on("message", (msg) => {
         const v = msg.value || "";
         sendLog("inspectorText:", v);
         let url = v;
+        // optional title can be provided in the message
+        const mtitle = msg && (msg.title || msg.layerTitle) ? (msg.title || msg.layerTitle) : null;
         try {
           // If the inspector sent an encoded URL, decode to show original characters
           url = decodeURIComponent(v);
@@ -250,7 +252,7 @@ reearth.extension.on("message", (msg) => {
           url = v;
         }
         if (url && /^https?:\/\//.test(url)) {
-          addXyzLayer(url);
+          addXyzLayer(url, mtitle);
         }
       } catch (e) {
         // ignore
@@ -267,10 +269,11 @@ function tryInitFromProperty() {
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
     // property may nest inspector values under `settings` (e.g. { settings: { inspectorUrl: "..." } })
     const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
+    const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
     try { sendLog('[init] property:', prop); } catch(e){}
     if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
       try { sendLog('[init] found URL -> add layer', url); } catch(e){}
-      addXyzLayer(url);
+      addXyzLayer(url, title);
     } else {
       try { sendLog('[init] no valid URL found in property'); } catch(e){}
     }
@@ -279,14 +282,14 @@ function tryInitFromProperty() {
   }
 }
 
-function addXyzLayer(url) {
+function addXyzLayer(url, title) {
   if (!url || typeof url !== "string") return;
-  const title = `XYZ: ${url}`;
+  const titleToUse = (title && typeof title === 'string' && title.trim()) ? title.trim() : `XYZ: ${url}`;
   // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
   const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
   const layer = {
     type: "simple",
-    title: title,
+    title: titleToUse,
     visible: true,
     data: {
       type: "tiles",
@@ -326,10 +329,11 @@ setInterval(() => {
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
     const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
     if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+      const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
       if (url !== _lastInspectorUrl) {
         sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
         _lastInspectorUrl = url;
-        addXyzLayer(url);
+        addXyzLayer(url, title);
       }
     }
     // inspectorApply trigger handling removed (debugging helper no longer present)

@@ -26,3 +26,8 @@ extensions:
               type: string
               placeholder: "https://{s}.example.com/{z}/{x}/{y}.png"
               ui: string
+            - id: inspectorTitle
+              title: "レイヤ名"
+              type: string
+              placeholder: "表示名 (例: 用地取得計画)"
+              ui: string
