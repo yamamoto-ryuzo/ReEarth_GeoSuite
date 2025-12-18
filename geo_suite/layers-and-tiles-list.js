@@ -78,15 +78,27 @@ reearth.ui.show(`
     border-radius: 4px;
   }
 
+  /* Terrain row: compact, text left, toggle right */
+  .terrain-row{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    min-height: 28px;
+    justify-content: space-between;
+  }
+  .terrain-row .text-md{ font-size: 14px; margin: 0; }
+  .toggle { margin-left: 8px; }
+
 </style>
 
 <div class="primary-background p-16 rounded-sm">
-  <div class="primary-background flex-column align-center p-16 rounded-sm gap-16" style="margin-bottom:8px;">
-      <label class="toggle">
+  <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+      <div class="text-md" id="status">Terrain: OFF</div>
+      <label class="toggle" id="terrain-toggle" aria-label="Terrain toggle">
         <input type="checkbox" id="toggleSwitch">
         <span class="slider"></span>
       </label>
-      <div class="text-md" id="status">Terrain: OFF</div>
   </div>
 
   <ul class="layers-list">
