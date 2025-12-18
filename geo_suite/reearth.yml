@@ -14,3 +14,15 @@ extensions:
         zone: outer
         section: left
         area: top
+    # Property schema: defines fields shown in the Inspector (right-side plugin settings)
+    schema:
+      version: 1
+      groups:
+        - id: settings
+          title: "Settings"
+          fields:
+            - id: inspectorText
+              title: "XYZ_Tiles_URL"
+              type: string
+              placeholder: "テキストを入力してください"
+              ui: multiline
