@@ -53,5 +53,19 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 
 - **貢献について**: Issue や Pull Request を歓迎します。変更点の説明と再現手順を添えてください。
 
+## 🔧 更新履歴（2025-12-18）
+
+- `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `reearth-geo-suite` に変更しました。
+- UI に「Terrain トグル」を追加しました。UI 側は `geo_suite/layers-and-tiles-list.js` の上部に配置され、ON/OFF で `parent.postMessage({ action: "activateTerrain" })` / `deactivateTerrain` を送信します。拡張側は受信して `reearth.viewer.overrideProperty` で地形（terrain）と地表の深度テストを切替します。
+- 起動時の自動カメラ移動（初期 `reearth.camera.flyTo`）を削除しました。
+- トグルの表示をコンパクト化し、テキストを左、ボタン（トグル）を右に配置しました。
+
+## ⚠️ 注意点 / 次の改善候補
+
+- `geo_suite/reearth.yml` をパッケージ化する際、ルートに `index.js` が無い場合はスクリプトがワーニングを出します（現在は `artifacts/geo_suite.zip` が作成されることを確認済み）。必要であれば `index.js` を追加して ZIP のルート構成を調整してください。
+- 現在、レイヤー一覧内の表示切替チェックボックスに同一 `id="#show-hide-layer"` が複数生成されます。HTML の仕様上は `id` は一意であるべきなので、必要なら `class` に置き換える修正を行えます。
+
+もし README に追記してほしい具体的な手順（例: デプロイ手順、Re:Earth 側での有効化手順、スクリーンショット） があれば教えてください。
+
 
 
