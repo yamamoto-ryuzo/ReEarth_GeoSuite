@@ -1,8 +1,3 @@
-const layers = reearth.layers.layers
-
-// filter layers (show all preset layers)
-const presetLayers = layers;
-
 const generateLayerItem = (layer, isPreset) => {
   return `
     <li>
@@ -23,9 +18,12 @@ const generateLayerItem = (layer, isPreset) => {
   `;
 };
 
-const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
+// Note: preset layer items are generated dynamically inside getUI()
 
 function getUI() {
+  // Build layer items from current layers so UI reflects runtime changes
+  const layers = (reearth.layers && reearth.layers.layers) || [];
+  const presetLayerItems = layers.map(layer => generateLayerItem(layer, true)).join('');
   return `
 <style>
   /* Generic styling system that provides consistent UI components and styling across all plugins */
@@ -303,6 +301,12 @@ function addXyzLayer(url) {
     sendLog("[addXyzLayer] layer object:", layer);
     const newId = reearth.layers.add(layer);
     sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
+    try {
+      // Re-render the widget UI so the new layer appears in the list
+      reearth.ui.show(getUI());
+    } catch (e) {
+      try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {}
+    }
     return newId;
   } catch (e) {
     try { sendError("Failed to add XYZ layer:", e); } catch (err) {}
