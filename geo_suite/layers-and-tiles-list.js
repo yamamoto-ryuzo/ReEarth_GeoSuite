@@ -123,7 +123,8 @@ function getUI() {
         <label class="text-sm" for="currentTime">Current</label>
         <input type="datetime-local" id="currentTime" style="height:28px;" />
       </div>
-        <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
+          <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
+          <div id="time-status" class="text-sm" style="margin-left:8px; color:#333;">&nbsp;</div>
   </div>
 
   <!-- Debug button removed -->
@@ -203,18 +204,34 @@ function getUI() {
           const stopInput = document.getElementById('stopTime');
           const currentInput = document.getElementById('currentTime');
           const applyBtn = document.getElementById('applyTimeBtn');
-          if (applyBtn) {
-            applyBtn.addEventListener('click', function() {
-              const msg = { action: 'setTime' };
-              // datetime-local gives local date-time without timezone; send raw value
-              if (startInput && startInput.value) msg.start = startInput.value;
-              if (stopInput && stopInput.value) msg.stop = stopInput.value;
-              if (currentInput && currentInput.value) msg.current = currentInput.value;
-              if (window.parent) {
-                window.parent.postMessage(msg, "*");
-              }
-            });
-          }
+            const timeStatus = document.getElementById('time-status');
+            if (applyBtn) {
+              applyBtn.addEventListener('click', function() {
+                const msg = { action: 'setTime' };
+                // datetime-local gives local date-time without timezone; send raw value
+                  if (startInput && startInput.value) msg.start = startInput.value;
+                  if (stopInput && stopInput.value) msg.stop = stopInput.value;
+                  if (currentInput && currentInput.value) msg.current = currentInput.value;
+                  // If current not specified, default it to start (or stop) so timeline current moves
+                  if (!msg.current && (msg.start || msg.stop)) {
+                    msg.current = msg.start || msg.stop;
+                    if (timeStatus) timeStatus.textContent = 'Sent (current set)';
+                  }
+                try {
+                  console.log('[UI] posting setTime message', msg);
+                  if (window.parent) {
+                    window.parent.postMessage(msg, "*");
+                  }
+                  if (timeStatus) {
+                    timeStatus.textContent = 'Sent';
+                    setTimeout(() => { if (timeStatus) timeStatus.textContent = '\u00A0'; }, 2000);
+                  }
+                } catch (e) {
+                  console.error('[UI] failed to post setTime', e);
+                  if (timeStatus) timeStatus.textContent = 'Send failed';
+                }
+              });
+            }
 
       // Add event listener for 'Show/Hide'
       document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
@@ -324,14 +341,22 @@ reearth.extension.on("message", (msg) => {
           if (start instanceof Date && !isNaN(start)) payload.start = start;
           if (stop instanceof Date && !isNaN(stop)) payload.stop = stop;
           if (current instanceof Date && !isNaN(current)) payload.current = current;
+          try { sendLog('[setTime] parsed payload:', payload, 'rawMsg:', msg); } catch(e){}
           // Only call if at least one valid date provided
           if (Object.keys(payload).length) {
-            reearth.timeline.setTime(payload);
+            try {
+              reearth.timeline.setTime(payload);
+              try { sendLog('[setTime] reearth.timeline.setTime called'); } catch(e){}
+            } catch (e) {
+              try { sendError('[setTime] reearth.timeline.setTime failed', e); } catch(err){}
+            }
+          } else {
+            try { sendError('[setTime] no valid dates parsed', msg); } catch(e){}
           }
         } catch (e) {
           try { sendError('[setTime] invalid date payload', msg, e); } catch(err){}
         }
-    }
+      }
     return;
   }
 

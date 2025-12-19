@@ -1,6 +1,6 @@
-# ReEarth_GeoSuite
+# ReEarth_GeoSuite (geo_suite) — v3.0.0
 
-Re:Earth版 geo_suite を目指す統合プラグイン／ツール集
+Re:Earth版 `geo_suite` を目指す統合プラグイン／ツール集
 
 ## 📋 概要
 
@@ -65,9 +65,13 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 - 入力後、数秒以内にプラグインが Inspector のプロパティを読み取り、指定した URL を元に XYZ タイルのレイヤが追加されます。
 - 既存レイヤとの重複チェックは未実装のため、同じ URL を複数回入力すると重複追加される場合があります。重複防止を希望する場合は対応します。
 
-## 🔧 更新履歴（2025-12-18）
+- ## 🔧 更新履歴（2025-12-19）
 
-- `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `reearth-geo-suite` に変更しました。
+- **v3.0.0 — 2025-12-19**
+  - プラグイン ID/名前を `geo_suite` に統一し、`package.json` とマニフェストの `version` を `3.0.0` に更新しました。
+  - `README.md` を v3.0.0 に合わせて更新しました。
+
+- `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `geo_suite` に変更しました。
 - UI に「Terrain トグル」を追加しました。UI 側は `geo_suite/layers-and-tiles-list.js` の上部に配置され、ON/OFF で `parent.postMessage({ action: "activateTerrain" })` / `deactivateTerrain` を送信します。拡張側は受信して `reearth.viewer.overrideProperty` で地形（terrain）と地表の深度テストを切替します。
 - 起動時の自動カメラ移動（初期 `reearth.camera.flyTo`）を削除しました。
 - トグルの表示をコンパクト化し、テキストを左、ボタン（トグル）を右に配置しました。
@@ -79,8 +83,8 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
   - リスト項目は `レイヤ名` を代表表示フィールドとして使用します。
   - マニフェストのスキーマを公式仕様に合わせて整理しました。
 
-- **v1.1.0 — 2025-12-18**
-  - `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `reearth-geo-suite` に変更しました。
+-- **v1.1.0 — 2025-12-18**
+  - `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `geo_suite` に変更しました。
 
 ## ⚠️ 注意点 / 次の改善候補
 
