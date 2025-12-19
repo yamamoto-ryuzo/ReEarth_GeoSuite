@@ -72,6 +72,16 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 - 起動時の自動カメラ移動（初期 `reearth.camera.flyTo`）を削除しました。
 - トグルの表示をコンパクト化し、テキストを左、ボタン（トグル）を右に配置しました。
 
+## 🔖 バージョン履歴
+
+- **v2.0.0 — 2025-12-19**
+  - 複数のXYZタイル（レイヤ）をInspectorから追加できるようになりました（`タイル一覧` のリスト化）。
+  - リスト項目は `レイヤ名` を代表表示フィールドとして使用します。
+  - マニフェストのスキーマを公式仕様に合わせて整理しました。
+
+- **v1.1.0 — 2025-12-18**
+  - `geo_suite/reearth.yml` を YAML 形式へ修正し、プラグイン ID を `reearth-geo-suite` に変更しました。
+
 ## ⚠️ 注意点 / 次の改善候補
 
 - `geo_suite/reearth.yml` をパッケージ化する際、ルートに `index.js` が無い場合はスクリプトがワーニングを出します（現在は `artifacts/geo_suite.zip` が作成されることを確認済み）。必要であれば `index.js` を追加して ZIP のルート構成を調整してください。
