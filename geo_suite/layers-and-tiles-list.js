@@ -200,6 +200,12 @@ function getUI() {
                   const on = !!msg.enabled;
                   if (toggleSwitch) toggleSwitch.checked = on;
                   if (status) status.textContent = on ? 'Terrain: ON' : 'Terrain: OFF';
+                } else if (msg.action === 'shadowState') {
+                  // message from extension to initialize/sync shadow toggle
+                  const on = !!msg.enabled;
+                  if (toggleShadow) toggleShadow.checked = on;
+                  if (shadowStatus) shadowStatus.textContent = on ? 'Shadow: ON' : 'Shadow: OFF';
+                  updateTimeRowVisibility(on);
                 }
               } catch (e) {}
             });
@@ -283,9 +289,12 @@ try {
   const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
   const terrainEnabled = !!(viewerProp && viewerProp.terrain && viewerProp.terrain.enabled);
   const depthTest = !!(viewerProp && viewerProp.globe && viewerProp.globe.depthTestAgainstTerrain);
+  const shadowEnabled = !!(viewerProp && viewerProp.scene && viewerProp.scene.shadow && viewerProp.scene.shadow.enabled);
   try { sendLog('[init] sending terrain state to UI', { enabled: terrainEnabled, depthTestAgainstTerrain: depthTest }); } catch(e){}
   if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
     reearth.ui.postMessage({ action: 'terrainState', enabled: terrainEnabled, depthTestAgainstTerrain: depthTest });
+    try { sendLog('[init] sending shadow state to UI', { enabled: shadowEnabled }); } catch(e){}
+    reearth.ui.postMessage({ action: 'shadowState', enabled: shadowEnabled });
   }
 } catch (e) {
   try { sendError('[init] failed to send terrain state', e); } catch(err){}
