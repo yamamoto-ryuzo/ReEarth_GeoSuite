@@ -100,6 +100,32 @@ function getUI() {
       </label>
   </div>
 
+  <!-- Shadow row: compact, placed under Terrain -->
+  <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+      <div class="text-md" id="shadow-status">Shadow: OFF</div>
+      <label class="toggle" id="shadow-toggle" aria-label="Shadow toggle">
+        <input type="checkbox" id="toggleShadowSwitch">
+        <span class="slider"></span>
+      </label>
+  </div>
+
+  <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
+  <div id="time-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="text-sm" for="startTime">Start</label>
+        <input type="datetime-local" id="startTime" style="height:28px;" />
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="text-sm" for="stopTime">Stop</label>
+        <input type="datetime-local" id="stopTime" style="height:28px;" />
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="text-sm" for="currentTime">Current</label>
+        <input type="datetime-local" id="currentTime" style="height:28px;" />
+      </div>
+        <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
+  </div>
+
   <!-- Debug button removed -->
 
 
@@ -130,6 +156,65 @@ function getUI() {
               }
           });
       }
+
+        // Shadow toggle: similar compact handler under Terrain
+            const toggleShadow = document.getElementById('toggleShadowSwitch');
+            const shadowStatus = document.getElementById('shadow-status');
+            const timeRow = document.getElementById('time-row');
+            const updateTimeRowVisibility = (visible) => {
+              if (!timeRow) return;
+              timeRow.style.display = visible ? 'flex' : 'none';
+            };
+
+            // Always hide time row initially to avoid flash
+            if (timeRow) timeRow.style.display = 'none';
+
+            if (toggleShadow && shadowStatus) {
+              // initialize visibility explicitly based on checked state
+              updateTimeRowVisibility(Boolean(toggleShadow.checked));
+              shadowStatus.textContent = toggleShadow.checked ? 'Shadow: ON' : 'Shadow: OFF';
+
+              toggleShadow.addEventListener('change', function() {
+                const checked = !!this.checked;
+                shadowStatus.textContent = checked ? 'Shadow: ON' : 'Shadow: OFF';
+                updateTimeRowVisibility(checked);
+                if (window.parent) {
+                  window.parent.postMessage({ action: checked ? "activateShadow" : "deactivateShadow" }, "*");
+                }
+              });
+            }
+
+            // Sync UI if parent sends shadow actions (keep iframe in sync with external changes)
+            window.addEventListener('message', function(e) {
+              try {
+                const msg = e && e.data ? e.data : null;
+                if (!msg || !msg.action) return;
+                if (msg.action === 'activateShadow' || msg.action === 'deactivateShadow') {
+                  const on = msg.action === 'activateShadow';
+                  if (toggleShadow) toggleShadow.checked = on;
+                  if (shadowStatus) shadowStatus.textContent = on ? 'Shadow: ON' : 'Shadow: OFF';
+                  updateTimeRowVisibility(on);
+                }
+              } catch (e) {}
+            });
+
+          // Time inputs: send start/stop/current to parent when Apply clicked
+          const startInput = document.getElementById('startTime');
+          const stopInput = document.getElementById('stopTime');
+          const currentInput = document.getElementById('currentTime');
+          const applyBtn = document.getElementById('applyTimeBtn');
+          if (applyBtn) {
+            applyBtn.addEventListener('click', function() {
+              const msg = { action: 'setTime' };
+              // datetime-local gives local date-time without timezone; send raw value
+              if (startInput && startInput.value) msg.start = startInput.value;
+              if (stopInput && stopInput.value) msg.stop = stopInput.value;
+              if (currentInput && currentInput.value) msg.current = currentInput.value;
+              if (window.parent) {
+                window.parent.postMessage(msg, "*");
+              }
+            });
+          }
 
       // Add event listener for 'Show/Hide'
       document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
@@ -219,6 +304,33 @@ reearth.extension.on("message", (msg) => {
         terrain: { enabled: false },
         globe: { depthTestAgainstTerrain: false },
       });
+    }
+    else if (msg.action === "activateShadow") {
+      reearth.viewer.overrideProperty({
+        scene: { shadow: { enabled: true } }
+      });
+    } else if (msg.action === "deactivateShadow") {
+      reearth.viewer.overrideProperty({
+        scene: { shadow: { enabled: false } }
+      });
+      } else if (msg.action === "setTime") {
+        try {
+          // If values are provided, convert to Date objects.
+          const buildDate = (v) => (typeof v === 'string' && v ? new Date(v) : null);
+          const start = buildDate(msg.start);
+          const stop = buildDate(msg.stop);
+          const current = buildDate(msg.current);
+          const payload = {};
+          if (start instanceof Date && !isNaN(start)) payload.start = start;
+          if (stop instanceof Date && !isNaN(stop)) payload.stop = stop;
+          if (current instanceof Date && !isNaN(current)) payload.current = current;
+          // Only call if at least one valid date provided
+          if (Object.keys(payload).length) {
+            reearth.timeline.setTime(payload);
+          }
+        } catch (e) {
+          try { sendError('[setTime] invalid date payload', msg, e); } catch(err){}
+        }
     }
     return;
   }
