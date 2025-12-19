@@ -16,7 +16,7 @@ extensions:
         area: top
     # Property schema: defines fields shown in the Inspector (right-side plugin settings)
     schema:
-      version: 1
+      version: 2
       groups:
         - id: settings
           title: "Settings"
@@ -29,5 +29,5 @@ extensions:
             - id: inspectorTitle
               title: "レイヤ名"
               type: string
-              placeholder: "表示名 (例: 用地取得計画)"
+              placeholder: "表示名 (例: ベースマップ用)"
               ui: string

@@ -277,6 +277,17 @@ function tryInitFromProperty() {
     } else {
       try { sendLog('[init] no valid URL found in property'); } catch(e){}
     }
+
+    // If inspector provides a collection of layers, add them too
+    try {
+      const arr = prop?.layers || prop?.settings?.layers;
+      if (Array.isArray(arr) && arr.length) {
+        try { sendLog('[init] found inspector.layers -> processing', arr.length); } catch(e){}
+        addXyzLayersFromArray(arr);
+      }
+    } catch(e) {
+      // ignore
+    }
   } catch (e) {
     // ignore
   }
@@ -323,6 +334,7 @@ tryInitFromProperty();
 // Poll for property changes (Inspector edits) and react to URL changes
 let _lastInspectorUrl = null;
 let _lastInspectorApply = null;
+let _lastInspectorLayersJson = null;
 // Poll for property changes more frequently so inspector edits reflect faster.
 setInterval(() => {
   try {
@@ -336,8 +348,38 @@ setInterval(() => {
         addXyzLayer(url, title);
       }
     }
+    // process inspector layers array if present
+    try {
+      const arr = prop?.layers || prop?.settings?.layers;
+      const arrJson = arr ? JSON.stringify(arr) : null;
+      if (arrJson && arrJson !== _lastInspectorLayersJson) {
+        _lastInspectorLayersJson = arrJson;
+        try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
+        addXyzLayersFromArray(arr);
+      }
+    } catch (e) {}
     // inspectorApply trigger handling removed (debugging helper no longer present)
   } catch (e) {
     // ignore
   }
 }, 300);
+
+// Add multiple layers from an array of inspector entries
+function addXyzLayersFromArray(items) {
+  if (!items || !Array.isArray(items)) return;
+  const existing = (reearth.layers && reearth.layers.layers) || [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] || {};
+    const u = (it.url || it.inspectorUrl || "").trim();
+    const t = (it.title || it.inspectorTitle || null);
+    if (!u) continue;
+    if (!/^https?:\/\//.test(u)) continue;
+    const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
+    const dup = existing.find(l => l && l.data && l.data.url && (l.data.url === encoded || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded) !== -1)));
+    if (dup) {
+      try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
+      continue;
+    }
+    addXyzLayer(u, t);
+  }
+}
