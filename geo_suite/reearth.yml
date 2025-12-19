@@ -31,3 +31,17 @@ extensions:
               type: string
               placeholder: "表示名 (例: ベースマップ用)"
               ui: string
+        - id: layers
+          title: "タイル一覧"
+          list: true
+          fields:
+            - id: url
+              title: "XYZ タイル URL"
+              type: string
+              placeholder: "https://{s}.example.com/{z}/{x}/{y}.png"
+              ui: string
+            - id: title
+              title: "レイヤ名"
+              type: string
+              placeholder: "表示名 (例: ベースマップ用)"
+              ui: string
