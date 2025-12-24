@@ -50,11 +50,11 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 - 入力後、数秒以内にプラグインが Inspector のプロパティを読み取り、指定した URL を元に XYZ タイルのレイヤが追加されます。
 - 既存レイヤとの重複チェックは未実装のため、同じ URL を複数回入力すると重複追加される場合があります。重複防止を希望する場合は対応します。
 
-## 🔖 バージョン履歴
+## 🔖 バージョン履歴  
 
--- **v3.0.0　ShadowのON/OFFスイッチ追加。
--- **v2.0.0　TerrainのON/OFFスイッチ追加。
--- **v1.0.0　Inspectorから複数のXYZタイルを追加可能にし、マニフェストを整理。
+-- **v3.0.0　ShadowのON/OFFスイッチ追加。  
+-- **v2.0.0　TerrainのON/OFFスイッチ追加。  
+-- **v1.0.0　Inspectorから複数のXYZタイルを追加可能にし、マニフェストを整理。  
 
 ## ⚠️ 注意点 / 次の改善候補
 
