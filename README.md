@@ -45,7 +45,7 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 
   Example:
 
-  https://assets.cms.reearth.io/assets/53/47f197-1c45-484e-8369-fc31420a12ab/用地取得計画/{z}/{x}/{y}.png
+  https://assets.cms.reearth.io/assets/53/47dsaf197-1c45-48se-8369-fc3142ddd0aa1/用地取得計画/{z}/{x}/{y}.png
 
 - 入力後、数秒以内にプラグインが Inspector のプロパティを読み取り、指定した URL を元に XYZ タイルのレイヤが追加されます。
 - 既存レイヤとの重複チェックは未実装のため、同じ URL を複数回入力すると重複追加される場合があります。重複防止を希望する場合は対応します。
