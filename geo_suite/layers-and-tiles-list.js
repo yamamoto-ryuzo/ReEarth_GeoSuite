@@ -102,7 +102,12 @@ function getUI() {
     justify-content: space-between;
   }
   .terrain-row .text-md{ font-size: 14px; margin: 0; }
-  .toggle { margin-left: 8px; }
+  .terrain-row .text-md{ font-size: 14px; margin: 0; flex: 0 1 auto; white-space: nowrap; }
+  .toggle { margin-left: 8px; display: inline-flex; align-items: center; gap:6px; white-space: nowrap; }
+  .toggle input { width: auto; margin: 0; vertical-align: middle; }
+  .terrain-row{ display:flex; align-items:center; gap:8px; padding:4px 8px; min-height:28px; justify-content:space-between; flex-wrap:nowrap; }
+  /* prevent long labels or external CSS forcing block layout */
+  .terrain-row .text-md, .toggle { display:inline-flex; align-items:center; }
 
 </style>
 
