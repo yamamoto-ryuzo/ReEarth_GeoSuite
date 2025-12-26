@@ -26,10 +26,17 @@ function getUI() {
   const presetLayerItems = layers.map(layer => generateLayerItem(layer, true)).join('');
   return `
 <style>
-  /* Simple tab bar */
-  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; }
-  .tab-bar .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer }
-  .tab-bar .tab.active{ background:rgba(255,255,255,0.9); color:#111; }
+  /* Tabs + styling */
+  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+  .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer }
+  .tab.active{ background:rgba(255,255,255,0.9); color:#111; }
+  .tab.minimize{ width:32px; padding:4px 6px; text-align:center; }
+  .tab.minimize[aria-pressed="true"]{ background:rgba(255,255,255,0.9); }
+
+  /* Minimized state: shrink padding and hide panels */
+  .primary-background.minimized{ padding:6px; }
+  .primary-background.minimized #layers-panel,
+  .primary-background.minimized #settings-panel{ display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
@@ -78,6 +85,9 @@ function getUI() {
     min-width: 1.6em;
     display: inline-flex;
     align-items: center;
+    border-radius: 4px;
+  }
+
     justify-content: center;
     border-radius: 4px;
   }
@@ -98,6 +108,7 @@ function getUI() {
 
 <div class="primary-background p-16 rounded-sm">
   <div class="tab-bar" role="tablist">
+    <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Settings</button>
   </div>
@@ -150,12 +161,31 @@ function getUI() {
 <script>
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
-      // Tab switching: simple toggle between panels
+      // Tab switching: handle normal tabs and a minimize-action tab
       try {
         const tabs = document.querySelectorAll('.tab-bar .tab');
         if (tabs && tabs.length) {
           tabs.forEach(btn => {
             btn.addEventListener('click', function() {
+              const action = this.getAttribute('data-action');
+              // minimize action handled here
+              if (action === 'minimize') {
+                const root = document.querySelector('.primary-background');
+                if (!root) return;
+                const pressed = this.getAttribute('aria-pressed') === 'true';
+                if (pressed) {
+                  root.classList.remove('minimized');
+                  this.setAttribute('aria-pressed', 'false');
+                  this.textContent = '—';
+                  this.title = 'Minimize';
+                } else {
+                  root.classList.add('minimized');
+                  this.setAttribute('aria-pressed', 'true');
+                  this.textContent = '+';
+                  this.title = 'Restore';
+                }
+                return;
+              }
               const target = this.getAttribute('data-target');
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
@@ -243,6 +273,8 @@ function getUI() {
           // Time inputs: send start/stop/current to parent when Apply clicked
           const startInput = document.getElementById('startTime');
           const stopInput = document.getElementById('stopTime');
+
+      
           const currentInput = document.getElementById('currentTime');
           const applyBtn = document.getElementById('applyTimeBtn');
             const timeStatus = document.getElementById('time-status');
