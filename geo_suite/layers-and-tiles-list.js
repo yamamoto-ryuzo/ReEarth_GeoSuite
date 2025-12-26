@@ -26,6 +26,11 @@ function getUI() {
   const presetLayerItems = layers.map(layer => generateLayerItem(layer, true)).join('');
   return `
 <style>
+  /* Simple tab bar */
+  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; }
+  .tab-bar .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer }
+  .tab-bar .tab.active{ background:rgba(255,255,255,0.9); color:#111; }
+
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
   @import url("https://reearth.github.io/visualizer-plugin-sample-data/public/css/preset-ui.css");
@@ -92,25 +97,37 @@ function getUI() {
 </style>
 
 <div class="primary-background p-16 rounded-sm">
-  <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+  <div class="tab-bar" role="tablist">
+    <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
+    <button class="tab" data-target="settings-panel" aria-selected="false">Settings</button>
+  </div>
+
+  <div id="layers-panel">
+    <ul class="layers-list">
+      ${presetLayerItems}
+    </ul>
+  </div>
+
+  <div id="settings-panel" style="display:none;">
+    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
       <div class="text-md" id="status">Terrain: OFF</div>
       <label class="toggle" id="terrain-toggle" aria-label="Terrain toggle">
         <input type="checkbox" id="toggleSwitch">
         <span class="slider"></span>
       </label>
-  </div>
+    </div>
 
-  <!-- Shadow row: compact, placed under Terrain -->
-  <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+    <!-- Shadow row: compact, placed under Terrain -->
+    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
       <div class="text-md" id="shadow-status">Shadow: OFF</div>
       <label class="toggle" id="shadow-toggle" aria-label="Shadow toggle">
         <input type="checkbox" id="toggleShadowSwitch">
         <span class="slider"></span>
       </label>
-  </div>
+    </div>
 
-  <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
-  <div id="time-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
+    <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
+    <div id="time-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
       <div style="display:flex;gap:8px;align-items:center;">
         <label class="text-sm" for="startTime">Start</label>
         <input type="datetime-local" id="startTime" style="height:28px;" />
@@ -123,22 +140,35 @@ function getUI() {
         <label class="text-sm" for="currentTime">Current</label>
         <input type="datetime-local" id="currentTime" style="height:28px;" />
       </div>
-          <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
-          <div id="time-status" class="text-sm" style="margin-left:8px; color:#333;">&nbsp;</div>
+      <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
+      <div id="time-status" class="text-sm" style="margin-left:8px; color:#333;">&nbsp;</div>
+    </div>
   </div>
-
-  <!-- Debug button removed -->
-
-
-  <ul class="layers-list">
-    ${presetLayerItems}
-  </ul>
 
 </div>
 
 <script>
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
+      // Tab switching: simple toggle between panels
+      try {
+        const tabs = document.querySelectorAll('.tab-bar .tab');
+        if (tabs && tabs.length) {
+          tabs.forEach(btn => {
+            btn.addEventListener('click', function() {
+              const target = this.getAttribute('data-target');
+              if (!target) return;
+              tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+              this.classList.add('active'); this.setAttribute('aria-selected','true');
+              ['layers-panel','settings-panel'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.display = (id === target) ? '' : 'none';
+              });
+            });
+          });
+        }
+      } catch (e) {}
       const toggleSwitch = document.getElementById('toggleSwitch');
       const status = document.getElementById('status');
 
