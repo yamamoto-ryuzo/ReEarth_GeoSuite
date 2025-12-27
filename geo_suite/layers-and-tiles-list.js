@@ -115,6 +115,7 @@ function getUI() {
   <div class="tab-bar" role="tablist">
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
+    <button class="tab" data-target="camera-panel" aria-selected="false">Camera</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Settings</button>
   </div>
 
@@ -158,6 +159,16 @@ function getUI() {
       </div>
       <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
       <div id="time-status" class="text-sm" style="margin-left:8px; color:#333;">&nbsp;</div>
+    </div>
+  </div>
+
+  <div id="camera-panel" style="display:none;">
+    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; flex-direction:column; align-items:flex-start;">
+      <div class="text-md" id="camera-position">Position: —</div>
+      <div class="text-md" id="camera-rotation">Heading/Pitch/Roll: —</div>
+      <div style="margin-top:8px;">
+        <button id="refreshCameraBtn" class="btn-primary p-8" style="min-height:28px;">更新</button>
+      </div>
     </div>
   </div>
 
@@ -271,6 +282,21 @@ function getUI() {
                   if (toggleShadow) toggleShadow.checked = on;
                   if (shadowStatus) shadowStatus.textContent = on ? 'Shadow: ON' : 'Shadow: OFF';
                   updateTimeRowVisibility(on);
+                } else if (msg.action === 'cameraState') {
+                  // message from extension to initialize/sync camera info
+                  const cam = msg.camera || null;
+                  if (cam) {
+                    const posEl = document.getElementById('camera-position');
+                    const rotEl = document.getElementById('camera-rotation');
+                    try {
+                      const p = cam.position || cam.pos || cam.center || null;
+                      if (posEl) posEl.textContent = 'Position: ' + (p ? JSON.stringify(p) : JSON.stringify(cam));
+                      const h = cam.heading || cam.yaw || cam.h || null;
+                      const pch = cam.pitch || cam.pitchDeg || cam.pitchDegree || null;
+                      const r = cam.roll || cam.r || null;
+                      if (rotEl) rotEl.textContent = 'Heading/Pitch/Roll: ' + [h, pch, r].map(v => v == null ? '—' : String(v)).join(' / ');
+                    } catch (e) {}
+                  }
                 }
               } catch (e) {}
             });
@@ -310,6 +336,18 @@ function getUI() {
                 }
               });
             }
+
+        // Refresh camera button: request camera from parent/plugin
+        const refreshCameraBtn = document.getElementById('refreshCameraBtn');
+        if (refreshCameraBtn) {
+          refreshCameraBtn.addEventListener('click', function() {
+            try {
+              if (window.parent) {
+                window.parent.postMessage({ action: 'requestCamera' }, "*");
+              }
+            } catch (e) {}
+          });
+        }
 
       // Add event listener for 'Show/Hide'
       document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
@@ -362,6 +400,13 @@ try {
     reearth.ui.postMessage({ action: 'terrainState', enabled: terrainEnabled, depthTestAgainstTerrain: depthTest });
     try { sendLog('[init] sending shadow state to UI', { enabled: shadowEnabled }); } catch(e){}
     reearth.ui.postMessage({ action: 'shadowState', enabled: shadowEnabled });
+    // Attempt to send initial camera state if available
+    try {
+      const cam = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : (reearth.view && (reearth.view.camera || reearth.view.getCamera && reearth.view.getCamera && typeof reearth.view.getCamera === 'function' ? reearth.view.getCamera() : null));
+      if (cam) {
+        reearth.ui.postMessage({ action: 'cameraState', camera: cam });
+      }
+    } catch (e) {}
   }
 } catch (e) {
   try { sendError('[init] failed to send terrain state', e); } catch(err){}
