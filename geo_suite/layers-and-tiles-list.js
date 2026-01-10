@@ -24,10 +24,21 @@ const generateLayerItem = (layer, isPreset) => {
 function getUI() {
   // Build layer items from current layers so UI reflects runtime changes
   const layers = (reearth.layers && reearth.layers.layers) || [];
-  const presetLayerItems = layers.map(layer => {
-    const isPreset = !_pluginAddedLayerIds.has(layer.id);
-    return generateLayerItem(layer, isPreset);
-  }).join('');
+  
+  // Separate preset layers and plugin-added layers
+  const presetLayers = [];
+  const userLayers = [];
+  layers.forEach(layer => {
+    if (_pluginAddedLayerIds.has(layer.id)) {
+      userLayers.push(layer);
+    } else {
+      presetLayers.push(layer);
+    }
+  });
+  
+  const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
+  const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
+  
   return `
 <style>
   /* Tabs + styling */
@@ -131,6 +142,7 @@ function getUI() {
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
+    ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
   <div id="settings-panel" style="display:none;">
