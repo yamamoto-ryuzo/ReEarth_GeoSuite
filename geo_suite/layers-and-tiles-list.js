@@ -120,6 +120,10 @@ function getUI() {
   </div>
 
   <div id="layers-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-weight:600;">Layers</div>
+      <button id="refresh-layers-btn" class="btn-primary p-8" style="min-height:28px;">更新</button>
+    </div>
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
@@ -349,6 +353,18 @@ function getUI() {
           });
         }
 
+        // Refresh layers button: request extension to refresh the layer list UI
+        const refreshLayersBtn = document.getElementById('refresh-layers-btn');
+        if (refreshLayersBtn) {
+          refreshLayersBtn.addEventListener('click', function() {
+            try {
+              if (window.parent) {
+                window.parent.postMessage({ type: 'refreshLayers' }, "*");
+              }
+            } catch (e) {}
+          });
+        }
+
       // Add event listener for 'Show/Hide'
       document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
         checkbox.addEventListener("change", event => {
@@ -502,6 +518,13 @@ reearth.extension.on("message", (msg) => {
   switch (msg.type) {
     case "delete":
       reearth.layers.delete(msg.layerId);
+      break;
+    case "refreshLayers":
+      try {
+        if (reearth.ui && typeof reearth.ui.show === 'function') {
+          reearth.ui.show(getUI());
+        }
+      } catch (e) {}
       break;
     case "flyTo":
       reearth.camera.flyTo(msg.layerId, { duration: 2 });
