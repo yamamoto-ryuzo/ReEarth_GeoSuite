@@ -353,14 +353,21 @@ function getUI() {
           });
         }
 
-        // Refresh layers button: request extension to refresh the layer list UI
+        // Refresh layers button: apply current checkbox states by posting show/hide messages (same logic as individual checkbox change)
         const refreshLayersBtn = document.getElementById('refresh-layers-btn');
         if (refreshLayersBtn) {
           refreshLayersBtn.addEventListener('click', function() {
             try {
-              if (window.parent) {
-                window.parent.postMessage({ type: 'refreshLayers' }, "*");
-              }
+              const inputs = Array.from(document.querySelectorAll('input[data-layer-id]'));
+              inputs.forEach(i => {
+                try {
+                  const layerId = i.getAttribute('data-layer-id');
+                  const isVisible = !!i.checked;
+                  if (layerId && window.parent) {
+                    window.parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, "*");
+                  }
+                } catch (e) {}
+              });
             } catch (e) {}
           });
         }
