@@ -1,3 +1,6 @@
+// Track layer IDs added by this plugin
+const _pluginAddedLayerIds = new Set();
+
 const generateLayerItem = (layer, isPreset) => {
   return `
     <li>
@@ -7,12 +10,10 @@ const generateLayerItem = (layer, isPreset) => {
           type="checkbox"
           id="show-hide-layer"
           data-layer-id="${layer.id}"
+          data-is-plugin-added="${!isPreset}"
           ${layer.visible ? "checked" : ""}
         />
         <button class="btn-primary p-8 move-btn" data-layer-id="${layer.id}" aria-label="Move"></button>
-        ${!isPreset
-            ? `<button class="btn-danger p-8"  data-layer-id="${layer.id}">Delete</button>`
-            : "" }
       </div>
     </li>
   `;
@@ -23,7 +24,10 @@ const generateLayerItem = (layer, isPreset) => {
 function getUI() {
   // Build layer items from current layers so UI reflects runtime changes
   const layers = (reearth.layers && reearth.layers.layers) || [];
-  const presetLayerItems = layers.map(layer => generateLayerItem(layer, true)).join('');
+  const presetLayerItems = layers.map(layer => {
+    const isPreset = !_pluginAddedLayerIds.has(layer.id);
+    return generateLayerItem(layer, isPreset);
+  }).join('');
   return `
 <style>
   /* Tabs + styling */
@@ -353,12 +357,13 @@ function getUI() {
           });
         }
 
-        // Refresh layers button: apply current checkbox states by posting show/hide messages (same logic as individual checkbox change)
+        // Refresh layers button: apply current checkbox states for plugin-added layers only
         const refreshLayersBtn = document.getElementById('refresh-layers-btn');
         if (refreshLayersBtn) {
           refreshLayersBtn.addEventListener('click', function() {
             try {
-              const inputs = Array.from(document.querySelectorAll('input[data-layer-id]'));
+              // Only process plugin-added layers (data-is-plugin-added="true")
+              const inputs = Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]'));
               inputs.forEach(i => {
                 try {
                   const layerId = i.getAttribute('data-layer-id');
@@ -619,6 +624,10 @@ function addXyzLayer(url, title) {
     sendLog("[addXyzLayer] encoded url:", encodedUrl);
     sendLog("[addXyzLayer] layer object:", layer);
     const newId = reearth.layers.add(layer);
+    // Track this layer as plugin-added
+    if (newId) {
+      _pluginAddedLayerIds.add(newId);
+    }
     sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
     try {
       // Re-render the widget UI so the new layer appears in the list
