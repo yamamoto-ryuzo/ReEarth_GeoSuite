@@ -1,6 +1,12 @@
 // Track layer IDs added by this plugin
 const _pluginAddedLayerIds = new Set();
 
+// Track last values for polling
+let _lastInspectorUrl = null;
+let _lastInspectorApply = null;
+let _lastInspectorLayersJson = null;
+let _lastInfoUrl = null;
+
 const generateLayerItem = (layer, isPreset) => {
   return `
     <li>
@@ -40,13 +46,7 @@ function getUI() {
   const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
 
   // Information panel content
-  const infoPanelHtml = `
-    <div style="font-weight:600;margin-bottom:8px;">info</div>
-    <div>All layers: ${layers.length}</div>
-    <div>Preset layers: ${presetLayers.length}</div>
-    <div>Plugin-added layers: ${userLayers.length}</div>
-    ${_pluginAddedLayerIds && _pluginAddedLayerIds.size ? `<div style="margin-top:8px;"><div style="font-weight:600;">Plugin-added IDs</div><ul class="layers-list">${Array.from(_pluginAddedLayerIds).map(id => `<li>${id}</li>`).join('')}</ul></div>` : ''}
-  `;
+  // (Info content will be loaded from configured URL and injected into #info-content)
   
   return `
 <style>
@@ -149,7 +149,7 @@ function getUI() {
   <div id="layers-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
-      <button id="refresh-layers-btn" class="btn-primary p-8" style="min-height:28px;">更新</button>
+      <button id="refresh-layers-btn" class="btn-primary p-8" style="min-height:28px;">Refresh</button>
     </div>
     <ul class="layers-list">
       ${presetLayerItems}
@@ -158,7 +158,8 @@ function getUI() {
   </div>
 
   <div id="info-panel" style="display:none;">
-    ${infoPanelHtml}
+    <div style="font-weight:600;margin-bottom:8px;">info</div>
+    <iframe id="info-content" style="width:100%;height:400px;border:1px solid #ccc;background:#fff;"></iframe>
   </div>
 
   <div id="settings-panel" style="display:none;">
@@ -203,7 +204,7 @@ function getUI() {
       <div class="text-md" id="camera-position">Position: —</div>
       <div class="text-md" id="camera-rotation">Heading/Pitch/Roll: —</div>
       <div style="margin-top:8px;">
-        <button id="refreshCameraBtn" class="btn-primary p-8" style="min-height:28px;">更新</button>
+        <button id="refreshCameraBtn" class="btn-primary p-8" style="min-height:28px;">Refresh</button>
       </div>
     </div>
   </div>
@@ -327,11 +328,26 @@ function getUI() {
               });
             }
 
-            // Sync UI if parent sends shadow actions (keep iframe in sync with external changes)
+            // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
               try {
                 const msg = e && e.data ? e.data : null;
                 if (!msg || !msg.action) return;
+                
+                // handle info URL - load HTML into iframe
+                if (msg.action === 'loadInfoUrl') {
+                  try {
+                    const url = msg.url;
+                    const iframe = document.getElementById('info-content');
+                    if (!iframe) return;
+                    if (!url) {
+                      iframe.srcdoc = '<div style="padding:16px;color:#666;">No URL configured</div>';
+                      return;
+                    }
+                    iframe.src = url;
+                  } catch (e) { console.error('[UI] loadInfoUrl failed', e); }
+                  return;
+                }
                 if (msg.action === 'activateShadow' || msg.action === 'deactivateShadow') {
                   const on = msg.action === 'activateShadow';
                   if (toggleShadow) toggleShadow.checked = on;
@@ -474,7 +490,9 @@ function getUI() {
 }
 
 // Initial render
-reearth.ui.show(getUI());
+const uiHTML = getUI();
+try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
+reearth.ui.show(uiHTML);
 // Send initial terrain state to the UI so the toggle reflects current viewer settings
 try {
   const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
@@ -638,12 +656,28 @@ function tryInitFromProperty() {
     // property may nest inspector values under `settings` (e.g. { settings: { inspectorUrl: "..." } })
     const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
     const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
-    try { sendLog('[init] property:', prop); } catch(e){}
+    try { sendLog('[init] property FULL:', JSON.stringify(prop, null, 2)); } catch(e){ try { sendLog('[init] property:', prop); } catch(e2){} }
     if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
       try { sendLog('[init] found URL -> add layer', url); } catch(e){}
       addXyzLayer(url, title);
     } else {
       try { sendLog('[init] no valid URL found in property'); } catch(e){}
+    }
+
+    // Info URL handling: load HTML into iframe
+    try {
+      try { sendLog('[init] checking infoUrl - prop.info?.infoUrl:', prop.info?.infoUrl, 'prop.infoUrl:', prop.infoUrl); } catch(e){}
+      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
+      try { sendLog('[init] infoUrl extracted:', infoUrl, 'type:', typeof infoUrl); } catch(e){}
+      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+        try { sendLog('[init] valid infoUrl found, calling loadInfoUrl...'); } catch(e){}
+        _lastInfoUrl = infoUrl;
+        loadInfoUrl(infoUrl);
+      } else {
+        try { sendLog('[init] no valid infoUrl found or invalid format'); } catch(e){}
+      }
+    } catch(e) {
+      try { sendError('[init] infoUrl handling error:', e); } catch(err){}
     }
 
     // If inspector provides a collection of layers, add them too
@@ -704,9 +738,6 @@ function addXyzLayer(url, title) {
 tryInitFromProperty();
 
 // Poll for property changes (Inspector edits) and react to URL changes
-let _lastInspectorUrl = null;
-let _lastInspectorApply = null;
-let _lastInspectorLayersJson = null;
 // Poll for property changes more frequently so inspector edits reflect faster.
 setInterval(() => {
   try {
@@ -720,6 +751,17 @@ setInterval(() => {
         addXyzLayer(url, title);
       }
     }
+    // Poll for infoUrl changes
+    try {
+      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
+      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+        if (infoUrl !== _lastInfoUrl) {
+          try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
+          _lastInfoUrl = infoUrl;
+          loadInfoUrl(infoUrl);
+        }
+      }
+    } catch(e) {}
     // process inspector layers array if present
     try {
       const arr = prop?.layers || prop?.settings?.layers;
@@ -753,5 +795,18 @@ function addXyzLayersFromArray(items) {
       continue;
     }
     addXyzLayer(u, t);
+  }
+}
+
+// Send info URL to UI to load in iframe
+function loadInfoUrl(url) {
+  if (!url || typeof url !== 'string') return;
+  try {
+    try { sendLog('[loadInfo] sending URL to UI:', url); } catch(e){}
+    if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
+      reearth.ui.postMessage({ action: 'loadInfoUrl', url: url });
+    }
+  } catch (e) {
+    try { sendError('[loadInfo] ERROR:', e); } catch(err){}
   }
 }

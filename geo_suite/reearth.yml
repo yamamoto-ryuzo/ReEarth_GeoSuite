@@ -33,3 +33,13 @@ extensions:
               type: string
               placeholder: "表示名 (例: ベースマップ用)"
               ui: string
+        - id: info
+          title: "Info 表示"
+          list: false
+          fields:
+            - id: infoUrl
+              title: "Info 表示用 URL"
+              description: "info タブに表示する HTML または Markdown を取得する URL を指定します。例: https://example.com/info.html"
+              type: string
+              placeholder: "https://example.com/info.html"
+              ui: string
