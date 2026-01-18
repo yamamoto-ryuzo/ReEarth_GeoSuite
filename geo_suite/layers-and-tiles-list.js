@@ -51,7 +51,7 @@ function getUI() {
   return `
 <style>
   /* Tabs + styling */
-  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; flex-wrap:nowrap; }
+  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; padding-bottom:4px; flex-wrap:wrap; }
   .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer; flex:0 0 auto; white-space:nowrap; }
   .tab.active{ background:rgba(255,255,255,0.9); color:#111; }
   .tab.minimize{ width:32px; padding:4px 6px; text-align:center; }
@@ -249,6 +249,36 @@ function getUI() {
               });
             });
           });
+          // Adjust tab-bar height when tabs wrap into multiple rows (max 3 rows)
+          const tabBar = document.querySelector('.tab-bar');
+          const updateTabRows = () => {
+            if (!tabBar) return;
+            const tabsArr = Array.from(tabBar.querySelectorAll('.tab'));
+            if (!tabsArr.length) return;
+            const offsetTops = Array.from(new Set(tabsArr.map(t => t.offsetTop)));
+            const rows = offsetTops.length || 1;
+            const tabHeight = tabsArr[0].offsetHeight || 32;
+            const gap = 8; // matches CSS gap
+            const rowHeight = tabHeight + gap;
+            const maxRows = 3;
+            if (rows <= 1) {
+              tabBar.style.maxHeight = '';
+              tabBar.style.overflowY = '';
+            } else if (rows <= maxRows) {
+              tabBar.style.maxHeight = (rows * rowHeight) + 'px';
+              tabBar.style.overflowY = 'visible';
+            } else {
+              tabBar.style.maxHeight = (maxRows * rowHeight) + 'px';
+              tabBar.style.overflowY = 'auto';
+            }
+          };
+          // run on load and resize, and when tab children change
+          try { updateTabRows(); } catch (e) {}
+          window.addEventListener('resize', () => { try { updateTabRows(); } catch (e) {} });
+          try {
+            const mo = new MutationObserver(() => { try { updateTabRows(); } catch (e) {} });
+            if (tabBar) mo.observe(tabBar, { childList: true, subtree: true });
+          } catch (e) {}
         }
       } catch (e) {}
       const toggleSwitch = document.getElementById('toggleSwitch');
