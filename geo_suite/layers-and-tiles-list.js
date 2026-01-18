@@ -105,8 +105,6 @@ function getUI() {
 
   /* Info panel expands to use available height */
   #info-panel {
-    min-height: 400px;
-    max-height: 80vh;
     display: flex;
     flex-direction: column;
   }
@@ -263,14 +261,15 @@ function getUI() {
                 if (id === 'info-panel' && id === target) {
                   try {
                     const iframe = document.getElementById('info-content');
+                    const infoPanel = document.getElementById('info-panel');
                     const container = document.querySelector('.primary-background');
-                    if (iframe && container) {
+                    if (iframe && infoPanel && container) {
                       const containerHeight = container.clientHeight;
                       const tabBarHeight = document.querySelector('.tab-bar')?.offsetHeight || 50;
-                      const availableHeight = containerHeight - tabBarHeight - 40; // 40px for padding and title
-                      if (availableHeight > 300) {
-                        iframe.style.height = availableHeight + 'px';
-                      }
+                      let availableHeight = containerHeight - tabBarHeight - 40; // 40px for padding and title
+                      // Apply min-height: 400px, max-height: 800px
+                      availableHeight = Math.max(400, Math.min(800, availableHeight));
+                      infoPanel.style.height = availableHeight + 'px';
                     }
                   } catch(e) {}
                 }
