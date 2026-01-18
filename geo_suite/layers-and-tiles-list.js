@@ -103,6 +103,18 @@ function getUI() {
     background-color: rgba(255, 255, 255, 0.3);
   }
 
+  /* Info panel expands to use available height */
+  #info-panel {
+    min-height: 400px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #info-panel iframe {
+    flex: 1;
+  }
+
   /* Move button: square, minimal height */
   .move-btn{
     padding: 0;
@@ -157,9 +169,9 @@ function getUI() {
     ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
-  <div id="info-panel" style="display:none;overflow-y:auto;">
-    <div style="font-weight:600;margin-bottom:8px;">info</div>
-    <iframe id="info-content" style="width:100%;height:auto;min-height:400px;max-height:800px;border:1px solid #ccc;background:#fff;display:block;"></iframe>
+  <div id="info-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;flex-shrink:0;">info</div>
+    <iframe id="info-content" style="width:100%;border:1px solid #ccc;background:#fff;"></iframe>
   </div>
 
   <div id="settings-panel" style="display:none;">
