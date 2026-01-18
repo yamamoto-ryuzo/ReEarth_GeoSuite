@@ -4,7 +4,7 @@
 
 ## 📋 概要
 
-　Re:Earth 向け統合プラグイン「geo_suite」の開発基盤です。XYZ タイル管理やレイヤ一覧 UI、Terrain/Shadow トグルなど、Visualizer プラグインの作成・検証に必要な機能を提供します。  
+　Re:Earth 向け統合プラグイン「geo_suite」の開発基盤です。XYZ タイル管理やレイヤ一覧 UI、Terrain/Shadow トグル、HTMLによるインフォメーションなど、Visualizer プラグインの作成・検証に必要な機能を提供します。  
 　レイヤの管理はインスペクターにより行われ、複数のレイヤを管理可能です。
 
 ![alt text](/image/image-3.png)
