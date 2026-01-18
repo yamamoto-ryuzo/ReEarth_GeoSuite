@@ -7,7 +7,7 @@
 　Re:Earth 向け統合プラグイン「geo_suite」の開発基盤です。XYZ タイル管理やレイヤ一覧 UI、Terrain/Shadow トグルなど、Visualizer プラグインの作成・検証に必要な機能を提供します。  
 　レイヤの管理はインスペクターにより行われ、複数のレイヤを管理可能です。
 
-![alt text](/image/image-1.png)
+![alt text](/image/image-3.png)
 
 ## 🔗 関連リンク
 
@@ -52,9 +52,13 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
 
 ## 🔖 バージョン履歴  
 
--- **v3.0.0　ShadowのON/OFFスイッチ追加。  
--- **v2.0.0　TerrainのON/OFFスイッチ追加。  
--- **v1.0.0　Inspectorから複数のXYZタイルを追加可能にし、マニフェストを整理。  
+- **v4.0.0　HTMLのインフォメーションタブ追加。**  
+　　　![alt text](/image/image-2.png)    
+- **v3.0.0　ShadowのON/OFFスイッチ追加。**    
+- **v2.0.0　TerrainのON/OFFスイッチ追加。**   
+　　　![alt text](/image/image-1.png)   
+- **v1.0.0　Inspectorから複数のXYZタイルを追加可能にし、マニフェストを整理。**     
+　　　![alt text](/image/image.png)  
 
 ## ⚠️ 注意点 / 次の改善候補
 

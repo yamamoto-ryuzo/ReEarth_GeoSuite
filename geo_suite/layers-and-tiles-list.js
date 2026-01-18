@@ -107,10 +107,13 @@ function getUI() {
   #info-panel {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   #info-panel iframe {
     flex: 1;
+    align-self: stretch;
   }
 
   /* Move button: square, minimal height */
@@ -168,8 +171,7 @@ function getUI() {
   </div>
 
   <div id="info-panel" style="display:none;">
-    <div style="font-weight:600;margin-bottom:8px;flex-shrink:0;">info</div>
-    <iframe id="info-content" style="width:100%;border:1px solid #ccc;background:#fff;"></iframe>
+    <iframe id="info-content" style="width:100%;border:1px solid #ccc;background:#fff;overflow:auto;"></iframe>
   </div>
 
   <div id="settings-panel" style="display:none;">
@@ -262,14 +264,14 @@ function getUI() {
                   try {
                     const iframe = document.getElementById('info-content');
                     const infoPanel = document.getElementById('info-panel');
-                    const container = document.querySelector('.primary-background');
-                    if (iframe && infoPanel && container) {
-                      const containerHeight = container.clientHeight;
+                    if (iframe && infoPanel) {
+                      const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
                       const tabBarHeight = document.querySelector('.tab-bar')?.offsetHeight || 50;
-                      let availableHeight = containerHeight - tabBarHeight - 40; // 40px for padding and title
+                      let availableHeight = screenHeight - tabBarHeight - 100;
                       // Apply min-height: 400px, max-height: 800px
                       availableHeight = Math.max(400, Math.min(800, availableHeight));
                       infoPanel.style.height = availableHeight + 'px';
+                      iframe.style.height = availableHeight + 'px';
                     }
                   } catch(e) {}
                 }

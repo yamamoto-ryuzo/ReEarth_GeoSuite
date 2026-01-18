@@ -1,7 +1,7 @@
 id: geo_suite
 name: geo_suite
-version: "3.0.0"
-description: "Integrated tools: (WIP) list layers and basemap tiles"
+version: "4.0.0"
+description: "XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
   - id: layers-and-tiles-list
