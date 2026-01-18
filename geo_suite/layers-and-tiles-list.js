@@ -157,9 +157,9 @@ function getUI() {
     ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
-  <div id="info-panel" style="display:none;">
+  <div id="info-panel" style="display:none;overflow-y:auto;">
     <div style="font-weight:600;margin-bottom:8px;">info</div>
-    <iframe id="info-content" style="width:100%;height:400px;border:1px solid #ccc;background:#fff;"></iframe>
+    <iframe id="info-content" style="width:100%;height:auto;min-height:400px;max-height:800px;border:1px solid #ccc;background:#fff;display:block;"></iframe>
   </div>
 
   <div id="settings-panel" style="display:none;">
@@ -247,6 +247,21 @@ function getUI() {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
+                // Adjust iframe height when info panel is shown
+                if (id === 'info-panel' && id === target) {
+                  try {
+                    const iframe = document.getElementById('info-content');
+                    const container = document.querySelector('.primary-background');
+                    if (iframe && container) {
+                      const containerHeight = container.clientHeight;
+                      const tabBarHeight = document.querySelector('.tab-bar')?.offsetHeight || 50;
+                      const availableHeight = containerHeight - tabBarHeight - 40; // 40px for padding and title
+                      if (availableHeight > 300) {
+                        iframe.style.height = availableHeight + 'px';
+                      }
+                    }
+                  } catch(e) {}
+                }
               });
             });
           });
