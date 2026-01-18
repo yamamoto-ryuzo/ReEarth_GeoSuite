@@ -142,8 +142,8 @@ function getUI() {
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
-    <button class="tab" data-target="camera-panel" aria-selected="false">Camera</button>
-    <button class="tab" data-target="settings-panel" aria-selected="false">Settings</button>
+    <button class="tab" data-target="camera-panel" aria-selected="false">Cam</button>
+    <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
   </div>
 
   <div id="layers-panel">
