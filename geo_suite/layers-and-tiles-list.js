@@ -38,12 +38,21 @@ function getUI() {
   
   const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
   const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
+
+  // Information panel content
+  const infoPanelHtml = `
+    <div style="font-weight:600;margin-bottom:8px;">info</div>
+    <div>All layers: ${layers.length}</div>
+    <div>Preset layers: ${presetLayers.length}</div>
+    <div>Plugin-added layers: ${userLayers.length}</div>
+    ${_pluginAddedLayerIds && _pluginAddedLayerIds.size ? `<div style="margin-top:8px;"><div style="font-weight:600;">Plugin-added IDs</div><ul class="layers-list">${Array.from(_pluginAddedLayerIds).map(id => `<li>${id}</li>`).join('')}</ul></div>` : ''}
+  `;
   
   return `
 <style>
   /* Tabs + styling */
-  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; }
-  .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer }
+  .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; flex-wrap:nowrap; }
+  .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer; flex:0 0 auto; white-space:nowrap; }
   .tab.active{ background:rgba(255,255,255,0.9); color:#111; }
   .tab.minimize{ width:32px; padding:4px 6px; text-align:center; }
   .tab.minimize[aria-pressed="true"]{ background:rgba(255,255,255,0.9); }
@@ -51,7 +60,9 @@ function getUI() {
   /* Minimized state: shrink padding and hide panels */
   .primary-background.minimized{ padding:6px; }
   .primary-background.minimized #layers-panel,
-  .primary-background.minimized #settings-panel{ display:none !important; }
+  .primary-background.minimized #settings-panel,
+  .primary-background.minimized #camera-panel,
+  .primary-background.minimized #info-panel{ display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
@@ -127,9 +138,10 @@ function getUI() {
 </style>
 
 <div class="primary-background p-16 rounded-sm">
-  <div class="tab-bar" role="tablist">
+    <div class="tab-bar" role="tablist">
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
+    <button class="tab" data-target="info-panel" aria-selected="false">info</button>
     <button class="tab" data-target="camera-panel" aria-selected="false">Camera</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Settings</button>
   </div>
@@ -143,6 +155,10 @@ function getUI() {
       ${presetLayerItems}
     </ul>
     ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
+  </div>
+
+  <div id="info-panel" style="display:none;">
+    ${infoPanelHtml}
   </div>
 
   <div id="settings-panel" style="display:none;">
@@ -226,7 +242,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','settings-panel'].forEach(id => {
+              ['layers-panel','info-panel','camera-panel','settings-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
