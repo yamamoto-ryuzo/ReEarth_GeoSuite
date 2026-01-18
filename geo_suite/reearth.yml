@@ -39,7 +39,7 @@ extensions:
           fields:
             - id: infoUrl
               title: "Info 表示用 URL"
-              description: "info タブに表示する HTML または Markdown を取得する URL を指定します。例: https://example.com/info.html"
+              description: "info タブに表示する HTML を取得する URL を指定します。"
               type: string
               placeholder: "https://example.com/info.html"
               ui: string
