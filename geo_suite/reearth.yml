@@ -1,6 +1,6 @@
 id: geo_suite
 name: geo_suite
-version: "4.0.0"
+version: "4.1.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -22,6 +22,7 @@ extensions:
           title: "タイル一覧"
           list: true
           representativeField: title
+          expandable: true
           fields:
             - id: url
               title: "XYZ タイル URL"
@@ -36,6 +37,7 @@ extensions:
         - id: info
           title: "Info 表示"
           list: false
+          expandable: true
           fields:
             - id: infoUrl
               title: "Info 表示用 URL"
