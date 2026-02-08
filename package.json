@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint src --ext .js",
-    "package": "python scripts/package_plugin.py --plugin-id",
+    "package": "python scripts/package_geo_suite.py",
+    "build": "mkdir -p dist && cp -r geo_suite dist/ && cp ryu.html dist/ && python3 scripts/package_geo_suite.py && cp -r artifacts dist/",
     "zip": "powershell -ExecutionPolicy Bypass -File scripts/package-plugin.ps1",
     "build:geo_suite": "node ./node_modules/typescript/bin/tsc -p geo_suite"
   },

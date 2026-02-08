@@ -24,18 +24,43 @@ https://visualizer.developer.reearth.io/ja/plugin-api/viewer/
  
 ## 🚀 セットアップと使い方
 
-- **前提**: Node.js と Python3（ビルド用スクリプト実行）がインストールされていることを推奨します。
+本プロジェクトは **Vercel** を利用した開発・配信フローへ移行しました。GitHub にプッシュするだけで自動的にビルドされ、Re:Earth にインストール可能な URL が発行されます。
 
-- **ローカルでの確認**:
-  - `geo_suite/layers-and-tiles-list.js` がプラグイン UI のサンプルです。Re:Earth Visualizer のプラグインとして読み込むと、レイヤー一覧表示・表示切替・FlyTo 操作等の挙動を確認できます。
+### ☁️ Vercel での開発フロー（推奨）
 
-- **パッケージ作成**:
-  - `scripts/package_geo_suite.py` を使ってパッケージを作成します。生成物は `artifacts/` に出力されます。
+1. **Vercel プロジェクトの作成**:
+   - Vercel ダッシュボードでこのリポジトリをインポートします。
+   - 設定ファイル (`vercel.json`) により、CORS 設定やビルドコマンドが自動的に適用されます。
 
-- **主要ファイル**:
-  - `geo_suite/layers-and-tiles-list.js`: レイヤー一覧の UI と親フレーム（Visualizer）とのメッセージ連携を実装。
-  - `scripts/package_geo_suite.py`: パッケージ作成用スクリプト（Python）。
-  - `samplejs/`: 動作サンプル／テスト用の JS コード。
+2. **Re:Earth へのインストール**:
+   - Vercel デプロイ後に発行される URL (`https://<your-project>.vercel.app`) を使い、Re:Earth のプラグイン画面から「公開リポジトリからインストール」を選びます。
+
+   | 用途 | URL の例 | 特徴 |
+   | :--- | :--- | :--- |
+   | **開発用** | `.../geo_suite/reearth.yml` | コード修正後、Push するだけで Re:Earth 側も最新化されます。 |
+   | **配布用** | `.../artifacts/geo_suite.zip` | 自動生成された ZIP ファイルを直接ダウンロード・インストールします。 |
+
+3. **静的ファイルのホスティング**:
+   - リポジトリ内の `ryu.html` なども Vercel 上に配信されます。Inspector の Info URL に `https://.../ryu.html` と入力して利用可能です。
+
+### 🛠 ローカルでのパッケージ作成（手動）
+
+従来どおり手動でパッケージを作成することも可能です。
+
+- **前提**: Node.js と Python3 がインストールされていること。
+- **コマンド**:
+  ```bash
+  npm run package
+  # または
+  python scripts/package_geo_suite.py
+  ```
+- **生成物**: `artifacts/geo_suite.zip` が作成されます。これを Re:Earth に直接アップロードして利用します。
+
+### 📂 主要ファイル構成
+
+- `geo_suite/layers-and-tiles-list.js`: レイヤー一覧の UI と親フレーム（Visualizer）とのメッセージ連携を実装。
+- `scripts/package_geo_suite.py`: パッケージ作成用スクリプト（Python）。Vercel 上でもこのスクリプトが実行されます。
+- `samplejs/`: 動作サンプル／テスト用の JS コード。
 
 - **貢献について**: Issue や Pull Request を歓迎します。変更点の説明と再現手順を添えてください。
 
