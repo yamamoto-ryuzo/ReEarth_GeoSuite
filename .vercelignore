@@ -1,0 +1,8 @@
+# Vercelにアップロードしないファイル・フォルダ
+.vscode
+.git
+node_modules
+artifacts
+test
+*.log
+.DS_Store
