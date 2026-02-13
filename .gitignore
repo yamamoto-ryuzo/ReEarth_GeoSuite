@@ -4,6 +4,11 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
 # Build output
 dist/
 build/
