@@ -12,12 +12,28 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 ## 🚀 インストール・使い方
 
-**詳細は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
+### クイックスタート
+
+1. **プラグインをインストール**
+   - Re:Earth Visualizer のプラグイン画面を開く
+   - 「公開リポジトリからインストール」を選択
+   - URL: `https://re-earth-geo-suite.vercel.app/geo_suite/reearth.yml` を入力
+
+2. **シーンに追加**
+   - ウィジェットタブから「Layers & Tiles」を追加
+   - 画面左側にプラグインUIが表示されます
+
+3. **XYZタイルを追加**
+   - Inspector（歯車アイコン）を開く
+   - 「タイル一覧」→「+ 追加」
+   - XYZ タイル URL を入力（例: `https://example.com/{z}/{x}/{y}.png`）
+
+**詳細な使い方は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
 
 プロジェクトサイトには以下の情報が掲載されています：
-- プラグインのインストール方法
-- 各機能の使い方
-- プラグインURL・ZIPファイルURL
+- 詳細なインストール手順
+- 各機能の使い方（レイヤー管理、Terrain/Shadow切替、Info表示など）
+- ZIPファイルURL
 - Re:Earth Visualizer の関連リンク
 
 ## 🛠️ 開発者向け
