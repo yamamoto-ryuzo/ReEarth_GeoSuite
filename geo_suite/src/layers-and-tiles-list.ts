@@ -128,9 +128,8 @@ function getUI() {
     border-radius: 4px;
   }
 
-    justify-content: center;
-    border-radius: 4px;
-  }
+  /* center content inside the move button */
+  .move-btn { justify-content: center; }
 
   /* Terrain row: compact, text left, toggle right */
   .terrain-row{
