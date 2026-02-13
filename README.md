@@ -17,7 +17,7 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 1. **プラグインをインストール**
    - Re:Earth Visualizer のプラグイン画面を開く
    - 「GitHubリポジトリをインポート」を選択
-   - リポジトリURL: `yamamoto-ryuzo/ReEarth_GeoSuite` または `https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite` を入力
+   - リポジトリURL: `https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite` を入力
 
 2. **シーンに追加**
    - ウィジェットタブから「Layers & Tiles」を追加
