@@ -37,12 +37,49 @@ npm run package
 
 生成されたファイルは `dist/` および `artifacts/` に出力されます。
 
-### ファイル構成
+### プロジェクト構成
 
-- `geo_suite/` - プラグインのソースコード
-- `scripts/` - ビルド・パッケージ用スクリプト
-- `vercel.json` - Vercel デプロイ設定
-- `index.html` - プロジェクトサイト
+```
+ReEarth_GeoSuite/
+├── geo_suite/                  # プラグイン本体
+│   ├── src/
+│   │   └── layers-and-tiles-list.ts   # TypeScriptソースコード
+│   ├── build/                  # TSコンパイル出力（一時）
+│   ├── layers-and-tiles-list.js       # 配布用JS（buildからコピー）
+│   ├── tsconfig.json           # TypeScript設定
+│   └── reearth.yml             # プラグインマニフェスト
+├── scripts/
+│   ├── build_plugin.js         # メインビルドスクリプト
+│   ├── build_ts_if_present.js  # TS自動コンパイル
+│   └── package_geo_suite.py    # ZIPパッケージ作成
+├── dist/                       # Vercelデプロイ用（.gitignoreで除外）
+│   ├── geo_suite/              # プラグインファイル
+│   ├── artifacts/
+│   │   └── geo_suite.zip       # 配布用ZIPファイル
+│   ├── index.html              # プロジェクトサイト
+│   └── ryu.html                # Info表示用サンプル
+├── artifacts/                  # ローカルビルド成果物（.gitignoreで除外）
+│   └── geo_suite.zip
+├── index.html                  # プロジェクトサイトのソース
+├── ryu.html                    # Info表示用HTMLサンプル
+├── vercel.json                 # Vercelデプロイ設定（CORS設定含む）
+├── package.json                # npm設定（TypeScript依存）
+└── README.md
+```
+
+### ビルドフロー
+
+1. **TypeScriptコンパイル**: `src/*.ts` → `build/*.js`
+2. **ファイルコピー**: `build/` → プラグインルート、`index.html`, `ryu.html` → `dist/`
+3. **ZIPパッケージ**: `geo_suite/` → `artifacts/geo_suite.zip` → `dist/artifacts/`
+4. **Vercelデプロイ**: `dist/` 内容をCDNに配信
+
+### 技術スタック
+
+- **開発言語**: TypeScript 5.6+
+- **ビルド**: Node.js + Python3
+- **デプロイ**: Vercel（自動CI/CD）
+- **配信**: Vercel CDN + CORS対応
 
 ### 貢献
 
