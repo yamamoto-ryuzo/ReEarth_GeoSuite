@@ -33,81 +33,37 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順
 - 各機能の使い方（レイヤー管理、Terrain/Shadow切替、Info表示など）
-- ZIPファイルURL
 - Re:Earth Visualizer の関連リンク
 
-## 🛠️ 開発者向け
+## 配布・デプロイについて
 
-### 開発フロー
+運用方針（推奨）:
 
-このプロジェクトは **Vercel** での自動ビルド・デプロイを採用しています。
-ローカルでのビルドは開発・テスト用途のみです。
+- サイト配信: Vercel にビルド・デプロイを任せます。リポジトリにはビルド成果物を置かず、ソースを管理してください（Vercel がビルドして公開します）。
+- プラグイン配布: GitHub Release に ZIP（リリース資産）を添付して配布します。公式の配布 URL として Release アセットを利用してください。
 
-```bash
-# 依存関係のインストール
-npm install
+自動化:
 
-# ローカルテスト用ビルド（開発時のみ）
-npm run build
-```
+- リリース作成ワークフロー: `.github/workflows/create-release.yml` を用意しています。タグ（`v*`）を push するか、GitHub Actions の手動実行でビルド→ZIP作成→Release作成→アセットアップロードを行います。
 
-生成されたファイルは `dist/` に出力されます。
-
-### プロジェクト構成
-
-```
-ReEarth_GeoSuite/
-├── geo_suite/                  # プラグイン本体
-│   ├── src/
-│   │   └── layers-and-tiles-list.ts   # TypeScriptソースコード
-│   ├── build/                  # TSコンパイル出力（一時、.gitignore）
-│   ├── layers-and-tiles-list.js       # 配布用JS（buildからコピー）
-│   ├── tsconfig.json           # TypeScript設定
-│   └── reearth.yml             # プラグインマニフェスト
-├── scripts/
-│   ├── build_plugin.js         # メインビルドスクリプト
-│   ├── build_ts_if_present.js  # TS自動コンパイル
-│   └── package_geo_suite.py    # ZIPパッケージ作成
-├── dist/                       # ビルド出力（.gitignore）
-│   ├── geo_suite/              # プラグインファイル
-│   ├── artifacts/
-│   │   └── geo_suite.zip       # 配布用ZIPファイル
-│   ├── index.html              # プロジェクトサイト
-│   └── ryu.html                # Info表示用サンプル
-├── index.html                  # プロジェクトサイトのソース
-├── ryu.html                    # Info表示用HTMLサンプル
-├── vercel.json                 # Vercelデプロイ設定（CORS設定含む）
-├── package.json                # npm設定（TypeScript依存）
-└── README.md
-```
-
-### CI/CDフロー（Vercel）
-
-```
-GitHubへプッシュ
-   ↓
-Vercelが自動検知
-   ↓
-1. TypeScriptコンパイル: src/*.ts → build/*.js
-2. ファイル配置: geo_suite/, index.html, ryu.html → dist/
-3. ZIPパッケージ作成: geo_suite/ → dist/artifacts/geo_suite.zip
-   ↓
-Vercel CDNに配信
-   ↓
-https://re-earth-geo-suite.vercel.app/
-```
-
-### 技術スタック
-
-- **開発言語**: TypeScript 5.6+
-- **ビルド**: Node.js + Python3
-- **CI/CD**: Vercel（自動ビルド・デプロイ）
-- **デプロイ**: Vercel（自動CI/CD）
-- **配信**: Vercel CDN + CORS対応
+<!-- 開発用メモは削除：ビルドはVercel/CIに委ね、配布はGitHub Releaseを推奨 -->
 
 ### 貢献
 
 Issue や Pull Request を歓迎します。変更内容と再現手順を明記してください。
+
+## リポジトリ構成（簡易）
+
+```
+ReEarth_GeoSuite/
+├─ geo_suite/            # プラグイン本体のソース（`src/`）と設定
+├─ plugin/               # 配布用のマニフェスト（`reearth.yml`）
+├─ .github/              # GitHub Actions ワークフロー
+├─ index.html, ryu.html  # サイト用の HTML
+├─ README.md
+├─ package.json
+└─ vercel.json
+```
 
 ## 📄 ライセンス
 
@@ -178,4 +134,4 @@ extensions:
 
 - `https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin`
 
-この方法では `plugin/reearth.yml` と `plugin/layers-and-tiles-list.js` がプラグインのルートとして扱われます。別ブランチやタグを指定する場合は `tree/BRANCH_NAME/plugin` のように指定してください。
+この方法では `plugin/reearth.yml` をルートに置いた構成を想定します。プラグイン本体の実装ファイル（`.js`）は Release アセットや別ブランチ／タグで提供する運用を推奨します。別ブランチやタグを指定する場合は `tree/BRANCH_NAME/plugin` のように指定してください。

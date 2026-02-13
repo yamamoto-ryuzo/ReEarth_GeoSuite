@@ -240,9 +240,9 @@
                 
                 <div class="url-box">
                     <h3>📦 ZIPファイル（配布用）</h3>
-                    <code id="zipUrl">https://re-earth-geo-suite.vercel.app/artifacts/geo_suite.zip</code>
+                    <code id="zipUrl">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/releases/latest/download/geo_suite.zip</code>
                     <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                        ※ ZIPファイルをダウンロードして直接アップロード可能です
+                        ※ 配布用ZIPは GitHub Release のアセットから入手してください
                     </p>
                 </div>
                 
@@ -344,12 +344,11 @@ git push origin main
     </div>
     
     <script>
-        // 現在のホストに基づいてURLを動的に更新
+        // 必要なURLを設定（配布用ZIPはGitHub Releasesを指す）
         window.addEventListener('DOMContentLoaded', function() {
-            const host = window.location.origin;
-            document.getElementById('pluginUrl').textContent = host + '/geo_suite/reearth.yml';
-            document.getElementById('zipUrl').textContent = host + '/artifacts/geo_suite.zip';
-            document.getElementById('htmlUrl').textContent = host + '/ryu.html';
+            document.getElementById('pluginUrl').textContent = 'https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin';
+            document.getElementById('htmlUrl').textContent = window.location.origin + '/ryu.html';
+            // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
         });
     </script>
 </body>
