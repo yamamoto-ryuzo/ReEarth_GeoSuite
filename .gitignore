@@ -33,5 +33,7 @@ Thumbs.db
 
 # Debug
 npm-debug.log*
+.vercel
+geo_suite/build
 yarn-debug.log*
 yarn-error.log*

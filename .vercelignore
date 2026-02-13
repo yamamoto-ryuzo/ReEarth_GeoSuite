@@ -6,3 +6,6 @@ artifacts
 test
 *.log
 .DS_Store
+
+# Exclude source build output from Vercel upload; Vercel will build using `npm run build`
+geo_suite/build
