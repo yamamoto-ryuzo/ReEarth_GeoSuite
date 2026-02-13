@@ -177,6 +177,41 @@
             margin: 15px 0;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
+
+        /* Modern copy button styles */
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: linear-gradient(90deg,#5b7be3,#7a4bb8);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(90,110,230,0.18);
+            transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .copy-btn:active { transform: translateY(1px) scale(.995); }
+        .copy-btn:focus { outline: 3px solid rgba(102,126,234,0.18); }
+
+        .copy-btn svg { width: 16px; height: 16px; display:block; }
+
+        .copy-msg {
+            margin-left: 8px;
+            font-size: 0.9em;
+            color: #1b9b3a;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity .18s ease, transform .18s ease;
+            white-space: nowrap;
+        }
+        .copy-msg.visible { opacity: 1; transform: translateY(0); }
+
+        .visually-hidden { position: absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
     </style>
 </head>
 <body>
@@ -232,7 +267,14 @@
                 
                 <div class="url-box">
                     <h3>🔌 GitHubリポジトリURL</h3>
-                    <code id="pluginUrl">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite</code>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <code id="pluginUrl">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite</code>
+                        <button class="copy-btn" data-target="pluginUrl" aria-label="コピー">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
+                            <span class="visually-hidden">コピー</span>
+                        </button>
+                        <span class="copy-msg" id="pluginUrl-msg" aria-hidden="true"></span>
+                    </div>
                     <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
                         
                     </p>
@@ -240,7 +282,14 @@
                 
                 <div class="url-box">
                     <h3>📦 ZIPファイル（配布用）</h3>
-                    <code id="zipUrl">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/releases/latest/download/geo_suite.zip</code>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <code id="zipUrl">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/releases/latest/download/geo_suite.zip</code>
+                        <button class="copy-btn" data-target="zipUrl" aria-label="コピー">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
+                            <span class="visually-hidden">コピー</span>
+                        </button>
+                        <span class="copy-msg" id="zipUrl-msg" aria-hidden="true"></span>
+                    </div>
                     <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
                         ※ 配布用ZIPは GitHub Release のアセットから入手してください
                     </p>
@@ -248,7 +297,14 @@
                 
                 <div class="url-box">
                     <h3>🌐 Info表示用HTML サンプル</h3>
-                    <code id="htmlUrl">https://re-earth-geo-suite.vercel.app/ryu.html</code>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <code id="htmlUrl">https://re-earth-geo-suite.vercel.app/ryu.html</code>
+                        <button class="copy-btn" data-target="htmlUrl" aria-label="コピー">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
+                            <span class="visually-hidden">コピー</span>
+                        </button>
+                        <span class="copy-msg" id="htmlUrl-msg" aria-hidden="true"></span>
+                    </div>
                     <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
                         ※ Inspector の Info URL にこのURLを設定できます
                     </p>
@@ -349,7 +405,55 @@ git push origin main
             document.getElementById('pluginUrl').textContent = 'https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin';
             document.getElementById('htmlUrl').textContent = window.location.origin + '/ryu.html';
             // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
+
+            // コピー機能の初期化
+            document.querySelectorAll('.copy-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const target = btn.getAttribute('data-target');
+                    copyToClipboard(target, btn);
+                });
+            });
         });
+
+        function copyToClipboard(targetId, btn) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            const text = el.textContent.trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopyMsg(targetId, 'コピーしました');
+                }, function() {
+                    fallbackCopy(text, targetId);
+                });
+            } else {
+                fallbackCopy(text, targetId);
+            }
+        }
+
+        function fallbackCopy(text, targetId) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showCopyMsg(targetId, 'コピーしました');
+            } catch (e) {
+                showCopyMsg(targetId, 'コピーに失敗しました');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function showCopyMsg(targetId, message) {
+            const msgEl = document.getElementById(targetId + '-msg');
+            if (!msgEl) return;
+            msgEl.textContent = message;
+            msgEl.classList.add('visible');
+            // hide after delay
+            setTimeout(function() {
+                msgEl.classList.remove('visible');
+            }, 1600);
+        }
     </script>
 </body>
 </html>
