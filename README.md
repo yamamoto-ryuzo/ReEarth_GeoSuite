@@ -125,3 +125,49 @@ MIT License
     <img src="https://github.com/yamamoto-ryuzo/QGIS_portable_3x/raw/master/imgs/giphy.gif" width="500" title="avvio QGIS">
   </a>
 </p>
+## Re:Earth プラグイン — GitHub からの公開とインストール
+
+以下は Re:Earth 向けプラグインを GitHub 公開リポジトリとして配布し、Re:Earth からインストールできるようにする手順です。
+
+### 必要な前提
+- **必須ファイル**: プラグインのルートに `reearth.yml` を配置する。
+- **マニフェスト内容**: `reearth.yml` で `id`, `name`, `version`, `extensions` などを定義する。
+- **拡張実装**: `extensions` に定義した拡張の ID と同名の実装ファイル（例：`test-widget` → `test-widget.js`）を同じディレクトリに置く。
+
+### 最小マニフェスト例
+```yaml
+id: test-plugin
+name: Test plugin
+version: 1.0.0
+extensions:
+   - id: test-widget
+      type: widget
+      name: Test
+```
+
+### GitHub リポジトリ側の準備
+- ディレクトリ例:
+   - your-plugin/
+      - `reearth.yml`
+      - `your-extension.js`（例：`test-widget.js`）
+- GitHub で public（公開）リポジトリにする（private は不可）。
+- `main` ブランチを使うのが無難だが、ブランチやアーカイブ指定も可能。
+- `README.md` にプラグイン概要・使い方を記載すると親切。
+
+### Re:Earth 側でのインストール手順（概要）
+1. Re:Earth のプロジェクト設定画面を開き、「Plugins」を選択。
+2. 「Personally Installed」からプラグインライブラリを開く。
+3. インストール方法で「GitHub Public Repository」を選択。
+4. リポジトリ URL を入力して「Continue」を押す。
+5. 通知が表示されればインストール成功。ウィジェットやブロック一覧に拡張が現れる。
+
+### 許可される URL 例
+- `https://github.com/USER/REPO`（`main` ブランチを使用）
+- `https://github.com/USER/REPO.git`
+- `https://github.com/USER/REPO/tree/BRANCH_NAME`（ブランチ指定）
+- `https://github.com/USER/REPO/archive/BRANCH_OR_TAG.zip`（アーカイブ指定）
+
+### Marketplace に公開したい場合
+- 不特定多数向けに配布するには、Re:Earth 公式マーケットプレイス（`reearth-marketplace`）を利用する。公式ドキュメントに従って公開フローを進めてください。
+
+---
