@@ -80,6 +80,11 @@ function main() {
     fs.copyFileSync(ryuHtml, path.join(distDir, "ryu.html"));
   }
 
+  const indexHtml = path.join(repoRoot, "index.html");
+  if (fs.existsSync(indexHtml)) {
+    fs.copyFileSync(indexHtml, path.join(distDir, "index.html"));
+  }
+
   runPythonScript(path.join("scripts", "package_geo_suite.py"));
 
   const artifactsDir = path.join(repoRoot, "artifacts");

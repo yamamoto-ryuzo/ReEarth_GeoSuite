@@ -1,14 +1,14 @@
+"use strict";
+// @ts-nocheck
 // Track layer IDs added by this plugin
 const _pluginAddedLayerIds = new Set();
-
 // Track last values for polling
 let _lastInspectorUrl = null;
 let _lastInspectorApply = null;
 let _lastInspectorLayersJson = null;
 let _lastInfoUrl = null;
-
 const generateLayerItem = (layer, isPreset) => {
-  return `
+    return `
     <li>
       <span id="layer-name">${layer.title}</span>
       <div class="actions">
@@ -24,31 +24,26 @@ const generateLayerItem = (layer, isPreset) => {
     </li>
   `;
 };
-
 // Note: preset layer items are generated dynamically inside getUI()
-
 function getUI() {
-  // Build layer items from current layers so UI reflects runtime changes
-  const layers = (reearth.layers && reearth.layers.layers) || [];
-  
-  // Separate preset layers and plugin-added layers
-  const presetLayers = [];
-  const userLayers = [];
-  layers.forEach(layer => {
-    if (_pluginAddedLayerIds.has(layer.id)) {
-      userLayers.push(layer);
-    } else {
-      presetLayers.push(layer);
-    }
-  });
-  
-  const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
-  const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
-
-  // Information panel content
-  // (Info content will be loaded from configured URL and injected into #info-content)
-  
-  return `
+    // Build layer items from current layers so UI reflects runtime changes
+    const layers = (reearth.layers && reearth.layers.layers) || [];
+    // Separate preset layers and plugin-added layers
+    const presetLayers = [];
+    const userLayers = [];
+    layers.forEach(layer => {
+        if (_pluginAddedLayerIds.has(layer.id)) {
+            userLayers.push(layer);
+        }
+        else {
+            presetLayers.push(layer);
+        }
+    });
+    const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
+    const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
+    // Information panel content
+    // (Info content will be loaded from configured URL and injected into #info-content)
+    return `
 <style>
   /* Tabs + styling */
   .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; padding-bottom:4px; flex-wrap:wrap; }
@@ -516,325 +511,439 @@ function getUI() {
 </script>
 `;
 }
-
 // Initial render
 const uiHTML = getUI();
-try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
+try {
+    sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null');
+}
+catch (e) { }
 reearth.ui.show(uiHTML);
 // Send initial terrain state to the UI so the toggle reflects current viewer settings
 try {
-  const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
-  const terrainEnabled = !!(viewerProp && viewerProp.terrain && viewerProp.terrain.enabled);
-  const depthTest = !!(viewerProp && viewerProp.globe && viewerProp.globe.depthTestAgainstTerrain);
-  const shadowEnabled = !!(viewerProp && viewerProp.scene && viewerProp.scene.shadow && viewerProp.scene.shadow.enabled);
-  try { sendLog('[init] sending terrain state to UI', { enabled: terrainEnabled, depthTestAgainstTerrain: depthTest }); } catch(e){}
-  if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
-    reearth.ui.postMessage({ action: 'terrainState', enabled: terrainEnabled, depthTestAgainstTerrain: depthTest });
-    try { sendLog('[init] sending shadow state to UI', { enabled: shadowEnabled }); } catch(e){}
-    reearth.ui.postMessage({ action: 'shadowState', enabled: shadowEnabled });
-    // Attempt to send initial camera state if available
+    const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
+    const terrainEnabled = !!(viewerProp && viewerProp.terrain && viewerProp.terrain.enabled);
+    const depthTest = !!(viewerProp && viewerProp.globe && viewerProp.globe.depthTestAgainstTerrain);
+    const shadowEnabled = !!(viewerProp && viewerProp.scene && viewerProp.scene.shadow && viewerProp.scene.shadow.enabled);
     try {
-      const cam = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : (reearth.view && (reearth.view.camera || reearth.view.getCamera && reearth.view.getCamera && typeof reearth.view.getCamera === 'function' ? reearth.view.getCamera() : null));
-      if (cam) {
-        reearth.ui.postMessage({ action: 'cameraState', camera: cam });
-      }
-    } catch (e) {}
-  }
-} catch (e) {
-  try { sendError('[init] failed to send terrain state', e); } catch(err){}
+        sendLog('[init] sending terrain state to UI', { enabled: terrainEnabled, depthTestAgainstTerrain: depthTest });
+    }
+    catch (e) { }
+    if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
+        reearth.ui.postMessage({ action: 'terrainState', enabled: terrainEnabled, depthTestAgainstTerrain: depthTest });
+        try {
+            sendLog('[init] sending shadow state to UI', { enabled: shadowEnabled });
+        }
+        catch (e) { }
+        reearth.ui.postMessage({ action: 'shadowState', enabled: shadowEnabled });
+        // Attempt to send initial camera state if available
+        try {
+            const cam = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : (reearth.view && (reearth.view.camera || reearth.view.getCamera && reearth.view.getCamera && typeof reearth.view.getCamera === 'function' ? reearth.view.getCamera() : null));
+            if (cam) {
+                reearth.ui.postMessage({ action: 'cameraState', camera: cam });
+            }
+        }
+        catch (e) { }
+    }
 }
-
-
-
+catch (e) {
+    try {
+        sendError('[init] failed to send terrain state', e);
+    }
+    catch (err) { }
+}
 // Helper: forward logs from extension to the UI log panel
 function sendLog(...args) {
-  try {
-    console.log.apply(console, args);
-  } catch (e) {}
+    try {
+        console.log.apply(console, args);
+    }
+    catch (e) { }
 }
-
 function sendError(...args) {
-  try {
-    console.error.apply(console, args);
-  } catch (e) {}
+    try {
+        console.error.apply(console, args);
+    }
+    catch (e) { }
 }
-
 // Safe stringify for debug logging (handles circular refs and functions)
 function safeStringify(obj) {
-  try {
-    const seen = [];
-    return JSON.stringify(obj, function(k, v) {
-      if (typeof v === 'function') return '[Function]';
-      if (v && typeof v === 'object') {
-        if (seen.indexOf(v) !== -1) return '[Circular]';
-        seen.push(v);
-      }
-      return v;
-    }, 2);
-  } catch (e) {
-    try { return String(obj); } catch (e2) { return '[unstringifiable]'; }
-  }
+    try {
+        const seen = [];
+        return JSON.stringify(obj, function (k, v) {
+            if (typeof v === 'function')
+                return '[Function]';
+            if (v && typeof v === 'object') {
+                if (seen.indexOf(v) !== -1)
+                    return '[Circular]';
+                seen.push(v);
+            }
+            return v;
+        }, 2);
+    }
+    catch (e) {
+        try {
+            return String(obj);
+        }
+        catch (e2) {
+            return '[unstringifiable]';
+        }
+    }
 }
-
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", (msg) => {
-  try { sendLog("[extension.message] received:", msg); } catch(e){}
-  // Handle action-based messages from the UI (terrain toggle)
-  if (msg && msg.action) {
-    if (msg.action === "activateTerrain") {
-      reearth.viewer.overrideProperty({
-        terrain: { enabled: true },
-        globe: { depthTestAgainstTerrain: true },
-      });
-    } else if (msg.action === "deactivateTerrain") {
-      reearth.viewer.overrideProperty({
-        terrain: { enabled: false },
-        globe: { depthTestAgainstTerrain: false },
-      });
+    try {
+        sendLog("[extension.message] received:", msg);
     }
-    else if (msg.action === "activateShadow") {
-      reearth.viewer.overrideProperty({
-        scene: { shadow: { enabled: true } }
-      });
-    } else if (msg.action === "deactivateShadow") {
-      reearth.viewer.overrideProperty({
-        scene: { shadow: { enabled: false } }
-      });
-      } else if (msg.action === "setTime") {
-        try {
-          // If values are provided, convert to Date objects.
-          const buildDate = (v) => (typeof v === 'string' && v ? new Date(v) : null);
-          const start = buildDate(msg.start);
-          const stop = buildDate(msg.stop);
-          const current = buildDate(msg.current);
-          const payload = {};
-          if (start instanceof Date && !isNaN(start)) payload.start = start;
-          if (stop instanceof Date && !isNaN(stop)) payload.stop = stop;
-          if (current instanceof Date && !isNaN(current)) payload.current = current;
-          try { sendLog('[setTime] parsed payload:', payload, 'rawMsg:', msg); } catch(e){}
-          // Only call if at least one valid date provided
-          if (Object.keys(payload).length) {
+    catch (e) { }
+    // Handle action-based messages from the UI (terrain toggle)
+    if (msg && msg.action) {
+        if (msg.action === "activateTerrain") {
+            reearth.viewer.overrideProperty({
+                terrain: { enabled: true },
+                globe: { depthTestAgainstTerrain: true },
+            });
+        }
+        else if (msg.action === "deactivateTerrain") {
+            reearth.viewer.overrideProperty({
+                terrain: { enabled: false },
+                globe: { depthTestAgainstTerrain: false },
+            });
+        }
+        else if (msg.action === "activateShadow") {
+            reearth.viewer.overrideProperty({
+                scene: { shadow: { enabled: true } }
+            });
+        }
+        else if (msg.action === "deactivateShadow") {
+            reearth.viewer.overrideProperty({
+                scene: { shadow: { enabled: false } }
+            });
+        }
+        else if (msg.action === "setTime") {
             try {
-              reearth.timeline.setTime(payload);
-              try { sendLog('[setTime] reearth.timeline.setTime called'); } catch(e){}
-            } catch (e) {
-              try { sendError('[setTime] reearth.timeline.setTime failed', e); } catch(err){}
+                // If values are provided, convert to Date objects.
+                const buildDate = (v) => (typeof v === 'string' && v ? new Date(v) : null);
+                const start = buildDate(msg.start);
+                const stop = buildDate(msg.stop);
+                const current = buildDate(msg.current);
+                const payload = {};
+                if (start instanceof Date && !isNaN(start))
+                    payload.start = start;
+                if (stop instanceof Date && !isNaN(stop))
+                    payload.stop = stop;
+                if (current instanceof Date && !isNaN(current))
+                    payload.current = current;
+                try {
+                    sendLog('[setTime] parsed payload:', payload, 'rawMsg:', msg);
+                }
+                catch (e) { }
+                // Only call if at least one valid date provided
+                if (Object.keys(payload).length) {
+                    try {
+                        reearth.timeline.setTime(payload);
+                        try {
+                            sendLog('[setTime] reearth.timeline.setTime called');
+                        }
+                        catch (e) { }
+                    }
+                    catch (e) {
+                        try {
+                            sendError('[setTime] reearth.timeline.setTime failed', e);
+                        }
+                        catch (err) { }
+                    }
+                }
+                else {
+                    try {
+                        sendError('[setTime] no valid dates parsed', msg);
+                    }
+                    catch (e) { }
+                }
             }
-          } else {
-            try { sendError('[setTime] no valid dates parsed', msg); } catch(e){}
-          }
-        } catch (e) {
-          try { sendError('[setTime] invalid date payload', msg, e); } catch(err){}
+            catch (e) {
+                try {
+                    sendError('[setTime] invalid date payload', msg, e);
+                }
+                catch (err) { }
+            }
         }
-      }
-    return;
-  }
-
-  // Backward-compatible handling for messages using `type`
-  switch (msg.type) {
-    case "delete":
-      reearth.layers.delete(msg.layerId);
-      break;
-    case "refreshLayers":
-      try {
-        if (reearth.ui && typeof reearth.ui.show === 'function') {
-          reearth.ui.show(getUI());
-        }
-      } catch (e) {}
-      break;
-    case "flyTo":
-      reearth.camera.flyTo(msg.layerId, { duration: 2 });
-      break;
-    case "hide":
-      reearth.layers.hide(msg.layerId);
-      break;
-    case "show":
-      reearth.layers.show(msg.layerId);
-      break;
-    case "inspectorText":
-      try {
-        const v = msg.value || "";
-        sendLog("inspectorText:", v);
-        let url = v;
-        // optional title can be provided in the message
-        const mtitle = msg && (msg.title || msg.layerTitle) ? (msg.title || msg.layerTitle) : null;
-        try {
-          // If the inspector sent an encoded URL, decode to show original characters
-          url = decodeURIComponent(v);
-        } catch (e) {
-          // ignore decode errors and keep original
-          url = v;
-        }
-        if (url && /^https?:\/\//.test(url)) {
-          addXyzLayer(url, mtitle);
-        }
-      } catch (e) {
-        // ignore
-      }
-      break;
-    default:
-  }
+        return;
+    }
+    // Backward-compatible handling for messages using `type`
+    switch (msg.type) {
+        case "delete":
+            reearth.layers.delete(msg.layerId);
+            break;
+        case "refreshLayers":
+            try {
+                if (reearth.ui && typeof reearth.ui.show === 'function') {
+                    reearth.ui.show(getUI());
+                }
+            }
+            catch (e) { }
+            break;
+        case "flyTo":
+            reearth.camera.flyTo(msg.layerId, { duration: 2 });
+            break;
+        case "hide":
+            reearth.layers.hide(msg.layerId);
+            break;
+        case "show":
+            reearth.layers.show(msg.layerId);
+            break;
+        case "inspectorText":
+            try {
+                const v = msg.value || "";
+                sendLog("inspectorText:", v);
+                let url = v;
+                // optional title can be provided in the message
+                const mtitle = msg && (msg.title || msg.layerTitle) ? (msg.title || msg.layerTitle) : null;
+                try {
+                    // If the inspector sent an encoded URL, decode to show original characters
+                    url = decodeURIComponent(v);
+                }
+                catch (e) {
+                    // ignore decode errors and keep original
+                    url = v;
+                }
+                if (url && /^https?:\/\//.test(url)) {
+                    addXyzLayer(url, mtitle);
+                }
+            }
+            catch (e) {
+                // ignore
+            }
+            break;
+        default:
+    }
 });
-
 // Read initial inspector property and add layer if URL present
 function tryInitFromProperty() {
-  try {
-    try { sendLog('[init] extension.widget:', reearth.extension.widget); } catch(e){}
-    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    // property may nest inspector values under `settings` (e.g. { settings: { inspectorUrl: "..." } })
-    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
-    const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
-    try { sendLog('[init] property FULL:', JSON.stringify(prop, null, 2)); } catch(e){ try { sendLog('[init] property:', prop); } catch(e2){} }
-    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-      try { sendLog('[init] found URL -> add layer', url); } catch(e){}
-      addXyzLayer(url, title);
-    } else {
-      try { sendLog('[init] no valid URL found in property'); } catch(e){}
-    }
-
-    // Info URL handling: load HTML into iframe
+    var _a, _b, _c, _d, _e, _f, _g;
     try {
-      try { sendLog('[init] checking infoUrl - prop.info?.infoUrl:', prop.info?.infoUrl, 'prop.infoUrl:', prop.infoUrl); } catch(e){}
-      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
-      try { sendLog('[init] infoUrl extracted:', infoUrl, 'type:', typeof infoUrl); } catch(e){}
-      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
-        try { sendLog('[init] valid infoUrl found, calling loadInfoUrl...'); } catch(e){}
-        _lastInfoUrl = infoUrl;
-        loadInfoUrl(infoUrl);
-      } else {
-        try { sendLog('[init] no valid infoUrl found or invalid format'); } catch(e){}
-      }
-    } catch(e) {
-      try { sendError('[init] infoUrl handling error:', e); } catch(err){}
+        try {
+            sendLog('[init] extension.widget:', reearth.extension.widget);
+        }
+        catch (e) { }
+        const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+        // property may nest inspector values under `settings` (e.g. { settings: { inspectorUrl: "..." } })
+        const url = (prop === null || prop === void 0 ? void 0 : prop.inspectorUrl) || (prop === null || prop === void 0 ? void 0 : prop.inspectorText) || ((_a = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _a === void 0 ? void 0 : _a.inspectorUrl) || ((_b = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _b === void 0 ? void 0 : _b.inspectorText);
+        const title = (prop === null || prop === void 0 ? void 0 : prop.inspectorTitle) || ((_c = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _c === void 0 ? void 0 : _c.inspectorTitle) || null;
+        try {
+            sendLog('[init] property FULL:', JSON.stringify(prop, null, 2));
+        }
+        catch (e) {
+            try {
+                sendLog('[init] property:', prop);
+            }
+            catch (e2) { }
+        }
+        if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+            try {
+                sendLog('[init] found URL -> add layer', url);
+            }
+            catch (e) { }
+            addXyzLayer(url, title);
+        }
+        else {
+            try {
+                sendLog('[init] no valid URL found in property');
+            }
+            catch (e) { }
+        }
+        // Info URL handling: load HTML into iframe
+        try {
+            try {
+                sendLog('[init] checking infoUrl - prop.info?.infoUrl:', (_d = prop.info) === null || _d === void 0 ? void 0 : _d.infoUrl, 'prop.infoUrl:', prop.infoUrl);
+            }
+            catch (e) { }
+            const infoUrl = ((_e = prop === null || prop === void 0 ? void 0 : prop.info) === null || _e === void 0 ? void 0 : _e.infoUrl) || (prop === null || prop === void 0 ? void 0 : prop.infoUrl) || ((_f = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _f === void 0 ? void 0 : _f.infoUrl) || null;
+            try {
+                sendLog('[init] infoUrl extracted:', infoUrl, 'type:', typeof infoUrl);
+            }
+            catch (e) { }
+            if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+                try {
+                    sendLog('[init] valid infoUrl found, calling loadInfoUrl...');
+                }
+                catch (e) { }
+                _lastInfoUrl = infoUrl;
+                loadInfoUrl(infoUrl);
+            }
+            else {
+                try {
+                    sendLog('[init] no valid infoUrl found or invalid format');
+                }
+                catch (e) { }
+            }
+        }
+        catch (e) {
+            try {
+                sendError('[init] infoUrl handling error:', e);
+            }
+            catch (err) { }
+        }
+        // If inspector provides a collection of layers, add them too
+        try {
+            const arr = (prop === null || prop === void 0 ? void 0 : prop.layers) || ((_g = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _g === void 0 ? void 0 : _g.layers);
+            if (Array.isArray(arr) && arr.length) {
+                try {
+                    sendLog('[init] found inspector.layers -> processing', arr.length);
+                }
+                catch (e) { }
+                addXyzLayersFromArray(arr);
+            }
+        }
+        catch (e) {
+            // ignore
+        }
     }
-
-    // If inspector provides a collection of layers, add them too
-    try {
-      const arr = prop?.layers || prop?.settings?.layers;
-      if (Array.isArray(arr) && arr.length) {
-        try { sendLog('[init] found inspector.layers -> processing', arr.length); } catch(e){}
-        addXyzLayersFromArray(arr);
-      }
-    } catch(e) {
-      // ignore
+    catch (e) {
+        // ignore
     }
-  } catch (e) {
-    // ignore
-  }
 }
-
 function addXyzLayer(url, title) {
-  if (!url || typeof url !== "string") return;
-  const titleToUse = (title && typeof title === 'string' && title.trim()) ? title.trim() : `XYZ: ${url}`;
-  // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
-  const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
-  const layer = {
-    type: "simple",
-    title: titleToUse,
-    visible: true,
-    data: {
-      type: "tiles",
-      url: encodedUrl,
-    },
-    tiles: {},
-  };
-
-  try {
-    sendLog("[addXyzLayer] received url:", url);
-    sendLog("[addXyzLayer] encoded url:", encodedUrl);
-    sendLog("[addXyzLayer] layer object:", layer);
-    const newId = reearth.layers.add(layer);
-    // Track this layer as plugin-added
-    if (newId) {
-      _pluginAddedLayerIds.add(newId);
-    }
-    sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
+    if (!url || typeof url !== "string")
+        return;
+    const titleToUse = (title && typeof title === 'string' && title.trim()) ? title.trim() : `XYZ: ${url}`;
+    // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
+    const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
+    const layer = {
+        type: "simple",
+        title: titleToUse,
+        visible: true,
+        data: {
+            type: "tiles",
+            url: encodedUrl,
+        },
+        tiles: {},
+    };
     try {
-      // Re-render the widget UI so the new layer appears in the list
-      reearth.ui.show(getUI());
-    } catch (e) {
-      try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {}
+        sendLog("[addXyzLayer] received url:", url);
+        sendLog("[addXyzLayer] encoded url:", encodedUrl);
+        sendLog("[addXyzLayer] layer object:", layer);
+        const newId = reearth.layers.add(layer);
+        // Track this layer as plugin-added
+        if (newId) {
+            _pluginAddedLayerIds.add(newId);
+        }
+        sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
+        try {
+            // Re-render the widget UI so the new layer appears in the list
+            reearth.ui.show(getUI());
+        }
+        catch (e) {
+            try {
+                sendError('[addXyzLayer] failed to re-render UI:', e);
+            }
+            catch (err) { }
+        }
+        return newId;
     }
-    return newId;
-  } catch (e) {
-    try { sendError("Failed to add XYZ layer:", e); } catch (err) {}
-    try { sendError("Layer object was:", layer); } catch (err) {}
-    return null;
-  }
+    catch (e) {
+        try {
+            sendError("Failed to add XYZ layer:", e);
+        }
+        catch (err) { }
+        try {
+            sendError("Layer object was:", layer);
+        }
+        catch (err) { }
+        return null;
+    }
 }
-
 tryInitFromProperty();
-
 // Poll for property changes (Inspector edits) and react to URL changes
 // Poll for property changes more frequently so inspector edits reflect faster.
 setInterval(() => {
-  try {
-    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
-    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-      const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
-      if (url !== _lastInspectorUrl) {
-        sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
-        _lastInspectorUrl = url;
-        addXyzLayer(url, title);
-      }
-    }
-    // Poll for infoUrl changes
+    var _a, _b, _c, _d, _e, _f;
     try {
-      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
-      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
-        if (infoUrl !== _lastInfoUrl) {
-          try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
-          _lastInfoUrl = infoUrl;
-          loadInfoUrl(infoUrl);
+        const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+        const url = (prop === null || prop === void 0 ? void 0 : prop.inspectorUrl) || (prop === null || prop === void 0 ? void 0 : prop.inspectorText) || ((_a = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _a === void 0 ? void 0 : _a.inspectorUrl) || ((_b = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _b === void 0 ? void 0 : _b.inspectorText);
+        if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+            const title = (prop === null || prop === void 0 ? void 0 : prop.inspectorTitle) || ((_c = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _c === void 0 ? void 0 : _c.inspectorTitle) || null;
+            if (url !== _lastInspectorUrl) {
+                sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
+                _lastInspectorUrl = url;
+                addXyzLayer(url, title);
+            }
         }
-      }
-    } catch(e) {}
-    // process inspector layers array if present
-    try {
-      const arr = prop?.layers || prop?.settings?.layers;
-      const arrJson = arr ? JSON.stringify(arr) : null;
-      if (arrJson && arrJson !== _lastInspectorLayersJson) {
-        _lastInspectorLayersJson = arrJson;
-        try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
-        addXyzLayersFromArray(arr);
-      }
-    } catch (e) {}
-    // inspectorApply trigger handling removed (debugging helper no longer present)
-  } catch (e) {
-    // ignore
-  }
+        // Poll for infoUrl changes
+        try {
+            const infoUrl = ((_d = prop === null || prop === void 0 ? void 0 : prop.info) === null || _d === void 0 ? void 0 : _d.infoUrl) || (prop === null || prop === void 0 ? void 0 : prop.infoUrl) || ((_e = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _e === void 0 ? void 0 : _e.infoUrl) || null;
+            if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+                if (infoUrl !== _lastInfoUrl) {
+                    try {
+                        sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')');
+                    }
+                    catch (e) { }
+                    _lastInfoUrl = infoUrl;
+                    loadInfoUrl(infoUrl);
+                }
+            }
+        }
+        catch (e) { }
+        // process inspector layers array if present
+        try {
+            const arr = (prop === null || prop === void 0 ? void 0 : prop.layers) || ((_f = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _f === void 0 ? void 0 : _f.layers);
+            const arrJson = arr ? JSON.stringify(arr) : null;
+            if (arrJson && arrJson !== _lastInspectorLayersJson) {
+                _lastInspectorLayersJson = arrJson;
+                try {
+                    sendLog('[poll] inspector.layers changed -> processing');
+                }
+                catch (e) { }
+                addXyzLayersFromArray(arr);
+            }
+        }
+        catch (e) { }
+        // inspectorApply trigger handling removed (debugging helper no longer present)
+    }
+    catch (e) {
+        // ignore
+    }
 }, 300);
-
 // Add multiple layers from an array of inspector entries
 function addXyzLayersFromArray(items) {
-  if (!items || !Array.isArray(items)) return;
-  const existing = (reearth.layers && reearth.layers.layers) || [];
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    const u = (it.url || it.inspectorUrl || "").trim();
-    const t = (it.title || it.inspectorTitle || null);
-    if (!u) continue;
-    if (!/^https?:\/\//.test(u)) continue;
-    const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
-    const dup = existing.find(l => l && l.data && l.data.url && (l.data.url === encoded || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded) !== -1)));
-    if (dup) {
-      try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
-      continue;
+    if (!items || !Array.isArray(items))
+        return;
+    const existing = (reearth.layers && reearth.layers.layers) || [];
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i] || {};
+        const u = (it.url || it.inspectorUrl || "").trim();
+        const t = (it.title || it.inspectorTitle || null);
+        if (!u)
+            continue;
+        if (!/^https?:\/\//.test(u))
+            continue;
+        const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
+        const dup = existing.find(l => l && l.data && l.data.url && (l.data.url === encoded || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded) !== -1)));
+        if (dup) {
+            try {
+                sendLog('[addXyzLayersFromArray] skip duplicate:', u);
+            }
+            catch (e) { }
+            continue;
+        }
+        addXyzLayer(u, t);
     }
-    addXyzLayer(u, t);
-  }
 }
-
 // Send info URL to UI to load in iframe
 function loadInfoUrl(url) {
-  if (!url || typeof url !== 'string') return;
-  try {
-    try { sendLog('[loadInfo] sending URL to UI:', url); } catch(e){}
-    if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
-      reearth.ui.postMessage({ action: 'loadInfoUrl', url: url });
+    if (!url || typeof url !== 'string')
+        return;
+    try {
+        try {
+            sendLog('[loadInfo] sending URL to UI:', url);
+        }
+        catch (e) { }
+        if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
+            reearth.ui.postMessage({ action: 'loadInfoUrl', url: url });
+        }
     }
-  } catch (e) {
-    try { sendError('[loadInfo] ERROR:', e); } catch(err){}
-  }
+    catch (e) {
+        try {
+            sendError('[loadInfo] ERROR:', e);
+        }
+        catch (err) { }
+    }
 }
