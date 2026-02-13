@@ -171,3 +171,11 @@ extensions:
 - 不特定多数向けに配布するには、Re:Earth 公式マーケットプレイス（`reearth-marketplace`）を利用する。公式ドキュメントに従って公開フローを進めてください。
 
 ---
+
+## GitHub リポジトリでの直接配布（このリポジトリの場合）
+
+このリポジトリは `plugin/` ディレクトリにプラグインを配置しており、Re:Earth のインポート画面で次の URL を使って直接インストールできます。
+
+- `https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin`
+
+この方法では `plugin/reearth.yml` と `plugin/layers-and-tiles-list.js` がプラグインのルートとして扱われます。別ブランチやタグを指定する場合は `tree/BRANCH_NAME/plugin` のように指定してください。
