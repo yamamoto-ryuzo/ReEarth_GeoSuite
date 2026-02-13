@@ -853,55 +853,75 @@ function addXyzLayer(url, title) {
 }
 tryInitFromProperty();
 // Poll for property changes (Inspector edits) and react to URL changes
-// Poll for property changes more frequently so inspector edits reflect faster.
-setInterval(() => {
+// Use a safe polling wrapper because some runtimes (sandboxed) may not expose `setInterval`.
+(function startPolling() {
+  const poll = () => {
     var _a, _b, _c, _d, _e, _f;
     try {
-        const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-        const url = (prop === null || prop === void 0 ? void 0 : prop.inspectorUrl) || (prop === null || prop === void 0 ? void 0 : prop.inspectorText) || ((_a = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _a === void 0 ? void 0 : _a.inspectorUrl) || ((_b = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _b === void 0 ? void 0 : _b.inspectorText);
-        if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-            const title = (prop === null || prop === void 0 ? void 0 : prop.inspectorTitle) || ((_c = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _c === void 0 ? void 0 : _c.inspectorTitle) || null;
-            if (url !== _lastInspectorUrl) {
-                sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
-                _lastInspectorUrl = url;
-                addXyzLayer(url, title);
-            }
+      const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+      const url = (prop === null || prop === void 0 ? void 0 : prop.inspectorUrl) || (prop === null || prop === void 0 ? void 0 : prop.inspectorText) || ((_a = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _a === void 0 ? void 0 : _a.inspectorUrl) || ((_b = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _b === void 0 ? void 0 : _b.inspectorText);
+      if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+        const title = (prop === null || prop === void 0 ? void 0 : prop.inspectorTitle) || ((_c = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _c === void 0 ? void 0 : _c.inspectorTitle) || null;
+        if (url !== _lastInspectorUrl) {
+          sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
+          _lastInspectorUrl = url;
+          addXyzLayer(url, title);
         }
-        // Poll for infoUrl changes
-        try {
-            const infoUrl = ((_d = prop === null || prop === void 0 ? void 0 : prop.info) === null || _d === void 0 ? void 0 : _d.infoUrl) || (prop === null || prop === void 0 ? void 0 : prop.infoUrl) || ((_e = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _e === void 0 ? void 0 : _e.infoUrl) || null;
-            if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
-                if (infoUrl !== _lastInfoUrl) {
-                    try {
-                        sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')');
-                    }
-                    catch (e) { }
-                    _lastInfoUrl = infoUrl;
-                    loadInfoUrl(infoUrl);
-                }
-            }
+      }
+      // Poll for infoUrl changes
+      try {
+        const infoUrl = ((_d = prop === null || prop === void 0 ? void 0 : prop.info) === null || _d === void 0 ? void 0 : _d.infoUrl) || (prop === null || prop === void 0 ? void 0 : prop.infoUrl) || ((_e = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _e === void 0 ? void 0 : _e.infoUrl) || null;
+        if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+          if (infoUrl !== _lastInfoUrl) {
+            try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch (e) { }
+            _lastInfoUrl = infoUrl;
+            loadInfoUrl(infoUrl);
+          }
         }
-        catch (e) { }
-        // process inspector layers array if present
-        try {
-            const arr = (prop === null || prop === void 0 ? void 0 : prop.layers) || ((_f = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _f === void 0 ? void 0 : _f.layers);
-            const arrJson = arr ? JSON.stringify(arr) : null;
-            if (arrJson && arrJson !== _lastInspectorLayersJson) {
-                _lastInspectorLayersJson = arrJson;
-                try {
-                    sendLog('[poll] inspector.layers changed -> processing');
-                }
-                catch (e) { }
-                addXyzLayersFromArray(arr);
-            }
+      }
+      catch (e) { }
+      // process inspector layers array if present
+      try {
+        const arr = (prop === null || prop === void 0 ? void 0 : prop.layers) || ((_f = prop === null || prop === void 0 ? void 0 : prop.settings) === null || _f === void 0 ? void 0 : _f.layers);
+        const arrJson = arr ? JSON.stringify(arr) : null;
+        if (arrJson && arrJson !== _lastInspectorLayersJson) {
+          _lastInspectorLayersJson = arrJson;
+          try { sendLog('[poll] inspector.layers changed -> processing'); } catch (e) { }
+          addXyzLayersFromArray(arr);
         }
-        catch (e) { }
-        // inspectorApply trigger handling removed (debugging helper no longer present)
+      }
+      catch (e) { }
+      // inspectorApply trigger handling removed (debugging helper no longer present)
     }
     catch (e) {
-        // ignore
+      // ignore
     }
-}, 300);
+
+    // schedule next poll
+    if (typeof setTimeout === 'function') {
+      try { setTimeout(poll, 300); } catch (e) { /* ignore */ }
+    }
+    else if (typeof setInterval === 'function') {
+      // unlikely in sandboxed environment, but fallback
+      try { setInterval(poll, 300); } catch (e) { /* ignore */ }
+    }
+    else {
+      try { sendLog('[poll] polling not available in this environment'); } catch (e) { }
+    }
+  };
+
+  // start immediately (use setTimeout if available so first poll is async)
+  if (typeof setTimeout === 'function') {
+    try { setTimeout(poll, 0); } catch (e) { poll(); }
+  }
+  else if (typeof setInterval === 'function') {
+    try { setInterval(poll, 300); } catch (e) { poll(); }
+  }
+  else {
+    // last resort: run once
+    poll();
+  }
+})();
 // Add multiple layers from an array of inspector entries
 function addXyzLayersFromArray(items) {
     if (!items || !Array.isArray(items))
