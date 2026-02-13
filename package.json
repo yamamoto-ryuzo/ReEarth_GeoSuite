@@ -4,9 +4,7 @@
   "description": "ReEarth_GeoSuite: Re:Earth版 geo_suite を目指す統合プラグイン／ツール集",
   "main": "index.js",
   "scripts": {
-    "package": "python scripts/package_geo_suite.py",
-    "build": "node scripts/build_plugin.js",
-    "zip": "powershell -ExecutionPolicy Bypass -File scripts/package-plugin.ps1"
+    "build": "node scripts/build_plugin.js"
   },
   "keywords": [
     "reearth",
