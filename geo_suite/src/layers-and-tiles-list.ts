@@ -774,8 +774,9 @@ function processInspectorText(text) {
   let infoUrlFound = null;
 
   lines.forEach(line => {
+    const lowerLine = line.toLowerCase();
     // Info URL: "info: https://..." or "info:https://..."
-    if (line.startsWith('info:')) {
+    if (lowerLine.startsWith('info:')) {
       const url = line.substring(5).trim();
       if (url) {
         infoUrlFound = url;
@@ -786,9 +787,9 @@ function processInspectorText(text) {
     
     // Tile: "xyz: Name | URL" or just "Name | URL" or "URL"
     let tileStr = line;
-    if (line.startsWith('xyz:')) {
+    if (lowerLine.startsWith('xyz:')) {
       tileStr = line.substring(4).trim();
-    } else if (line.startsWith('tile:')) {
+    } else if (lowerLine.startsWith('tile:')) {
         // backward compatibility
         tileStr = line.substring(5).trim();
     }
