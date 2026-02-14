@@ -492,20 +492,19 @@ function getUI() {
           });
         }
 
-      // Add event listener for 'Show/Hide'
-      document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
-        checkbox.addEventListener("change", event => {
-          const layerId = event.target.getAttribute("data-layer-id");
-          const isVisible = event.target.checked;
-
-          if (layerId) {
-            // Send a message to the parent window for show/hide action
-            parent.postMessage({
-              type: isVisible ? "show" : "hide",
-              layerId: layerId
-            }, "*");
-          }
-        });
+      // Add event listener for 'Show/Hide' only for plugin-added (user) layers
+      Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]')).forEach(checkbox => {
+        try {
+          checkbox.addEventListener('change', event => {
+            try {
+              const layerId = event.target.getAttribute('data-layer-id');
+              const isVisible = !!event.target.checked;
+              if (layerId) {
+                parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {}
       });
 
       // Add event listener for 'FlyTo' button
