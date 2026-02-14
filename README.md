@@ -18,7 +18,7 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順
-- 各機能の使い方（レイヤー管理、Terrain/Shadow切替、Info表示など）
+- 各機能の使い方（レイヤー管理、Terrain/Shadow切替、Info表示など） 
 - Re:Earth Visualizer の関連リンク
 
 ## 配布・デプロイについて
