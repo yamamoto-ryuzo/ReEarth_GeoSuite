@@ -372,24 +372,11 @@
                 <p>本プロジェクトは <strong>Vercel</strong> を利用した開発・配信フローを採用しています。GitHub にプッシュするだけで自動的にビルドされ、Re:Earth にインストール可能な URL が発行されます。</p>
                 
                 <h3 style="margin-top: 20px; color: #667eea;">自動デプロイ</h3>
-                    <p>このリポジトリは <strong>Vercel</strong> と連携しています。`main` ブランチに push すると Vercel が自動でビルドを実行し、公開用ディレクトリ（`dist/`）をデプロイします。ビルドの概要は次の通りです：</p>
-                    <ul style="margin:8px 0 16px 20px;">
-                        <li>`npm ci` による依存のインストール（`package-lock.json` を使用）</li>
-                        <li>`npm run build`（`package.json` の `build`）で TypeScript をコンパイルして `dist/` を生成</li>
-                        <li>生成された `dist/` の中身が Vercel により公開される（`vercel.json` の `distDir`= `dist`）</li>
-                    </ul>
-                    <p>変更を反映するには通常この手順で十分です：</p>
-                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; margin: 15px 0;"><code>git add .
-    git commit -m "update plugin"
-    git push origin main
-    # → Vercel が自動的にビルド＆デプロイします</code></pre>
-                    <p>デプロイで 404 やエラーが出る場合は Vercel のデプロイログを確認してください。特に注目する箇所：</p>
-                    <ul style="margin:8px 0 16px 20px;">
-                        <li>`npm ci`（依存の取得）</li>
-                        <li>`npm run build` / `tsc`（TypeScript のビルド）</li>
-                        <li>`dist/` の生成と静的ファイルのコピー</li>
-                    </ul>
-                    <p>必要なら私がローカルでビルドして `dist/` の中身や ZIP（`dist/artifacts/geo_suite.zip`）を作成できます。また、デプロイを即時に反映したい場合は Vercel ダッシュボードの「Redeploy」や `vercel` CLI を使って手動デプロイしてください。</p>
+                <p>コードを修正して GitHub にプッシュすると、数秒で自動的にデプロイされます：</p>
+                <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; margin: 15px 0;"><code>git add .
+git commit -m "update plugin"
+git push origin main
+# → 自動的にVercelでビルド＆デプロイ！</code></pre>
             </section>
             
             <section>
