@@ -1,0 +1,201 @@
+/* Import preset UI from Re:Earth */
+@import url("https://reearth.github.io/visualizer-plugin-sample-data/public/css/preset-ui.css");
+
+/* Root styles */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+  line-height: 1.6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Tab Bar Styles */
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+  padding-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.tab.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+}
+
+.tab.minimize {
+  width: 32px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.tab.minimize[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Minimized state */
+.primary-background.minimized {
+  padding: 6px;
+}
+
+.primary-background.minimized #layers-panel,
+.primary-background.minimized #settings-panel,
+.primary-background.minimized #info-panel {
+  display: none !important;
+}
+
+/* Primary Background */
+.primary-background {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Layers List */
+.layers-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.layers-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 0;
+  padding: 2px 8px;
+  line-height: 1;
+  background-color: rgba(248, 249, 250, 0.6);
+  min-height: 1.2em;
+  border-radius: 4px;
+}
+
+.layer-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Move Button */
+.move-btn {
+  padding: 0;
+  width: 1.6em;
+  height: 1.6em;
+  min-width: 1.6em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+/* Info Panel */
+#info-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+#info-panel iframe {
+  flex: 1;
+  align-self: stretch;
+}
+
+/* Terrain Row */
+.terrain-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  min-height: 28px;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.terrain-row .text-md {
+  font-size: 14px;
+  margin: 0;
+  flex: 0 1 auto;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.toggle input {
+  width: auto;
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* Utility Classes */
+.p-16 {
+  padding: 16px;
+}
+
+.p-8 {
+  padding: 8px;
+}
+
+.rounded-sm {
+  border-radius: 4px;
+}
+
+.text-md {
+  font-size: 14px;
+}
+
+.text-sm {
+  font-size: 12px;
+}
+
+.btn-primary {
+  background-color: #667eea;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #5568d3;
+}
+
