@@ -23,10 +23,6 @@ extensions:
             - id: inspectorText
               title: "設定テキスト"
               description: |
-                行ごとに設定を記述します。プレフィックスは大文字小文字を区別しません。
-                - xyz: タイル名 | URL
-                  例: xyz: OpenStreetMap | https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
-                  例: xyz: GSI 標準 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
-                - info: InfoページのURL
+                https://re-earth-geo-suite.vercel.app/ を参照して、以下の形式で設定を入力してください。
               type: string
               ui: multiline
