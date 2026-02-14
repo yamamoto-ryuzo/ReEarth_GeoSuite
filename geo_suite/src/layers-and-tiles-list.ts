@@ -75,7 +75,6 @@ function getUI() {
   .primary-background.minimized{ padding:6px; }
   .primary-background.minimized #layers-panel,
   .primary-background.minimized #settings-panel,
-  .primary-background.minimized #camera-panel,
   .primary-background.minimized #info-panel{ display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
@@ -168,14 +167,12 @@ function getUI() {
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
-    <button class="tab" data-target="camera-panel" aria-selected="false">Cam</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
   </div>
 
   <div id="layers-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
-      <div id="refresh-btn-container"></div>
     </div>
     <ul class="layers-list">
       ${presetLayerItems}
@@ -224,13 +221,7 @@ function getUI() {
     </div>
   </div>
 
-    <div id="camera-panel" style="display:none;">
-    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; flex-direction:column; align-items:flex-start;">
-      <div class="text-md" id="camera-position">Position: —</div>
-      <div class="text-md" id="camera-rotation">Heading/Pitch/Roll: —</div>
-    </div>
-  </div>
-
+ 
 </div>
 
 <script>
@@ -265,7 +256,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','info-panel','camera-panel','settings-panel'].forEach(id => {
+              ['layers-panel','info-panel','settings-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -457,31 +448,7 @@ function getUI() {
               });
             }
 
-        // Create dynamic Refresh button for layers (mirrors previous camera-refresh pattern)
-        try {
-          if (!document.getElementById('refresh-layers-btn')) {
-            const container = document.getElementById('refresh-btn-container');
-            if (container) {
-              const btn = document.createElement('button');
-              btn.id = 'refresh-layers-btn';
-              btn.className = 'btn-primary p-8';
-              btn.style.minHeight = '28px';
-              btn.textContent = 'Refresh';
-              container.appendChild(btn);
-              try {
-                btn.addEventListener('click', function () {
-                  let originalText = 'Refresh';
-                  try { originalText = (btn.textContent && String(btn.textContent)) || originalText; } catch (e) {}
-                  try { btn.textContent = 'Refreshing...'; btn.disabled = true; } catch (e) {}
-                  try { console.log('[UI] refresh-layers-btn clicked (requesting layers)'); } catch (e) {}
-                  try { if (window.parent) { window.parent.postMessage({ type: 'requestLayers' }, "*"); } } catch (e) {}
-                  try { setTimeout(function () { try { btn.textContent = originalText; btn.disabled = false; } catch (e) {} }, 800); } catch (e) {}
-                });
-              } catch (e) {}
-            }
-          }
-        } catch (e) {}
-
+        
       // Add event listener for 'Show/Hide' only for plugin-added (user) layers
       Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]')).forEach(checkbox => {
         try {
