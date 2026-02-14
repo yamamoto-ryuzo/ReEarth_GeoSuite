@@ -765,6 +765,16 @@ function addXyzLayer(url, title) {
 
 tryInitFromProperty();
 
+// Also process any inspector text/config present at init
+try {
+  const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+  const textInit = (propInit.settings && propInit.settings.inspectorText) || propInit.inspectorText;
+  if (textInit && typeof textInit === 'string' && textInit.trim()) {
+    try { sendLog('[init] processing inspector text at startup'); } catch(e){}
+    processInspectorText(textInit);
+  }
+} catch(e) {}
+
 // Parse and apply settings from text
 function processInspectorText(text) {
   if (!text || typeof text !== 'string') return;
@@ -813,8 +823,6 @@ function processInspectorText(text) {
   });
 
   // Apply Info URL
-  // Force reload if it matches found URL even if unchanged, to ensure iframe loads?
-  // No, only if changed to avoid reloading loop.
   if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
     try { sendLog('[processInspectorText] applying INFO url:', infoUrlFound); } catch(e){}
     _lastInfoUrl = infoUrlFound;
@@ -829,30 +837,41 @@ function processInspectorText(text) {
 }
 
 // Poll for property changes (Inspector edits) and react to URL changes
-setInterval(() => {
-  try {
-    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    
-    // Check inspectorText (Unified settings)
-    // Note: In Re:Earth, if 'settings' group is not a list, its fields are directly under 'settings' object.
-    const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
-    
-    if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
-       _lastInspectorLayersJson = text; // use text as cache key
-       try { sendLog('[poll] inspector text changed, length:', text.length); } catch(e){}
-       processInspectorText(text);
-    }
+// Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
+(function startPolling() {
+  const poll = function() {
+    try {
+      const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+      
+      // Check inspectorText (Unified settings)
+      const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+      
+      if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
+         _lastInspectorLayersJson = text; // use text as cache key
+         try { sendLog('[poll] inspector text changed, length:', text.length); } catch(e){}
+         processInspectorText(text);
+      }
 
-    // Legacy/Direct checks (fallback)
-    const url = prop?.inspectorUrl || prop?.inspectorText; // fallback if just a url string
-    if (url && typeof url === "string" && /^https?:\/\//.test(url) && url !== _lastInspectorUrl) {
-        _lastInspectorUrl = url;
-        addXyzLayer(url, prop?.inspectorTitle);
+      // Legacy/Direct checks (fallback)
+      const url = prop?.inspectorUrl || prop?.inspectorText; // fallback if just a url string
+      if (url && typeof url === "string" && /^https?:\/\//.test(url) && url !== _lastInspectorUrl) {
+          _lastInspectorUrl = url;
+          addXyzLayer(url, prop?.inspectorTitle);
+      }
+    } catch (e) {
+      // ignore
     }
-  } catch (e) {
-    // ignore
+  };
+
+  if (typeof setInterval === 'function') {
+    setInterval(poll, 500);
+  } else if (typeof setTimeout === 'function') {
+    (function loop() { poll(); setTimeout(loop, 500); })();
+  } else {
+    // Fallback: run once if no timing APIs are available
+    try { poll(); } catch (e) {}
   }
-}, 500);
+})();
 
 // Add multiple layers from an array of inspector entries
 function addXyzLayersFromArray(items) {
