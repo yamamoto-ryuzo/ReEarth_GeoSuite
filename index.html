@@ -384,7 +384,8 @@ info: https://re-earth-geo-suite.vercel.app/ryu.html</code></pre>
         // 必要なURLを設定（配布用ZIPはGitHub Releasesを指す）
         window.addEventListener('DOMContentLoaded', function() {
             // pluginUrl display removed from index (GitHub repo URL omitted)
-            document.getElementById('htmlUrl').textContent = window.location.origin + '/ryu.html';
+            var htmlEl = document.getElementById('htmlUrl');
+            if (htmlEl) htmlEl.textContent = window.location.origin + '/ryu.html';
             // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
             // 開発版 ZIP の URL を設定
             var devZipEl = document.getElementById('devZipUrl');
