@@ -466,44 +466,68 @@ function getUI() {
             try {
               // Only process plugin-added layers (data-is-plugin-added="true")
               const inputs = Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]'));
-              inputs.forEach(i => {
-                try {
-                  const layerId = i.getAttribute('data-layer-id');
-                  const isVisible = !!i.checked;
-                  if (layerId && window.parent) {
-                    window.parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, "*");
+              // Use a polling implementation that works even if `setInterval` is not available in the host.
+              (function startPolling() {
+                const poll = function() {
+                  try {
+                    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+                    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
+                    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+                      const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
+                      if (url !== _lastInspectorUrl) {
+                        try { sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')'); } catch(e){}
+                        _lastInspectorUrl = url;
+                        addXyzLayer(url, title);
+                      }
+                    }
+                    // Poll for infoUrl changes
+                    try {
+                      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
+                      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+                        if (infoUrl !== _lastInfoUrl) {
+                          try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
+                          _lastInfoUrl = infoUrl;
+                          loadInfoUrl(infoUrl);
+                        }
+                      }
+                    } catch(e) {}
+                    // process inspector layers array if present
+                    try {
+                      const arr = prop?.layers || prop?.settings?.layers;
+                      const arrJson = arr ? JSON.stringify(arr) : null;
+                      if (arrJson && arrJson !== _lastInspectorLayersJson) {
+                        _lastInspectorLayersJson = arrJson;
+                        try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
+                        addXyzLayersFromArray(arr);
+                      }
+                    } catch (e) {}
+                    // process inspector text/config if present (text parser added earlier)
+                    try {
+                      const text = prop?.inspectorText || prop?.inspectorFile || prop?.settings?.inspectorText || prop?.settings?.inspectorFile || null;
+                      if (text && typeof text === 'string' && text.trim()) {
+                        const parsed = parseInspectorText(text);
+                        const parsedJson = parsed ? JSON.stringify(parsed) : null;
+                        if (parsedJson && parsedJson !== _lastInspectorLayersJson) {
+                          _lastInspectorLayersJson = parsedJson;
+                          try { sendLog('[poll] inspector.text changed -> processing'); } catch(e){}
+                          addXyzLayersFromArray(parsed);
+                        }
+                      }
+                    } catch(e) {}
+                  } catch (e) {
+                    // ignore
                   }
-                } catch (e) {}
-              });
-            } catch (e) {}
-          });
-        }
+                };
 
-      // Add event listener for 'Show/Hide'
-      document.querySelectorAll("#show-hide-layer").forEach(checkbox => {
-        checkbox.addEventListener("change", event => {
-          const layerId = event.target.getAttribute("data-layer-id");
-          const isVisible = event.target.checked;
-
-          if (layerId) {
-            // Send a message to the parent window for show/hide action
-            parent.postMessage({
-              type: isVisible ? "show" : "hide",
-              layerId: layerId
-            }, "*");
-          }
-        });
-      });
-
-      // Add event listener for 'FlyTo' button
-      document.querySelectorAll(".btn-primary").forEach(button => {
-        button.addEventListener("click", event => {
-          const layerId = event.target.getAttribute("data-layer-id");
-          if (layerId) {
-            // Send a message to the parent window for 'FlyTo' action
-            parent.postMessage({
-              type: "flyTo",
-              layerId: layerId
+                if (typeof setInterval === 'function') {
+                  setInterval(poll, 300);
+                } else if (typeof setTimeout === 'function') {
+                  (function loop() { poll(); setTimeout(loop, 300); })();
+                } else {
+                  // Fallback: run once if no timing APIs are available
+                  try { poll(); } catch (e) {}
+                }
+              )();
             }, "*");
           }
         });
