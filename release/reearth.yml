@@ -1,9 +1,0 @@
-id: layers-and-tiles-list
-name: Layers & Tiles (geo_suite plugin)
-version: "4.1.0"
-description: "Plugin: Layers and Tiles list for Re:Earth (packaged from geo_suite)"
-extensions:
-  - id: layers-and-tiles-list
-    type: widget
-    name: "Layers & Tiles"
-    entry: layers-and-tiles-list.js
