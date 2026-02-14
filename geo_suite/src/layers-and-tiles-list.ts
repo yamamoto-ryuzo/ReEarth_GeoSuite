@@ -501,9 +501,6 @@ const getUI = () => {
         }
       });
 
-      
-  });
-
   // On-screen plugin log removed (logs go to console only)
 </script>
 `;
