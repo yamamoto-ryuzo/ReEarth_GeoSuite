@@ -267,37 +267,19 @@
 
                 <div class="install-steps">
                     <h3>⚙️ Step 2: 設定方法</h3>
+                    <p>
+                        Inspector（歯車アイコン）の「一括設定」を開き、「設定テキスト」に以下の形式で行ごとに入力してください。
+                    </p>
+                    <pre><code>xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+info: https://re-earth-geo-suite.vercel.app/ryu.html</code></pre>
                     <ul>
-                        <li style="margin-bottom:10px;"><strong>🗺️ タイル一覧の追加</strong><br>
-                            Inspector（歯車アイコン）の「タイル一覧」で「項目を追加」し、XYZタイルのURLと名称を入力してください。<br>
-                            例: <code>https://tile.openstreetmap.org/{z}/{x}/{y}.png</code>
-                        </li>
-                        <li><strong>ℹ️ Info 表示の設定</strong><br>
-                            Inspector の「Info 表示」に Web ページの URL を入力すると、プラグイン内の「info」タブにそのページが表示されます。<br>
-                            プロジェクトの解説やドキュメントを表示するのに最適です。
-                        </li>
+                        <li><strong>xyz:</strong> タイル名とURLを `|` で区切って指定します。</li>
+                        <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
                     </ul>
                 </div>
                 
-                <div class="url-box">
-                    <h3>🔌 GitHubリポジトリURL</h3>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <code id="pluginUrl">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite</code>
-                        <button class="copy-btn" data-target="pluginUrl" aria-label="コピー">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
-                            <span class="visually-hidden">コピー</span>
-                        </button>
-                        <span class="copy-msg" id="pluginUrl-msg" aria-hidden="true"></span>
-                    </div>
-                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                        Inspector に設定ファイル（テキスト形式）を貼り付けることで、複数レイヤを一括で追加できます。サポートする簡易形式の例:
-                        <ul style="margin:6px 0 0 18px; font-size:0.9em; color:#666;">
-                            <li>URL を 1 行ずつ: <code>https://example.com/{z}/{x}/{y}.png</code></li>
-                            <li>タイトルと URL をパイプで区切り: <code>My Base | https://example.com/{z}/{x}/{y}.png</code></li>
-                            <li>key=value 形式（カンマ区切り可）: <code>url=https://..., title=My Base</code></li>
-                        </ul>
-                    </p>
-                </div>
+                <!-- GitHub リポジトリ URL 表示は削除されました -->
                 
                 <div class="url-box">
                     <h3>📦 ZIPファイル（配布用）</h3>
@@ -434,7 +416,7 @@
                     <li><a href="https://visualizer.developer.reearth.io/ja/plugin-api/viewer/" target="_blank" class="github-link">プラグインAPI リファレンス</a></li>
                     <li><a href="https://re-earth-geo-suite.vercel.app" target="_blank" class="github-link">Production (Vercel)</a></li>
                     <li><a href="https://vercel.com/dashboard" target="_blank" class="github-link">Vercel ダッシュボード</a></li>
-                    <li><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite" target="_blank" class="github-link">GitHub リポジトリ</a></li>
+                    <!-- GitHub リポジトリリンクは索引ページから削除 -->
                 </ul>
             </section>
         </div>
@@ -451,7 +433,7 @@
     <script>
         // 必要なURLを設定（配布用ZIPはGitHub Releasesを指す）
         window.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('pluginUrl').textContent = 'https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin';
+            // pluginUrl display removed from index (GitHub repo URL omitted)
             document.getElementById('htmlUrl').textContent = window.location.origin + '/ryu.html';
             // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
             // 開発版 ZIP の URL を設定
