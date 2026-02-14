@@ -8,6 +8,18 @@ let _lastInspectorApply = null;
 let _lastInspectorLayersJson = null;
 let _lastInfoUrl = null;
 
+// Ensure globe and scene background are white before any tiles are applied
+try {
+  if (typeof reearth !== "undefined" && reearth.viewer && reearth.viewer.overrideProperty) {
+    reearth.viewer.overrideProperty({
+      globe: { baseColor: "#ffffff" },
+      scene: { backgroundColor: "#ffffff" }
+    });
+  }
+} catch (e) {
+  console.warn("Failed to set globe/background color to white:", e);
+}
+
 const generateLayerItem = (layer, isPreset) => {
   return `
     <li>
