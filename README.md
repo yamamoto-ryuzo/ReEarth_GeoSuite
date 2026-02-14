@@ -10,33 +10,9 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 ![プラグイン画面](/image/image-3.png)
 
-## 🚀 インストール・使い方
+## 🚀 使い方
 
-### クイックスタート
-
-1. **プラグインをインストール**
-   - Re:Earth Visualizer のプラグイン画面を開く
-   - 「GitHubリポジトリをインポート」を選択
-   - リポジトリURL: `https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite` を入力
-
-2. **シーンに追加**
-   - ウィジェットタブから「Layers & Tiles」を追加
-   - 画面左側にプラグインUIが表示されます
-
-3. **一括設定（XYZタイル・INFO）**
-   - Inspector（歯車アイコン）を開き、**「一括設定」** グループの **「設定テキスト」** に設定内容を記述します。
-   - 以下の形式で行ごとに記述してください：
-
-   ```text
-   xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
-   xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
-   info: https://example.com/project-info.html
-   ```
-
-   - **XYZタイル**: `xyz: 表示名 | URL` の形式で、複数のタイルを追加できます。
-   - **Info表示**: `info: URL` の形式で、Infoタブに表示するWebページを指定します。
-
-**詳細な使い方は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
+**使い方は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
 
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順
