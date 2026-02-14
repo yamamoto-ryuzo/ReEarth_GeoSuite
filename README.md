@@ -2,6 +2,8 @@
 
 **🌐 プロジェクトサイト**: [https://re-earth-geo-suite.vercel.app/](https://re-earth-geo-suite.vercel.app/)
 
+**📝 Changelog**: [CHANGELOG.md](CHANGELOG.md) ・ **🏪 Marketplace**: https://marketplace.reearth.io/plugins/layers-and-tiles-list
+
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=flat&logo=vercel)](https://re-earth-geo-suite.vercel.app/)
 
 ## 📋 概要
@@ -25,10 +27,6 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 - サイト配信: Vercel にビルド・デプロイを任せます。リポジトリにはビルド成果物を置かず、ソースを管理してください（Vercel がビルドして公開します）。
 - プラグイン配布: GitHub Release に ZIP（リリース資産）を添付して配布します。公式の配布 URL として Release アセットを利用してください。
-
-自動化:
-
-- リリース作成ワークフロー: `.github/workflows/create-release.yml` を用意しています。タグ（`v*`）を push するか、GitHub Actions の手動実行でビルド→ZIP作成→Release作成→アセットアップロードを行います。
 
 <!-- 開発用メモは削除：ビルドはVercel/CIに委ね、配布はGitHub Releaseを推奨 -->
 
