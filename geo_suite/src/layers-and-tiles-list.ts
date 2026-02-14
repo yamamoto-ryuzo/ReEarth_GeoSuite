@@ -17,68 +17,6 @@ const generateLayerItem = (layer, isPreset) => {
           type="checkbox"
           id="show-hide-layer"
           data-layer-id="${layer.id}"
-        // Use a polling implementation that works even if `setInterval` is not available in the host.
-        (function startPolling() {
-          const poll = function() {
-            try {
-              const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-              const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
-              if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-                const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
-                if (url !== _lastInspectorUrl) {
-                  try { sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')'); } catch(e){}
-                  _lastInspectorUrl = url;
-                  addXyzLayer(url, title);
-                }
-              }
-              // Poll for infoUrl changes
-              try {
-                const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
-                if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
-                  if (infoUrl !== _lastInfoUrl) {
-                    try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
-                    _lastInfoUrl = infoUrl;
-                    loadInfoUrl(infoUrl);
-                  }
-                }
-              } catch(e) {}
-              // process inspector layers array if present
-              try {
-                const arr = prop?.layers || prop?.settings?.layers;
-                const arrJson = arr ? JSON.stringify(arr) : null;
-                if (arrJson && arrJson !== _lastInspectorLayersJson) {
-                  _lastInspectorLayersJson = arrJson;
-                  try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
-                  addXyzLayersFromArray(arr);
-                }
-              } catch (e) {}
-              // process inspector text/config if present (text parser added earlier)
-              try {
-                const text = prop?.inspectorText || prop?.inspectorFile || prop?.settings?.inspectorText || prop?.settings?.inspectorFile || null;
-                if (text && typeof text === 'string' && text.trim()) {
-                  const parsed = parseInspectorText(text);
-                  const parsedJson = parsed ? JSON.stringify(parsed) : null;
-                  if (parsedJson && parsedJson !== _lastInspectorLayersJson) {
-                    _lastInspectorLayersJson = parsedJson;
-                    try { sendLog('[poll] inspector.text changed -> processing'); } catch(e){}
-                    addXyzLayersFromArray(parsed);
-                  }
-                }
-              } catch(e) {}
-            } catch (e) {
-              // ignore
-            }
-          };
-
-          if (typeof setInterval === 'function') {
-            setInterval(poll, 300);
-          } else if (typeof setTimeout === 'function') {
-            (function loop() { poll(); setTimeout(loop, 300); })();
-          } else {
-            // Fallback: run once if no timing APIs are available
-            try { poll(); } catch (e) {}
-          }
-        })();
 
   /* Minimized state: shrink padding and hide panels */
   .primary-background.minimized{ padding:6px; }
@@ -819,88 +757,65 @@ function parseInspectorText(text) {
 }
 
 // Poll for property changes (Inspector edits) and react to URL changes
-// Poll for property changes more frequently so inspector edits reflect faster.
-setInterval(() => {
-  try {
-    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
-    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-      const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
-      if (url !== _lastInspectorUrl) {
-        sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
-        _lastInspectorUrl = url;
-        addXyzLayer(url, title);
-      }
-    }
-    // Poll for infoUrl changes
+// Use a polling implementation that works even if `setInterval` is not available in the host.
+(function startPolling() {
+  const poll = function() {
     try {
-      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
-      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
-        if (infoUrl !== _lastInfoUrl) {
-          try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
-          _lastInfoUrl = infoUrl;
-          loadInfoUrl(infoUrl);
+      const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+      const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
+      if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
+        const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
+        if (url !== _lastInspectorUrl) {
+          try { sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')'); } catch(e){}
+          _lastInspectorUrl = url;
+          addXyzLayer(url, title);
         }
       }
-    } catch(e) {}
-    // process inspector layers array if present
-    try {
-      const arr = prop?.layers || prop?.settings?.layers;
-      const arrJson = arr ? JSON.stringify(arr) : null;
-      if (arrJson && arrJson !== _lastInspectorLayersJson) {
-        _lastInspectorLayersJson = arrJson;
-        try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
-        addXyzLayersFromArray(arr);
-      }
-    } catch (e) {}
-    // process inspector text/config if present
-    try {
-      const text = prop?.inspectorText || prop?.inspectorFile || prop?.settings?.inspectorText || prop?.settings?.inspectorFile || null;
-      if (text && typeof text === 'string' && text.trim()) {
-        const parsed = parseInspectorText(text);
-        const parsedJson = parsed ? JSON.stringify(parsed) : null;
-        if (parsedJson && parsedJson !== _lastInspectorLayersJson) {
-          _lastInspectorLayersJson = parsedJson;
-          try { sendLog('[poll] inspector.text changed -> processing'); } catch(e){}
-          addXyzLayersFromArray(parsed);
+      // Poll for infoUrl changes
+      try {
+        const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
+        if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
+          if (infoUrl !== _lastInfoUrl) {
+            try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
+            _lastInfoUrl = infoUrl;
+            loadInfoUrl(infoUrl);
+          }
         }
-      }
-    } catch(e) {}
-    // inspectorApply trigger handling removed (debugging helper no longer present)
-  } catch (e) {
-    // ignore
-  }
-}, 300);
-
-// Add multiple layers from an array of inspector entries
-function addXyzLayersFromArray(items) {
-  if (!items || !Array.isArray(items)) return;
-  const existing = (reearth.layers && reearth.layers.layers) || [];
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    const u = (it.url || it.inspectorUrl || "").trim();
-    const t = (it.title || it.inspectorTitle || null);
-    if (!u) continue;
-    if (!/^https?:\/\//.test(u)) continue;
-    const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
-    const dup = existing.find(l => l && l.data && l.data.url && (l.data.url === encoded || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded) !== -1)));
-    if (dup) {
-      try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
-      continue;
+      } catch(e) {}
+      // process inspector layers array if present
+      try {
+        const arr = prop?.layers || prop?.settings?.layers;
+        const arrJson = arr ? JSON.stringify(arr) : null;
+        if (arrJson && arrJson !== _lastInspectorLayersJson) {
+          _lastInspectorLayersJson = arrJson;
+          try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
+          addXyzLayersFromArray(arr);
+        }
+      } catch (e) {}
+      // process inspector text/config if present (text parser added earlier)
+      try {
+        const text = prop?.inspectorText || prop?.inspectorFile || prop?.settings?.inspectorText || prop?.settings?.inspectorFile || null;
+        if (text && typeof text === 'string' && text.trim()) {
+          const parsed = parseInspectorText(text);
+          const parsedJson = parsed ? JSON.stringify(parsed) : null;
+          if (parsedJson && parsedJson !== _lastInspectorLayersJson) {
+            _lastInspectorLayersJson = parsedJson;
+            try { sendLog('[poll] inspector.text changed -> processing'); } catch(e){}
+            addXyzLayersFromArray(parsed);
+          }
+        }
+      } catch(e) {}
+    } catch (e) {
+      // ignore
     }
-    addXyzLayer(u, t);
-  }
-}
+  };
 
-// Send info URL to UI to load in iframe
-function loadInfoUrl(url) {
-  if (!url || typeof url !== 'string') return;
-  try {
-    try { sendLog('[loadInfo] sending URL to UI:', url); } catch(e){}
-    if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
-      reearth.ui.postMessage({ action: 'loadInfoUrl', url: url });
-    }
-  } catch (e) {
-    try { sendError('[loadInfo] ERROR:', e); } catch(err){}
+  if (typeof setInterval === 'function') {
+    setInterval(poll, 300);
+  } else if (typeof setTimeout === 'function') {
+    (function loop() { poll(); setTimeout(loop, 300); })();
+  } else {
+    // Fallback: run once if no timing APIs are available
+    try { poll(); } catch (e) {}
   }
-}
+})();
