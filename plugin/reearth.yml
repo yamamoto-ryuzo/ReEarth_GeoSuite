@@ -23,6 +23,6 @@ extensions:
             - id: inspectorText
               title: "設定テキスト"
               description: |
-                https://re-earth-geo-suite.vercel.app/ を参照して、以下の形式で設定を入力してください。
+                https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
               type: string
               ui: multiline
