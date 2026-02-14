@@ -23,17 +23,20 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
    - ウィジェットタブから「Layers & Tiles」を追加
    - 画面左側にプラグインUIが表示されます
 
-3. **XYZタイルを追加**
-   - Inspector（歯車アイコン）を開く
-   - **「タイル一覧」** グループを開き、「項目を追加」ボタンをクリック
-   - **XYZ タイル URL** に URL を入力（例: `https://example.com/{z}/{x}/{y}.png`）
-   - **レイヤ名** に表示名を入力（例: `Base Map`）
-   - 必要なだけタイルを追加できます
+3. **一括設定（XYZタイル・INFO）**
+   - Inspector（歯車アイコン）を開き、**「一括設定」** グループの **「設定テキスト」** に設定内容を記述します。
+   - 以下の形式で行ごとに記述してください：
 
-4. **Info 情報を表示**
-   - Inspector の **「Info 表示」** グループを開く
-   - **Info 表示用 URL** に Web ページの URL を入力（例: `https://example.com/project-info.html`）
-   - プラグイン画面の **「info」** タブをクリックすると、指定したページが表示されます
+   ```text
+   xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+   xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+   info: https://example.com/project-info.html
+   ```
+
+   - **XYZタイル**: `xyz: 表示名 | URL` の形式で、複数のタイルを追加できます。
+   - **Info表示**: `info: URL` の形式で、Infoタブに表示するWebページを指定します。
+
+**詳細な使い方は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
 
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順
@@ -86,57 +89,3 @@ MIT License
     <img src="https://github.com/yamamoto-ryuzo/QGIS_portable_3x/raw/master/imgs/giphy.gif" width="500" title="avvio QGIS">
   </a>
 </p>
-## Re:Earth プラグイン — GitHub からの公開とインストール
-
-以下は Re:Earth 向けプラグインを GitHub 公開リポジトリとして配布し、Re:Earth からインストールできるようにする手順です。
-
-### 必要な前提
-- **必須ファイル**: プラグインのルートに `reearth.yml` を配置する。
-- **マニフェスト内容**: `reearth.yml` で `id`, `name`, `version`, `extensions` などを定義する。
-- **拡張実装**: `extensions` に定義した拡張の ID と同名の実装ファイル（例：`test-widget` → `test-widget.js`）を同じディレクトリに置く。
-
-### 最小マニフェスト例
-```yaml
-id: test-plugin
-name: Test plugin
-version: 1.0.0
-extensions:
-   - id: test-widget
-      type: widget
-      name: Test
-```
-
-### GitHub リポジトリ側の準備
-- ディレクトリ例:
-   - your-plugin/
-      - `reearth.yml`
-      - `your-extension.js`（例：`test-widget.js`）
-- GitHub で public（公開）リポジトリにする（private は不可）。
-- `main` ブランチを使うのが無難だが、ブランチやアーカイブ指定も可能。
-- `README.md` にプラグイン概要・使い方を記載すると親切。
-
-### Re:Earth 側でのインストール手順（概要）
-1. Re:Earth のプロジェクト設定画面を開き、「Plugins」を選択。
-2. 「Personally Installed」からプラグインライブラリを開く。
-3. インストール方法で「GitHub Public Repository」を選択。
-4. リポジトリ URL を入力して「Continue」を押す。
-5. 通知が表示されればインストール成功。ウィジェットやブロック一覧に拡張が現れる。
-
-### 許可される URL 例
-- `https://github.com/USER/REPO`（`main` ブランチを使用）
-- `https://github.com/USER/REPO.git`
-- `https://github.com/USER/REPO/tree/BRANCH_NAME`（ブランチ指定）
-- `https://github.com/USER/REPO/archive/BRANCH_OR_TAG.zip`（アーカイブ指定）
-
-### Marketplace に公開したい場合
-- 不特定多数向けに配布するには、Re:Earth 公式マーケットプレイス（`reearth-marketplace`）を利用する。公式ドキュメントに従って公開フローを進めてください。
-
----
-
-## GitHub リポジトリでの直接配布（このリポジトリの場合）
-
-このリポジトリは `plugin/` ディレクトリにプラグインを配置しており、Re:Earth のインポート画面で次の URL を使って直接インストールできます。
-
-- `https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin`
-
-この方法では `plugin/reearth.yml` をルートに置いた構成を想定します。プラグイン本体の実装ファイル（`.js`）は Release アセットや別ブランチ／タグで提供する運用を推奨します。別ブランチやタグを指定する場合は `tree/BRANCH_NAME/plugin` のように指定してください。
