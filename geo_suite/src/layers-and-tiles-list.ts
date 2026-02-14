@@ -780,10 +780,13 @@ function processInspectorText(text) {
       return;
     }
     
-    // Tile: "tile: Name | URL" or just "Name | URL" or "URL"
+    // Tile: "xyz: Name | URL" or just "Name | URL" or "URL"
     let tileStr = line;
-    if (line.startsWith('tile:')) {
-      tileStr = line.substring(5).trim();
+    if (line.startsWith('xyz:')) {
+      tileStr = line.substring(4).trim();
+    } else if (line.startsWith('tile:')) {
+        // backward compatibility
+        tileStr = line.substring(5).trim();
     }
     
     // Parse tile string

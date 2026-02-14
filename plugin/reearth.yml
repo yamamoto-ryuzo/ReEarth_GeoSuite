@@ -22,6 +22,6 @@ extensions:
           fields:
             - id: inspectorText
               title: "設定テキスト"
-              description: "行ごとに設定を記述します。\n- tile: タイル名 | URL\n- info: InfoページのURL"
+              description: "行ごとに設定を記述します。\n- xyz: タイル名 | URL\n- info: InfoページのURL"
               type: string
               ui: multiline
