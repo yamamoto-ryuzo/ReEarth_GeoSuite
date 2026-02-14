@@ -7,6 +7,7 @@ let _lastInspectorUrl = null;
 let _lastInspectorApply = null;
 let _lastInspectorLayersJson = null;
 let _lastInfoUrl = null;
+let _lastInspectorBackground = null;
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -797,6 +798,24 @@ function processInspectorText(text) {
 
   lines.forEach(line => {
     const lowerLine = line.toLowerCase();
+    // Background color setting: "background: #ffffff" or "bg: #fff"
+    if (lowerLine.startsWith('background:') || lowerLine.startsWith('bg:')) {
+      const col = line.substring(line.indexOf(':') + 1).trim();
+      if (col) {
+        try { sendLog('[processInspectorText] found BACKGROUND color:', col); } catch(e){}
+        if (col !== _lastInspectorBackground) {
+          _lastInspectorBackground = col;
+          try {
+            if (reearth && reearth.viewer && typeof reearth.viewer.overrideProperty === 'function') {
+              reearth.viewer.overrideProperty({ globe: { baseColor: col }, scene: { backgroundColor: col } });
+            }
+          } catch (e) {
+            try { sendError('[processInspectorText] failed to apply background color', e); } catch(_){}
+          }
+        }
+      }
+      return;
+    }
     // Info URL: "info: https://..." or "info:https://..."
     if (lowerLine.startsWith('info:')) {
       const url = line.substring(5).trim();

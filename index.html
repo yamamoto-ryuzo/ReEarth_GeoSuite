@@ -271,9 +271,12 @@
                     </p>
                     <pre><code>xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html</code></pre>
+                    <p style="margin-top:8px; color:#444;">背景色は `background:` または `bg:` で指定します。16進表記（例: <code>#ffffff</code> / <code>#fff</code>）、RGB（例: <code>rgb(255,255,255)</code>）、CSSの色名（例: <code>white</code>）が使えます。指定するとタイルが未設定のときに地球儀とシーン背景がその色で表示されます。</p>
                     <ul>
                         <li><strong>xyz:</strong> タイル名とURLを `|` で区切って指定します。</li>
+                        <li><strong>background / bg:</strong> 地球儀とシーンの背景色を指定します（例: <code>background: #ffffff</code>）。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
                     </ul>
                 </div>
