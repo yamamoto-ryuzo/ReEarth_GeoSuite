@@ -175,7 +175,7 @@ function getUI() {
   <div id="layers-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
-      <button id="refresh-layers-btn" class="btn-primary p-8" style="min-height:28px;">Refresh</button>
+      <div id="refresh-btn-container"></div>
     </div>
     <ul class="layers-list">
       ${presetLayerItems}
@@ -224,13 +224,10 @@ function getUI() {
     </div>
   </div>
 
-  <div id="camera-panel" style="display:none;">
+    <div id="camera-panel" style="display:none;">
     <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; flex-direction:column; align-items:flex-start;">
       <div class="text-md" id="camera-position">Position: —</div>
       <div class="text-md" id="camera-rotation">Heading/Pitch/Roll: —</div>
-      <div style="margin-top:8px;">
-        <button id="refreshCameraBtn" class="btn-primary p-8" style="min-height:28px;">Refresh</button>
-      </div>
     </div>
   </div>
 
@@ -460,37 +457,30 @@ function getUI() {
               });
             }
 
-        // Refresh camera button: request camera from parent/plugin
-        const refreshCameraBtn = document.getElementById('refreshCameraBtn');
-        if (refreshCameraBtn) {
-          refreshCameraBtn.addEventListener('click', function() {
-            try {
-              if (window.parent) {
-                window.parent.postMessage({ action: 'requestCamera' }, "*");
-              }
-            } catch (e) {}
-          });
-        }
-
-        // Refresh layers button: apply current checkbox states for plugin-added layers only
-        const refreshLayersBtn = document.getElementById('refresh-layers-btn');
-        if (refreshLayersBtn) {
-          refreshLayersBtn.addEventListener('click', function() {
-            try {
-              // Only process plugin-added layers (data-is-plugin-added="true")
-              const inputs = Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]'));
-              inputs.forEach(i => {
-                try {
-                  const layerId = i.getAttribute('data-layer-id');
-                  const isVisible = !!i.checked;
-                  if (layerId && window.parent) {
-                    window.parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, "*");
-                  }
-                } catch (e) {}
-              });
-            } catch (e) {}
-          });
-        }
+        // Create dynamic Refresh button for layers (mirrors previous camera-refresh pattern)
+        try {
+          if (!document.getElementById('refresh-layers-btn')) {
+            const container = document.getElementById('refresh-btn-container');
+            if (container) {
+              const btn = document.createElement('button');
+              btn.id = 'refresh-layers-btn';
+              btn.className = 'btn-primary p-8';
+              btn.style.minHeight = '28px';
+              btn.textContent = 'Refresh';
+              container.appendChild(btn);
+              try {
+                btn.addEventListener('click', function () {
+                  let originalText = 'Refresh';
+                  try { originalText = (btn.textContent && String(btn.textContent)) || originalText; } catch (e) {}
+                  try { btn.textContent = 'Refreshing...'; btn.disabled = true; } catch (e) {}
+                  try { console.log('[UI] refresh-layers-btn clicked (requesting layers)'); } catch (e) {}
+                  try { if (window.parent) { window.parent.postMessage({ type: 'requestLayers' }, "*"); } } catch (e) {}
+                  try { setTimeout(function () { try { btn.textContent = originalText; btn.disabled = false; } catch (e) {} }, 800); } catch (e) {}
+                });
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
 
       // Add event listener for 'Show/Hide' only for plugin-added (user) layers
       Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]')).forEach(checkbox => {
