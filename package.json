@@ -4,7 +4,11 @@
   "description": "ReEarth_GeoSuite: Re:Earth版 geo_suite を目指す統合プラグイン／ツール集",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -p geo_suite/tsconfig.json && rm -rf dist && mkdir -p dist && cp -r geo_suite/build/* dist/ || true && cp -r index.html ryu.html dist/ || true && cp -r image dist/ || true && mkdir -p dist/artifacts && rm -rf release && mkdir -p release && cp dist/layers-and-tiles-list.js release/ || true && if [ -f plugin/reearth.yml ]; then cp plugin/reearth.yml release/; fi && (cd release && zip -r ../dist/artifacts/geo_suite.zip .) || true && mkdir -p /vercel/output/static && cp -r dist/* /vercel/output/static || true"
+    "build": "tsc -p geo_suite/tsconfig.json && rm -rf dist && mkdir -p dist && cp -r geo_suite/build/* dist/ || true && cp -r index.html ryu.html dist/ || true && cp -r image dist/ || true && mkdir -p dist/artifacts && rm -rf release && mkdir -p release && cp dist/layers-and-tiles-list.js release/ || true && if [ -f plugin/reearth.yml ]; then cp plugin/reearth.yml release/; fi && (cd release && zip -r ../dist/artifacts/geo_suite.zip .) || true && mkdir -p /vercel/output/static && cp -r dist/* /vercel/output/static || true",
+    "dev": "vite",
+    "build:react": "vite build",
+    "preview": "vite preview",
+    "start": "vite"
   },
   "keywords": [
     "reearth",
@@ -15,6 +19,13 @@
   "author": "yamamoto-ryuzo",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vite": "^5.1.0",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }
