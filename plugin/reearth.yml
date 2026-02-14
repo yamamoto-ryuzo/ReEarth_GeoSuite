@@ -17,14 +17,6 @@ extensions:
     schema:
       version: 2
       groups:
-        - id: settings
-          title: "一括設定"
-          fields:
-            - id: inspectorText
-              title: "設定テキスト"
-              description: "URL または 'Title | URL' を行ごとに記述"
-              type: string
-              ui: multiline
         - id: layers
           title: "タイル一覧"
           list: true
