@@ -25,10 +25,15 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 3. **XYZタイルを追加**
    - Inspector（歯車アイコン）を開く
-   - 「タイル一覧」→「+ 追加」
-   - XYZ タイル URL を入力（例: `https://example.com/{z}/{x}/{y}.png`）
+   - **「タイル一覧」** グループを開き、「項目を追加」ボタンをクリック
+   - **XYZ タイル URL** に URL を入力（例: `https://example.com/{z}/{x}/{y}.png`）
+   - **レイヤ名** に表示名を入力（例: `Base Map`）
+   - 必要なだけタイルを追加できます
 
-**詳細な使い方は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
+4. **Info 情報を表示**
+   - Inspector の **「Info 表示」** グループを開く
+   - **Info 表示用 URL** に Web ページの URL を入力（例: `https://example.com/project-info.html`）
+   - プラグイン画面の **「info」** タブをクリックすると、指定したページが表示されます
 
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順

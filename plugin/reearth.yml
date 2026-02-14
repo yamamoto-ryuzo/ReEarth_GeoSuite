@@ -17,30 +17,11 @@ extensions:
     schema:
       version: 2
       groups:
-        - id: layers
-          title: "タイル一覧"
-          list: true
-          representativeField: title
-          expandable: true
+        - id: settings
+          title: "一括設定"
           fields:
-            - id: url
-              title: "XYZ タイル URL"
+            - id: inspectorText
+              title: "設定テキスト"
+              description: "行ごとに設定を記述します。\n- tile: タイル名 | URL\n- info: InfoページのURL"
               type: string
-              placeholder: "https://{s}.example.com/{z}/{x}/{y}.png"
-              ui: string
-            - id: title
-              title: "レイヤ名"
-              type: string
-              placeholder: "表示名 (例: ベースマップ用)"
-              ui: string
-        - id: info
-          title: "Info 表示"
-          list: false
-          expandable: true
-          fields:
-            - id: infoUrl
-              title: "Info 表示用 URL"
-              description: "info タブに表示する HTML を取得する URL を指定します。"
-              type: string
-              placeholder: "https://example.com/info.html"
-              ui: string
+              ui: multiline

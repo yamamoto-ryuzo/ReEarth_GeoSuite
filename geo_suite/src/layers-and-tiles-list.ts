@@ -765,46 +765,79 @@ function addXyzLayer(url, title) {
 
 tryInitFromProperty();
 
+// Parse and apply settings from text
+function processInspectorText(text) {
+  if (!text || typeof text !== 'string') return;
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const tiles = [];
+  let infoUrlFound = null;
+
+  lines.forEach(line => {
+    // Info URL: "info: https://..."
+    if (line.startsWith('info:')) {
+      const url = line.substring(5).trim();
+      if (url) infoUrlFound = url;
+      return;
+    }
+    
+    // Tile: "tile: Name | URL" or just "Name | URL" or "URL"
+    let tileStr = line;
+    if (line.startsWith('tile:')) {
+      tileStr = line.substring(5).trim();
+    }
+    
+    // Parse tile string
+    let url = null;
+    let title = null;
+    
+    if (tileStr.indexOf('|') !== -1) {
+      const parts = tileStr.split('|').map(p => p.trim());
+      // simple heuristic: which part looks like a URL?
+      if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
+      else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+    } else {
+      if (tileStr.startsWith('http')) url = tileStr;
+    }
+
+    if (url) {
+      tiles.push({ url, title });
+    }
+  });
+
+  // Apply Info URL
+  if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
+    _lastInfoUrl = infoUrlFound;
+    loadInfoUrl(infoUrlFound);
+  }
+
+  // Apply Tiles
+  if (tiles.length > 0) {
+    addXyzLayersFromArray(tiles);
+  }
+}
+
 // Poll for property changes (Inspector edits) and react to URL changes
-// Poll for property changes more frequently so inspector edits reflect faster.
 setInterval(() => {
   try {
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-    const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
-    if (url && typeof url === "string" && /^https?:\/\//.test(url)) {
-      const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
-      if (url !== _lastInspectorUrl) {
-        sendLog('[poll] detected URL change ->', url, '(last:', _lastInspectorUrl, ')');
-        _lastInspectorUrl = url;
-        addXyzLayer(url, title);
-      }
+    
+    // Check inspectorText (Unified settings)
+    const text = prop?.settings?.inspectorText || prop?.inspectorText;
+    if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
+       _lastInspectorLayersJson = text; // use text as cache key
+       processInspectorText(text);
     }
-    // Poll for infoUrl changes
-    try {
-      const infoUrl = prop?.info?.infoUrl || prop?.infoUrl || prop?.settings?.infoUrl || null;
-      if (infoUrl && typeof infoUrl === 'string' && /^https?:\/\//.test(infoUrl)) {
-        if (infoUrl !== _lastInfoUrl) {
-          try { sendLog('[poll] detected infoUrl change ->', infoUrl, '(last:', _lastInfoUrl, ')'); } catch(e){}
-          _lastInfoUrl = infoUrl;
-          loadInfoUrl(infoUrl);
-        }
-      }
-    } catch(e) {}
-    // process inspector layers array if present
-    try {
-      const arr = prop?.layers || prop?.settings?.layers;
-      const arrJson = arr ? JSON.stringify(arr) : null;
-      if (arrJson && arrJson !== _lastInspectorLayersJson) {
-        _lastInspectorLayersJson = arrJson;
-        try { sendLog('[poll] inspector.layers changed -> processing'); } catch(e){}
-        addXyzLayersFromArray(arr);
-      }
-    } catch (e) {}
-    // inspectorApply trigger handling removed (debugging helper no longer present)
+
+    // Legacy/Direct checks (fallback)
+    const url = prop?.inspectorUrl || prop?.inspectorText; // fallback if just a url string
+    if (url && typeof url === "string" && /^https?:\/\//.test(url) && url !== _lastInspectorUrl) {
+        _lastInspectorUrl = url;
+        addXyzLayer(url, prop?.inspectorTitle);
+    }
   } catch (e) {
     // ignore
   }
-}, 300);
+}, 500);
 
 // Add multiple layers from an array of inspector entries
 function addXyzLayersFromArray(items) {
