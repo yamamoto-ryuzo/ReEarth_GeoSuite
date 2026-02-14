@@ -765,6 +765,67 @@ function addXyzLayer(url, title) {
 
 tryInitFromProperty();
 
+// Also process any inspector text/config present at init
+try {
+  const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+  const textInit = propInit?.inspectorText || propInit?.inspectorFile || propInit?.settings?.inspectorText || propInit?.settings?.inspectorFile || null;
+  if (textInit && typeof textInit === 'string' && textInit.trim()) {
+    try { sendLog('[init] processing inspector text at startup'); } catch(e){}
+    const parsedInit = parseInspectorText(textInit);
+    if (parsedInit && parsedInit.length) addXyzLayersFromArray(parsedInit);
+  }
+} catch(e) {}
+
+// Parse a simple text-based inspector config into layer entries.
+// Supported line formats:
+// - plain URL per line: https://.../tiles/{z}/{x}/{y}.png
+// - title and URL on one line: My Base Map | https://... or https://... | My Base Map
+// - key=value pairs separated by commas (url=..., title=...)
+function parseInspectorText(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !/^\s*#/.test(l));
+  const out = [];
+  for (const line of lines) {
+    // key=value pairs (comma or semicolon separated)
+    if (/[a-zA-Z0-9_-]+\s*=/.test(line)) {
+      const obj = {};
+      line.split(/[;,]+/).forEach(part => {
+        const idx = part.indexOf('=');
+        if (idx > 0) {
+          const k = part.slice(0, idx).trim();
+          const v = part.slice(idx + 1).trim();
+          obj[k] = v;
+        }
+      });
+      const url = obj.url || obj.inspectorUrl || obj.href || null;
+      const title = obj.title || obj.name || obj.label || null;
+      if (url) out.push({ url: url.trim(), title: title ? title.trim() : null });
+      continue;
+    }
+    // pipe-separated title|url or url|title
+    if (line.indexOf('|') !== -1) {
+      const parts = line.split('|').map(p => p.trim()).filter(Boolean);
+      if (parts.length === 2) {
+        // decide which is URL
+        const a = parts[0], b = parts[1];
+        const url = a.startsWith('http') ? a : (b.startsWith('http') ? b : null);
+        const title = url === a ? b : (url === b ? a : null);
+        if (url) out.push({ url, title });
+        continue;
+      }
+    }
+    // otherwise try to extract first URL in the line
+    const m = line.match(/https?:\/\/\S+/);
+    if (m) {
+      const url = m[0];
+      const title = line.replace(url, '').replace(/^[|\-:\s]+/, '').trim() || null;
+      out.push({ url, title });
+      continue;
+    }
+  }
+  return out;
+}
+
 // Poll for property changes (Inspector edits) and react to URL changes
 // Poll for property changes more frequently so inspector edits reflect faster.
 setInterval(() => {
@@ -800,6 +861,19 @@ setInterval(() => {
         addXyzLayersFromArray(arr);
       }
     } catch (e) {}
+    // process inspector text/config if present
+    try {
+      const text = prop?.inspectorText || prop?.inspectorFile || prop?.settings?.inspectorText || prop?.settings?.inspectorFile || null;
+      if (text && typeof text === 'string' && text.trim()) {
+        const parsed = parseInspectorText(text);
+        const parsedJson = parsed ? JSON.stringify(parsed) : null;
+        if (parsedJson && parsedJson !== _lastInspectorLayersJson) {
+          _lastInspectorLayersJson = parsedJson;
+          try { sendLog('[poll] inspector.text changed -> processing'); } catch(e){}
+          addXyzLayersFromArray(parsed);
+        }
+      }
+    } catch(e) {}
     // inspectorApply trigger handling removed (debugging helper no longer present)
   } catch (e) {
     // ignore
