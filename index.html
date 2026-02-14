@@ -294,6 +294,21 @@
                         ※ 配布用ZIPは GitHub Release のアセットから入手してください
                     </p>
                 </div>
+
+                <div class="url-box">
+                    <h3>📦 ZIPファイル（開発版）</h3>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <code id="devZipUrl">https://re-earth-geo-suite.vercel.app/artifacts/geo_suite.zip</code>
+                        <button class="copy-btn" data-target="devZipUrl" aria-label="コピー">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
+                            <span class="visually-hidden">コピー</span>
+                        </button>
+                        <span class="copy-msg" id="devZipUrl-msg" aria-hidden="true"></span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        ※ こちらは Vercel による開発版 ZIP です。開発用の配布物であり、本番リリースとは別です。
+                    </p>
+                </div>
                 
                 <div class="url-box">
                     <h3>🌐 Info表示用HTML サンプル</h3>
@@ -369,7 +384,7 @@
             
             <section>
                 <h2>🛠️ 開発について</h2>
-                <p>本プロジェクトは <strong>Vercel</strong> を利用した開発・配信フローを採用しています。GitHub にプッシュするだけで自動的にビルドされ、Re:Earth にインストール可能な URL が発行されます。</p>
+                <p>本プロジェクトは <strong>Vercel</strong> を利用した開発・配信フローを採用しています。ここで公開しているサイトは <strong>開発版（Developer Preview）</strong> として自動デプロイされています。開発版はテストや動作確認を目的としており、本番向けの安定版リリースとは別扱いです。ZIP や公開URLは予告なく更新・上書きされる可能性があります。</p>
                 
                 <h3 style="margin-top: 20px; color: #667eea;">自動デプロイ</h3>
                     <p>このリポジトリは <strong>Vercel</strong> と連携しています。`main` ブランチに push すると Vercel が自動でビルドを実行し、公開用ディレクトリ（`dist/`）をデプロイします。ビルドの概要は次の通りです：</p>
@@ -420,6 +435,9 @@
             document.getElementById('pluginUrl').textContent = 'https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/plugin';
             document.getElementById('htmlUrl').textContent = window.location.origin + '/ryu.html';
             // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
+            // 開発版 ZIP の URL を設定
+            var devZipEl = document.getElementById('devZipUrl');
+            if (devZipEl) devZipEl.textContent = window.location.origin + '/artifacts/geo_suite.zip';
 
             // コピー機能の初期化
             document.querySelectorAll('.copy-btn').forEach(function(btn) {
