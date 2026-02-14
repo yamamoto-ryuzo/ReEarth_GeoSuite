@@ -17,7 +17,69 @@ const generateLayerItem = (layer, isPreset) => {
           type="checkbox"
           id="show-hide-layer"
           data-layer-id="${layer.id}"
+          data-is-plugin-added="${isPreset ? 'false' : 'true'}"
+          ${layer.visible ? "checked" : ""}
+        />
+        <button class="move-btn" onclick="try{window.parent.postMessage({type:'flyTo', layerId:'${layer.id}'}, '*')}catch(e){}" title="Fly to">
+          🚀
+        </button>
+      </div>
+    </li>
+  `;
+};
 
+const getUI = () => {
+  // Get current layers from ReEarth
+  const layers = reearth.layers.layers || [];
+  
+  // Separate preset (ReEarth internal) and user-added (XYZ) layers
+  // Note: Since we cannot easily distinguish, we treat all existing layers as 'preset'
+  // except those we explicitly added via this plugin (tracked in _pluginAddedLayerIds if possible,
+  // or just render all layers).
+  
+  // For simplicity, render all layers found in reearth.layers
+  // But we want to categorize them if possible.
+  // Let's filter layers that are likely imagery/tiles.
+  
+  const presetLayers = [];
+  const userLayers = [];
+  
+  layers.forEach(l => {
+    // If we tracked it as added by us, put in userLayers, else preset
+    // (This tracking is ephemeral in the plugin instance, so upon reload it might be lost unless persisted)
+    // For now, just dump all into presetLayers list for simplicity, or split by type if known.
+    if (_pluginAddedLayerIds.has(l.id)) {
+      userLayers.push(l);
+    } else {
+      presetLayers.push(l);
+    }
+  });
+
+  const presetLayerItems = presetLayers.map(l => generateLayerItem(l, true)).join("");
+  const userLayerItems = userLayers.map(l => generateLayerItem(l, false)).join("");
+
+  return `
+<style>
+  html, body { 
+    margin: 0; 
+    padding: 0; 
+    width: 100%; 
+    height: 100%; 
+    overflow: hidden;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+  }
+  
+  /* Reset button styles */
+  button {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  
   /* Minimized state: shrink padding and hide panels */
   .primary-background.minimized{ padding:6px; }
   .primary-background.minimized #layers-panel,
