@@ -768,15 +768,19 @@ tryInitFromProperty();
 // Parse and apply settings from text
 function processInspectorText(text) {
   if (!text || typeof text !== 'string') return;
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  // Handle various newline formats
+  const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   const tiles = [];
   let infoUrlFound = null;
 
   lines.forEach(line => {
-    // Info URL: "info: https://..."
+    // Info URL: "info: https://..." or "info:https://..."
     if (line.startsWith('info:')) {
       const url = line.substring(5).trim();
-      if (url) infoUrlFound = url;
+      if (url) {
+        infoUrlFound = url;
+        try { sendLog('[processInspectorText] found INFO url:', url); } catch(e){}
+      }
       return;
     }
     
@@ -808,13 +812,17 @@ function processInspectorText(text) {
   });
 
   // Apply Info URL
+  // Force reload if it matches found URL even if unchanged, to ensure iframe loads?
+  // No, only if changed to avoid reloading loop.
   if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
+    try { sendLog('[processInspectorText] applying INFO url:', infoUrlFound); } catch(e){}
     _lastInfoUrl = infoUrlFound;
     loadInfoUrl(infoUrlFound);
   }
 
   // Apply Tiles
   if (tiles.length > 0) {
+    try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
     addXyzLayersFromArray(tiles);
   }
 }
@@ -825,9 +833,12 @@ setInterval(() => {
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
     
     // Check inspectorText (Unified settings)
-    const text = prop?.settings?.inspectorText || prop?.inspectorText;
+    // Note: In Re:Earth, if 'settings' group is not a list, its fields are directly under 'settings' object.
+    const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+    
     if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
        _lastInspectorLayersJson = text; // use text as cache key
+       try { sendLog('[poll] inspector text changed, length:', text.length); } catch(e){}
        processInspectorText(text);
     }
 
