@@ -1,6 +1,6 @@
 {
   "name": "geo_suite",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "ReEarth_GeoSuite: Re:Earth版 geo_suite を目指す統合プラグイン／ツール集",
   "main": "index.js",
   "scripts": {

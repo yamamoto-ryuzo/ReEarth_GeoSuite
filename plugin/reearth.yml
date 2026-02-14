@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "5.0.0"
+version: "5.1.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
