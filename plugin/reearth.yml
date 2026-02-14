@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "4.1.0"
+version: "5.0.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -23,8 +23,10 @@ extensions:
             - id: inspectorText
               title: "設定テキスト"
               description: |
-                行ごとに設定を記述します。
+                行ごとに設定を記述します。プレフィックスは大文字小文字を区別しません。
                 - xyz: タイル名 | URL
+                  例: xyz: OpenStreetMap | https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+                  例: xyz: GSI 標準 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
                 - info: InfoページのURL
               type: string
               ui: multiline
