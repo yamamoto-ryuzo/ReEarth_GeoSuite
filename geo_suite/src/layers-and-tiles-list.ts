@@ -735,12 +735,21 @@ reearth.extension.on("message", (msg) => {
           // 現在のカメラ情報を取得（未指定パラメータのデフォルトに使用）
           let curHeight = 1000, curHeading = 0, curPitch = -Math.PI / 6, curRoll = 0;
           try {
-            const cur = (reearth.camera && typeof reearth.camera.position === 'object') ? reearth.camera.position : null;
+            let cur = null;
+            try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
+            if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
+            if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
+            if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
+            if (!cur) try { cur = reearth.camera || null; } catch(e){}
             if (cur) {
-              if (typeof cur.height === 'number') curHeight = cur.height;
-              if (typeof cur.heading === 'number') curHeading = cur.heading;
-              if (typeof cur.pitch === 'number') curPitch = cur.pitch;
-              if (typeof cur.roll === 'number') curRoll = cur.roll;
+              const h = cur.height ?? cur.altitude ?? cur.alt ?? null;
+              const hd = cur.heading ?? cur.yaw ?? cur.h ?? null;
+              const p = cur.pitch ?? cur.tilt ?? cur.p ?? null;
+              const r = cur.roll ?? cur.r ?? null;
+              if (typeof h === 'number') curHeight = h;
+              if (typeof hd === 'number') curHeading = hd;
+              if (typeof p === 'number') curPitch = p;
+              if (typeof r === 'number') curRoll = r;
             }
           } catch(e){}
           reearth.camera.flyTo({
@@ -1100,19 +1109,33 @@ function processInspectorText(text) {
 
     // Send current camera position to UI for the editable fields
     try {
-      const cur = (reearth.camera && typeof reearth.camera.position === 'object') ? reearth.camera.position : null;
+      // Try multiple API paths for camera position
+      let cur = null;
+      try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
+      if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
+      if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
+      if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
+      if (!cur) try { cur = reearth.camera || null; } catch(e){}
       if (cur && reearth.ui && typeof reearth.ui.postMessage === 'function') {
         const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : 0;
-        reearth.ui.postMessage({
-          action: 'updateCameraFields',
-          camera: {
-            lat: typeof cur.lat === 'number' ? Math.round(cur.lat * 1000000) / 1000000 : 0,
-            lng: typeof cur.lng === 'number' ? Math.round(cur.lng * 1000000) / 1000000 : 0,
-            height: typeof cur.height === 'number' ? Math.round(cur.height * 10) / 10 : 1000,
-            heading: rad2deg(cur.heading),
-            pitch: rad2deg(cur.pitch),
-          }
-        });
+        // Camera properties may use different key names
+        const lat = cur.lat ?? cur.latitude ?? null;
+        const lng = cur.lng ?? cur.longitude ?? cur.lon ?? null;
+        const h = cur.height ?? cur.altitude ?? cur.alt ?? null;
+        const heading = cur.heading ?? cur.yaw ?? cur.h ?? null;
+        const pitch = cur.pitch ?? cur.tilt ?? cur.p ?? null;
+        if (lat !== null && lng !== null) {
+          reearth.ui.postMessage({
+            action: 'updateCameraFields',
+            camera: {
+              lat: typeof lat === 'number' ? Math.round(lat * 1000000) / 1000000 : 0,
+              lng: typeof lng === 'number' ? Math.round(lng * 1000000) / 1000000 : 0,
+              height: typeof h === 'number' ? Math.round(h * 10) / 10 : 1000,
+              heading: rad2deg(heading),
+              pitch: rad2deg(pitch),
+            }
+          });
+        }
       }
     } catch(e) {}
   };
