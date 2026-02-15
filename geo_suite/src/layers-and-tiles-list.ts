@@ -61,12 +61,11 @@ function getUI() {
   const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
   const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
 
-  // Generate camera preset buttons (with update button)
+  // Generate camera preset buttons
   const camButtons = _cameraPresets.map((cam, i) => `
     <li>
       <span class="cam-title">${cam.title}</span>
       <div class="actions">
-        <button class="btn-primary p-8 cam-update-btn" data-cam-index="${i}" aria-label="Update ${cam.title}" title="現在のカメラで更新">🔄</button>
         <button class="btn-primary p-8 cam-btn" data-cam-index="${i}" aria-label="FlyTo ${cam.title}">▶</button>
       </div>
     </li>
@@ -180,36 +179,47 @@ function getUI() {
   .cam-current{
     background: rgba(248,249,250,0.8);
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
     margin-top: 10px;
+    box-sizing: border-box;
+    width: 100%;
+    overflow: hidden;
   }
   .cam-grid{
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4px 8px;
+    gap: 3px 6px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .cam-grid .cam-cell{
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
   }
   .cam-grid .cam-cell.full{ grid-column: 1 / -1; }
   .cam-current label{
-    font-size: 0.75em;
+    font-size: 0.7em;
     color: #555;
-    min-width: 2em;
+    min-width: 2.2em;
+    max-width: 2.2em;
     text-align: right;
     white-space: nowrap;
+    flex-shrink: 0;
   }
   .cam-current input{
     flex: 1;
     min-width: 0;
+    width: 0;
     border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 2px 4px;
-    font-size: 0.8em;
-    height: 22px;
+    border-radius: 3px;
+    padding: 1px 3px;
+    font-size: 0.75em;
+    height: 20px;
     background: #fff;
+    box-sizing: border-box;
   }
   .cam-current input:focus{
     outline: 2px solid #667eea;
@@ -274,7 +284,7 @@ function getUI() {
         <div class="cam-cell full"><label>H(m)</label><input type="number" step="any" id="cam-height" value="1000"></div>
       </div>
       <div style="display:flex;gap:6px;margin-top:4px;">
-        <button class="btn-primary cam-flyto-btn" id="cam-refresh" style="flex:1;">🔄 更新</button>
+        <button class="btn-primary cam-flyto-btn" id="cam-refresh" style="flex:1;">🔄 Refresh</button>
         <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto" style="flex:1;">▶ FlyTo</button>
       </div>
     </div>
@@ -584,19 +594,6 @@ function getUI() {
           if (camIndex !== null && camIndex !== undefined) {
             parent.postMessage({
               action: "flyToCamera",
-              camIndex: parseInt(camIndex)
-            }, "*");
-          }
-        });
-      });
-
-      // Add event listener for camera preset 'Update' buttons
-      document.querySelectorAll(".cam-update-btn").forEach(button => {
-        button.addEventListener("click", event => {
-          const camIndex = event.target.getAttribute("data-cam-index");
-          if (camIndex !== null && camIndex !== undefined) {
-            parent.postMessage({
-              action: "updateCamPreset",
               camIndex: parseInt(camIndex)
             }, "*");
           }
