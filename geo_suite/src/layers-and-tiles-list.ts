@@ -9,6 +9,7 @@ let _lastInspectorLayersJson = null;
 let _lastInfoUrl = null;
 let _lastInspectorBackground = null;
 let _cameraPresets = [];
+let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -60,11 +61,12 @@ function getUI() {
   const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
   const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
 
-  // Generate camera preset buttons
+  // Generate camera preset buttons (with update button)
   const camButtons = _cameraPresets.map((cam, i) => `
     <li>
       <span class="cam-title">${cam.title}</span>
       <div class="actions">
+        <button class="btn-primary p-8 cam-update-btn" data-cam-index="${i}" aria-label="Update ${cam.title}" title="現在のカメラで更新">🔄</button>
         <button class="btn-primary p-8 cam-btn" data-cam-index="${i}" aria-label="FlyTo ${cam.title}">▶</button>
       </div>
     </li>
@@ -174,32 +176,39 @@ function getUI() {
     margin: 0;
   }
 
-  /* Camera current state display */
+  /* Camera current state display - compact 2-col layout */
   .cam-current{
     background: rgba(248,249,250,0.8);
     border-radius: 6px;
     padding: 8px;
-    margin-bottom: 10px;
+    margin-top: 10px;
   }
-  .cam-current .cam-row{
+  .cam-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+  }
+  .cam-grid .cam-cell{
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin: 3px 0;
+    gap: 4px;
   }
+  .cam-grid .cam-cell.full{ grid-column: 1 / -1; }
   .cam-current label{
-    font-size: 0.8em;
+    font-size: 0.75em;
     color: #555;
-    min-width: 2.5em;
+    min-width: 2em;
     text-align: right;
+    white-space: nowrap;
   }
   .cam-current input{
     flex: 1;
+    min-width: 0;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 0.85em;
-    height: 24px;
+    padding: 2px 4px;
+    font-size: 0.8em;
+    height: 22px;
     background: #fff;
   }
   .cam-current input:focus{
@@ -207,12 +216,11 @@ function getUI() {
     border-color: #667eea;
   }
   .cam-flyto-btn{
-    width: 100%;
-    margin-top: 6px;
-    padding: 4px 8px;
+    margin-top: 4px;
+    padding: 3px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 0.85em;
   }
 
   /* Terrain row: compact, text left, toggle right */
@@ -254,20 +262,22 @@ function getUI() {
   </div>
 
   <div id="cams-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
+    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
     <div class="cam-current">
-      <div style="font-weight:600;margin-bottom:4px;font-size:0.9em;">Current Camera</div>
-      <div class="cam-row"><label>Lat</label><input type="number" step="any" id="cam-lat" value="0"></div>
-      <div class="cam-row"><label>Lng</label><input type="number" step="any" id="cam-lng" value="0"></div>
-      <div class="cam-row"><label>H(m)</label><input type="number" step="any" id="cam-height" value="1000"></div>
-      <div class="cam-row"><label>Dir°</label><input type="number" step="any" id="cam-heading" value="0"></div>
-      <div class="cam-row"><label>Tilt°</label><input type="number" step="any" id="cam-pitch" value="0"></div>
-      <div style="display:flex;gap:6px;margin-top:6px;">
+      <div style="font-weight:600;margin-bottom:4px;font-size:0.85em;">Current Camera</div>
+      <div class="cam-grid">
+        <div class="cam-cell"><label>Lat</label><input type="number" step="any" id="cam-lat" value="0"></div>
+        <div class="cam-cell"><label>Lng</label><input type="number" step="any" id="cam-lng" value="0"></div>
+        <div class="cam-cell"><label>Dir°</label><input type="number" step="any" id="cam-heading" value="0"></div>
+        <div class="cam-cell"><label>Tilt°</label><input type="number" step="any" id="cam-pitch" value="0"></div>
+        <div class="cam-cell full"><label>H(m)</label><input type="number" step="any" id="cam-height" value="1000"></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px;">
         <button class="btn-primary cam-flyto-btn" id="cam-refresh" style="flex:1;">🔄 更新</button>
         <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto" style="flex:1;">▶ FlyTo</button>
       </div>
     </div>
-    <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
-    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
   </div>
 
   <div id="info-panel" style="display:none;">
@@ -580,6 +590,19 @@ function getUI() {
         });
       });
 
+      // Add event listener for camera preset 'Update' buttons
+      document.querySelectorAll(".cam-update-btn").forEach(button => {
+        button.addEventListener("click", event => {
+          const camIndex = event.target.getAttribute("data-cam-index");
+          if (camIndex !== null && camIndex !== undefined) {
+            parent.postMessage({
+              action: "updateCamPreset",
+              camIndex: parseInt(camIndex)
+            }, "*");
+          }
+        });
+      });
+
       // Manual FlyTo from editable camera fields
       const manualFlyBtn = document.getElementById('cam-manual-flyto');
       if (manualFlyBtn) {
@@ -747,6 +770,41 @@ reearth.extension.on("message", (msg) => {
         }
       } catch(e) {
         try { sendError('[requestCamera] error:', e); } catch(err){}
+      }
+    } else if (msg.action === "updateCamPreset") {
+      // プリセットを現在のカメラ位置で更新し、inspectorText も書き換える
+      try {
+        const idx = msg.camIndex;
+        if (typeof idx === 'number' && _cameraPresets[idx]) {
+          // 現在のカメラ取得
+          let cur = null;
+          try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
+          if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
+          if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
+          if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
+          if (!cur) try { cur = reearth.camera || null; } catch(e){}
+          if (cur) {
+            const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : 0;
+            const lat = cur.lat ?? cur.latitude ?? 0;
+            const lng = cur.lng ?? cur.longitude ?? cur.lon ?? 0;
+            const h = cur.height ?? cur.altitude ?? cur.alt ?? 1000;
+            const heading = cur.heading ?? cur.yaw ?? 0;
+            const pitch = cur.pitch ?? cur.tilt ?? 0;
+            // プリセット更新
+            _cameraPresets[idx].lat = typeof lat === 'number' ? Math.round(lat * 1000000) / 1000000 : 0;
+            _cameraPresets[idx].lng = typeof lng === 'number' ? Math.round(lng * 1000000) / 1000000 : 0;
+            _cameraPresets[idx].height = typeof h === 'number' ? Math.round(h * 10) / 10 : 1000;
+            _cameraPresets[idx].heading = heading;
+            _cameraPresets[idx].pitch = pitch;
+            // inspectorText を再構築
+            rebuildInspectorText();
+            // UI 再レンダリング
+            try { reearth.ui.show(getUI()); } catch(e){}
+            try { sendLog('[updateCamPreset] updated preset', idx, _cameraPresets[idx].title); } catch(e){}
+          }
+        }
+      } catch(e) {
+        try { sendError('[updateCamPreset] error:', e); } catch(err){}
       }
     } else if (msg.action === "flyToManual") {
       try {
@@ -986,6 +1044,38 @@ try {
   }
 } catch(e) {}
 
+// Rebuild inspectorText from non-cam lines + current _cameraPresets
+function rebuildInspectorText() {
+  try {
+    const lines = [];
+    // Non-cam lines first (background, info, tiles)
+    _inspectorNonCamLines.forEach(function(l) { lines.push(l); });
+    // Cam presets
+    _cameraPresets.forEach(function(cam) {
+      const rad2deg = function(r) { return typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : 0; };
+      let camLine = 'cam:' + (cam.title || 'Camera') + '|' + cam.lat + '|' + cam.lng;
+      if (cam.height !== null && cam.height !== undefined) camLine += '|h=' + cam.height;
+      if (cam.heading !== null && cam.heading !== undefined) camLine += '|d=' + rad2deg(cam.heading);
+      if (cam.pitch !== null && cam.pitch !== undefined) camLine += '|p=' + rad2deg(cam.pitch);
+      lines.push(camLine);
+    });
+    const newText = lines.join('\n');
+    // Update cache so polling doesn't re-parse the same text we just wrote
+    _lastInspectorLayersJson = newText;
+    // Write back to property
+    try {
+      if (reearth.extension && reearth.extension.widget && typeof reearth.extension.widget.setPropertyValue === 'function') {
+        reearth.extension.widget.setPropertyValue('settings', 'inspectorText', newText);
+      }
+    } catch(e2) {
+      try { sendLog('[rebuildInspectorText] setPropertyValue not available, cache only'); } catch(_){}
+    }
+    try { sendLog('[rebuildInspectorText] rebuilt:', newText.substring(0, 200)); } catch(e){}
+  } catch(e) {
+    try { sendError('[rebuildInspectorText] error:', e); } catch(_){}
+  }
+}
+
 // Parse and apply settings from text
 function processInspectorText(text) {
   if (!text || typeof text !== 'string') return;
@@ -994,6 +1084,7 @@ function processInspectorText(text) {
   const tiles = [];
   let infoUrlFound = null;
   const camsFound = [];
+  const nonCamLines = [];  // preserve non-cam lines for rebuild
 
   lines.forEach(line => {
     const lowerLine = line.toLowerCase();
@@ -1013,6 +1104,7 @@ function processInspectorText(text) {
           }
         }
       }
+      nonCamLines.push(line);
       return;
     }
     // Info URL: "info: https://..." or "info:https://..."
@@ -1022,6 +1114,7 @@ function processInspectorText(text) {
         infoUrlFound = url;
         try { sendLog('[processInspectorText] found INFO url:', url); } catch(e){}
       }
+      nonCamLines.push(line);
       return;
     }
 
@@ -1105,6 +1198,7 @@ function processInspectorText(text) {
     if (url) {
       tiles.push({ url, title });
     }
+    nonCamLines.push(line);
   });
 
   // Apply Info URL
@@ -1113,6 +1207,9 @@ function processInspectorText(text) {
     _lastInfoUrl = infoUrlFound;
     loadInfoUrl(infoUrlFound);
   }
+
+  // Preserve non-cam lines for rebuild
+  _inspectorNonCamLines = nonCamLines;
 
   // Apply Camera Presets
   _cameraPresets = camsFound;
