@@ -214,7 +214,7 @@ function getUI() {
 
   <div id="cams-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
-    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|高度m<br>cam:タイトル|緯度|経度|高度m|方位°|傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|5000|0|-30</div>'}
+    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
   </div>
 
   <div id="info-panel" style="display:none;">
@@ -623,13 +623,24 @@ reearth.extension.on("message", (msg) => {
         const idx = msg.camIndex;
         if (typeof idx === 'number' && _cameraPresets[idx]) {
           const cam = _cameraPresets[idx];
+          // 現在のカメラ情報を取得（未指定パラメータのデフォルトに使用）
+          let curHeight = 1000, curHeading = 0, curPitch = -Math.PI / 6, curRoll = 0;
+          try {
+            const cur = (reearth.camera && typeof reearth.camera.position === 'object') ? reearth.camera.position : null;
+            if (cur) {
+              if (typeof cur.height === 'number') curHeight = cur.height;
+              if (typeof cur.heading === 'number') curHeading = cur.heading;
+              if (typeof cur.pitch === 'number') curPitch = cur.pitch;
+              if (typeof cur.roll === 'number') curRoll = cur.roll;
+            }
+          } catch(e){}
           reearth.camera.flyTo({
             lat: cam.lat,
             lng: cam.lng,
-            height: cam.height || 1000,
-            heading: cam.heading || 0,
-            pitch: cam.pitch || -Math.PI / 6,
-            roll: 0,
+            height: cam.height !== null ? cam.height : curHeight,
+            heading: cam.heading !== null ? cam.heading : curHeading,
+            pitch: cam.pitch !== null ? cam.pitch : curPitch,
+            roll: curRoll,
           }, { duration: 2 });
           try { sendLog('[flyToCamera] flying to:', cam.title, cam.lat, cam.lng); } catch(e){}
         }
@@ -850,7 +861,9 @@ function processInspectorText(text) {
       return;
     }
 
-    // Camera preset: "cam:タイトル|緯度|経度|高度|方位°|傾き°"
+    // Camera preset: "cam:タイトル|緯度|経度" + optional h=高度 d=方位° p=傾き°
+    // Named params (any order): cam:タイトル|緯度|経度|h=5000|d=90|p=-30
+    // Positional (backward compat): cam:タイトル|緯度|経度|高度|方位|傾き
     if (lowerLine.startsWith('cam:')) {
       const camStr = line.substring(4).trim();
       const parts = camStr.split('|').map(p => p.trim());
@@ -858,16 +871,46 @@ function processInspectorText(text) {
         const lat = parseFloat(parts[1]);
         const lng = parseFloat(parts[2]);
         if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          let height = null;
+          let heading = null;
+          let pitch = null;
+          // Check remaining parts for named or positional params
+          const extras = parts.slice(3);
+          const hasNamedParam = extras.some(e => /^[hdp]=/i.test(e));
+          if (hasNamedParam) {
+            // Named parameter mode: h=高度 d=方位° p=傾き°
+            extras.forEach(e => {
+              const m = e.match(/^([hdp])=(.+)$/i);
+              if (m) {
+                const key = m[1].toLowerCase();
+                const val = parseFloat(m[2]);
+                if (!isNaN(val)) {
+                  if (key === 'h') height = val;
+                  else if (key === 'd') heading = val * Math.PI / 180;
+                  else if (key === 'p') pitch = val * Math.PI / 180;
+                }
+              }
+            });
+          } else {
+            // Positional mode (backward compat): 高度|方位|傾き
+            if (extras.length > 0 && extras[0] !== '') height = parseFloat(extras[0]);
+            if (extras.length > 1 && extras[1] !== '') heading = parseFloat(extras[1]) * Math.PI / 180;
+            if (extras.length > 2 && extras[2] !== '') pitch = parseFloat(extras[2]) * Math.PI / 180;
+            // NaN check
+            if (height !== null && isNaN(height)) height = null;
+            if (heading !== null && isNaN(heading)) heading = null;
+            if (pitch !== null && isNaN(pitch)) pitch = null;
+          }
           const cam = {
             title: parts[0] || ('Camera ' + (camsFound.length + 1)),
             lat: lat,
             lng: lng,
-            height: parts.length > 3 && parts[3] ? parseFloat(parts[3]) : 1000,
-            heading: parts.length > 4 && parts[4] ? parseFloat(parts[4]) * Math.PI / 180 : 0,
-            pitch: parts.length > 5 && parts[5] ? parseFloat(parts[5]) * Math.PI / 180 : -Math.PI / 6,
+            height: height,
+            heading: heading,
+            pitch: pitch,
           };
           camsFound.push(cam);
-          try { sendLog('[processInspectorText] found CAM:', cam.title, cam.lat, cam.lng); } catch(e){}
+          try { sendLog('[processInspectorText] found CAM:', cam.title, cam.lat, cam.lng, 'h:', cam.height, 'd:', cam.heading, 'p:', cam.pitch); } catch(e){}
         }
       }
       return;

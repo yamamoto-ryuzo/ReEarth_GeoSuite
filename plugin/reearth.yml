@@ -29,7 +29,8 @@ extensions:
                 background: #ffffff
                 info: https://...
                 cam: タイトル|緯度|経度
-                cam: タイトル|緯度|経度|高度m
-                cam: タイトル|緯度|経度|高度m|方位°|傾き°
+                cam: タイトル|緯度|経度|h=高度m
+                cam: タイトル|緯度|経度|h=高度m|d=方位°|p=傾き°
+                ※ h/d/p は省略可。省略時は現在のカメラ設定を維持。
               type: string
               ui: multiline

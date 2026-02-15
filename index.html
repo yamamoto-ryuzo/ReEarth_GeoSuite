@@ -278,14 +278,14 @@ xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.6812|139.7671
-cam:富士山|35.3606|138.7274|5000|0|-30
-cam:大阪城|34.6873|135.5262|800|90|-20</code></pre>
+cam:富士山|35.3606|138.7274|h=5000|p=-30
+cam:大阪城|34.6873|135.5262|h=800|d=90|p=-20</code></pre>
                     <p style="margin-top:8px; color:#444;">背景色は `background:` または `bg:` で指定します。16進表記（例: <code>#ffffff</code> / <code>#fff</code>）、RGB（例: <code>rgb(255,255,255)</code>）、CSSの色名（例: <code>white</code>）が使えます。指定するとタイルが未設定のときに地球儀とシーン背景がその色で表示されます。</p>
                     <ul>
                         <li><strong>xyz:</strong> タイル名とURLを `|` で区切って指定します。</li>
                         <li><strong>background / bg:</strong> 地球儀とシーンの背景色を指定します（例: <code>background: #ffffff</code>）。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
-                        <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|高度m|方位°|傾き°</code> を追加できます。Camsタブに一覧表示され、ボタンクリックでカメラが移動します。</li>
+                        <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を任意の順序で追加できます。未指定のパラメータは現在のカメラ設定を維持します。Camsタブに一覧表示され、ボタンクリックでカメラが移動します。</li>
                     </ul>
                 </div>
                 
