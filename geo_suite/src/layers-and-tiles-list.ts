@@ -909,10 +909,28 @@ reearth.extension.on("message", (msg) => {
       reearth.camera.flyTo(msg.layerId, { duration: 2 });
       break;
     case "hide":
-      reearth.layers.hide(msg.layerId);
+      try {
+        reearth.layers.hide(msg.layerId);
+      } catch(e1) {
+        try {
+          // fallback: use override for system/preset layers
+          reearth.layers.override(msg.layerId, { visible: false });
+        } catch(e2) {
+          try { sendError('[hide] both hide and override failed', msg.layerId, e1, e2); } catch(_){}
+        }
+      }
       break;
     case "show":
-      reearth.layers.show(msg.layerId);
+      try {
+        reearth.layers.show(msg.layerId);
+      } catch(e1) {
+        try {
+          // fallback: use override for system/preset layers
+          reearth.layers.override(msg.layerId, { visible: true });
+        } catch(e2) {
+          try { sendError('[show] both show and override failed', msg.layerId, e1, e2); } catch(_){}
+        }
+      }
       break;
     case "inspectorText":
       try {
