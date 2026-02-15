@@ -264,9 +264,12 @@ function getUI() {
   <div id="layers-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
+      <div style="flex:0 0 auto; margin-left:12px;">
+        <a href="../index.html#system-layer-note" target="_blank" style="font-size:0.85em;color:#666;text-decoration:none;border:1px solid rgba(0,0,0,0.04);padding:4px 8px;border-radius:6px;">注意</a>
+      </div>
     </div>
     <div class="layer-note text-sm" style="color:#666;margin-bottom:8px;">
-      ※ 注意: 一部の「システム」レイヤは、システム側で初期的にONになっている場合にのみプラグインから制御可能な環境があります。操作が反映されない場合はRe:Earthのレイヤ一覧で状態を確認してください。
+      ※ 注意: システムレイヤは事前にシステム側でONにしておいてください。ONでない場合、プラグインから制御できないことがあります。操作が反映されない場合はRe:Earthのレイヤ一覧で状態を確認してください。
     </div>
     <ul class="layers-list">
       ${presetLayerItems}
