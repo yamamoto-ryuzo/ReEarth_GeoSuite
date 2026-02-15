@@ -261,7 +261,10 @@ function getUI() {
       <div class="cam-row"><label>H(m)</label><input type="number" step="any" id="cam-height" value="1000"></div>
       <div class="cam-row"><label>Dir°</label><input type="number" step="any" id="cam-heading" value="0"></div>
       <div class="cam-row"><label>Tilt°</label><input type="number" step="any" id="cam-pitch" value="0"></div>
-      <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto">▶ FlyTo</button>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button class="btn-primary cam-flyto-btn" id="cam-refresh" style="flex:1;">🔄 更新</button>
+        <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto" style="flex:1;">▶ FlyTo</button>
+      </div>
     </div>
     <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
     ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
@@ -597,19 +600,20 @@ function getUI() {
         });
       }
 
-      // Track whether the user is currently editing a camera input
-      let _camInputFocused = false;
-      document.querySelectorAll('.cam-current input').forEach(inp => {
-        inp.addEventListener('focus', () => { _camInputFocused = true; });
-        inp.addEventListener('blur', () => { _camInputFocused = false; });
-      });
+      // Camera Refresh button: request current camera from extension
+      const refreshBtn = document.getElementById('cam-refresh');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          parent.postMessage({ action: 'requestCamera' }, '*');
+        });
+      }
 
       // Listen for camera state updates from the extension
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data ? e.data : null;
           if (!msg) return;
-          if (msg.action === 'updateCameraFields' && !_camInputFocused) {
+          if (msg.action === 'updateCameraFields') {
             const c = msg.camera;
             if (!c) return;
             const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
@@ -713,6 +717,37 @@ reearth.extension.on("message", (msg) => {
       reearth.viewer.overrideProperty({
         scene: { shadow: { enabled: false } }
       });
+    } else if (msg.action === "requestCamera") {
+      // UIからのカメラ情報リクエスト：現在のカメラ位置を取得してUIに返す
+      try {
+        let cur = null;
+        try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
+        if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
+        if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
+        if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
+        if (!cur) try { cur = reearth.camera || null; } catch(e){}
+        sendLog('[requestCamera] raw camera object:', cur ? JSON.stringify(cur) : 'null');
+        if (cur && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+          const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : 0;
+          const lat = cur.lat ?? cur.latitude ?? null;
+          const lng = cur.lng ?? cur.longitude ?? cur.lon ?? null;
+          const h = cur.height ?? cur.altitude ?? cur.alt ?? null;
+          const heading = cur.heading ?? cur.yaw ?? null;
+          const pitch = cur.pitch ?? cur.tilt ?? null;
+          reearth.ui.postMessage({
+            action: 'updateCameraFields',
+            camera: {
+              lat: typeof lat === 'number' ? Math.round(lat * 1000000) / 1000000 : 0,
+              lng: typeof lng === 'number' ? Math.round(lng * 1000000) / 1000000 : 0,
+              height: typeof h === 'number' ? Math.round(h * 10) / 10 : 1000,
+              heading: rad2deg(heading),
+              pitch: rad2deg(pitch),
+            }
+          });
+        }
+      } catch(e) {
+        try { sendError('[requestCamera] error:', e); } catch(err){}
+      }
     } else if (msg.action === "flyToManual") {
       try {
         reearth.camera.flyTo({
@@ -930,13 +965,24 @@ function addXyzLayer(url, title) {
 
 tryInitFromProperty();
 
+// Default inspector text (matches reearth.yml defaultValue)
+const _defaultInspectorText = `xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+background: #ffffff
+info: https://re-earth-geo-suite.vercel.app/ryu.html
+cam:東京駅|35.6812|139.7671
+cam:富士山|35.3606|138.7274|h=5000|p=-30
+cam:大阪城|34.6873|135.5262|h=800|d=90|p=-20`;
+
 // Also process any inspector text/config present at init
 try {
   const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
   const textInit = (propInit.settings && propInit.settings.inspectorText) || propInit.inspectorText;
-  if (textInit && typeof textInit === 'string' && textInit.trim()) {
-    try { sendLog('[init] processing inspector text at startup'); } catch(e){}
-    processInspectorText(textInit);
+  // Use default text if no user-configured text exists
+  const textToProcess = (textInit && typeof textInit === 'string' && textInit.trim()) ? textInit : _defaultInspectorText;
+  if (textToProcess && textToProcess.trim()) {
+    try { sendLog('[init] processing inspector text at startup, length:', textToProcess.length, 'isDefault:', textToProcess === _defaultInspectorText); } catch(e){}
+    processInspectorText(textToProcess);
   }
 } catch(e) {}
 
@@ -1106,38 +1152,6 @@ function processInspectorText(text) {
     } catch (e) {
       // ignore
     }
-
-    // Send current camera position to UI for the editable fields
-    try {
-      // Try multiple API paths for camera position
-      let cur = null;
-      try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
-      if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
-      if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
-      if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
-      if (!cur) try { cur = reearth.camera || null; } catch(e){}
-      if (cur && reearth.ui && typeof reearth.ui.postMessage === 'function') {
-        const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : 0;
-        // Camera properties may use different key names
-        const lat = cur.lat ?? cur.latitude ?? null;
-        const lng = cur.lng ?? cur.longitude ?? cur.lon ?? null;
-        const h = cur.height ?? cur.altitude ?? cur.alt ?? null;
-        const heading = cur.heading ?? cur.yaw ?? cur.h ?? null;
-        const pitch = cur.pitch ?? cur.tilt ?? cur.p ?? null;
-        if (lat !== null && lng !== null) {
-          reearth.ui.postMessage({
-            action: 'updateCameraFields',
-            camera: {
-              lat: typeof lat === 'number' ? Math.round(lat * 1000000) / 1000000 : 0,
-              lng: typeof lng === 'number' ? Math.round(lng * 1000000) / 1000000 : 0,
-              height: typeof h === 'number' ? Math.round(h * 10) / 10 : 1000,
-              heading: rad2deg(heading),
-              pitch: rad2deg(pitch),
-            }
-          });
-        }
-      }
-    } catch(e) {}
   };
 
   if (typeof setInterval === 'function') {
