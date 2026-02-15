@@ -174,6 +174,47 @@ function getUI() {
     margin: 0;
   }
 
+  /* Camera current state display */
+  .cam-current{
+    background: rgba(248,249,250,0.8);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+  .cam-current .cam-row{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+  }
+  .cam-current label{
+    font-size: 0.8em;
+    color: #555;
+    min-width: 2.5em;
+    text-align: right;
+  }
+  .cam-current input{
+    flex: 1;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.85em;
+    height: 24px;
+    background: #fff;
+  }
+  .cam-current input:focus{
+    outline: 2px solid #667eea;
+    border-color: #667eea;
+  }
+  .cam-flyto-btn{
+    width: 100%;
+    margin-top: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+
   /* Terrain row: compact, text left, toggle right */
   .terrain-row{
     display: flex;
@@ -213,6 +254,15 @@ function getUI() {
   </div>
 
   <div id="cams-panel" style="display:none;">
+    <div class="cam-current">
+      <div style="font-weight:600;margin-bottom:4px;font-size:0.9em;">Current Camera</div>
+      <div class="cam-row"><label>Lat</label><input type="number" step="any" id="cam-lat" value="0"></div>
+      <div class="cam-row"><label>Lng</label><input type="number" step="any" id="cam-lng" value="0"></div>
+      <div class="cam-row"><label>H(m)</label><input type="number" step="any" id="cam-height" value="1000"></div>
+      <div class="cam-row"><label>Dir°</label><input type="number" step="any" id="cam-heading" value="0"></div>
+      <div class="cam-row"><label>Tilt°</label><input type="number" step="any" id="cam-pitch" value="0"></div>
+      <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto">▶ FlyTo</button>
+    </div>
     <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
     ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
   </div>
@@ -527,6 +577,51 @@ function getUI() {
         });
       });
 
+      // Manual FlyTo from editable camera fields
+      const manualFlyBtn = document.getElementById('cam-manual-flyto');
+      if (manualFlyBtn) {
+        manualFlyBtn.addEventListener('click', function() {
+          const lat = parseFloat(document.getElementById('cam-lat').value);
+          const lng = parseFloat(document.getElementById('cam-lng').value);
+          const height = parseFloat(document.getElementById('cam-height').value);
+          const heading = parseFloat(document.getElementById('cam-heading').value);
+          const pitch = parseFloat(document.getElementById('cam-pitch').value);
+          parent.postMessage({
+            action: 'flyToManual',
+            lat: isNaN(lat) ? 0 : lat,
+            lng: isNaN(lng) ? 0 : lng,
+            height: isNaN(height) ? 1000 : height,
+            heading: isNaN(heading) ? 0 : heading,
+            pitch: isNaN(pitch) ? 0 : pitch,
+          }, '*');
+        });
+      }
+
+      // Track whether the user is currently editing a camera input
+      let _camInputFocused = false;
+      document.querySelectorAll('.cam-current input').forEach(inp => {
+        inp.addEventListener('focus', () => { _camInputFocused = true; });
+        inp.addEventListener('blur', () => { _camInputFocused = false; });
+      });
+
+      // Listen for camera state updates from the extension
+      window.addEventListener('message', function(e) {
+        try {
+          const msg = e && e.data ? e.data : null;
+          if (!msg) return;
+          if (msg.action === 'updateCameraFields' && !_camInputFocused) {
+            const c = msg.camera;
+            if (!c) return;
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+            setVal('cam-lat', c.lat);
+            setVal('cam-lng', c.lng);
+            setVal('cam-height', c.height);
+            setVal('cam-heading', c.heading);
+            setVal('cam-pitch', c.pitch);
+          }
+        } catch(e){}
+      });
+
       
   });
 
@@ -618,6 +713,20 @@ reearth.extension.on("message", (msg) => {
       reearth.viewer.overrideProperty({
         scene: { shadow: { enabled: false } }
       });
+    } else if (msg.action === "flyToManual") {
+      try {
+        reearth.camera.flyTo({
+          lat: msg.lat,
+          lng: msg.lng,
+          height: msg.height,
+          heading: msg.heading * Math.PI / 180,
+          pitch: msg.pitch * Math.PI / 180,
+          roll: 0,
+        }, { duration: 2 });
+        try { sendLog('[flyToManual]', msg.lat, msg.lng, msg.height, msg.heading, msg.pitch); } catch(e){}
+      } catch(e) {
+        try { sendError('[flyToManual] error:', e); } catch(err){}
+      }
     } else if (msg.action === "flyToCamera") {
       try {
         const idx = msg.camIndex;
@@ -988,6 +1097,24 @@ function processInspectorText(text) {
     } catch (e) {
       // ignore
     }
+
+    // Send current camera position to UI for the editable fields
+    try {
+      const cur = (reearth.camera && typeof reearth.camera.position === 'object') ? reearth.camera.position : null;
+      if (cur && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+        const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : 0;
+        reearth.ui.postMessage({
+          action: 'updateCameraFields',
+          camera: {
+            lat: typeof cur.lat === 'number' ? Math.round(cur.lat * 1000000) / 1000000 : 0,
+            lng: typeof cur.lng === 'number' ? Math.round(cur.lng * 1000000) / 1000000 : 0,
+            height: typeof cur.height === 'number' ? Math.round(cur.height * 10) / 10 : 1000,
+            heading: rad2deg(cur.heading),
+            pitch: rad2deg(cur.pitch),
+          }
+        });
+      }
+    } catch(e) {}
   };
 
   if (typeof setInterval === 'function') {
