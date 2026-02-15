@@ -265,6 +265,9 @@ function getUI() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
     </div>
+    <div class="layer-note text-sm" style="color:#666;margin-bottom:8px;">
+      ※ 注意: 一部の「システム」レイヤは、システム側で初期的にONになっている場合にのみプラグインから制御可能な環境があります。操作が反映されない場合はRe:Earthのレイヤ一覧で状態を確認してください。
+    </div>
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
