@@ -719,23 +719,31 @@ reearth.extension.on("message", (msg) => {
   // Handle action-based messages from the UI (terrain toggle)
   if (msg && msg.action) {
     if (msg.action === "activateTerrain") {
+      const bg = _lastInspectorBackground || "#ffffff";
       reearth.viewer.overrideProperty({
         terrain: { enabled: true },
-        globe: { depthTestAgainstTerrain: true },
+        globe: { depthTestAgainstTerrain: true, baseColor: bg },
+        scene: { backgroundColor: bg },
       });
     } else if (msg.action === "deactivateTerrain") {
+      const bg = _lastInspectorBackground || "#ffffff";
       reearth.viewer.overrideProperty({
         terrain: { enabled: false },
-        globe: { depthTestAgainstTerrain: false },
+        globe: { depthTestAgainstTerrain: false, baseColor: bg },
+        scene: { backgroundColor: bg },
       });
     }
     else if (msg.action === "activateShadow") {
+      const bg = _lastInspectorBackground || "#ffffff";
       reearth.viewer.overrideProperty({
-        scene: { shadow: { enabled: true } }
+        scene: { shadow: { enabled: true }, backgroundColor: bg },
+        globe: { baseColor: bg },
       });
     } else if (msg.action === "deactivateShadow") {
+      const bg = _lastInspectorBackground || "#ffffff";
       reearth.viewer.overrideProperty({
-        scene: { shadow: { enabled: false } }
+        scene: { shadow: { enabled: false }, backgroundColor: bg },
+        globe: { baseColor: bg },
       });
     } else if (msg.action === "requestCamera") {
       // UIからのカメラ情報リクエスト：現在のカメラ位置を取得してUIに返す
