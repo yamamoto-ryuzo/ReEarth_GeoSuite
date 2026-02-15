@@ -713,6 +713,43 @@ function safeStringify(obj) {
   }
 }
 
+// Try multiple available APIs to set layer visibility, then re-render UI
+function setLayerVisibility(layerId, visible) {
+  if (!layerId) return false;
+  let success = false;
+  try {
+    try { sendLog('[setLayerVisibility] trying layers.show/hide', layerId, visible); } catch(_){}
+    if (reearth.layers && typeof reearth.layers.hide === 'function' && typeof reearth.layers.show === 'function') {
+      try {
+        if (visible) reearth.layers.show(layerId); else reearth.layers.hide(layerId);
+        success = true;
+        try { sendLog('[setLayerVisibility] used layers.show/hide'); } catch(_){}
+      } catch (e) {
+        try { sendLog('[setLayerVisibility] layers.show/hide threw', e); } catch(_){}
+      }
+    }
+    // Try update API
+    if (!success && reearth.layers && typeof reearth.layers.update === 'function') {
+      try { reearth.layers.update({ id: layerId, visible: !!visible }); success = true; try { sendLog('[setLayerVisibility] used layers.update'); } catch(_){} } catch (e) { try { sendLog('[setLayerVisibility] layers.update threw', e); } catch(_){} }
+    }
+    // Try override
+    if (!success && reearth.layers && typeof reearth.layers.override === 'function') {
+      try { reearth.layers.override(layerId, { visible: !!visible }); success = true; try { sendLog('[setLayerVisibility] used layers.override'); } catch(_){} } catch (e) { try { sendLog('[setLayerVisibility] layers.override threw', e); } catch(_){} }
+    }
+    // Try overrideProperty
+    if (!success && reearth.layers && typeof reearth.layers.overrideProperty === 'function') {
+      try { reearth.layers.overrideProperty(layerId, { visible: !!visible }); success = true; try { sendLog('[setLayerVisibility] used layers.overrideProperty'); } catch(_){} } catch (e) { try { sendLog('[setLayerVisibility] layers.overrideProperty threw', e); } catch(_){} }
+    }
+  } catch (e) {
+    try { sendError('[setLayerVisibility] unexpected error', e); } catch(_){}
+  }
+  try {
+    // try to re-render UI to reflect new state
+    if (reearth.ui && typeof reearth.ui.show === 'function') reearth.ui.show(getUI());
+  } catch (e) {}
+  return success;
+}
+
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
@@ -910,26 +947,16 @@ reearth.extension.on("message", (msg) => {
       break;
     case "hide":
       try {
-        reearth.layers.hide(msg.layerId);
-      } catch(e1) {
-        try {
-          // fallback: use override for system/preset layers
-          reearth.layers.override(msg.layerId, { visible: false });
-        } catch(e2) {
-          try { sendError('[hide] both hide and override failed', msg.layerId, e1, e2); } catch(_){}
-        }
+        setLayerVisibility(msg.layerId, false);
+      } catch (e) {
+        try { sendError('[hide] error setting visibility', msg.layerId, e); } catch(_){}
       }
       break;
     case "show":
       try {
-        reearth.layers.show(msg.layerId);
-      } catch(e1) {
-        try {
-          // fallback: use override for system/preset layers
-          reearth.layers.override(msg.layerId, { visible: true });
-        } catch(e2) {
-          try { sendError('[show] both show and override failed', msg.layerId, e1, e2); } catch(_){}
-        }
+        setLayerVisibility(msg.layerId, true);
+      } catch (e) {
+        try { sendError('[show] error setting visibility', msg.layerId, e); } catch(_){}
       }
       break;
     case "inspectorText":
