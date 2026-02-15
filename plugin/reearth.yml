@@ -26,3 +26,11 @@ extensions:
                 https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
               type: string
               ui: multiline
+              defaultValue: |
+                xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+                xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+                background: #ffffff
+                info: https://re-earth-geo-suite.vercel.app/ryu.html
+                cam:東京駅|35.6812|139.7671
+                cam:富士山|35.3606|138.7274|h=5000|p=-30
+                cam:大阪城|34.6873|135.5262|h=800|d=90|p=-20
