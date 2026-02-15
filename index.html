@@ -26,7 +26,7 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
+            overflow: visible;
         }
         
         header {
@@ -132,6 +132,13 @@
             border-radius: 8px;
             border-left: 4px solid #ffc107;
             margin: 20px 0;
+        }
+
+        /* Ensure long notice text wraps and doesn't get clipped */
+        .install-steps p, .install-steps div, .install-steps li {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            white-space: normal;
         }
         
         .install-steps ol {
