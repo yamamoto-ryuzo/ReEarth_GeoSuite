@@ -24,5 +24,12 @@ extensions:
               title: "設定テキスト"
               description: |
                 https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
+                --- 書式 ---
+                xyz: タイル名 | URL
+                background: #ffffff
+                info: https://...
+                cam: タイトル|緯度|経度
+                cam: タイトル|緯度|経度|高度m
+                cam: タイトル|緯度|経度|高度m|方位°|傾き°
               type: string
               ui: multiline

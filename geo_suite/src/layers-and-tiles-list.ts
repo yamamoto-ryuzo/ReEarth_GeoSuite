@@ -8,6 +8,7 @@ let _lastInspectorApply = null;
 let _lastInspectorLayersJson = null;
 let _lastInfoUrl = null;
 let _lastInspectorBackground = null;
+let _cameraPresets = [];
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -59,6 +60,16 @@ function getUI() {
   const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
   const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
 
+  // Generate camera preset buttons
+  const camButtons = _cameraPresets.map((cam, i) => `
+    <li>
+      <span class="cam-title">${cam.title}</span>
+      <div class="actions">
+        <button class="btn-primary p-8 cam-btn" data-cam-index="${i}" aria-label="FlyTo ${cam.title}">▶</button>
+      </div>
+    </li>
+  `).join('');
+
   // Information panel content
   // (Info content will be loaded from configured URL and injected into #info-content)
   
@@ -74,6 +85,7 @@ function getUI() {
   /* Minimized state: shrink padding and hide panels */
   .primary-background.minimized{ padding:6px; }
   .primary-background.minimized #layers-panel,
+  .primary-background.minimized #cams-panel,
   .primary-background.minimized #settings-panel,
   .primary-background.minimized #info-panel{ display:none !important; }
 
@@ -143,6 +155,25 @@ function getUI() {
   /* center content inside the move button */
   .move-btn { justify-content: center; }
 
+  /* Camera preset button */
+  .cam-btn{
+    padding: 2px 8px;
+    min-width: 2em;
+    height: 1.6em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .cam-title{
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
   /* Terrain row: compact, text left, toggle right */
   .terrain-row{
     display: flex;
@@ -166,6 +197,7 @@ function getUI() {
     <div class="tab-bar" role="tablist">
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
+    <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
   </div>
@@ -178,6 +210,11 @@ function getUI() {
       ${presetLayerItems}
     </ul>
     ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
+  </div>
+
+  <div id="cams-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
+    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|高度m<br>cam:タイトル|緯度|経度|高度m|方位°|傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|5000|0|-30</div>'}
   </div>
 
   <div id="info-panel" style="display:none;">
@@ -256,7 +293,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','info-panel','settings-panel'].forEach(id => {
+              ['layers-panel','cams-panel','info-panel','settings-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -464,15 +501,27 @@ function getUI() {
         } catch (e) {}
       });
 
-      // Add event listener for 'FlyTo' button
-      document.querySelectorAll(".btn-primary").forEach(button => {
+      // Add event listener for 'FlyTo' button (layer move)
+      document.querySelectorAll(".move-btn").forEach(button => {
         button.addEventListener("click", event => {
           const layerId = event.target.getAttribute("data-layer-id");
           if (layerId) {
-            // Send a message to the parent window for 'FlyTo' action
             parent.postMessage({
               type: "flyTo",
               layerId: layerId
+            }, "*");
+          }
+        });
+      });
+
+      // Add event listener for camera preset 'FlyTo' buttons
+      document.querySelectorAll(".cam-btn").forEach(button => {
+        button.addEventListener("click", event => {
+          const camIndex = event.target.getAttribute("data-cam-index");
+          if (camIndex !== null && camIndex !== undefined) {
+            parent.postMessage({
+              action: "flyToCamera",
+              camIndex: parseInt(camIndex)
             }, "*");
           }
         });
@@ -569,6 +618,24 @@ reearth.extension.on("message", (msg) => {
       reearth.viewer.overrideProperty({
         scene: { shadow: { enabled: false } }
       });
+    } else if (msg.action === "flyToCamera") {
+      try {
+        const idx = msg.camIndex;
+        if (typeof idx === 'number' && _cameraPresets[idx]) {
+          const cam = _cameraPresets[idx];
+          reearth.camera.flyTo({
+            lat: cam.lat,
+            lng: cam.lng,
+            height: cam.height || 1000,
+            heading: cam.heading || 0,
+            pitch: cam.pitch || -Math.PI / 6,
+            roll: 0,
+          }, { duration: 2 });
+          try { sendLog('[flyToCamera] flying to:', cam.title, cam.lat, cam.lng); } catch(e){}
+        }
+      } catch(e) {
+        try { sendError('[flyToCamera] error:', e); } catch(err){}
+      }
       } else if (msg.action === "setTime") {
         try {
           // If values are provided, convert to Date objects.
@@ -751,6 +818,7 @@ function processInspectorText(text) {
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   const tiles = [];
   let infoUrlFound = null;
+  const camsFound = [];
 
   lines.forEach(line => {
     const lowerLine = line.toLowerCase();
@@ -778,6 +846,29 @@ function processInspectorText(text) {
       if (url) {
         infoUrlFound = url;
         try { sendLog('[processInspectorText] found INFO url:', url); } catch(e){}
+      }
+      return;
+    }
+
+    // Camera preset: "cam:タイトル|緯度|経度|高度|方位°|傾き°"
+    if (lowerLine.startsWith('cam:')) {
+      const camStr = line.substring(4).trim();
+      const parts = camStr.split('|').map(p => p.trim());
+      if (parts.length >= 3) {
+        const lat = parseFloat(parts[1]);
+        const lng = parseFloat(parts[2]);
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          const cam = {
+            title: parts[0] || ('Camera ' + (camsFound.length + 1)),
+            lat: lat,
+            lng: lng,
+            height: parts.length > 3 && parts[3] ? parseFloat(parts[3]) : 1000,
+            heading: parts.length > 4 && parts[4] ? parseFloat(parts[4]) * Math.PI / 180 : 0,
+            pitch: parts.length > 5 && parts[5] ? parseFloat(parts[5]) * Math.PI / 180 : -Math.PI / 6,
+          };
+          camsFound.push(cam);
+          try { sendLog('[processInspectorText] found CAM:', cam.title, cam.lat, cam.lng); } catch(e){}
+        }
       }
       return;
     }
@@ -816,11 +907,17 @@ function processInspectorText(text) {
     loadInfoUrl(infoUrlFound);
   }
 
+  // Apply Camera Presets
+  _cameraPresets = camsFound;
+
   // Apply Tiles
   if (tiles.length > 0) {
     try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
     addXyzLayersFromArray(tiles);
   }
+
+  // Re-render UI to reflect camera presets and other changes
+  try { reearth.ui.show(getUI()); } catch(e){}
 }
 
 // Poll for property changes (Inspector edits) and react to URL changes
