@@ -559,8 +559,8 @@ function getUI() {
             }
 
         
-      // Add event listener for 'Show/Hide' only for plugin-added (user) layers
-      Array.from(document.querySelectorAll('input[data-layer-id][data-is-plugin-added="true"]')).forEach(checkbox => {
+      // Add event listener for 'Show/Hide' for all layers (preset + plugin-added)
+      Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
         try {
           checkbox.addEventListener('change', event => {
             try {
