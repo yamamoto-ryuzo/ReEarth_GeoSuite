@@ -144,6 +144,26 @@ function getUI() {
     align-self: stretch;
   }
 
+  /* Restore/Refresh button */
+  .restore-all-btn {
+    padding: 2px 8px;
+    height: 1.6em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 0.85em;
+    line-height: 1;
+    cursor: pointer;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    color: #333;
+    margin-left: auto;
+  }
+  .restore-all-btn:hover {
+    background: #e0e0e0;
+  }
+
   /* Move button: square, minimal height */
   .move-btn{
     padding: 0;
@@ -275,7 +295,7 @@ function getUI() {
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
-    ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
+    ${userLayerItems ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:8px;"><div style="font-weight:600;">UserLayers</div><button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">↻ 更新</button></div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
   <div id="cams-panel" style="display:none;">
@@ -610,6 +630,15 @@ function getUI() {
             }
 
         
+      // Add event listener for 'Restore All' button
+      const restoreBtn = document.getElementById("restore-user-layers");
+      if (restoreBtn) {
+        restoreBtn.addEventListener("click", () => {
+          // Send restore command to extension
+          parent.postMessage({ action: 'restoreUserLayers' }, '*');
+        });
+      }
+
       // Add event listener for 'Show/Hide' for all layers (preset + plugin-added)
       Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
         try {
@@ -863,6 +892,8 @@ reearth.extension.on("message", (msg) => {
       } catch(e) {
         try { sendError('[requestCamera] error:', e); } catch(err){}
       }
+    } else if (msg.action === "restoreUserLayers") {
+      restoreUserLayers();
     } else if (msg.action === "updateCamPreset") {
       // プリセットを現在のカメラ位置で更新し、inspectorText も書き換える
       try {
@@ -1379,17 +1410,6 @@ function restoreUserLayers() {
 // Poll for property changes (Inspector edits) and react to URL changes
 // Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
 (function startPolling() {
-  
-  // Setup event listeners for layer restoration (Simple implementation without throttling)
-  if (typeof reearth.on === 'function') {
-    try {
-      reearth.on('cameramove', restoreUserLayers);
-      reearth.on('layeredit', restoreUserLayers);
-    } catch(e) {
-      console.warn("Failed to register ReEarth events:", e);
-    }
-  }
-
   const poll = function() {
     try {
       const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
