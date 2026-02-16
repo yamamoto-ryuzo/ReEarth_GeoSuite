@@ -287,8 +287,8 @@ function getUI() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
       <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
-        <a href="https://re-earth-geo-suite.vercel.app/#system-layer-note" target="_blank" rel="noopener noreferrer" style="font-size:0.85em;color:#666;text-decoration:none;border:1px solid rgba(0,0,0,0.04);padding:4px 8px;border-radius:6px;">注意</a>
-        <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">↻ Refresh</button>
+        <a href="https://re-earth-geo-suite.vercel.app/#system-layer-note" target="_blank" rel="noopener noreferrer" style="font-size:0.85em;color:#666;text-decoration:none;border:1px solid #ccc;padding:2px 6px;border-radius:4px;">注意</a>
+        <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">Refresh</button>
       </div>
     </div>
     
