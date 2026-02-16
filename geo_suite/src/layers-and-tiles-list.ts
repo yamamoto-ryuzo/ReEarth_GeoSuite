@@ -295,7 +295,7 @@ function getUI() {
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
-    ${userLayerItems ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:8px;"><div style="font-weight:600;">UserLayers</div><button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">↻ 更新</button></div><ul class="layers-list">${userLayerItems}</ul>` : ''}
+    ${userLayerItems ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:8px;"><div style="font-weight:600;">UserLayers</div><button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">↻ Refresh</button></div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
   <div id="cams-panel" style="display:none;">
@@ -634,8 +634,14 @@ function getUI() {
       const restoreBtn = document.getElementById("restore-user-layers");
       if (restoreBtn) {
         restoreBtn.addEventListener("click", () => {
-          // Send restore command to extension
-          parent.postMessage({ action: 'restoreUserLayers' }, '*');
+          // Collect current checkbox states
+          const requests = {};
+          Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
+             const id = checkbox.getAttribute('data-layer-id');
+             if (id) requests[id] = !!checkbox.checked;
+          });
+          // Send restore command with current UI state
+          parent.postMessage({ action: 'restoreUserLayers', requests: requests }, '*');
         });
       }
 
@@ -893,7 +899,7 @@ reearth.extension.on("message", (msg) => {
         try { sendError('[requestCamera] error:', e); } catch(err){}
       }
     } else if (msg.action === "restoreUserLayers") {
-      restoreUserLayers();
+      restoreUserLayers(msg.requests);
     } else if (msg.action === "updateCamPreset") {
       // プリセットを現在のカメラ位置で更新し、inspectorText も書き換える
       try {
@@ -1370,7 +1376,7 @@ function processInspectorText(text) {
   try { reearth.ui.show(getUI()); } catch(e){}
 }
 
-function restoreUserLayers() {
+function restoreUserLayers(userRequests) {
   if (!reearth.layers || !reearth.layers.layers) return;
   try {
     const currentLayers = reearth.layers.layers;
@@ -1380,25 +1386,30 @@ function restoreUserLayers() {
       for (let i = 0; i < currentLayers.length; i++) {
         const l = currentLayers[i];
         if (l && l.id) layerMap.set(l.id, l);
-
-        // If a layer is not in our visibility map yet, initialize it.
-        // Use the current layer visibility state from the panel/engine.
-        if (!_userLayerVisibility.has(l.id)) {
-           _userLayerVisibility.set(l.id, !!l.visible);
-        }
       }
     }
 
+    // Apply visibility based on requests from UI
+    if (userRequests && typeof userRequests === 'object') {
+        for (const [id, desired] of Object.entries(userRequests)) {
+             // update internal state
+             _userLayerVisibility.set(id, desired);
+        }
+    }
+
+    // Restore from internal state
+    let changed = false;
     for (const [id, desired] of _userLayerVisibility.entries()) {
       const layer = layerMap.get(id);
       // Only apply if actual state differs from user intent
-      // And only if the layer still exists
       if (layer && layer.visible !== desired) {
         if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
             if (desired) reearth.layers.show(id);
             else reearth.layers.hide(id);
+            changed = true;
         } else if (typeof reearth.layers.update === 'function') {
             reearth.layers.update({ id: id, visible: !!desired });
+            changed = true;
         }
       }
     }
