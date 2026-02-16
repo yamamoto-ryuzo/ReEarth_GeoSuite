@@ -1398,18 +1398,15 @@ function restoreUserLayers(userRequests) {
     }
 
     // Restore from internal state
-    let changed = false;
+    // Force update without checking current layer.visible state (as it may be stale relative to Story overrides)
     for (const [id, desired] of _userLayerVisibility.entries()) {
       const layer = layerMap.get(id);
-      // Only apply if actual state differs from user intent
-      if (layer && layer.visible !== desired) {
+      if (layer) {
         if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
             if (desired) reearth.layers.show(id);
             else reearth.layers.hide(id);
-            changed = true;
         } else if (typeof reearth.layers.update === 'function') {
             reearth.layers.update({ id: id, visible: !!desired });
-            changed = true;
         }
       }
     }
