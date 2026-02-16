@@ -899,7 +899,7 @@ reearth.extension.on("message", (msg) => {
         try { sendError('[requestCamera] error:', e); } catch(err){}
       }
     } else if (msg.action === "restoreUserLayers") {
-      restoreUserLayers(msg.requests);
+      restoreUserLayers(msg.requests, true);
     } else if (msg.action === "updateCamPreset") {
       // プリセットを現在のカメラ位置で更新し、inspectorText も書き換える
       try {
@@ -1376,7 +1376,7 @@ function processInspectorText(text) {
   try { reearth.ui.show(getUI()); } catch(e){}
 }
 
-function restoreUserLayers(userRequests) {
+function restoreUserLayers(userRequests, force = false) {
   if (!reearth.layers || !reearth.layers.layers) return;
   try {
     const currentLayers = reearth.layers.layers;
@@ -1398,15 +1398,18 @@ function restoreUserLayers(userRequests) {
     }
 
     // Restore from internal state
-    // Force update without checking current layer.visible state (as it may be stale relative to Story overrides)
     for (const [id, desired] of _userLayerVisibility.entries()) {
       const layer = layerMap.get(id);
       if (layer) {
-        if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
-            if (desired) reearth.layers.show(id);
-            else reearth.layers.hide(id);
-        } else if (typeof reearth.layers.update === 'function') {
-            reearth.layers.update({ id: id, visible: !!desired });
+        // If force is true, update regardless of current state.
+        // If force is false (auto-check), only update if state differs.
+        if (force || layer.visible !== desired) {
+            if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
+                if (desired) reearth.layers.show(id);
+                else reearth.layers.hide(id);
+            } else if (typeof reearth.layers.update === 'function') {
+                reearth.layers.update({ id: id, visible: !!desired });
+            }
         }
       }
     }
@@ -1415,26 +1418,50 @@ function restoreUserLayers(userRequests) {
   }
 }
 
-// Poll for property changes (Inspector edits) and react to URL changes
-// Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
-(function startPolling() {
-
-  // Auto-restore layers on scene changes (Camera Move / Layer Edit)
-  // This helps to keep user layers visible even when switching Story scenes
+// Hook into ReEarth engine events to maintain layer visibility
+// Replaces traditional polling (setInterval) with engine-driven 'update' event
+(function initEventHooks() {
+  
+  // Use 'update' event which fires every frame/tick.
+  // This is the most reliable way to detect Story/Scene changes where 'cameramove' might not fire.
   if (typeof reearth.on === 'function') {
+    let lastCheck = 0;
+    const CHECK_INTERVAL = 500; // Check at most every 500ms
+
+    const onUpdate = () => {
+      const now = Date.now();
+      // Throttle the check to avoid performance impact on every frame
+      if (now - lastCheck >= CHECK_INTERVAL) {
+        lastCheck = now;
+        // Check and restore layers if needed (force=false, so only mismatch triggers API)
+        restoreUserLayers(null, false);
+      }
+    };
+
     try {
-      const autoRestore = () => {
-         // Call without requests to use cached _userLayerVisibility
-         restoreUserLayers();
-      };
-      reearth.on('cameramove', autoRestore);
-      reearth.on('layeredit', autoRestore);
+      reearth.on('update', onUpdate);
+      // Also listen to specific events just in case they fire between updates
+      reearth.on('cameramove', () => restoreUserLayers(null, false));
+      reearth.on('layeredit', () => restoreUserLayers(null, false));
+      
+      // Listen for selection changes (user clicks, potentially scene selection)
+      reearth.on('select', () => {
+        try { sendLog('[event] select event fired'); } catch(e){}
+        restoreUserLayers(null, false);
+      });
+
     } catch(e) {
       console.warn("Failed to register ReEarth events:", e);
     }
   }
 
-  const poll = function() {
+  // Fallback: If reearth.on is NOT available (very old versions?), we might need a fallback.
+  // But since the user requested "no polling", we rely primarily on events.
+  // We still need to check inspector property for changes.
+  
+  // Property check loop (Inspector settings) - still needed as 'update' event payload doesn't carry property changes
+  // We can hook this into the same 'update' event or use a separate lighter check.
+  const checkProperty = function() {
     try {
       const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
       
@@ -1443,7 +1470,7 @@ function restoreUserLayers(userRequests) {
       
       if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
          _lastInspectorLayersJson = text; // use text as cache key
-         try { sendLog('[poll] inspector text changed, length:', text.length); } catch(e){}
+         try { sendLog('[event] inspector text changed, length:', text.length); } catch(e){}
          processInspectorText(text);
       }
 
@@ -1458,14 +1485,24 @@ function restoreUserLayers(userRequests) {
     }
   };
 
-  if (typeof setInterval === 'function') {
-    setInterval(poll, 500);
-  } else if (typeof setTimeout === 'function') {
-    (function loop() { poll(); setTimeout(loop, 500); })();
+  // If reearth.on is available, we use it for property checks too
+  if (typeof reearth.on === 'function') {
+      let lastPropCheck = 0;
+      reearth.on('update', () => {
+          const now = Date.now();
+          if (now - lastPropCheck >= 500) {
+              lastPropCheck = now;
+              checkProperty();
+          }
+      });
   } else {
-    // Fallback: run once if no timing APIs are available
-    try { poll(); } catch (e) {}
+      // Fallback for environments without reearth.on (though unlikely for Visualizer)
+      if (typeof setInterval === 'function') {
+        setInterval(checkProperty, 500);
+        setInterval(() => restoreUserLayers(null, false), 500);
+      }
   }
+
 })();
 
 // Add multiple layers from an array of inspector entries
