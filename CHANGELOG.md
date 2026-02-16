@@ -1,5 +1,4 @@
 # Changelog
-
 ## v7.0.0
 - 凡例機能を追加：`legend:` 行で画像URLを指定し、Legendタブで確認可能に。
 - Depth Test トグルを追加：Google Photorealistic 3D Tiles 利用時の透過対策として、地下の隠蔽設定を切り替え可能に。
