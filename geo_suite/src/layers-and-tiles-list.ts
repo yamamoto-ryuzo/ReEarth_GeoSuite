@@ -1418,6 +1418,22 @@ function restoreUserLayers(userRequests) {
 // Poll for property changes (Inspector edits) and react to URL changes
 // Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
 (function startPolling() {
+
+  // Auto-restore layers on scene changes (Camera Move / Layer Edit)
+  // This helps to keep user layers visible even when switching Story scenes
+  if (typeof reearth.on === 'function') {
+    try {
+      const autoRestore = () => {
+         // Call without requests to use cached _userLayerVisibility
+         restoreUserLayers();
+      };
+      reearth.on('cameramove', autoRestore);
+      reearth.on('layeredit', autoRestore);
+    } catch(e) {
+      console.warn("Failed to register ReEarth events:", e);
+    }
+  }
+
   const poll = function() {
     try {
       const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
