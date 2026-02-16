@@ -224,7 +224,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌍 Re:Earth GeoSuite</h1>
+            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;"></span></h1>
             <p>統合プラグイン for Re:Earth Visualizer </p>
         </header>
         
@@ -471,6 +471,26 @@ cam:大阪城|34.658425|135.524574|h=2533.5||p=-40.37</code></pre>
                 msgEl.classList.remove('visible');
             }, 1600);
         }
+    </script>
+    <script>
+        // Fetch and display version from reearth.yml
+        // Try root path first (for prod/dist), then plugin/ path (for local dev)
+        fetch('reearth.yml')
+            .then(response => {
+                if (response.ok) return response.text();
+                return fetch('plugin/reearth.yml').then(r => {
+                    if (r.ok) return r.text();
+                    throw new Error('reearth.yml not found');
+                });
+            })
+            .then(text => {
+                const match = text.match(/version:\s*"?([\d\.]+)"?/);
+                if (match && match[1]) {
+                    const el = document.getElementById('app-version');
+                    if (el) el.textContent = 'v' + match[1];
+                }
+            })
+            .catch(e => console.log('Version fetch failed:', e));
     </script>
 </body>
 </html>
