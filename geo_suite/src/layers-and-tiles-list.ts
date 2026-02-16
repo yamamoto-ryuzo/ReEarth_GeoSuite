@@ -256,10 +256,10 @@ function getUI() {
     <div class="tab-bar" role="tablist">
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
+    <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
     <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
-    <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
   </div>
 
   <div id="layers-panel">
@@ -348,7 +348,7 @@ function getUI() {
   <div id="legend-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;">Legend</div>
     <div id="legend-content"></div>
-    <div class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;">
+    <div id="legend-instruction" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;">
       Add "legend: ImageURL" to inspector text.
     </div>
   </div>
@@ -562,6 +562,10 @@ function getUI() {
                   const container = document.getElementById('legend-content');
                   if(container && msg.urls) {
                     container.innerHTML = msg.urls.map(function(u){return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'}).join('');
+                    const instruction = document.getElementById('legend-instruction');
+                    if (instruction) {
+                      instruction.style.display = msg.urls.length > 0 ? 'none' : 'block';
+                    }
                   }
                 }
               } catch (e) {}
