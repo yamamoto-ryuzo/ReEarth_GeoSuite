@@ -1128,7 +1128,8 @@ background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
 cam:富士山|35.139595|138.713803|h=14425.5|p=-40.37
-cam:大阪城|34.658425|135.524574|h=2533.5||p=-40.37`;
+cam:大阪城|34.658425|135.524574|h=2533.5|p=-40.37
+legend:https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG`;
 
 // Also process any inspector text/config present at init
 try {
