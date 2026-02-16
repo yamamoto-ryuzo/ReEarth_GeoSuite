@@ -342,6 +342,17 @@ cam:大阪城|34.658425|135.524574|h=2533.5||p=-40.37</code></pre>
                                             <p style="color:#333;">システムレイヤはプラグインにて状態確認が制御不可であるため、基本的にはシステムレイヤ表示をONにし、制御は必ず本プラグインで行ってください。</p>
                                         </div>
                 </div>
+
+                <div class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0;">
+                    <h3>⚠️ Google Photorealistic 3D Tiles 利用時の注意</h3>
+                    <div>
+                        <p style="color:#333;">
+                            Google Photorealistic 3D Tiles を使用している場合、追加したユーザーレイヤ（XYZタイルなど）が表示されないことがあります。<br>
+                            これは 3D Tiles が立体物として地面の上に描画され、地表に張り付くユーザーレイヤを覆い隠してしまうためです。<br>
+                            Re:Earth のシーン設定で<strong>「地下を隠す」</strong>などの深度テスト（Depth Test）設定を変更することで表示される場合がありますが、3Dモデルの描画順序に依存します。
+                        </p>
+                    </div>
+                </div>
                 
                 <div class="install-steps">
                     <h3>⛰️ Terrain（地形）/ Shadow（影）の切替</h3>
