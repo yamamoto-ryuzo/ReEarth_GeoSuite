@@ -158,7 +158,6 @@ function getUI() {
     background: #f0f0f0;
     border: 1px solid #ccc;
     color: #333;
-    margin-left: auto;
   }
   .restore-all-btn:hover {
     background: #e0e0e0;
@@ -287,7 +286,8 @@ function getUI() {
   <div id="layers-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
-      <div style="flex:0 0 auto; margin-left:12px;">
+      <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
+        <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">↻ Refresh</button>
         <a href="https://re-earth-geo-suite.vercel.app/#system-layer-note" target="_blank" rel="noopener noreferrer" style="font-size:0.85em;color:#666;text-decoration:none;border:1px solid rgba(0,0,0,0.04);padding:4px 8px;border-radius:6px;">注意</a>
       </div>
     </div>
@@ -295,7 +295,7 @@ function getUI() {
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
-    ${userLayerItems ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:8px;"><div style="font-weight:600;">UserLayers</div><button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">↻ Refresh</button></div><ul class="layers-list">${userLayerItems}</ul>` : ''}
+    ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
   <div id="cams-panel" style="display:none;">
@@ -1418,92 +1418,17 @@ function restoreUserLayers(userRequests, force = false) {
   }
 }
 
-// Hook into ReEarth engine events to maintain layer visibility
-// Replaces traditional polling (setInterval) with engine-driven 'update' event
-(function initEventHooks() {
+// Poll for property changes (Inspector edits) and react to URL changes
+// Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
+(function startPolling() {
   
-  // Use 'update' event which fires every frame/tick.
-  // This is the most reliable way to detect Story/Scene changes where 'cameramove' might not fire.
-  if (typeof reearth.on === 'function') {
-    let lastCheck = 0;
-    const CHECK_INTERVAL = 500; // Check at most every 500ms
+  // Note: Automatic restoration via events (update, cameramove, etc.) was attempted but found unreliable in Story mode.
+  // Therefore, we rely solely on the manual "Refresh" button for restoring user layers.
+  // This keeps the plugin simple and performant.
 
-    const onUpdate = () => {
-      const now = Date.now();
-      // Throttle the check to avoid performance impact on every frame
-      if (now - lastCheck >= CHECK_INTERVAL) {
-        lastCheck = now;
-        // Check and restore layers if needed (force=false, so only mismatch triggers API)
-        restoreUserLayers(null, false);
-      }
-    };
-
-    try {
-      reearth.on('update', onUpdate);
-      // Also listen to specific events just in case they fire between updates
-      reearth.on('cameramove', () => restoreUserLayers(null, false));
-      reearth.on('layeredit', () => restoreUserLayers(null, false));
-      
-      // Listen for selection changes (user clicks, potentially scene selection)
-      reearth.on('select', () => {
-        try { sendLog('[event] select event fired'); } catch(e){}
-        restoreUserLayers(null, false);
-      });
-
-    } catch(e) {
-      console.warn("Failed to register ReEarth events:", e);
-    }
-  }
-
-  // Fallback: If reearth.on is NOT available (very old versions?), we might need a fallback.
-  // But since the user requested "no polling", we rely primarily on events.
-  // We still need to check inspector property for changes.
-  
-  // Property check loop (Inspector settings) - still needed as 'update' event payload doesn't carry property changes
-  // We can hook this into the same 'update' event or use a separate lighter check.
-  const checkProperty = function() {
+  const poll = function() {
     try {
       const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-      
-      // Check inspectorText (Unified settings)
-      const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
-      
-      if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
-         _lastInspectorLayersJson = text; // use text as cache key
-         try { sendLog('[event] inspector text changed, length:', text.length); } catch(e){}
-         processInspectorText(text);
-      }
-
-      // Legacy/Direct checks (fallback)
-      const url = prop?.inspectorUrl || prop?.inspectorText; // fallback if just a url string
-      if (url && typeof url === "string" && /^https?:\/\//.test(url) && url !== _lastInspectorUrl) {
-          _lastInspectorUrl = url;
-          addXyzLayer(url, prop?.inspectorTitle);
-      }
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  // If reearth.on is available, we use it for property checks too
-  if (typeof reearth.on === 'function') {
-      let lastPropCheck = 0;
-      reearth.on('update', () => {
-          const now = Date.now();
-          if (now - lastPropCheck >= 500) {
-              lastPropCheck = now;
-              checkProperty();
-          }
-      });
-  } else {
-      // Fallback for environments without reearth.on (though unlikely for Visualizer)
-      if (typeof setInterval === 'function') {
-        setInterval(checkProperty, 500);
-        setInterval(() => restoreUserLayers(null, false), 500);
-      }
-  }
-
-})();
 
 // Add multiple layers from an array of inspector entries
 function addXyzLayersFromArray(items) {
