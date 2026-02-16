@@ -1,6 +1,8 @@
 // @ts-nocheck
 // Track layer IDs added by this plugin
 const _pluginAddedLayerIds = new Set();
+// Store user-defined visibility state to restore it if story/other plugins change it
+const _userLayerVisibility = new Map();
 
 // Track last values for polling
 let _lastInspectorUrl = null;
@@ -996,6 +998,7 @@ reearth.extension.on("message", (msg) => {
     case "hide":
       try {
         setLayerVisibility(msg.layerId, false);
+        _userLayerVisibility.set(msg.layerId, false);
       } catch (e) {
         try { sendError('[hide] error setting visibility', msg.layerId, e); } catch(_){}
       }
@@ -1003,6 +1006,7 @@ reearth.extension.on("message", (msg) => {
     case "show":
       try {
         setLayerVisibility(msg.layerId, true);
+        _userLayerVisibility.set(msg.layerId, true);
       } catch (e) {
         try { sendError('[show] error setting visibility', msg.layerId, e); } catch(_){}
       }
@@ -1335,9 +1339,50 @@ function processInspectorText(text) {
   try { reearth.ui.show(getUI()); } catch(e){}
 }
 
+function restoreUserLayers() {
+  if (!reearth.layers || !reearth.layers.layers) return;
+  try {
+    const currentLayers = reearth.layers.layers;
+    // Create a map for faster lookup (O(1) instead of O(N) inside loop)
+    const layerMap = new Map();
+    if (Array.isArray(currentLayers)) {
+      for (let i = 0; i < currentLayers.length; i++) {
+        const l = currentLayers[i];
+        if (l && l.id) layerMap.set(l.id, l);
+      }
+    }
+
+    for (const [id, desired] of _userLayerVisibility.entries()) {
+      const layer = layerMap.get(id);
+      // Only apply if actual state differs from user intent
+      if (layer && layer.visible !== desired) {
+        if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
+            if (desired) reearth.layers.show(id);
+            else reearth.layers.hide(id);
+        } else if (typeof reearth.layers.update === 'function') {
+            reearth.layers.update({ id: id, visible: !!desired });
+        }
+      }
+    }
+  } catch(e) {
+    // ignore errors during restore
+  }
+}
+
 // Poll for property changes (Inspector edits) and react to URL changes
 // Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
 (function startPolling() {
+  
+  // Setup event listeners for layer restoration (Simple implementation without throttling)
+  if (typeof reearth.on === 'function') {
+    try {
+      reearth.on('cameramove', restoreUserLayers);
+      reearth.on('layeredit', restoreUserLayers);
+    } catch(e) {
+      console.warn("Failed to register ReEarth events:", e);
+    }
+  }
+
   const poll = function() {
     try {
       const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
