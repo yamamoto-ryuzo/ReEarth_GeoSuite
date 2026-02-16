@@ -316,6 +316,15 @@ function getUI() {
       </label>
     </div>
 
+    <!-- Depth Test row: compact, placed under Shadow -->
+    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+      <div class="text-md" id="depth-status">Depth Test: ON</div>
+      <label class="toggle" id="depth-toggle" aria-label="Depth Test toggle">
+        <input type="checkbox" id="toggleDepthSwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+
     <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
     <div id="time-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
       <div style="display:flex;gap:8px;align-items:center;">
@@ -471,6 +480,20 @@ function getUI() {
               });
             }
 
+            // Depth Test toggle
+            const toggleDepth = document.getElementById('toggleDepthSwitch');
+            const depthStatus = document.getElementById('depth-status');
+            
+            if (toggleDepth && depthStatus) {
+              toggleDepth.addEventListener('change', function() {
+                const checked = !!this.checked;
+                depthStatus.textContent = checked ? 'Depth Test: ON' : 'Depth Test: OFF';
+                if (window.parent) {
+                  window.parent.postMessage({ action: "toggleDepthTest", enabled: checked }, "*");
+                }
+              });
+            }
+
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
               try {
@@ -507,6 +530,10 @@ function getUI() {
                   if (toggleShadow) toggleShadow.checked = on;
                   if (shadowStatus) shadowStatus.textContent = on ? 'Shadow: ON' : 'Shadow: OFF';
                   updateTimeRowVisibility(on);
+                } else if (msg.action === 'depthTestState') {
+                  const on = !!msg.enabled;
+                  if (toggleDepth) toggleDepth.checked = on;
+                  if (depthStatus) depthStatus.textContent = on ? 'Depth Test: ON' : 'Depth Test: OFF';
                 } else if (msg.action === 'cameraState') {
                   // message from extension to initialize/sync camera info
                   const cam = msg.camera || null;
@@ -673,6 +700,8 @@ try {
     reearth.ui.postMessage({ action: 'terrainState', enabled: terrainEnabled, depthTestAgainstTerrain: depthTest });
     try { sendLog('[init] sending shadow state to UI', { enabled: shadowEnabled }); } catch(e){}
     reearth.ui.postMessage({ action: 'shadowState', enabled: shadowEnabled });
+    try { sendLog('[init] sending depthTest state to UI', { enabled: depthTest }); } catch(e){}
+    reearth.ui.postMessage({ action: 'depthTestState', enabled: depthTest });
     // Attempt to send initial camera state if available
     try {
       const cam = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : (reearth.view && (reearth.view.camera || reearth.view.getCamera && reearth.view.getCamera && typeof reearth.view.getCamera === 'function' ? reearth.view.getCamera() : null));
@@ -777,6 +806,11 @@ reearth.extension.on("message", (msg) => {
       reearth.viewer.overrideProperty({
         scene: { shadow: { enabled: false }, backgroundColor: bg },
         globe: { baseColor: bg },
+      });
+    } else if (msg.action === "toggleDepthTest") {
+      const bg = _lastInspectorBackground || "#ffffff";
+      reearth.viewer.overrideProperty({
+        globe: { depthTestAgainstTerrain: msg.enabled, baseColor: bg },
       });
     } else if (msg.action === "requestCamera") {
       // UIからのカメラ情報リクエスト：現在のカメラ位置を取得してUIに返す
