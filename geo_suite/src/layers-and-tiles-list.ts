@@ -65,10 +65,10 @@ function getUI() {
 
   // Generate camera preset buttons
   const camButtons = _cameraPresets.map((cam, i) => `
-    <li>
+    <li class="cam-item" data-cam-index="${i}" title="FlyTo ${cam.title}">
       <span class="cam-title">${cam.title}</span>
       <div class="actions">
-        <button class="btn-primary p-8 cam-btn" data-cam-index="${i}" aria-label="FlyTo ${cam.title}">▶</button>
+        <span style="font-size:0.8em;color:#888;">▶</span>
       </div>
     </li>
   `).join('');
@@ -178,16 +178,12 @@ function getUI() {
   .move-btn { justify-content: center; }
 
   /* Camera preset button */
-  .cam-btn{
-    padding: 2px 8px;
-    min-width: 2em;
-    height: 1.6em;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    font-size: 0.85em;
+  .cam-item {
     cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .cam-item:hover {
+    background-color: rgba(230, 230, 230, 0.9);
   }
   .cam-title{
     flex: 1;
@@ -673,10 +669,10 @@ function getUI() {
         });
       });
 
-      // Add event listener for camera preset 'FlyTo' buttons
-      document.querySelectorAll(".cam-btn").forEach(button => {
-        button.addEventListener("click", event => {
-          const camIndex = event.target.getAttribute("data-cam-index");
+      // Add event listener for camera preset 'FlyTo' buttons (row click)
+      document.querySelectorAll(".cam-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const camIndex = item.getAttribute("data-cam-index");
           if (camIndex !== null && camIndex !== undefined) {
             parent.postMessage({
               action: "flyToCamera",
