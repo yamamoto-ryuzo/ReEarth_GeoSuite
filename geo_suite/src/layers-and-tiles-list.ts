@@ -561,7 +561,7 @@ function getUI() {
                 } else if (msg.action === 'updateLegends') {
                   const container = document.getElementById('legend-content');
                   if(container && msg.urls) {
-                    container.innerHTML = msg.urls.map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('');
+                    container.innerHTML = msg.urls.map(function(u){return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'}).join('');
                   }
                 }
               } catch (e) {}
