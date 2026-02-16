@@ -259,6 +259,7 @@ function getUI() {
     <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
+    <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
   </div>
 
   <div id="layers-panel">
@@ -344,6 +345,14 @@ function getUI() {
     </div>
   </div>
 
+  <div id="legend-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;">Legend</div>
+    <div id="legend-content"></div>
+    <div class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;">
+      Add "legend: ImageURL" to inspector text.
+    </div>
+  </div>
+
  
 </div>
 
@@ -379,7 +388,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','cams-panel','info-panel','settings-panel'].forEach(id => {
+              ['layers-panel','cams-panel','info-panel','settings-panel','legend-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -548,6 +557,11 @@ function getUI() {
                       const r = cam.roll || cam.r || null;
                       if (rotEl) rotEl.textContent = 'Heading/Pitch/Roll: ' + [h, pch, r].map(v => v == null ? '—' : String(v)).join(' / ');
                     } catch (e) {}
+                  }
+                } else if (msg.action === 'updateLegends') {
+                  const container = document.getElementById('legend-content');
+                  if(container && msg.urls) {
+                    container.innerHTML = msg.urls.map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('');
                   }
                 }
               } catch (e) {}
@@ -1164,10 +1178,18 @@ function processInspectorText(text) {
   const tiles = [];
   let infoUrlFound = null;
   const camsFound = [];
+  const legends = [];
   const nonCamLines = [];  // preserve non-cam lines for rebuild
 
   lines.forEach(line => {
     const lowerLine = line.toLowerCase();
+    // Legend: "legend: https://..."
+    if (lowerLine.startsWith('legend:')) {
+      const url = line.substring(7).trim();
+      if (url) legends.push(url);
+      nonCamLines.push(line);
+      return;
+    }
     // Background color setting: "background: #ffffff" or "bg: #fff"
     if (lowerLine.startsWith('background:') || lowerLine.startsWith('bg:')) {
       const col = line.substring(line.indexOf(':') + 1).trim();
@@ -1280,6 +1302,10 @@ function processInspectorText(text) {
     }
     nonCamLines.push(line);
   });
+
+  if (legends.length > 0 && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+    reearth.ui.postMessage({ action: 'updateLegends', urls: legends });
+  }
 
   // Apply Info URL
   if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
