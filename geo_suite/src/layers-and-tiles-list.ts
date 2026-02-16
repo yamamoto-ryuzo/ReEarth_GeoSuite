@@ -1429,6 +1429,36 @@ function restoreUserLayers(userRequests, force = false) {
   const poll = function() {
     try {
       const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+      
+      // Check inspectorText (Unified settings)
+      const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+      
+      if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
+         _lastInspectorLayersJson = text; // use text as cache key
+         try { sendLog('[poll] inspector text changed, length:', text.length); } catch(e){}
+         processInspectorText(text);
+      }
+
+      // Legacy/Direct checks (fallback)
+      const url = prop?.inspectorUrl || prop?.inspectorText; // fallback if just a url string
+      if (url && typeof url === "string" && /^https?:\/\//.test(url) && url !== _lastInspectorUrl) {
+          _lastInspectorUrl = url;
+          addXyzLayer(url, prop?.inspectorTitle);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  if (typeof setInterval === 'function') {
+    setInterval(poll, 500);
+  } else if (typeof setTimeout === 'function') {
+    (function loop() { poll(); setTimeout(loop, 500); })();
+  } else {
+    // Fallback: run once if no timing APIs are available
+    try { poll(); } catch (e) {}
+  }
+})();
 
 // Add multiple layers from an array of inspector entries
 function addXyzLayersFromArray(items) {
