@@ -1349,12 +1349,19 @@ function restoreUserLayers() {
       for (let i = 0; i < currentLayers.length; i++) {
         const l = currentLayers[i];
         if (l && l.id) layerMap.set(l.id, l);
+
+        // If a layer is not in our visibility map yet, initialize it.
+        // Use the current layer visibility state from the panel/engine.
+        if (!_userLayerVisibility.has(l.id)) {
+           _userLayerVisibility.set(l.id, !!l.visible);
+        }
       }
     }
 
     for (const [id, desired] of _userLayerVisibility.entries()) {
       const layer = layerMap.get(id);
       // Only apply if actual state differs from user intent
+      // And only if the layer still exists
       if (layer && layer.visible !== desired) {
         if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
             if (desired) reearth.layers.show(id);
