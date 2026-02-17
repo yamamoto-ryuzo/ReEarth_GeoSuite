@@ -298,6 +298,9 @@ function getUI() {
             <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
             <button id="load-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Load</button>
         </div>
+        <div style="margin-top:6px;display:flex;gap:4px;">
+            <button id="reload-from-url-btn" class="btn-primary p-8" style="width:100%;font-size:0.85em;">Reload from Browser URL</button>
+        </div>
     </div>
   </div>
 
@@ -865,6 +868,73 @@ function getUI() {
           });
       }
       
+      // Helper to parse query from string (handles ? and #)
+      const parseParams = (str) => {
+        try {
+            const url = new URL(str, "https://dummy.com");
+            // Merge search and hash params
+            const params = new URLSearchParams(url.search);
+            if (url.hash && url.hash.includes('?')) {
+                const hashParams = new URLSearchParams(url.hash.substring(url.hash.indexOf('?')));
+                hashParams.forEach((v, k) => params.set(k, v));
+            } else if (url.hash && url.hash.includes('=')) {
+                // simple hash params #k=v&k2=v2
+                const hashParams = new URLSearchParams(url.hash.substring(1));
+                hashParams.forEach((v, k) => params.set(k, v));
+            }
+            return params;
+        } catch(e) { return null; }
+      };
+
+      // Helper to try reading params from window/parent
+      const tryReadParams = () => {
+          let p = null;
+          // 1. Try window.location
+          try { p = parseParams(window.location.href); } catch(e){}
+          if (p && (p.has('lat') || p.has('layers'))) return p;
+
+          // 2. Try parent location (if accessible)
+          if (window.parent !== window) {
+              try { p = parseParams(window.parent.location.href); } catch(e){}
+              if (p && (p.has('lat') || p.has('layers'))) return p;
+          }
+
+          // 3. Try referrer
+          if (document.referrer) {
+               try { p = parseParams(document.referrer); } catch(e){}
+               if (p && (p.has('lat') || p.has('layers'))) return p;
+          }
+          return null;
+      };
+
+      // Reload from URL button
+      const reloadBtn = document.getElementById('reload-from-url-btn');
+      if (reloadBtn) {
+          reloadBtn.addEventListener('click', function() {
+              const p = tryReadParams();
+              if (p) {
+                  const payload = { action: 'applyPermalinkState' };
+                  if (p.has('lat')) payload.lat = parseFloat(p.get('lat'));
+                  if (p.has('lng')) payload.lng = parseFloat(p.get('lng'));
+                  if (p.has('height')) payload.height = parseFloat(p.get('height'));
+                  if (p.has('heading')) payload.heading = parseFloat(p.get('heading'));
+                  if (p.has('pitch')) payload.pitch = parseFloat(p.get('pitch'));
+                  if (p.has('layers')) payload.layers = p.get('layers');
+                  
+                  if (payload.lat !== undefined && !isNaN(payload.lat)) {
+                      parent.postMessage(payload, '*');
+                      const originalText = reloadBtn.textContent;
+                      reloadBtn.textContent = 'Restored!';
+                      setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
+                  } else {
+                      alert('URL found but no valid lat/lng parameters.');
+                  }
+              } else {
+                  alert('Could not read URL parameters from browser address bar or referrer.');
+              }
+          });
+      }
+
   });
 
   // On-screen plugin log removed (logs go to console only)
@@ -872,15 +942,39 @@ function getUI() {
   // Initialize Permalink Logic (Apply state from URL)
   try {
     setTimeout(() => {
+        // Simple heuristic for parsing params
+        // Check standard URLSearchParams first
         let params = null;
         try {
+            // Check location search
             params = new URLSearchParams(window.location.search);
         } catch(e) {}
         
+        // Check hash if search failed or empty
+        if ((!params || !params.has('lat')) && window.location.hash) {
+             try {
+                 // handle #lat=... or #/path?lat=...
+                 let h = window.location.hash;
+                 if (h.includes('?')) h = h.substring(h.indexOf('?'));
+                 else if (h.startsWith('#')) h = h.substring(1);
+                 const hashP = new URLSearchParams(h);
+                 if (hashP.has('lat')) params = hashP;
+             } catch(e){}
+        }
+
         // Try parent URL if in iframe and same origin or accessible
         if ((!params || !params.has('lat')) && window.parent !== window) {
             try {
+                // Parent search
                 params = new URLSearchParams(window.parent.location.search);
+                // Parent hash
+                if (!params.has('lat') && window.parent.location.hash) {
+                     let h = window.parent.location.hash;
+                     if (h.includes('?')) h = h.substring(h.indexOf('?'));
+                     else if (h.startsWith('#')) h = h.substring(1);
+                     const hashP = new URLSearchParams(h);
+                     if (hashP.has('lat')) params = hashP;
+                }
             } catch(e){}
         }
 
@@ -889,6 +983,14 @@ function getUI() {
              try {
                  const refUrl = new URL(document.referrer);
                  params = refUrl.searchParams;
+                 // check hash in referrer too
+                 if (!params.has('lat') && refUrl.hash) {
+                     let h = refUrl.hash;
+                     if (h.includes('?')) h = h.substring(h.indexOf('?'));
+                     else if (h.startsWith('#')) h = h.substring(1);
+                     const hashP = new URLSearchParams(h);
+                     if (hashP.has('lat')) params = hashP;
+                 }
              } catch(e){}
         }
 
