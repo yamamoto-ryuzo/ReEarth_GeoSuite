@@ -1145,6 +1145,13 @@ function addXyzLayer(url, title, layerType) {
     layer.tiles = {};
   }
 
+  // Add default styles for GeoJSON to ensure visibility
+  if (type === 'geojson') {
+    layer.marker = { pointColor: "#3388ff", pointSize: 10 };
+    layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true };
+    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp" };
+  }
+
   try {
     sendLog("[addXyzLayer] received url:", url);
     sendLog("[addXyzLayer] encoded url:", encodedUrl);
