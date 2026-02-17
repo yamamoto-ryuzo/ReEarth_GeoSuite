@@ -284,6 +284,14 @@ function getUI() {
         <input type="text" id="permalink-output" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" readonly />
         <button id="copy-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Copy</button>
     </div>
+    
+    <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
+        <p style="font-size:0.85em;color:#555;margin:4px 0;">Import Permalink</p>
+        <div style="display:flex;gap:4px;">
+            <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
+            <button id="load-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Load</button>
+        </div>
+    </div>
   </div>
 
   <div id="layers-panel">
@@ -796,6 +804,58 @@ function getUI() {
             copyBtn.textContent = 'Copied!';
             setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
         });
+      }
+
+      // Permalink Import Handler
+      const importBtn = document.getElementById('load-permalink-btn');
+      const importInput = document.getElementById('import-permalink-input');
+      
+      if (importBtn && importInput) {
+          importBtn.addEventListener('click', function() {
+              const val = importInput.value;
+              if (!val) return;
+              try {
+                  // Attempt to parse params from input string
+                  let params = null;
+                  try {
+                    if (val.indexOf('?') !== -1) {
+                         const searchPart = val.substring(val.indexOf('?'));
+                         params = new URLSearchParams(searchPart);
+                    } else if (val.startsWith('http')) {
+                         const urlObj = new URL(val);
+                         params = urlObj.searchParams;
+                    } else {
+                         // assume it is just query string without ?
+                         params = new URLSearchParams('?' + val);
+                    }
+                  } catch(e) {}
+
+                  if (params) {
+                      const payload = { action: 'applyPermalinkState' };
+                      if (params.has('lat')) payload.lat = parseFloat(params.get('lat'));
+                      if (params.has('lng')) payload.lng = parseFloat(params.get('lng'));
+                      if (params.has('height')) payload.height = parseFloat(params.get('height'));
+                      if (params.has('heading')) payload.heading = parseFloat(params.get('heading'));
+                      if (params.has('pitch')) payload.pitch = parseFloat(params.get('pitch'));
+                      if (params.has('layers')) payload.layers = params.get('layers');
+                      
+                      if (payload.lat !== undefined && !isNaN(payload.lat)) {
+                          parent.postMessage(payload, '*');
+                          importInput.value = ''; 
+                          const originalText = importBtn.textContent;
+                          importBtn.textContent = 'Loaded!';
+                          setTimeout(() => { importBtn.textContent = originalText; }, 2000);
+                      } else {
+                          alert('Invalid permalink: lat/lng parameters missing');
+                      }
+                  } else {
+                      alert('Could not parse URL parameters');
+                  }
+              } catch(e) {
+                  console.error('Failed to parse permalink', e);
+                  alert('Failed to parse URL');
+              }
+          });
       }
       
   });
