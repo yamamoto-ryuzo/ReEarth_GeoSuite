@@ -1399,7 +1399,7 @@ tryInitFromProperty();
 const _defaultInspectorText = `xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
 3dtiles: 東京都千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
-geojson: 避難所 | https://cms.reearth.io/workspace/01k8d80tdr4tvq1epdbrsqw0ry/project/01kcwn2bxj6g47vwg3dqrs8dbz/asset/01kcxgqswyfp57t1wvp46w3705
+geojson: 行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
