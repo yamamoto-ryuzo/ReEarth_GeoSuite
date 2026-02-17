@@ -792,6 +792,17 @@ function getUI() {
         } catch(e){}
       });
 
+      // Forward external applyPermalinkState messages to extension
+      window.addEventListener('message', function(e) {
+        try {
+          const msg = e && e.data ? e.data : null;
+          if (!msg || !msg.action) return;
+          if (msg.action === 'applyPermalinkState') {
+            try { parent.postMessage(msg, '*'); } catch(_){ }
+          }
+        } catch (e) {}
+      });
+
       
       // Permalink UI handlers
       const generateBtn = document.getElementById('generate-permalink-btn');
