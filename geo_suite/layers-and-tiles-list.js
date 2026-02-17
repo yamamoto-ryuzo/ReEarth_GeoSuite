@@ -1329,10 +1329,11 @@ function tryInitFromProperty() {
         // ignore
     }
 }
-function addXyzLayer(url, title) {
+function addXyzLayer(url, title, layerType) {
     if (!url || typeof url !== "string")
         return;
-    const titleToUse = (title && typeof title === 'string' && title.trim()) ? title.trim() : `XYZ: ${url}`;
+    const type = layerType || "tiles";
+    const titleToUse = (title && typeof title === 'string' && title.trim()) ? title.trim() : (type === "3dtiles" ? `3D Tiles: ${url}` : `XYZ: ${url}`);
     // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
     const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
     const layer = {
@@ -1340,11 +1341,14 @@ function addXyzLayer(url, title) {
         title: titleToUse,
         visible: true,
         data: {
-            type: "tiles",
+            type: type,
             url: encodedUrl,
-        },
-        tiles: {},
+        }
     };
+    // Only add tiles property for XYZ layers
+    if (type === "tiles") {
+        layer.tiles = {};
+    }
     try {
         sendLog("[addXyzLayer] received url:", url);
         sendLog("[addXyzLayer] encoded url:", encodedUrl);
@@ -1383,6 +1387,7 @@ tryInitFromProperty();
 // Default inspector text (matches reearth.yml defaultValue)
 const _defaultInspectorText = `xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+3dtiles: Plateau | https://plateau.reearth.io/3d-tiles/tileset.json
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
@@ -1576,6 +1581,32 @@ function processInspectorText(text) {
             }
             return;
         }
+        // 3D Tiles: "3dtiles: Name | URL" or "3dtiles: URL"
+        if (lowerLine.startsWith('3dtiles:') || lowerLine.startsWith('3d-tiles:')) {
+            const tileStr = line.substring(line.indexOf(':') + 1).trim();
+            let url = null;
+            let title = null;
+            if (tileStr.indexOf('|') !== -1) {
+                const parts = tileStr.split('|').map(p => p.trim());
+                if (parts[0].startsWith('http')) {
+                    url = parts[0];
+                    title = parts[1];
+                }
+                else if (parts[1] && parts[1].startsWith('http')) {
+                    title = parts[0];
+                    url = parts[1];
+                }
+            }
+            else {
+                if (tileStr.startsWith('http'))
+                    url = tileStr;
+            }
+            if (url) {
+                tiles.push({ url, title, type: '3dtiles' });
+            }
+            nonCamLines.push(line);
+            return;
+        }
         // Tile: "xyz: Name | URL" or just "Name | URL" or "URL"
         let tileStr = line;
         if (lowerLine.startsWith('xyz:')) {
@@ -1605,7 +1636,7 @@ function processInspectorText(text) {
                 url = tileStr;
         }
         if (url) {
-            tiles.push({ url, title });
+            tiles.push({ url, title, type: 'tiles' });
         }
         nonCamLines.push(line);
     });
@@ -1737,6 +1768,7 @@ function addXyzLayersFromArray(items) {
         const it = items[i] || {};
         const u = (it.url || it.inspectorUrl || "").trim();
         const t = (it.title || it.inspectorTitle || null);
+        const type = it.type || "tiles";
         if (!u)
             continue;
         if (!/^https?:\/\//.test(u))
@@ -1750,7 +1782,7 @@ function addXyzLayersFromArray(items) {
             catch (e) { }
             continue;
         }
-        addXyzLayer(u, t);
+        addXyzLayer(u, t, type);
     }
 }
 // Send info URL to UI to load in iframe
