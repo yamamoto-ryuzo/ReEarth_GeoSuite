@@ -276,7 +276,20 @@ function getUI() {
     <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
     <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
+    <button class="tab" data-target="share-panel" aria-selected="false">Share</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
+  </div>
+
+  <div id="share-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;">Share / Permalink</div>
+    <div style="margin-bottom:8px;">
+        <p style="font-size:0.85em;color:#555;margin:4px 0;">Current Camera & Layer State</p>
+        <button id="generate-permalink-btn" class="btn-primary p-8" style="width:100%;">Generate Link</button>
+    </div>
+    <div style="display:flex;gap:4px;">
+        <input type="text" id="permalink-output" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" readonly />
+        <button id="copy-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Copy</button>
+    </div>
   </div>
 
   <div id="layers-panel">
@@ -406,7 +419,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','cams-panel','info-panel','settings-panel','legend-panel'].forEach(id => {
+              ['layers-panel','cams-panel','info-panel','settings-panel','legend-panel','share-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -724,10 +737,36 @@ function getUI() {
             setVal('cam-height', c.height);
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
+          } else if (msg.action === 'permalinkGenerated') {
+            const output = document.getElementById('permalink-output');
+            if (output) output.value = msg.url;
           }
         } catch(e){}
       });
 
+      
+      // Permalink UI handlers
+      const generateBtn = document.getElementById('generate-permalink-btn');
+      const copyBtn = document.getElementById('copy-permalink-btn');
+      const output = document.getElementById('permalink-output');
+
+      if (generateBtn) {
+        generateBtn.addEventListener('click', function() {
+            if (output) output.value = 'Generating...';
+            // Send request to extension
+            parent.postMessage({ action: 'generatePermalink' }, '*');
+        });
+      }
+
+      if (copyBtn && output) {
+        copyBtn.addEventListener('click', function() {
+            output.select();
+            document.execCommand('copy');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
+        });
+      }
       
   });
 
@@ -983,6 +1022,71 @@ reearth.extension.on("message", (msg) => {
       } catch(e) {
         try { sendError('[flyToCamera] error:', e); } catch(err){}
       }
+      } else if (msg.action === "generatePermalink") {
+        try {
+            // 1. Get Camera
+            let cur = null;
+            try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
+            if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
+            if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
+            if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
+            if (!cur) try { cur = reearth.camera || null; } catch(e){}
+            
+            // 2. Get Layers Visibility (store visible layer IDs)
+            const layers = (reearth.layers && reearth.layers.layers) || [];
+            const visibleLayers = layers.filter(l => l.visible).map(l => l.id).join(',');
+            
+            // 3. Construct Query Params
+            const params = new URLSearchParams();
+            if (cur) {
+                  const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100000) / 100000 : 0;
+                  const lat = cur.lat ?? cur.latitude ?? null;
+                  const lng = cur.lng ?? cur.longitude ?? cur.lon ?? null;
+                  const h = cur.height ?? cur.altitude ?? cur.alt ?? null;
+                  const heading = cur.heading ?? cur.yaw ?? null;
+                  const pitch = cur.pitch ?? cur.tilt ?? null;
+                  
+                  if (typeof lat === 'number') params.set('lat', Math.round(lat * 1000000) / 1000000);
+                  if (typeof lng === 'number') params.set('lng', Math.round(lng * 1000000) / 1000000);
+                  if (typeof h === 'number') params.set('height', Math.round(h * 10) / 10);
+                  if (typeof heading === 'number') params.set('heading', rad2deg(heading));
+                  if (typeof pitch === 'number') params.set('pitch', rad2deg(pitch));
+            }
+            
+            if (visibleLayers) {
+                params.set('layers', visibleLayers);
+            }
+            
+            // 4. Base URL
+            let baseUrl = "https://reearth.io/"; 
+            try {
+                // Try to get parent URL (referrer is often the parent URL)
+                if (document.referrer) {
+                    baseUrl = document.referrer;
+                } else {
+                    baseUrl = window.location.href;
+                }
+            } catch(e) {}
+            
+            // Clean existing params and append new ones
+            try {
+                const urlObj = new URL(baseUrl);
+                params.forEach((v, k) => urlObj.searchParams.set(k, v));
+                baseUrl = urlObj.toString();
+            } catch(e) {
+                if (baseUrl.includes('?')) {
+                    baseUrl += '&' + params.toString();
+                } else {
+                    baseUrl += '?' + params.toString();
+                }
+            }
+            
+            if (reearth.ui) {
+                reearth.ui.postMessage({ action: 'permalinkGenerated', url: baseUrl });
+            }
+        } catch (e) {
+            try { sendError('[generatePermalink] error:', e); } catch(err){}
+        }
       } else if (msg.action === "setTime") {
         try {
           // If values are provided, convert to Date objects.
@@ -1552,4 +1656,59 @@ function loadInfoUrl(url) {
   } catch (e) {
     try { sendError('[loadInfo] ERROR:', e); } catch(err){}
   }
+}
+
+// --- Permalink Restoration Logic ---
+try {
+  setTimeout(() => {
+    let params = null;
+    try {
+        if (typeof window !== 'undefined' && window.location) {
+            params = new URLSearchParams(window.location.search);
+        }
+        if ((!params || !params.has('lat')) && typeof window !== 'undefined' && window.parent !== window) {
+            try {
+                if (window.parent.location && window.parent.location.search) {
+                     params = new URLSearchParams(window.parent.location.search);
+                }
+            } catch(e){}
+        }
+    } catch(e){}
+
+    if (params && (params.has('lat') || params.has('layers'))) {
+        try { sendLog('[Permalink] Found params', params.toString()); } catch(e){}
+        
+        const lat = parseFloat(params.get('lat'));
+        const lng = parseFloat(params.get('lng'));
+        const height = parseFloat(params.get('height'));
+        const heading = parseFloat(params.get('heading'));
+        const pitch = parseFloat(params.get('pitch'));
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+            reearth.camera.flyTo({
+                lat: lat, 
+                lng: lng, 
+                height: isNaN(height) ? 1000 : height,
+                heading: isNaN(heading) ? 0 : heading * Math.PI / 180,
+                pitch: isNaN(pitch) ? -Math.PI/6 : pitch * Math.PI / 180,
+                roll: 0
+            }, { duration: 0.1 });
+        }
+        
+        const layersStr = params.get('layers');
+        if (layersStr && reearth.layers) {
+            const visibleIds = new Set(layersStr.split(','));
+            const layers = reearth.layers.layers || [];
+            layers.forEach(l => {
+                if (visibleIds.has(l.id)) {
+                    if (!l.visible) reearth.layers.show(l.id);
+                } else {
+                    if (l.visible) reearth.layers.hide(l.id);
+                }
+            });
+        }
+    }
+  }, 1500);
+} catch(e) {
+    try { sendError('[Permalink] Error', e); } catch(err){}
 }
