@@ -12,6 +12,7 @@ let _lastInfoUrl = null;
 let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = []; // non-cam lines from inspector text, preserved for rebuild
+let _baseUrl = null; // Base URL for permalink
 // Ensure globe and scene background are white before any tiles are applied
 try {
     if (typeof reearth !== "undefined" && reearth.viewer && reearth.viewer.overrideProperty) {
@@ -734,15 +735,26 @@ function getUI() {
             const output = document.getElementById('permalink-output');
             if (output) {
                 // Construct URL in UI context
-                let baseUrl = "https://reearth.io/"; 
-                try {
-                    // Try to get parent URL
-                    if (document.referrer) {
-                        baseUrl = document.referrer;
-                    } else {
-                        baseUrl = window.location.href;
+                let baseUrl = msg.baseUrl; // Use base URL passed from extension if available
+                
+                if (!baseUrl) {
+                    try {
+                        // Try to get parent URL
+                        if (document.referrer && document.referrer.startsWith('http')) {
+                            baseUrl = document.referrer;
+                        } else {
+                            // If window.location.href is available and http (not about:srcdoc), use it
+                            if (window.location.href && window.location.href.startsWith('http')) {
+                                baseUrl = window.location.href;
+                            } else {
+                                // Fallback for srcdoc/sandbox
+                                baseUrl = "https://reearth.io/";
+                            }
+                        }
+                    } catch(e) {
+                         baseUrl = "https://reearth.io/";
                     }
-                } catch(e) {}
+                }
                 
                 try {
                     const urlObj = new URL(baseUrl);
@@ -1263,7 +1275,8 @@ reearth.extension.on("message", (msg) => {
                 const visibleLayers = layers.filter(l => l.visible).map(l => l.id).join(',');
                 const payload = {
                     action: 'permalinkGenerated',
-                    layers: visibleLayers
+                    layers: visibleLayers,
+                    baseUrl: _baseUrl // Pass configured base URL if available
                 };
                 if (cur) {
                     const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100000) / 100000 : 0;
@@ -1726,6 +1739,19 @@ function processInspectorText(text) {
                 infoUrlFound = url;
                 try {
                     sendLog('[processInspectorText] found INFO url:', url);
+                }
+                catch (e) { }
+            }
+            nonCamLines.push(line);
+            return;
+        }
+        // Base URL for permalink: "baseurl: https://..."
+        if (lowerLine.startsWith('baseurl:')) {
+            const url = line.substring(8).trim();
+            if (url && /^https?:\/\//.test(url)) {
+                _baseUrl = url;
+                try {
+                    sendLog('[processInspectorText] found Base URL:', url);
                 }
                 catch (e) { }
             }
