@@ -1,5 +1,9 @@
 # Changelog
-## v7.0.0
+## v7.3.0
+- GeoJSON レイヤー機能を追加：`geojson:` 行でURLを指定し、GeoJSONデータを表示可能に。
+## v7.2.0
+- 3D Tiles レイヤー機能を追加：`3dtiles:` 行でURLを指定し、3D Tilesを表示可能に。
+## v7.1.0
 - 凡例機能を追加：`legend:` 行で画像URLを指定し、Legendタブで確認可能に。
 - Depth Test トグルを追加：Google Photorealistic 3D Tiles 利用時の透過対策として、地下の隠蔽設定を切り替え可能に。
 ## v6.0.0

@@ -1119,7 +1119,15 @@ function tryInitFromProperty() {
 function addXyzLayer(url, title, layerType) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
-  const titleToUse = (title && typeof title === 'string' && title.trim()) ? title.trim() : (type === "3dtiles" ? `3D Tiles: ${url}` : `XYZ: ${url}`);
+  let titleToUse = title;
+  if (!titleToUse || typeof titleToUse !== 'string' || !titleToUse.trim()) {
+    if (type === '3dtiles') titleToUse = `3D Tiles: ${url}`;
+    else if (type === 'geojson') titleToUse = `GeoJSON: ${url}`;
+    else titleToUse = `XYZ: ${url}`;
+  } else {
+    titleToUse = titleToUse.trim();
+  }
+  
   // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
   const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
   const layer = {
@@ -1166,7 +1174,8 @@ tryInitFromProperty();
 // Default inspector text (matches reearth.yml defaultValue)
 const _defaultInspectorText = `xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
-3dtiles: Plateau | https://plateau.reearth.io/3d-tiles/tileset.json
+3dtiles: 東京都千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
+geojson: 避難所 | https://cms.reearth.io/workspace/01k8d80tdr4tvq1epdbrsqw0ry/project/01kcwn2bxj6g47vwg3dqrs8dbz/asset/01kcxgqswyfp57t1wvp46w3705
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
@@ -1339,6 +1348,27 @@ function processInspectorText(text) {
 
       if (url) {
         tiles.push({ url, title, type: '3dtiles' });
+      }
+      nonCamLines.push(line);
+      return;
+    }
+
+    // GeoJSON: "geojson: Name | URL" or "geojson: URL"
+    if (lowerLine.startsWith('geojson:')) {
+      const geoStr = line.substring(8).trim();
+      let url = null;
+      let title = null;
+      
+      if (geoStr.indexOf('|') !== -1) {
+        const parts = geoStr.split('|').map(p => p.trim());
+        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+      } else {
+        if (geoStr.startsWith('http')) url = geoStr;
+      }
+
+      if (url) {
+        tiles.push({ url, title, type: 'geojson' });
       }
       nonCamLines.push(line);
       return;

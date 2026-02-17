@@ -240,8 +240,8 @@
                 <h2>✨ 主な機能</h2>
                 <div class="features">
                     <div class="feature-card">
-                        <h3>🗺️ XYZタイル管理</h3>
-                        <p>複数のXYZタイルサーバーを一括管理。Inspector から簡単に追加・削除が可能です。</p>
+                        <h3>🗺️ レイヤー追加・管理</h3>
+                        <p>XYZタイル、3D Tiles、GeoJSONをInspectorからURL指定で簡単に追加・管理できます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>📑 レイヤー一覧UI</h3>
@@ -290,6 +290,8 @@
                     </p>
                     <pre><code>xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+3dtiles: タイトル | https://example.com/tileset.json
+geojson: 避難所 | https://example.com/data.geojson
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
@@ -299,6 +301,8 @@ legend: https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pr
                     <p style="margin-top:8px; color:#444;">背景色は `background:` または `bg:` で指定します。16進表記（例: <code>#ffffff</code> / <code>#fff</code>）、RGB（例: <code>rgb(255,255,255)</code>）、CSSの色名（例: <code>white</code>）が使えます。指定するとタイルが未設定のときに地球儀とシーン背景がその色で表示されます。</p>
                     <ul>
                         <li><strong>xyz:</strong> タイル名とURLを `|` で区切って指定します。</li>
+                        <li><strong>3dtiles:</strong> 3D TilesのタイトルとURLを `|` で区切って指定します（例: <code>3dtiles: Plateau | https://.../tileset.json</code>）。</li>
+                        <li><strong>geojson:</strong> GeoJSONのタイトルとURLを `|` で区切って指定します（例: <code>geojson: 避難所 | https://.../data.geojson</code>）。</li>
                         <li><strong>background / bg:</strong> 地球儀とシーンの背景色を指定します（例: <code>background: #ffffff</code>）。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を任意の順序で追加できます。未指定のパラメータは現在のカメラ設定を維持します。Camsタブに一覧表示され、ボタンクリックでカメラが移動します。</li>
