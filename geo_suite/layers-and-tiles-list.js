@@ -849,14 +849,23 @@ function getUI() {
                           importBtn.textContent = 'Loaded!';
                           setTimeout(() => { importBtn.textContent = originalText; }, 2000);
                       } else {
-                          alert('Invalid permalink: lat/lng parameters missing');
+                          // alert('Invalid permalink: lat/lng parameters missing');
+                          const originalText = importBtn.textContent;
+                          importBtn.textContent = 'Invalid Data';
+                          setTimeout(() => { importBtn.textContent = originalText; }, 2000);
                       }
                   } else {
-                      alert('Could not parse URL parameters');
+                      // alert('Could not parse URL parameters');
+                      const originalText = importBtn.textContent;
+                      importBtn.textContent = 'Parse Error';
+                      setTimeout(() => { importBtn.textContent = originalText; }, 2000);
                   }
               } catch(e) {
                   console.error('Failed to parse permalink', e);
-                  alert('Failed to parse URL');
+                  // alert('Failed to parse URL');
+                  const originalText = importBtn.textContent;
+                  importBtn.textContent = 'Error';
+                  setTimeout(() => { importBtn.textContent = originalText; }, 2000);
               }
           });
       }
@@ -920,10 +929,16 @@ function getUI() {
                       reloadBtn.textContent = 'Restored!';
                       setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
                   } else {
-                      alert('URL found but no valid lat/lng parameters.');
+                      // alert('URL found but no valid lat/lng parameters.');
+                      const originalText = reloadBtn.textContent;
+                      reloadBtn.textContent = 'No Lat/Lng';
+                      setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
                   }
               } else {
-                  alert('Could not read URL parameters from browser address bar or referrer.');
+                  // alert('Could not read URL parameters from browser address bar or referrer.');
+                  const originalText = reloadBtn.textContent;
+                  reloadBtn.textContent = 'No Params';
+                  setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
               }
           });
       }
