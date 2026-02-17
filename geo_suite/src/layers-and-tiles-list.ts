@@ -739,7 +739,32 @@ function getUI() {
             setVal('cam-pitch', c.pitch);
           } else if (msg.action === 'permalinkGenerated') {
             const output = document.getElementById('permalink-output');
-            if (output) output.value = msg.url;
+            if (output) {
+                // Construct URL in UI context
+                let baseUrl = "https://reearth.io/"; 
+                try {
+                    // Try to get parent URL
+                    if (document.referrer) {
+                        baseUrl = document.referrer;
+                    } else {
+                        baseUrl = window.location.href;
+                    }
+                } catch(e) {}
+                
+                try {
+                    const urlObj = new URL(baseUrl);
+                    if (msg.lat != null) urlObj.searchParams.set('lat', msg.lat);
+                    if (msg.lng != null) urlObj.searchParams.set('lng', msg.lng);
+                    if (msg.height != null) urlObj.searchParams.set('height', msg.height);
+                    if (msg.heading != null) urlObj.searchParams.set('heading', msg.heading);
+                    if (msg.pitch != null) urlObj.searchParams.set('pitch', msg.pitch);
+                    if (msg.layers) urlObj.searchParams.set('layers', msg.layers);
+                    
+                    output.value = urlObj.toString();
+                } catch(e) {
+                    output.value = baseUrl + "?error=url_construction_failed";
+                }
+            }
           }
         } catch(e){}
       });
@@ -771,6 +796,44 @@ function getUI() {
   });
 
   // On-screen plugin log removed (logs go to console only)
+
+  // Initialize Permalink Logic (Apply state from URL)
+  try {
+    setTimeout(() => {
+        let params = null;
+        try {
+            params = new URLSearchParams(window.location.search);
+        } catch(e) {}
+        
+        // Try parent URL if in iframe and same origin or accessible
+        if ((!params || !params.has('lat')) && window.parent !== window) {
+            try {
+                params = new URLSearchParams(window.parent.location.search);
+            } catch(e){}
+        }
+
+        // Also try reading from document.referrer if parameters are missing
+        if ((!params || !params.has('lat')) && document.referrer) {
+             try {
+                 const refUrl = new URL(document.referrer);
+                 params = refUrl.searchParams;
+             } catch(e){}
+        }
+
+        if (params && (params.has('lat') || params.has('layers'))) {
+            const payload = { action: 'applyPermalinkState' };
+            if (params.has('lat')) payload.lat = parseFloat(params.get('lat'));
+            if (params.has('lng')) payload.lng = parseFloat(params.get('lng'));
+            if (params.has('height')) payload.height = parseFloat(params.get('height'));
+            if (params.has('heading')) payload.heading = parseFloat(params.get('heading'));
+            if (params.has('pitch')) payload.pitch = parseFloat(params.get('pitch'));
+            if (params.has('layers')) payload.layers = params.get('layers');
+            
+            parent.postMessage(payload, '*');
+        }
+    }, 500);
+  } catch(e) { console.error(e); }
+
 </script>
 `;
 }
@@ -1032,12 +1095,15 @@ reearth.extension.on("message", (msg) => {
             if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
             if (!cur) try { cur = reearth.camera || null; } catch(e){}
             
-            // 2. Get Layers Visibility (store visible layer IDs)
+            // 2. Get Layers Visibility
             const layers = (reearth.layers && reearth.layers.layers) || [];
             const visibleLayers = layers.filter(l => l.visible).map(l => l.id).join(',');
             
-            // 3. Construct Query Params
-            const params = new URLSearchParams();
+            const payload = {
+                action: 'permalinkGenerated',
+                layers: visibleLayers
+            };
+
             if (cur) {
                   const rad2deg = (r) => typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100000) / 100000 : 0;
                   const lat = cur.lat ?? cur.latitude ?? null;
@@ -1046,43 +1112,15 @@ reearth.extension.on("message", (msg) => {
                   const heading = cur.heading ?? cur.yaw ?? null;
                   const pitch = cur.pitch ?? cur.tilt ?? null;
                   
-                  if (typeof lat === 'number') params.set('lat', Math.round(lat * 1000000) / 1000000);
-                  if (typeof lng === 'number') params.set('lng', Math.round(lng * 1000000) / 1000000);
-                  if (typeof h === 'number') params.set('height', Math.round(h * 10) / 10);
-                  if (typeof heading === 'number') params.set('heading', rad2deg(heading));
-                  if (typeof pitch === 'number') params.set('pitch', rad2deg(pitch));
-            }
-            
-            if (visibleLayers) {
-                params.set('layers', visibleLayers);
-            }
-            
-            // 4. Base URL
-            let baseUrl = "https://reearth.io/"; 
-            try {
-                // Try to get parent URL (referrer is often the parent URL)
-                if (document.referrer) {
-                    baseUrl = document.referrer;
-                } else {
-                    baseUrl = window.location.href;
-                }
-            } catch(e) {}
-            
-            // Clean existing params and append new ones
-            try {
-                const urlObj = new URL(baseUrl);
-                params.forEach((v, k) => urlObj.searchParams.set(k, v));
-                baseUrl = urlObj.toString();
-            } catch(e) {
-                if (baseUrl.includes('?')) {
-                    baseUrl += '&' + params.toString();
-                } else {
-                    baseUrl += '?' + params.toString();
-                }
+                  if (typeof lat === 'number') payload.lat = Math.round(lat * 1000000) / 1000000;
+                  if (typeof lng === 'number') payload.lng = Math.round(lng * 1000000) / 1000000;
+                  if (typeof h === 'number') payload.height = Math.round(h * 10) / 10;
+                  if (typeof heading === 'number') payload.heading = rad2deg(heading);
+                  if (typeof pitch === 'number') payload.pitch = rad2deg(pitch);
             }
             
             if (reearth.ui) {
-                reearth.ui.postMessage({ action: 'permalinkGenerated', url: baseUrl });
+                reearth.ui.postMessage(payload);
             }
         } catch (e) {
             try { sendError('[generatePermalink] error:', e); } catch(err){}
@@ -1113,6 +1151,32 @@ reearth.extension.on("message", (msg) => {
         } catch (e) {
           try { sendError('[setTime] invalid date payload', msg, e); } catch(err){}
         }
+      } else if (msg.action === "applyPermalinkState") {
+          try {
+              if (msg.lat != null && msg.lng != null) {
+                  reearth.camera.flyTo({
+                    lat: msg.lat,
+                    lng: msg.lng,
+                    height: msg.height || 1000,
+                    heading: (msg.heading || 0) * Math.PI / 180,
+                    pitch: (msg.pitch || -30) * Math.PI / 180,
+                    roll: 0,
+                  }, { duration: 0.1 });
+              }
+              if (msg.layers && reearth.layers) {
+                  const visibleIds = new Set(msg.layers.split(','));
+                  const layers = reearth.layers.layers || [];
+                  layers.forEach(l => {
+                    if (visibleIds.has(l.id)) {
+                        if (!l.visible) reearth.layers.show(l.id);
+                    } else {
+                        if (l.visible) reearth.layers.hide(l.id);
+                    }
+                  });
+              }
+          } catch(e) {
+             try { sendError('[applyPermalinkState] error:', e); } catch(err){}
+          }
       }
     return;
   }
@@ -1659,56 +1723,6 @@ function loadInfoUrl(url) {
 }
 
 // --- Permalink Restoration Logic ---
-try {
-  setTimeout(() => {
-    let params = null;
-    try {
-        if (typeof window !== 'undefined' && window.location) {
-            params = new URLSearchParams(window.location.search);
-        }
-        if ((!params || !params.has('lat')) && typeof window !== 'undefined' && window.parent !== window) {
-            try {
-                if (window.parent.location && window.parent.location.search) {
-                     params = new URLSearchParams(window.parent.location.search);
-                }
-            } catch(e){}
-        }
-    } catch(e){}
-
-    if (params && (params.has('lat') || params.has('layers'))) {
-        try { sendLog('[Permalink] Found params', params.toString()); } catch(e){}
-        
-        const lat = parseFloat(params.get('lat'));
-        const lng = parseFloat(params.get('lng'));
-        const height = parseFloat(params.get('height'));
-        const heading = parseFloat(params.get('heading'));
-        const pitch = parseFloat(params.get('pitch'));
-        
-        if (!isNaN(lat) && !isNaN(lng)) {
-            reearth.camera.flyTo({
-                lat: lat, 
-                lng: lng, 
-                height: isNaN(height) ? 1000 : height,
-                heading: isNaN(heading) ? 0 : heading * Math.PI / 180,
-                pitch: isNaN(pitch) ? -Math.PI/6 : pitch * Math.PI / 180,
-                roll: 0
-            }, { duration: 0.1 });
-        }
-        
-        const layersStr = params.get('layers');
-        if (layersStr && reearth.layers) {
-            const visibleIds = new Set(layersStr.split(','));
-            const layers = reearth.layers.layers || [];
-            layers.forEach(l => {
-                if (visibleIds.has(l.id)) {
-                    if (!l.visible) reearth.layers.show(l.id);
-                } else {
-                    if (l.visible) reearth.layers.hide(l.id);
-                }
-            });
-        }
-    }
-  }, 1500);
-} catch(e) {
-    try { sendError('[Permalink] Error', e); } catch(err){}
-}
+// Note: This logic has been moved to UI initialization (see getUI script)
+// because extension sandbox cannot access window.location.
+// However, we still need a handler for 'applyPermalinkState' (added below).
