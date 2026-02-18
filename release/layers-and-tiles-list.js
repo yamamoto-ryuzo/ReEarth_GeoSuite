@@ -1389,23 +1389,68 @@ reearth.extension.on("message", async (msg) => {
                         pitch: -1.57,
                         roll: 0,
                     }, { duration: 2 });
-                    // Show temporary target marker (Magenta point via CZML)
+                    // Show temporary target marker (Modern Reticle Scope Style via CZML Billboard)
                     let layerId;
                     try {
-                        // Use CZML for precise control over height reference (Relative to Ground)
+                        // Create SVG Reticle (Scope)
+                        // Design: Cyan glowing crosshair with thick outer posts, similar to rifle scope
+                        const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#glow)">
+    <!-- Outer Circle -->
+    <circle cx="128" cy="128" r="120" fill="none" stroke="#00ffff" stroke-width="4" />
+    
+    <!-- Center Crosshair (Fine lines) -->
+    <line x1="128" y1="90" x2="128" y2="166" stroke="#00ffff" stroke-width="2" />
+    <line x1="90" y1="128" x2="166" y2="128" stroke="#00ffff" stroke-width="2" />
+    
+    <!-- Thick Posts (Outer lines) -->
+    <!-- Top -->
+    <line x1="128" y1="0" x2="128" y2="90" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
+    <!-- Bottom -->
+    <line x1="128" y1="166" x2="128" y2="256" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
+    <!-- Left -->
+    <line x1="0" y1="128" x2="90" y2="128" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
+    <!-- Right -->
+    <line x1="166" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
+  </g>
+</svg>`.trim();
+                        // Encode SVG to Data URI
+                        let base64Svg = "";
+                        if (typeof btoa === 'function') {
+                            base64Svg = btoa(svg);
+                        }
+                        else if (typeof Buffer !== 'undefined') {
+                            base64Svg = Buffer.from(svg).toString('base64');
+                        }
+                        else {
+                            // Fallback
+                            base64Svg = "";
+                        }
+                        const imageUri = "data:image/svg+xml;base64," + base64Svg;
                         const czml = [
                             { "id": "document", "version": "1.0" },
                             {
-                                "id": "current-location-point",
+                                "id": "current-location-scope",
                                 "position": {
-                                    "cartographicDegrees": [myLocation.lng, myLocation.lat, 50] // 50m height relative to ground
+                                    "cartographicDegrees": [myLocation.lng, myLocation.lat, 50] // 50m relative height
                                 },
-                                "point": {
-                                    "pixelSize": 40,
-                                    "color": { "rgba": [255, 0, 255, 255] }, // Magenta
-                                    "outlineColor": { "rgba": [255, 255, 255, 255] },
-                                    "outlineWidth": 4,
-                                    "heightReference": "RELATIVE_TO_GROUND"
+                                "billboard": {
+                                    "image": imageUri,
+                                    "scale": 1.0,
+                                    "heightReference": "RELATIVE_TO_GROUND",
+                                    "verticalOrigin": "CENTER",
+                                    "horizontalOrigin": "CENTER",
+                                    "disableDepthTestDistance": Number.POSITIVE_INFINITY // Always visible on top
                                 }
                             }
                         ];
@@ -1418,7 +1463,6 @@ reearth.extension.on("message", async (msg) => {
                             base64 = Buffer.from(str).toString('base64');
                         }
                         else {
-                            // Manual base64 encoder
                             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
                             for (let i = 0; i < str.length; i += 3) {
                                 const c1 = str.charCodeAt(i), c2 = str.charCodeAt(i + 1), c3 = str.charCodeAt(i + 2);
@@ -1431,7 +1475,7 @@ reearth.extension.on("message", async (msg) => {
                         const dataUrl = "data:application/json;base64," + base64;
                         layerId = reearth.layers.add({
                             type: "simple",
-                            title: "Current Location Target",
+                            title: "Current Location Scope",
                             data: {
                                 type: "czml",
                                 url: dataUrl
