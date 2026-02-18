@@ -736,34 +736,13 @@ function getUI() {
       const flyToCurrentBtn = document.getElementById('cam-flyto-current');
       if (flyToCurrentBtn) {
         flyToCurrentBtn.addEventListener('click', function() {
-          try {
-            if (!navigator.geolocation) {
-              alert('Geolocation is not supported by this browser.');
-              return;
-            }
             flyToCurrentBtn.textContent = 'Getting...';
-            navigator.geolocation.getCurrentPosition(function(pos) {
-              try {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                parent.postMessage({
-                  action: 'flyToManual',
-                  lat: lat,
-                  lng: lng,
-                  height: 1000,
-                  heading: 0,
-                  pitch: 0
-                }, '*');
-              } catch (e) {}
-              flyToCurrentBtn.textContent = 'Fly to Current Location';
-            }, function(err) {
-              try { alert('位置情報を取得できませんでした: ' + (err && err.message ? err.message : 'error')); } catch(e){}
-              flyToCurrentBtn.textContent = 'Fly to Current Location';
-            }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-          } catch (e) {
-            try { alert('エラーが発生しました'); } catch(e){}
-            flyToCurrentBtn.textContent = '現在位置へFLYTO';
-          }
+            parent.postMessage({ action: 'requestGeolocation' }, '*');
+            setTimeout(() => {
+                 if(flyToCurrentBtn.textContent === 'Getting...') {
+                     flyToCurrentBtn.textContent = 'Fly to Current Location';
+                 }
+            }, 8000);
         });
       }
 
@@ -790,6 +769,16 @@ function getUI() {
             setVal('cam-height', c.height);
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
+          } else if (msg.action === 'geolocationResult') {
+            const btn = document.getElementById('cam-flyto-current');
+            if (msg.success) {
+                if (btn) btn.textContent = 'Fly to Current Location';
+            } else {
+                if (btn) {
+                    btn.textContent = 'Error';
+                    setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                }
+            }
           } else if (msg.action === 'permalinkGenerated') {
             const output = document.getElementById('permalink-output');
             if (output) {
