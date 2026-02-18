@@ -766,6 +766,11 @@ function getUI() {
             const btn = document.getElementById('cam-flyto-current');
             if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
+                if (msg.layerId) {
+                    setTimeout(() => {
+                        parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
+                    }, 5000);
+                }
             } else {
                 if (btn) {
                     btn.textContent = 'Error';
@@ -1433,17 +1438,14 @@ reearth.extension.on("message", async (msg) => {
                                 pointOutlineWidth: 4
                             }
                         });
-                        if (layerId) {
-                            setTimeout(() => {
-                                reearth.layers.delete(layerId);
-                            }, 5000);
-                        }
+                        // Note: setTimeout is not reliably available in extension environment.
+                        // We send layerId to UI, and UI will request removal after delay.
                     }
                     catch (e) {
                         console.error("Failed to add marker", e);
                     }
                     try {
-                        reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng });
+                        reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: typeof layerId !== 'undefined' ? layerId : undefined });
                     }
                     catch (e) { }
                     try {
@@ -1469,6 +1471,14 @@ reearth.extension.on("message", async (msg) => {
                 catch (err) { }
                 try {
                     reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'error' });
+                }
+                catch (e) { }
+            }
+        }
+        else if (msg.action === "removeLayer") {
+            if (msg.layerId) {
+                try {
+                    reearth.layers.delete(msg.layerId);
                 }
                 catch (e) { }
             }

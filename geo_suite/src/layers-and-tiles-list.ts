@@ -773,6 +773,11 @@ function getUI() {
             const btn = document.getElementById('cam-flyto-current');
             if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
+                if (msg.layerId) {
+                    setTimeout(() => {
+                        parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
+                    }, 5000);
+                }
             } else {
                 if (btn) {
                     btn.textContent = 'Error';
@@ -1330,16 +1335,13 @@ reearth.extension.on("message", async (msg) => {
                     }
                 });
                 
-                if (layerId) {
-                    setTimeout(() => {
-                        reearth.layers.delete(layerId);
-                    }, 5000);
-                }
+                // Note: setTimeout is not reliably available in extension environment.
+                // We send layerId to UI, and UI will request removal after delay.
             } catch(e) {
                 console.error("Failed to add marker", e);
             }
 
-            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng }); } catch (e) { }
+            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: typeof layerId !== 'undefined' ? layerId : undefined }); } catch (e) { }
             try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
              try { sendError('[requestGeolocation] location not found'); } catch (e) { }
@@ -1349,6 +1351,10 @@ reearth.extension.on("message", async (msg) => {
           try { sendError('[requestGeolocation] error:', e); } catch (err) { }
           try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
       }
+    } else if (msg.action === "removeLayer") {
+        if (msg.layerId) {
+            try { reearth.layers.delete(msg.layerId); } catch(e) {}
+        }
     } else if (msg.action === "flyToManual") {
       try {
         reearth.camera.flyTo({
