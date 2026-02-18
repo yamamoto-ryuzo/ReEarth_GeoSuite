@@ -1389,35 +1389,58 @@ reearth.extension.on("message", async (msg) => {
                         pitch: -1.57,
                         roll: 0,
                     }, { duration: 2 });
-                    // Show temporary target marker (Magenta point)
+                    // Show temporary target marker (Magenta point via CZML)
                     let layerId;
                     try {
-                        // Use standard marker extension if available
-                        layerId = reearth.layers.add({
-                            extensionId: "marker",
-                            isVisible: true,
-                            title: "Current Location Target",
-                            property: {
-                                default: {
-                                    location: {
-                                        lat: myLocation.lat,
-                                        lng: myLocation.lng,
-                                        height: (myLocation.height || 0) + 100 // 100m above ground to be visible
-                                    },
-                                    style: "point",
-                                    pointColor: "#ff00ff",
-                                    pointSize: 40,
-                                    pointOutlineColor: "#ffffff",
-                                    pointOutlineWidth: 4,
-                                    heightReference: "relative"
+                        // Use CZML for precise control over height reference (Relative to Ground)
+                        const czml = [
+                            { "id": "document", "version": "1.0" },
+                            {
+                                "id": "current-location-point",
+                                "position": {
+                                    "cartographicDegrees": [myLocation.lng, myLocation.lat, 50] // 50m height relative to ground
+                                },
+                                "point": {
+                                    "pixelSize": 40,
+                                    "color": { "rgba": [255, 0, 255, 255] }, // Magenta
+                                    "outlineColor": { "rgba": [255, 255, 255, 255] },
+                                    "outlineWidth": 4,
+                                    "heightReference": "RELATIVE_TO_GROUND"
                                 }
                             }
+                        ];
+                        const str = JSON.stringify(czml);
+                        let base64 = "";
+                        if (typeof btoa === 'function') {
+                            base64 = btoa(str);
+                        }
+                        else if (typeof Buffer !== 'undefined') {
+                            base64 = Buffer.from(str).toString('base64');
+                        }
+                        else {
+                            // Manual base64 encoder
+                            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+                            for (let i = 0; i < str.length; i += 3) {
+                                const c1 = str.charCodeAt(i), c2 = str.charCodeAt(i + 1), c3 = str.charCodeAt(i + 2);
+                                base64 += chars.charAt(c1 >> 2);
+                                base64 += chars.charAt(((c1 & 3) << 4) | ((c2 & 0xF0) >> 4));
+                                base64 += chars.charAt(((c2 & 0xF) << 2) | ((c3 & 0xC0) >> 6));
+                                base64 += chars.charAt(c3 & 0x3F);
+                            }
+                        }
+                        const dataUrl = "data:application/json;base64," + base64;
+                        layerId = reearth.layers.add({
+                            type: "simple",
+                            title: "Current Location Target",
+                            data: {
+                                type: "czml",
+                                url: dataUrl
+                            }
                         });
-                        // Note: setTimeout is not reliably available in extension environment.
-                        // We send layerId to UI, and UI will request removal after delay.
+                        // Note: We send layerId to UI, and UI will request removal after delay.
                     }
                     catch (e) {
-                        console.error("Failed to add marker", e);
+                        console.error("Failed to add CZML marker", e);
                     }
                     try {
                         reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId });
