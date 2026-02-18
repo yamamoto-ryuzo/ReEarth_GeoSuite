@@ -769,21 +769,38 @@ function getUI() {
 
       // Camera Refresh button: request current camera from extension
       const refreshBtn = document.getElementById('cam-refresh');
-      if (flyToCurrentBtn) {
-        flyToCurrentBtn.addEventListener('click', function() {
-          try {
-            // Geolocation is blocked inside sandboxed iframe (about:srcdoc).
-            // Ask parent window to obtain geolocation instead.
-            parent.postMessage({ action: 'requestGeolocation' }, '*');
-            flyToCurrentBtn.textContent = 'Requesting...';
-            // restore label after a short delay in case parent doesn't respond
-            setTimeout(() => { try { flyToCurrentBtn.textContent = 'Fly to Current Location'; } catch(e){} }, 5000);
-          } catch (e) {
-            try { alert('Failed to request geolocation from parent'); } catch(e){}
-            try { flyToCurrentBtn.textContent = 'Fly to Current Location'; } catch(e){}
-          }
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          parent.postMessage({ action: 'requestCamera' }, '*');
         });
       }
+
+      // Listen for camera state updates from the extension
+      window.addEventListener('message', function(e) {
+        try {
+          const msg = e && e.data ? e.data : null;
+          try { console.log('[UI] window.message received:', msg); } catch(e){}
+          if (!msg) return;
+          if (msg.action === 'updateCameraFields') {
+            const c = msg.camera;
+            if (!c) return;
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+            setVal('cam-lat', c.lat);
+            setVal('cam-lng', c.lng);
+            setVal('cam-height', c.height);
+            setVal('cam-heading', c.heading);
+            setVal('cam-pitch', c.pitch);
+          } else if (msg.action === 'permalinkGenerated') {
+            const output = document.getElementById('permalink-output');
+            if (output) {
+                // Construct URL in UI context
+                let baseUrl = msg.baseUrl; // Use base URL passed from extension if available
+                
+                if (!baseUrl) {
+                    try {
+                        // Try to get parent URL
+                        if (document.referrer && document.referrer.startsWith('http')) {
+                            baseUrl = document.referrer;
                         } else {
                             // If window.location.href is available and http (not about:srcdoc), use it
                             if (window.location.href && window.location.href.startsWith('http')) {
@@ -1157,7 +1174,7 @@ function setLayerVisibility(layerId, visible) {
 }
 
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
-reearth.extension.on("message", (msg) => {
+reearth.extension.on("message", async (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
   if (msg && msg.action) {
@@ -1260,6 +1277,28 @@ reearth.extension.on("message", (msg) => {
         }
       } catch(e) {
         try { sendError('[updateCamPreset] error:', e); } catch(err){}
+      }
+    } else if (msg.action === "requestGeolocation") {
+      try {
+        const myLocation = await reearth.viewer.tools.getCurrentLocationAsync();
+        if (myLocation) {
+            reearth.camera.flyTo({
+                lat: myLocation.lat,
+                lng: myLocation.lng,
+                height: 1000,
+                heading: 0,
+                pitch: -1.57,
+                roll: 0,
+            }, { duration: 2 });
+            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng }); } catch (e) { }
+            try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
+        } else {
+             try { sendError('[requestGeolocation] location not found'); } catch (e) { }
+             try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) { }
+        }
+      } catch (e) {
+          try { sendError('[requestGeolocation] error:', e); } catch (err) { }
+          try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
       }
     } else if (msg.action === "flyToManual") {
       try {

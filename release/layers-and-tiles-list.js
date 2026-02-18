@@ -313,7 +313,12 @@ function getUI() {
   </div>
 
   <div id="cams-panel" style="display:none;">
-    <div style="font-weight:600;margin-bottom:8px;">Camera Presets</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-weight:600;">Camera Presets</div>
+      <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
+        <button id="cam-flyto-current" class="btn-primary p-8" title="Fly to Current Location">Fly to Current Location</button>
+      </div>
+    </div>
     ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
     <div class="cam-current">
       <div style="font-weight:600;margin-bottom:4px;font-size:0.85em;">Current Camera</div>
@@ -717,6 +722,41 @@ function getUI() {
             heading: isNaN(heading) ? 0 : heading,
             pitch: isNaN(pitch) ? 0 : pitch,
           }, '*');
+        });
+      }
+
+      // FlyTo current geolocation (browser) -> send to parent as manual flyTo
+      const flyToCurrentBtn = document.getElementById('cam-flyto-current');
+      if (flyToCurrentBtn) {
+        flyToCurrentBtn.addEventListener('click', function() {
+          try {
+            if (!navigator.geolocation) {
+              alert('Geolocation is not supported by this browser.');
+              return;
+            }
+            flyToCurrentBtn.textContent = 'Getting...';
+            navigator.geolocation.getCurrentPosition(function(pos) {
+              try {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                parent.postMessage({
+                  action: 'flyToManual',
+                  lat: lat,
+                  lng: lng,
+                  height: 1000,
+                  heading: 0,
+                  pitch: 0
+                }, '*');
+              } catch (e) {}
+              flyToCurrentBtn.textContent = 'Fly to Current Location';
+            }, function(err) {
+              try { alert('位置情報を取得できませんでした: ' + (err && err.message ? err.message : 'error')); } catch(e){}
+              flyToCurrentBtn.textContent = 'Fly to Current Location';
+            }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+          } catch (e) {
+            try { alert('エラーが発生しました'); } catch(e){}
+            flyToCurrentBtn.textContent = '現在位置へFLYTO';
+          }
         });
       }
 
@@ -1176,7 +1216,7 @@ function setLayerVisibility(layerId, visible) {
     return false;
 }
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
-reearth.extension.on("message", (msg) => {
+reearth.extension.on("message", async (msg) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22;
     try {
         sendLog("[extension.message] received:", msg);
@@ -1343,6 +1383,49 @@ reearth.extension.on("message", (msg) => {
                 catch (err) { }
             }
         }
+        else if (msg.action === "requestGeolocation") {
+            try {
+                const myLocation = await reearth.viewer.tools.getCurrentLocationAsync();
+                if (myLocation) {
+                    reearth.camera.flyTo({
+                        lat: myLocation.lat,
+                        lng: myLocation.lng,
+                        height: 1000,
+                        heading: 0,
+                        pitch: -1.57,
+                        roll: 0,
+                    }, { duration: 2 });
+                    try {
+                        reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng });
+                    }
+                    catch (e) { }
+                    try {
+                        sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng);
+                    }
+                    catch (e) { }
+                }
+                else {
+                    try {
+                        sendError('[requestGeolocation] location not found');
+                    }
+                    catch (e) { }
+                    try {
+                        reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'not_found' });
+                    }
+                    catch (e) { }
+                }
+            }
+            catch (e) {
+                try {
+                    sendError('[requestGeolocation] error:', e);
+                }
+                catch (err) { }
+                try {
+                    reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'error' });
+                }
+                catch (e) { }
+            }
+        }
         else if (msg.action === "flyToManual") {
             try {
                 reearth.camera.flyTo({
@@ -1363,42 +1446,6 @@ reearth.extension.on("message", (msg) => {
                     sendError('[flyToManual] error:', e);
                 }
                 catch (err) { }
-            }
-        }
-        else if (msg.action === "requestGeolocation") {
-            try {
-                if (typeof navigator !== 'undefined' && navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function (pos) {
-                        try {
-                            const lat = pos.coords.latitude;
-                            const lng = pos.coords.longitude;
-                            reearth.camera.flyTo({
-                                lat: lat,
-                                lng: lng,
-                                height: 1000,
-                                heading: 0,
-                                pitch: 0,
-                                roll: 0
-                            }, { duration: 2 });
-                            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: lat, lng: lng }); } catch (e) { }
-                            try { sendLog('[requestGeolocation] flew to', lat, lng); } catch (e) { }
-                        }
-                        catch (e) {
-                            try { sendError('[requestGeolocation] error:', e); } catch (err) { }
-                        }
-                    }, function (err) {
-                        try { sendError('[requestGeolocation] geolocation failed', err); } catch (e) { }
-                        try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: (err && err.message) ? err.message : 'error' }); } catch (e) { }
-                    }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-                }
-                else {
-                    try { sendError('[requestGeolocation] geolocation API not available'); } catch (e) { }
-                    try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'not_available' }); } catch (e) { }
-                }
-            }
-            catch (e) {
-                try { sendError('[requestGeolocation] unexpected error', e); } catch (err) { }
-                try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'exception' }); } catch (e) { }
             }
         }
         else if (msg.action === "flyToCamera") {
