@@ -1424,7 +1424,7 @@ reearth.extension.on("message", async (msg) => {
                                 },
                                 "billboard": {
                                     "image": imageUri,
-                                    "scale": 1.0,
+                                    "scale": 0.5,
                                     "heightReference": "RELATIVE_TO_GROUND",
                                     "verticalOrigin": "CENTER",
                                     "horizontalOrigin": "CENTER",
