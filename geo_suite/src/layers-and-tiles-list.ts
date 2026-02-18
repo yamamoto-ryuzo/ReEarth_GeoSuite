@@ -1279,6 +1279,66 @@ reearth.extension.on("message", async (msg) => {
                 pitch: -1.57,
                 roll: 0,
             }, { duration: 2 });
+
+            // Show temporary target marker (Magenta point)
+            try {
+                const geoJson = {
+                    type: "FeatureCollection",
+                    features: [{
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [myLocation.lng, myLocation.lat]
+                        },
+                        properties: {}
+                    }]
+                };
+                // Encode GeoJSON to Data URL
+                const str = JSON.stringify(geoJson);
+                // Use btoa if available (browser), otherwise Buffer (node/quickjs) or manual fallback if needed
+                let base64 = "";
+                if (typeof btoa === 'function') {
+                    base64 = btoa(str);
+                } else if (typeof Buffer !== 'undefined') {
+                    base64 = Buffer.from(str).toString('base64');
+                } else {
+                    // Manual base64 encoder if environment is restrictive
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+                    for (let i = 0; i < str.length; i += 3) {
+                        const c1 = str.charCodeAt(i), c2 = str.charCodeAt(i+1), c3 = str.charCodeAt(i+2);
+                        base64 += chars.charAt(c1 >> 2);
+                        base64 += chars.charAt(((c1 & 3) << 4) | ((c2 & 0xF0) >> 4));
+                        base64 += chars.charAt(((c2 & 0xF) << 2) | ((c3 & 0xC0) >> 6));
+                        base64 += chars.charAt(c3 & 0x3F);
+                    }
+                }
+
+                const dataUrl = "data:application/json;base64," + base64;
+                
+                const layerId = reearth.layers.add({
+                    type: "simple",
+                    title: "Current Location Target",
+                    data: {
+                        type: "geojson",
+                        url: dataUrl
+                    },
+                    marker: {
+                        pointColor: "#ff00ff", // Magenta
+                        pointSize: 30,         // Large visibility
+                        pointOutlineColor: "#ffffff",
+                        pointOutlineWidth: 4
+                    }
+                });
+                
+                if (layerId) {
+                    setTimeout(() => {
+                        reearth.layers.delete(layerId);
+                    }, 5000);
+                }
+            } catch(e) {
+                console.error("Failed to add marker", e);
+            }
+
             try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng }); } catch (e) { }
             try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
