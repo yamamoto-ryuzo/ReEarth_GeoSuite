@@ -769,38 +769,21 @@ function getUI() {
 
       // Camera Refresh button: request current camera from extension
       const refreshBtn = document.getElementById('cam-refresh');
-      if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-          parent.postMessage({ action: 'requestCamera' }, '*');
+      if (flyToCurrentBtn) {
+        flyToCurrentBtn.addEventListener('click', function() {
+          try {
+            // Geolocation is blocked inside sandboxed iframe (about:srcdoc).
+            // Ask parent window to obtain geolocation instead.
+            parent.postMessage({ action: 'requestGeolocation' }, '*');
+            flyToCurrentBtn.textContent = 'Requesting...';
+            // restore label after a short delay in case parent doesn't respond
+            setTimeout(() => { try { flyToCurrentBtn.textContent = 'Fly to Current Location'; } catch(e){} }, 5000);
+          } catch (e) {
+            try { alert('Failed to request geolocation from parent'); } catch(e){}
+            try { flyToCurrentBtn.textContent = 'Fly to Current Location'; } catch(e){}
+          }
         });
       }
-
-      // Listen for camera state updates from the extension
-      window.addEventListener('message', function(e) {
-        try {
-          const msg = e && e.data ? e.data : null;
-          try { console.log('[UI] window.message received:', msg); } catch(e){}
-          if (!msg) return;
-          if (msg.action === 'updateCameraFields') {
-            const c = msg.camera;
-            if (!c) return;
-            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-            setVal('cam-lat', c.lat);
-            setVal('cam-lng', c.lng);
-            setVal('cam-height', c.height);
-            setVal('cam-heading', c.heading);
-            setVal('cam-pitch', c.pitch);
-          } else if (msg.action === 'permalinkGenerated') {
-            const output = document.getElementById('permalink-output');
-            if (output) {
-                // Construct URL in UI context
-                let baseUrl = msg.baseUrl; // Use base URL passed from extension if available
-                
-                if (!baseUrl) {
-                    try {
-                        // Try to get parent URL
-                        if (document.referrer && document.referrer.startsWith('http')) {
-                            baseUrl = document.referrer;
                         } else {
                             // If window.location.href is available and http (not about:srcdoc), use it
                             if (window.location.href && window.location.href.startsWith('http')) {

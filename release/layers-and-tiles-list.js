@@ -1365,6 +1365,42 @@ reearth.extension.on("message", (msg) => {
                 catch (err) { }
             }
         }
+        else if (msg.action === "requestGeolocation") {
+            try {
+                if (typeof navigator !== 'undefined' && navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function (pos) {
+                        try {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            reearth.camera.flyTo({
+                                lat: lat,
+                                lng: lng,
+                                height: 1000,
+                                heading: 0,
+                                pitch: 0,
+                                roll: 0
+                            }, { duration: 2 });
+                            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: lat, lng: lng }); } catch (e) { }
+                            try { sendLog('[requestGeolocation] flew to', lat, lng); } catch (e) { }
+                        }
+                        catch (e) {
+                            try { sendError('[requestGeolocation] error:', e); } catch (err) { }
+                        }
+                    }, function (err) {
+                        try { sendError('[requestGeolocation] geolocation failed', err); } catch (e) { }
+                        try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: (err && err.message) ? err.message : 'error' }); } catch (e) { }
+                    }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+                }
+                else {
+                    try { sendError('[requestGeolocation] geolocation API not available'); } catch (e) { }
+                    try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'not_available' }); } catch (e) { }
+                }
+            }
+            catch (e) {
+                try { sendError('[requestGeolocation] unexpected error', e); } catch (err) { }
+                try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'exception' }); } catch (e) { }
+            }
+        }
         else if (msg.action === "flyToCamera") {
             try {
                 const idx = msg.camIndex;
