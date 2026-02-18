@@ -1392,51 +1392,29 @@ reearth.extension.on("message", async (msg) => {
                     // Show temporary target marker (Modern Reticle Scope Style via CZML Billboard)
                     let layerId;
                     try {
-                        // Create SVG Reticle (Scope)
-                        // Design: Cyan glowing crosshair with thick outer posts, similar to rifle scope
+                        // Create SVG Reticle (Scope) - Simplified for robustness
+                        // Removed filters to avoid loading errors, using encodeURIComponent for data URI
                         const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <defs>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <g filter="url(#glow)">
-    <!-- Outer Circle -->
-    <circle cx="128" cy="128" r="120" fill="none" stroke="#00ffff" stroke-width="4" />
-    
-    <!-- Center Crosshair (Fine lines) -->
-    <line x1="128" y1="90" x2="128" y2="166" stroke="#00ffff" stroke-width="2" />
-    <line x1="90" y1="128" x2="166" y2="128" stroke="#00ffff" stroke-width="2" />
-    
-    <!-- Thick Posts (Outer lines) -->
-    <!-- Top -->
-    <line x1="128" y1="0" x2="128" y2="90" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
-    <!-- Bottom -->
-    <line x1="128" y1="166" x2="128" y2="256" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
-    <!-- Left -->
-    <line x1="0" y1="128" x2="90" y2="128" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
-    <!-- Right -->
-    <line x1="166" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" stroke-linecap="butt" />
-  </g>
+  <!-- Outer Ring -->
+  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />
+  <circle cx="128" cy="128" r="118" fill="none" stroke="#00ffff" stroke-width="2" opacity="0.5" />
+  
+  <!-- Crosshair -->
+  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />
+  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />
+  
+  <!-- Thick Posts -->
+  <line x1="128" y1="0" x2="128" y2="60" stroke="#00ffff" stroke-width="14" />
+  <line x1="128" y1="196" x2="128" y2="256" stroke="#00ffff" stroke-width="14" />
+  <line x1="0" y1="128" x2="60" y2="128" stroke="#00ffff" stroke-width="14" />
+  <line x1="196" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" />
+  
+  <!-- Center Dot -->
+  <circle cx="128" cy="128" r="4" fill="#ffffff" />
 </svg>`.trim();
-                        // Encode SVG to Data URI
-                        let base64Svg = "";
-                        if (typeof btoa === 'function') {
-                            base64Svg = btoa(svg);
-                        }
-                        else if (typeof Buffer !== 'undefined') {
-                            base64Svg = Buffer.from(svg).toString('base64');
-                        }
-                        else {
-                            // Fallback
-                            base64Svg = "";
-                        }
-                        const imageUri = "data:image/svg+xml;base64," + base64Svg;
+                        // Use encodeURIComponent to create safe Data URI without base64 dependency
+                        const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
                         const czml = [
                             { "id": "document", "version": "1.0" },
                             {
@@ -1450,10 +1428,12 @@ reearth.extension.on("message", async (msg) => {
                                     "heightReference": "RELATIVE_TO_GROUND",
                                     "verticalOrigin": "CENTER",
                                     "horizontalOrigin": "CENTER",
-                                    "disableDepthTestDistance": Number.POSITIVE_INFINITY // Always visible on top
+                                    "disableDepthTestDistance": Number.POSITIVE_INFINITY
                                 }
                             }
                         ];
+                        // Manual JSON stringify and base64 for the CZML data URL (not the image)
+                        // We still need base64 for the CZML file content itself because it's passed as data:application/json;base64,...
                         const str = JSON.stringify(czml);
                         let base64 = "";
                         if (typeof btoa === 'function') {
