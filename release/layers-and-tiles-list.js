@@ -13,6 +13,7 @@ let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = []; // non-cam lines from inspector text, preserved for rebuild
 let _baseUrl = null; // Base URL for permalink
+let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 // Ensure globe and scene background are white before any tiles are applied
 try {
     if (typeof reearth !== "undefined" && reearth.viewer && reearth.viewer.overrideProperty) {
@@ -46,10 +47,17 @@ const generateLayerItem = (layer, isPreset) => {
 function getUI() {
     // Build layer items from current layers so UI reflects runtime changes
     const layers = (reearth.layers && reearth.layers.layers) || [];
-    // Separate preset layers and plugin-added layers
+    // Separate preset layers and plugin-added layers, but exclude basemap layers
     const presetLayers = [];
     const userLayers = [];
     layers.forEach(layer => {
+        try {
+            if (layer && layer.data && layer.data.isBasemap) {
+                // skip basemap layers from both lists (they are handled by the Basemap dropdown)
+                return;
+            }
+        }
+        catch (e) { }
         if (_pluginAddedLayerIds.has(layer.id)) {
             userLayers.push(layer);
         }
@@ -59,6 +67,32 @@ function getUI() {
     });
     const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
     const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
+    // Basemap dropdown (show parsed base: entries if present)
+    let basemapSelectHtml = '';
+    try {
+        if (_parsedBaseTiles && _parsedBaseTiles.length) {
+            // determine currently active basemap url (visible layer flagged as basemap)
+            const layersAll = (reearth.layers && reearth.layers.layers) || [];
+            let currentBasemapUrl = '';
+            for (let i = 0; i < layersAll.length; i++) {
+                const l = layersAll[i];
+                if (l && l.data && l.data.isBasemap && l.visible) {
+                    currentBasemapUrl = l.data.url || '';
+                    break;
+                }
+            }
+            basemapSelectHtml = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+        <label style="font-weight:600;min-width:80px;">Basemap</label>
+        <select id="basemap-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
+          <option value="">(None)</option>
+          ${_parsedBaseTiles.map(b => `<option value="${b.url}" data-title="${(b.title || '').replace(/"/g, '&quot;')}" ${(b.url === currentBasemapUrl) ? 'selected' : ''}>${(b.title || b.url)}</option>`).join('')}
+        </select>
+      </div>`;
+        }
+    }
+    catch (e) {
+        basemapSelectHtml = '';
+    }
     // Generate camera preset buttons
     const camButtons = _cameraPresets.map((cam, i) => `
     <li class="cam-item" data-cam-index="${i}" title="FlyTo ${cam.title}">
@@ -298,6 +332,7 @@ function getUI() {
   </div>
 
   <div id="layers-panel">
+    ${basemapSelectHtml}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
       <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
@@ -740,6 +775,18 @@ function getUI() {
       }
 
       // Camera Refresh button: request current camera from extension
+            // Basemap select handler: forward selection to extension
+            try {
+              const basel = document.getElementById('basemap-select');
+              if (basel) {
+                basel.addEventListener('change', function() {
+                  const sel = this;
+                  const url = sel.value || null;
+                  const title = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.title : null;
+                  parent.postMessage({ action: 'setBasemap', url: url, title: title }, '*');
+                });
+              }
+            } catch(e) {}
       const refreshBtn = document.getElementById('cam-refresh');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
@@ -1505,6 +1552,84 @@ reearth.extension.on("message", async (msg) => {
                 catch (e) { }
             }
         }
+        else if (msg.action === 'setBasemap') {
+            try {
+                const url = msg.url || null;
+                const title = msg.title || null;
+                // Hide all existing basemap layers
+                try {
+                    const layersAll = (reearth.layers && reearth.layers.layers) || [];
+                    for (let i = 0; i < layersAll.length; i++) {
+                        const l = layersAll[i];
+                        try {
+                            if (l && l.data && l.data.isBasemap && l.id) {
+                                if (typeof reearth.layers.hide === 'function')
+                                    reearth.layers.hide(l.id);
+                                else if (typeof reearth.layers.update === 'function')
+                                    reearth.layers.update({ id: l.id, visible: false });
+                            }
+                        }
+                        catch (e) { }
+                    }
+                }
+                catch (e) { }
+                if (!url) {
+                    // none selected
+                    try {
+                        reearth.ui.postMessage({ action: 'basemapChanged', url: null });
+                    }
+                    catch (e) { }
+                    try {
+                        reearth.ui.show(getUI());
+                    }
+                    catch (e) { }
+                    return;
+                }
+                // Try to find existing basemap layer with same URL
+                const existing = (reearth.layers && reearth.layers.layers) || [];
+                let found = null;
+                for (let i = 0; i < existing.length; i++) {
+                    const l = existing[i];
+                    try {
+                        if (l && l.data && l.data.isBasemap && l.data.url && l.data.url === url) {
+                            found = l;
+                            break;
+                        }
+                    }
+                    catch (e) { }
+                }
+                if (found) {
+                    try {
+                        if (typeof reearth.layers.show === 'function')
+                            reearth.layers.show(found.id);
+                        else if (typeof reearth.layers.update === 'function')
+                            reearth.layers.update({ id: found.id, visible: true });
+                    }
+                    catch (e) { }
+                }
+                else {
+                    // add new basemap layer
+                    try {
+                        addXyzLayer(url, title || null, 'tiles', true);
+                    }
+                    catch (e) { }
+                }
+                try {
+                    reearth.ui.postMessage({ action: 'basemapChanged', url: url });
+                }
+                catch (e) { }
+                try {
+                    reearth.ui.show(getUI());
+                }
+                catch (e) { }
+            }
+            catch (e) {
+                try {
+                    sendError('[setBasemap] error:', e);
+                }
+                catch (_) { }
+            }
+        }
         else if (msg.action === "flyToManual") {
             try {
                 reearth.camera.flyTo({
@@ -1972,7 +2097,7 @@ function tryInitFromProperty() {
         // ignore
     }
 }
-function addXyzLayer(url, title, layerType) {
+function addXyzLayer(url, title, layerType, isBase = false) {
     if (!url || typeof url !== "string")
         return;
     const type = layerType || "tiles";
@@ -1982,6 +2107,8 @@ function addXyzLayer(url, title, layerType) {
             titleToUse = `3D Tiles: ${url}`;
         else if (type === 'geojson')
             titleToUse = `GeoJSON: ${url}`;
+        else if (type === 'tiles' && isBase)
+            titleToUse = `Basemap: ${url}`;
         else
             titleToUse = `XYZ: ${url}`;
     }
@@ -2003,6 +2130,18 @@ function addXyzLayer(url, title, layerType) {
     if (type === "tiles") {
         layer.tiles = {};
     }
+    // Mark as basemap when requested
+    if (isBase) {
+        try {
+            sendLog('[addXyzLayer] marking as basemap');
+        }
+        catch (e) { }
+        if (!layer.data)
+            layer.data = { type: type, url: encodedUrl };
+        layer.data.isBasemap = true;
+        if (layer.tiles)
+            layer.tiles.isBasemap = true;
+    }
     // Add default styles for GeoJSON to ensure visibility
     if (type === 'geojson') {
         layer.marker = { pointColor: "#3388ff", pointSize: 10 };
@@ -2018,7 +2157,7 @@ function addXyzLayer(url, title, layerType) {
         if (newId) {
             _pluginAddedLayerIds.add(newId);
         }
-        sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
+        sendLog(isBase ? "Added Basemap layer, id:" : "Added XYZ layer, id:", newId, "(src:", url, ")");
         try {
             // Re-render the widget UI so the new layer appears in the list
             reearth.ui.show(getUI());
@@ -2119,6 +2258,11 @@ function rebuildInspectorText() {
 function processInspectorText(text) {
     if (!text || typeof text !== 'string')
         return;
+    // reset parsed base tiles to avoid duplicates when called repeatedly
+    try {
+        _parsedBaseTiles = [];
+    }
+    catch (e) { }
     // Handle various newline formats
     const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
     const tiles = [];
@@ -2189,8 +2333,6 @@ function processInspectorText(text) {
             return;
         }
         // Camera preset: "cam:タイトル|緯度|経度" + optional h=高度 d=方位° p=傾き°
-        // Named params (any order): cam:タイトル|緯度|経度|h=5000|d=90|p=-30
-        // Positional (backward compat): cam:タイトル|緯度|経度|高度|方位|傾き
         if (lowerLine.startsWith('cam:')) {
             const camStr = line.substring(4).trim();
             const parts = camStr.split('|').map(p => p.trim());
@@ -2201,11 +2343,9 @@ function processInspectorText(text) {
                     let height = null;
                     let heading = null;
                     let pitch = null;
-                    // Check remaining parts for named or positional params
                     const extras = parts.slice(3);
                     const hasNamedParam = extras.some(e => /^[hdp]=/i.test(e));
                     if (hasNamedParam) {
-                        // Named parameter mode: h=高度 d=方位° p=傾き°
                         extras.forEach(e => {
                             const m = e.match(/^([hdp])=(.+)$/i);
                             if (m) {
@@ -2223,14 +2363,12 @@ function processInspectorText(text) {
                         });
                     }
                     else {
-                        // Positional mode (backward compat): 高度|方位|傾き
                         if (extras.length > 0 && extras[0] !== '')
                             height = parseFloat(extras[0]);
                         if (extras.length > 1 && extras[1] !== '')
                             heading = parseFloat(extras[1]) * Math.PI / 180;
                         if (extras.length > 2 && extras[2] !== '')
                             pitch = parseFloat(extras[2]) * Math.PI / 180;
-                        // NaN check
                         if (height !== null && isNaN(height))
                             height = null;
                         if (heading !== null && isNaN(heading))
@@ -2255,7 +2393,7 @@ function processInspectorText(text) {
             }
             return;
         }
-        // 3D Tiles: "3dtiles: Name | URL" or "3dtiles: URL"
+        // 3D Tiles
         if (lowerLine.startsWith('3dtiles:') || lowerLine.startsWith('3d-tiles:')) {
             const tileStr = line.substring(line.indexOf(':') + 1).trim();
             let url = null;
@@ -2275,13 +2413,12 @@ function processInspectorText(text) {
                 if (tileStr.startsWith('http'))
                     url = tileStr;
             }
-            if (url) {
+            if (url)
                 tiles.push({ url, title, type: '3dtiles' });
-            }
             nonCamLines.push(line);
             return;
         }
-        // GeoJSON: "geojson: Name | URL" or "geojson: URL"
+        // GeoJSON
         if (lowerLine.startsWith('geojson:')) {
             const geoStr = line.substring(8).trim();
             let url = null;
@@ -2301,27 +2438,26 @@ function processInspectorText(text) {
                 if (geoStr.startsWith('http'))
                     url = geoStr;
             }
-            if (url) {
+            if (url)
                 tiles.push({ url, title, type: 'geojson' });
-            }
             nonCamLines.push(line);
             return;
         }
-        // Tile: "xyz: Name | URL" or just "Name | URL" or "URL"
+        // Tile: xyz/tile/base
         let tileStr = line;
-        if (lowerLine.startsWith('xyz:')) {
+        let isBase = false;
+        if (lowerLine.startsWith('xyz:'))
             tileStr = line.substring(4).trim();
-        }
-        else if (lowerLine.startsWith('tile:')) {
-            // backward compatibility
+        else if (lowerLine.startsWith('tile:'))
             tileStr = line.substring(5).trim();
+        else if (lowerLine.startsWith('base:')) {
+            tileStr = line.substring(5).trim();
+            isBase = true;
         }
-        // Parse tile string
         let url = null;
         let title = null;
         if (tileStr.indexOf('|') !== -1) {
             const parts = tileStr.split('|').map(p => p.trim());
-            // simple heuristic: which part looks like a URL?
             if (parts[0].startsWith('http')) {
                 url = parts[0];
                 title = parts[1];
@@ -2336,14 +2472,15 @@ function processInspectorText(text) {
                 url = tileStr;
         }
         if (url) {
-            tiles.push({ url, title, type: 'tiles' });
+            tiles.push({ url, title, type: 'tiles', isBase: isBase });
+            if (isBase)
+                _parsedBaseTiles.push({ url, title });
         }
         nonCamLines.push(line);
     });
     if (legends.length > 0 && reearth.ui && typeof reearth.ui.postMessage === 'function') {
         reearth.ui.postMessage({ action: 'updateLegends', urls: legends });
     }
-    // Apply Info URL
     if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
         try {
             sendLog('[processInspectorText] applying INFO url:', infoUrlFound);
@@ -2352,11 +2489,8 @@ function processInspectorText(text) {
         _lastInfoUrl = infoUrlFound;
         loadInfoUrl(infoUrlFound);
     }
-    // Preserve non-cam lines for rebuild
     _inspectorNonCamLines = nonCamLines;
-    // Apply Camera Presets
     _cameraPresets = camsFound;
-    // Apply Tiles
     if (tiles.length > 0) {
         try {
             sendLog('[processInspectorText] applying tiles:', tiles.length);
@@ -2364,7 +2498,6 @@ function processInspectorText(text) {
         catch (e) { }
         addXyzLayersFromArray(tiles);
     }
-    // Re-render UI to reflect camera presets and other changes
     try {
         reearth.ui.show(getUI());
     }
@@ -2469,6 +2602,7 @@ function addXyzLayersFromArray(items) {
         const u = (it.url || it.inspectorUrl || "").trim();
         const t = (it.title || it.inspectorTitle || null);
         const type = it.type || "tiles";
+        const isBase = !!it.isBase;
         if (!u)
             continue;
         if (!/^https?:\/\//.test(u))
@@ -2482,7 +2616,7 @@ function addXyzLayersFromArray(items) {
             catch (e) { }
             continue;
         }
-        addXyzLayer(u, t, type);
+        addXyzLayer(u, t, type, isBase);
     }
 }
 // Send info URL to UI to load in iframe
