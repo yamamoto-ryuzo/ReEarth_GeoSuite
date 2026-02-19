@@ -1413,23 +1413,16 @@ reearth.extension.on("message", async (msg) => {
                 const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
                 const czml = [
-                    { "id": "document", "version": "1.0" },
-                    {
-                        "id": "current-location-scope",
-                        "position": {
-                            "cartographicDegrees": [myLocation.lng, myLocation.lat, 50] // 50m relative height
-                        },
-                        "billboard": {
-                            "image": imageUri,
-                        if (!isBase) {
-                          _pluginAddedLayerIds.add(newId);
-                        } else {
-                          try { sendLog('[addXyzLayer] basemap layer added, not tracking as user layer', newId); } catch(e){}
-                        }
-                        // Record last-added basemap URL so UI can reflect latest selection reliably
-                        try { if (isBase) _lastAddedBasemapUrl = encodedUrl; } catch(e) {}
-                        }
+                  { "id": "document", "version": "1.0" },
+                  {
+                    "id": "current-location-scope",
+                    "position": {
+                      "cartographicDegrees": [myLocation.lng, myLocation.lat, 50] // 50m relative height
+                    },
+                    "billboard": {
+                      "image": imageUri
                     }
+                  }
                 ];
                 
                 // Manual JSON stringify and base64 for the CZML data URL (not the image)
@@ -1461,6 +1454,9 @@ reearth.extension.on("message", async (msg) => {
                         url: dataUrl
                     }
                 });
+
+                // Track this temporary layer so plugin can remove it later
+                try { if (layerId) _pluginAddedLayerIds.add(layerId); } catch(e) {}
 
                 // Note: We send layerId to UI, and UI will request removal after delay.
             } catch(e) {
