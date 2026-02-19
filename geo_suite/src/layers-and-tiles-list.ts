@@ -1912,8 +1912,9 @@ function processInspectorText(text) {
       const url = line.substring(7).trim();
       if (url) legends.push(url);
       nonCamLines.push(line);
-      try {
-      if (_parsedBaseTiles && _parsedBaseTiles.length) {
+      return;
+    }
+
     // Background color setting: "background: #ffffff" or "bg: #fff"
     if (lowerLine.startsWith('background:') || lowerLine.startsWith('bg:')) {
       const col = line.substring(line.indexOf(':') + 1).trim();
@@ -1921,28 +1922,19 @@ function processInspectorText(text) {
         try { sendLog('[processInspectorText] found BACKGROUND color:', col); } catch(e){}
         if (col !== _lastInspectorBackground) {
           _lastInspectorBackground = col;
-        // dedupe by URL to avoid duplicated options
-        const seen = new Set();
-        const uniq = [];
-        for (let i = 0; i < _parsedBaseTiles.length; i++) {
-          const b = _parsedBaseTiles[i];
-          if (!b || !b.url) continue;
-          if (seen.has(b.url)) continue;
-          seen.add(b.url);
-          uniq.push(b);
-        }
-        basemapSelectHtml = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
-          <label style="font-weight:600;min-width:80px;">Basemap</label>
-          <select id="basemap-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
-            <option value="">(None)</option>
-            ${uniq.map(b => `<option value="${b.url}" data-title="${(b.title||'').replace(/"/g,'&quot;')}" ${(b.url===currentBasemapUrl)?'selected':''}>${(b.title||b.url)}</option>`).join('')}
-          </select>
-        </div>`;
+          try {
+            if (reearth && reearth.viewer && typeof reearth.viewer.overrideProperty === 'function') {
+              reearth.viewer.overrideProperty({ globe: { baseColor: col }, scene: { backgroundColor: col } });
+            }
+          } catch (e) {
+            try { sendError('[processInspectorText] failed to apply background color', e); } catch(_){ }
+          }
         }
       }
       nonCamLines.push(line);
       return;
     }
+
     // Info URL: "info: https://..." or "info:https://..."
     if (lowerLine.startsWith('info:')) {
       const url = line.substring(5).trim();
@@ -1953,7 +1945,7 @@ function processInspectorText(text) {
       nonCamLines.push(line);
       return;
     }
-    
+
     // Base URL for permalink: "baseurl: https://..."
     if (lowerLine.startsWith('baseurl:')) {
       const url = line.substring(8).trim();
@@ -1966,8 +1958,6 @@ function processInspectorText(text) {
     }
 
     // Camera preset: "cam:タイトル|緯度|経度" + optional h=高度 d=方位° p=傾き°
-    // Named params (any order): cam:タイトル|緯度|経度|h=5000|d=90|p=-30
-    // Positional (backward compat): cam:タイトル|緯度|経度|高度|方位|傾き
     if (lowerLine.startsWith('cam:')) {
       const camStr = line.substring(4).trim();
       const parts = camStr.split('|').map(p => p.trim());
@@ -1978,11 +1968,9 @@ function processInspectorText(text) {
           let height = null;
           let heading = null;
           let pitch = null;
-          // Check remaining parts for named or positional params
           const extras = parts.slice(3);
           const hasNamedParam = extras.some(e => /^[hdp]=/i.test(e));
           if (hasNamedParam) {
-            // Named parameter mode: h=高度 d=方位° p=傾き°
             extras.forEach(e => {
               const m = e.match(/^([hdp])=(.+)$/i);
               if (m) {
@@ -1996,11 +1984,9 @@ function processInspectorText(text) {
               }
             });
           } else {
-            // Positional mode (backward compat): 高度|方位|傾き
             if (extras.length > 0 && extras[0] !== '') height = parseFloat(extras[0]);
             if (extras.length > 1 && extras[1] !== '') heading = parseFloat(extras[1]) * Math.PI / 180;
             if (extras.length > 2 && extras[2] !== '') pitch = parseFloat(extras[2]) * Math.PI / 180;
-            // NaN check
             if (height !== null && isNaN(height)) height = null;
             if (heading !== null && isNaN(heading)) heading = null;
             if (pitch !== null && isNaN(pitch)) pitch = null;
@@ -2019,13 +2005,12 @@ function processInspectorText(text) {
       }
       return;
     }
-    
-    // 3D Tiles: "3dtiles: Name | URL" or "3dtiles: URL"
+
+    // 3D Tiles
     if (lowerLine.startsWith('3dtiles:') || lowerLine.startsWith('3d-tiles:')) {
       const tileStr = line.substring(line.indexOf(':') + 1).trim();
       let url = null;
       let title = null;
-      
       if (tileStr.indexOf('|') !== -1) {
         const parts = tileStr.split('|').map(p => p.trim());
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
@@ -2033,20 +2018,16 @@ function processInspectorText(text) {
       } else {
         if (tileStr.startsWith('http')) url = tileStr;
       }
-
-      if (url) {
-        tiles.push({ url, title, type: '3dtiles' });
-      }
+      if (url) tiles.push({ url, title, type: '3dtiles' });
       nonCamLines.push(line);
       return;
     }
 
-    // GeoJSON: "geojson: Name | URL" or "geojson: URL"
+    // GeoJSON
     if (lowerLine.startsWith('geojson:')) {
       const geoStr = line.substring(8).trim();
       let url = null;
       let title = null;
-      
       if (geoStr.indexOf('|') !== -1) {
         const parts = geoStr.split('|').map(p => p.trim());
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
@@ -2054,35 +2035,22 @@ function processInspectorText(text) {
       } else {
         if (geoStr.startsWith('http')) url = geoStr;
       }
-
-      if (url) {
-        tiles.push({ url, title, type: 'geojson' });
-      }
+      if (url) tiles.push({ url, title, type: 'geojson' });
       nonCamLines.push(line);
       return;
     }
 
-    // Tile: "xyz: Name | URL" or just "Name | URL" or "URL"
+    // Tile: xyz/tile/base
     let tileStr = line;
     let isBase = false;
-    if (lowerLine.startsWith('xyz:')) {
-      tileStr = line.substring(4).trim();
-    } else if (lowerLine.startsWith('tile:')) {
-        // backward compatibility
-        tileStr = line.substring(5).trim();
-    } else if (lowerLine.startsWith('base:')) {
-        // allow "base:" as an alias for basemap XYZ tiles
-        tileStr = line.substring(5).trim();
-        isBase = true;
-    }
-    
-      // Parse tile string
+    if (lowerLine.startsWith('xyz:')) tileStr = line.substring(4).trim();
+    else if (lowerLine.startsWith('tile:')) tileStr = line.substring(5).trim();
+    else if (lowerLine.startsWith('base:')) { tileStr = line.substring(5).trim(); isBase = true; }
+
     let url = null;
     let title = null;
-    
     if (tileStr.indexOf('|') !== -1) {
       const parts = tileStr.split('|').map(p => p.trim());
-      // simple heuristic: which part looks like a URL?
       if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
       else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
     } else {
@@ -2091,9 +2059,7 @@ function processInspectorText(text) {
 
     if (url) {
       tiles.push({ url, title, type: 'tiles', isBase: isBase });
-      if (isBase) {
-        _parsedBaseTiles.push({ url, title });
-      }
+      if (isBase) _parsedBaseTiles.push({ url, title });
     }
     nonCamLines.push(line);
   });
@@ -2102,26 +2068,20 @@ function processInspectorText(text) {
     reearth.ui.postMessage({ action: 'updateLegends', urls: legends });
   }
 
-  // Apply Info URL
   if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
     try { sendLog('[processInspectorText] applying INFO url:', infoUrlFound); } catch(e){}
     _lastInfoUrl = infoUrlFound;
     loadInfoUrl(infoUrlFound);
   }
 
-  // Preserve non-cam lines for rebuild
   _inspectorNonCamLines = nonCamLines;
-
-  // Apply Camera Presets
   _cameraPresets = camsFound;
 
-  // Apply Tiles
   if (tiles.length > 0) {
     try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
     addXyzLayersFromArray(tiles);
   }
 
-  // Re-render UI to reflect camera presets and other changes
   try { reearth.ui.show(getUI()); } catch(e){}
 }
 

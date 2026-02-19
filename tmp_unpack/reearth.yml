@@ -1,0 +1,42 @@
+id: layers-and-tiles-list
+name: Layers & Tiles (geo_suite plugin)
+version: "7.4.0"
+description: "XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
+author: yamamoto-ryuzo
+extensions:
+  - id: layers-and-tiles-list
+    type: widget
+    name: "Layers & Tiles"
+    description: "List layers and basemap tiles in the scene"
+    entry: layers-and-tiles-list.js
+    widgetLayout:
+      defaultLocation:
+        zone: outer
+        section: left
+        area: top
+    schema:
+      version: 2
+      groups:
+        - id: settings
+          title: "一括設定"
+          fields:
+            - id: inspectorText
+              title: "設定テキスト"
+              description: |
+                https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
+                3D Tilesの追加: 3dtiles: タイトル | URL
+                GeoJSONの追加: geojson: タイトル | URL
+                パーマリンクベースURL: baseurl: https://...
+              type: string
+              ui: multiline
+              defaultValue: |
+                xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+                xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+                3dtiles: 東京都千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
+                geojson: 行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+                background: #ffffff
+                info: https://re-earth-geo-suite.vercel.app/ryu.html
+                cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
+                cam:富士山|35.139595|138.713803|h=9807.7|p=-24.72
+                cam:大阪城|34.658425|135.524574|h=2533.5||p=-40.37
+                legend:https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
