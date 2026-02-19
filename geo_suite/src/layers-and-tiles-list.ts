@@ -1137,6 +1137,8 @@ function getUI() {
 }
 
 // Initial render
+// Ensure we process inspector property before first UI render so dropdown and layers reflect inspector
+try { if (typeof tryInitFromProperty === 'function') tryInitFromProperty(); } catch(e) {}
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
 reearth.ui.show(uiHTML);
