@@ -1139,6 +1139,15 @@ function getUI() {
 // Initial render
 // Ensure we process inspector property before first UI render so dropdown and layers reflect inspector
 try { if (typeof tryInitFromProperty === 'function') tryInitFromProperty(); } catch(e) {}
+// Also process full inspector text (multiline) if provided in widget/block property so getUI() reflects it
+try {
+  const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+  const textInit = (propInit.settings && propInit.settings.inspectorText) || propInit.inspectorText;
+  const textToProcess = (textInit && typeof textInit === 'string' && textInit.trim()) ? textInit : _defaultInspectorText;
+  if (textToProcess && textToProcess.trim()) {
+    try { processInspectorText(textToProcess); } catch(e) { try { sendError('[init] processInspectorText failed', e); } catch(_){} }
+  }
+} catch(e) {}
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
 reearth.ui.show(uiHTML);
@@ -1857,16 +1866,7 @@ function addXyzLayer(url, title, layerType, isBase = false) {
 tryInitFromProperty();
 
 // Default inspector text (matches reearth.yml defaultValue)
-const _defaultInspectorText = `xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
-xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
-3dtiles: 東京都千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
-geojson: 行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
-background: #ffffff
-info: https://re-earth-geo-suite.vercel.app/ryu.html
-cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
-cam:富士山|35.139595|138.713803|h=14425.5|p=-40.37
-cam:大阪城|34.658425|135.524574|h=2533.5|p=-40.37
-legend:https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG`;
+const _defaultInspectorText = ``;
 
 // Also process any inspector text/config present at init
 try {
