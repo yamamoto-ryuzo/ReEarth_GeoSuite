@@ -96,9 +96,8 @@ function getUI() {
         } catch (e) {}
       });
 
-      basemapSelectHtml = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
-        <label style="font-weight:600;min-width:80px;">Basemap</label>
-        <select id="basemap-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
+      basemapSelectHtml = `<div style="margin-bottom:8px;">
+        <select id="basemap-select" style="width:100%;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
           <option value="">(None)</option>
           ${uniq.map(b => {
             const titleAttr = (b.title||'').replace(/"/g,'&quot;');
