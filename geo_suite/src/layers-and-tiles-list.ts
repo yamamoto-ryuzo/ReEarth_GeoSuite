@@ -13,6 +13,7 @@ let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
 let _baseUrl = null; // Base URL for permalink
+let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -63,6 +64,27 @@ function getUI() {
   
   const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
   const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
+
+  // Basemap dropdown (show parsed base: entries if present)
+  let basemapSelectHtml = '';
+  try {
+    if (_parsedBaseTiles && _parsedBaseTiles.length) {
+      // determine currently active basemap url (visible layer flagged as basemap)
+      const layersAll = (reearth.layers && reearth.layers.layers) || [];
+      let currentBasemapUrl = '';
+      for (let i = 0; i < layersAll.length; i++) {
+        const l = layersAll[i];
+        if (l && l.data && l.data.isBasemap && l.visible) { currentBasemapUrl = l.data.url || ''; break; }
+      }
+      basemapSelectHtml = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+        <label style="font-weight:600;min-width:80px;">Basemap</label>
+        <select id="basemap-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
+          <option value="">(None)</option>
+          ${_parsedBaseTiles.map(b => `<option value="${b.url}" data-title="${(b.title||'').replace(/"/g,'&quot;')}" ${(b.url===currentBasemapUrl)?'selected':''}>${(b.title||b.url)}</option>`).join('')}
+        </select>
+      </div>`;
+    }
+  } catch(e) { basemapSelectHtml = ''; }
 
   // Generate camera preset buttons
   const camButtons = _cameraPresets.map((cam, i) => `
@@ -313,6 +335,7 @@ function getUI() {
       </div>
     </div>
     
+    ${basemapSelectHtml}
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
@@ -747,6 +770,18 @@ function getUI() {
       }
 
       // Camera Refresh button: request current camera from extension
+            // Basemap select handler: forward selection to extension
+            try {
+              const basel = document.getElementById('basemap-select');
+              if (basel) {
+                basel.addEventListener('change', function() {
+                  const sel = this;
+                  const url = sel.value || null;
+                  const title = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.title : null;
+                  parent.postMessage({ action: 'setBasemap', url: url, title: title }, '*');
+                });
+              }
+            } catch(e) {}
       const refreshBtn = document.getElementById('cam-refresh');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
@@ -1380,6 +1415,55 @@ reearth.extension.on("message", async (msg) => {
         if (msg.layerId) {
             try { reearth.layers.delete(msg.layerId); } catch(e) {}
         }
+    } else if (msg.action === 'setBasemap') {
+      try {
+        const url = msg.url || null;
+        const title = msg.title || null;
+        // Hide all existing basemap layers
+        try {
+          const layersAll = (reearth.layers && reearth.layers.layers) || [];
+          for (let i = 0; i < layersAll.length; i++) {
+            const l = layersAll[i];
+            try {
+              if (l && l.data && l.data.isBasemap && l.id) {
+                if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
+                else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: l.id, visible: false });
+              }
+            } catch(e) {}
+          }
+        } catch(e) {}
+
+        if (!url) {
+          // none selected
+          try { reearth.ui.postMessage({ action: 'basemapChanged', url: null }); } catch(e){}
+          try { reearth.ui.show(getUI()); } catch(e){}
+          return;
+        }
+
+        // Try to find existing basemap layer with same URL
+        const existing = (reearth.layers && reearth.layers.layers) || [];
+        let found = null;
+        for (let i = 0; i < existing.length; i++) {
+          const l = existing[i];
+          try {
+            if (l && l.data && l.data.isBasemap && l.data.url && l.data.url === url) { found = l; break; }
+          } catch(e){}
+        }
+        if (found) {
+          try {
+            if (typeof reearth.layers.show === 'function') reearth.layers.show(found.id);
+            else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: found.id, visible: true });
+          } catch(e){}
+        } else {
+          // add new basemap layer
+          try { addXyzLayer(url, title || null, 'tiles', true); } catch(e){}
+        }
+
+        try { reearth.ui.postMessage({ action: 'basemapChanged', url: url }); } catch(e){}
+        try { reearth.ui.show(getUI()); } catch(e){}
+      } catch(e) {
+        try { sendError('[setBasemap] error:', e); } catch(_){ }
+      }
     } else if (msg.action === "flyToManual") {
       try {
         reearth.camera.flyTo({
@@ -1974,7 +2058,7 @@ function processInspectorText(text) {
         isBase = true;
     }
     
-    // Parse tile string
+      // Parse tile string
     let url = null;
     let title = null;
     
@@ -1989,6 +2073,9 @@ function processInspectorText(text) {
 
     if (url) {
       tiles.push({ url, title, type: 'tiles', isBase: isBase });
+      if (isBase) {
+        _parsedBaseTiles.push({ url, title });
+      }
     }
     nonCamLines.push(line);
   });
