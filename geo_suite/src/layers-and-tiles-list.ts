@@ -1895,6 +1895,8 @@ function rebuildInspectorText() {
 // Parse and apply settings from text
 function processInspectorText(text) {
   if (!text || typeof text !== 'string') return;
+  // reset parsed base tiles to avoid duplicates when called repeatedly
+  try { _parsedBaseTiles = []; } catch(e) {}
   // Handle various newline formats
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   const tiles = [];
@@ -1910,8 +1912,8 @@ function processInspectorText(text) {
       const url = line.substring(7).trim();
       if (url) legends.push(url);
       nonCamLines.push(line);
-      return;
-    }
+      try {
+      if (_parsedBaseTiles && _parsedBaseTiles.length) {
     // Background color setting: "background: #ffffff" or "bg: #fff"
     if (lowerLine.startsWith('background:') || lowerLine.startsWith('bg:')) {
       const col = line.substring(line.indexOf(':') + 1).trim();
@@ -1919,13 +1921,23 @@ function processInspectorText(text) {
         try { sendLog('[processInspectorText] found BACKGROUND color:', col); } catch(e){}
         if (col !== _lastInspectorBackground) {
           _lastInspectorBackground = col;
-          try {
-            if (reearth && reearth.viewer && typeof reearth.viewer.overrideProperty === 'function') {
-              reearth.viewer.overrideProperty({ globe: { baseColor: col }, scene: { backgroundColor: col } });
-            }
-          } catch (e) {
-            try { sendError('[processInspectorText] failed to apply background color', e); } catch(_){}
-          }
+        // dedupe by URL to avoid duplicated options
+        const seen = new Set();
+        const uniq = [];
+        for (let i = 0; i < _parsedBaseTiles.length; i++) {
+          const b = _parsedBaseTiles[i];
+          if (!b || !b.url) continue;
+          if (seen.has(b.url)) continue;
+          seen.add(b.url);
+          uniq.push(b);
+        }
+        basemapSelectHtml = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+          <label style="font-weight:600;min-width:80px;">Basemap</label>
+          <select id="basemap-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
+            <option value="">(None)</option>
+            ${uniq.map(b => `<option value="${b.url}" data-title="${(b.title||'').replace(/"/g,'&quot;')}" ${(b.url===currentBasemapUrl)?'selected':''}>${(b.title||b.url)}</option>`).join('')}
+          </select>
+        </div>`;
         }
       }
       nonCamLines.push(line);
