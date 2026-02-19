@@ -88,7 +88,7 @@ function getUI() {
       const uniq = [];
       _parsedBaseTiles.forEach(b => {
         try {
-          const encoded = (b && b.url) ? b.url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c)) : '';
+          const encoded = encodeNonAscii((b && b.url) ? b.url : '');
           if (!encoded) return;
           if (seen.has(encoded)) return;
           seen.add(encoded);
@@ -102,7 +102,7 @@ function getUI() {
           ${uniq.map(b => {
             const titleAttr = (b.title||'').replace(/"/g,'&quot;');
             const display = (b.title||b.url);
-            const selected = (b.encodedUrl === currentBasemapUrl) || (function(){ try { return decodeURIComponent(currentBasemapUrl) === b.url; } catch(e){ return false; } })() ? 'selected' : '';
+              const selected = urlsEqual(b.encodedUrl, currentBasemapUrl) || urlsEqual(decodeURIComponent(currentBasemapUrl || ''), b.url || '') ? 'selected' : '';
             return `<option value="${b.encodedUrl}" data-title="${titleAttr}" ${selected}>${display}</option>`;
           }).join('')}
         </select>
@@ -1208,6 +1208,31 @@ function safeStringify(obj) {
   }
 }
 
+// Normalize/compare URLs for basemap matching
+function encodeNonAscii(u) {
+  try {
+    if (!u || typeof u !== 'string') return u;
+    return u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
+  } catch (e) { return u; }
+}
+
+function tryDecode(u) {
+  try { return decodeURIComponent(u); } catch (e) { return u; }
+}
+
+function urlsEqual(a, b) {
+  if (a === b) return true;
+  try {
+    const da = tryDecode(a || '');
+    const db = tryDecode(b || '');
+    if (da === db) return true;
+  } catch (e) {}
+  try {
+    if (encodeNonAscii(a || '') === encodeNonAscii(b || '')) return true;
+  } catch (e) {}
+  return false;
+}
+
 // Try multiple available APIs to set layer visibility, then re-render UI
 function setLayerVisibility(layerId, visible) {
   if (!layerId) return false;
@@ -1481,7 +1506,7 @@ reearth.extension.on("message", async (msg) => {
         for (let i = 0; i < existing.length; i++) {
           const l = existing[i];
           try {
-            if (l && l.data && l.data.isBasemap && l.data.url && l.data.url === url) { found = l; break; }
+            if (l && l.data && l.data.isBasemap && l.data.url && urlsEqual(l.data.url, url)) { found = l; break; }
           } catch(e){}
         }
         if (found) {
