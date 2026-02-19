@@ -50,11 +50,17 @@ const generateLayerItem = (layer, isPreset) => {
 function getUI() {
   // Build layer items from current layers so UI reflects runtime changes
   const layers = (reearth.layers && reearth.layers.layers) || [];
-  
-  // Separate preset layers and plugin-added layers
+
+  // Separate preset layers and plugin-added layers, but exclude basemap layers
   const presetLayers = [];
   const userLayers = [];
   layers.forEach(layer => {
+    try {
+      if (layer && layer.data && layer.data.isBasemap) {
+        // skip basemap layers from both lists (they are handled by the Basemap dropdown)
+        return;
+      }
+    } catch (e) {}
     if (_pluginAddedLayerIds.has(layer.id)) {
       userLayers.push(layer);
     } else {
@@ -327,6 +333,7 @@ function getUI() {
   </div>
 
   <div id="layers-panel">
+    ${basemapSelectHtml}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Layers</div>
       <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
@@ -335,7 +342,6 @@ function getUI() {
       </div>
     </div>
     
-    ${basemapSelectHtml}
     <ul class="layers-list">
       ${presetLayerItems}
     </ul>
