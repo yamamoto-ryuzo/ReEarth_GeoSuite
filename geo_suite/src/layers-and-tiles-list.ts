@@ -1866,7 +1866,17 @@ function addXyzLayer(url, title, layerType, isBase = false) {
 tryInitFromProperty();
 
 // Default inspector text (matches reearth.yml defaultValue)
-const _defaultInspectorText = ``;
+const _defaultInspectorText = `3dtiles: 東京都千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
+geojson: 行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+background: #ffffff
+info: https://re-earth-geo-suite.vercel.app/ryu.html
+cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
+cam:富士山|35.139595|138.713803|h=9807.7|p=-24.72
+cam:大阪城|34.658425|135.524574|h=2533.5||p=-40.37
+base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+base: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png 
+base: 地理院タイル 淡色地図 | https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png
+base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg`;
 
 // Also process any inspector text/config present at init
 try {
