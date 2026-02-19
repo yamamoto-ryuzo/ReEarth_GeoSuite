@@ -1675,13 +1675,14 @@ function tryInitFromProperty() {
   }
 }
 
-function addXyzLayer(url, title, layerType) {
+function addXyzLayer(url, title, layerType, isBase = false) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
   let titleToUse = title;
   if (!titleToUse || typeof titleToUse !== 'string' || !titleToUse.trim()) {
     if (type === '3dtiles') titleToUse = `3D Tiles: ${url}`;
     else if (type === 'geojson') titleToUse = `GeoJSON: ${url}`;
+    else if (type === 'tiles' && isBase) titleToUse = `Basemap: ${url}`;
     else titleToUse = `XYZ: ${url}`;
   } else {
     titleToUse = titleToUse.trim();
@@ -1704,6 +1705,14 @@ function addXyzLayer(url, title, layerType) {
     layer.tiles = {};
   }
 
+  // Mark as basemap when requested
+  if (isBase) {
+    try { sendLog('[addXyzLayer] marking as basemap'); } catch(e){}
+    if (!layer.data) layer.data = { type: type, url: encodedUrl };
+    layer.data.isBasemap = true;
+    if (layer.tiles) layer.tiles.isBasemap = true;
+  }
+
   // Add default styles for GeoJSON to ensure visibility
   if (type === 'geojson') {
     layer.marker = { pointColor: "#3388ff", pointSize: 10 };
@@ -1720,7 +1729,7 @@ function addXyzLayer(url, title, layerType) {
     if (newId) {
       _pluginAddedLayerIds.add(newId);
     }
-    sendLog("Added XYZ layer, id:", newId, "(src:", url, ")");
+    sendLog(isBase ? "Added Basemap layer, id:" : "Added XYZ layer, id:", newId, "(src:", url, ")");
     try {
       // Re-render the widget UI so the new layer appears in the list
       reearth.ui.show(getUI());
@@ -1953,11 +1962,16 @@ function processInspectorText(text) {
 
     // Tile: "xyz: Name | URL" or just "Name | URL" or "URL"
     let tileStr = line;
+    let isBase = false;
     if (lowerLine.startsWith('xyz:')) {
       tileStr = line.substring(4).trim();
     } else if (lowerLine.startsWith('tile:')) {
         // backward compatibility
         tileStr = line.substring(5).trim();
+    } else if (lowerLine.startsWith('base:')) {
+        // allow "base:" as an alias for basemap XYZ tiles
+        tileStr = line.substring(5).trim();
+        isBase = true;
     }
     
     // Parse tile string
@@ -1974,7 +1988,7 @@ function processInspectorText(text) {
     }
 
     if (url) {
-      tiles.push({ url, title, type: 'tiles' });
+      tiles.push({ url, title, type: 'tiles', isBase: isBase });
     }
     nonCamLines.push(line);
   });
@@ -2099,6 +2113,7 @@ function addXyzLayersFromArray(items) {
     const u = (it.url || it.inspectorUrl || "").trim();
     const t = (it.title || it.inspectorTitle || null);
     const type = it.type || "tiles";
+    const isBase = !!it.isBase;
     if (!u) continue;
     if (!/^https?:\/\//.test(u)) continue;
     const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
@@ -2107,7 +2122,7 @@ function addXyzLayersFromArray(items) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
       continue;
     }
-    addXyzLayer(u, t, type);
+    addXyzLayer(u, t, type, isBase);
   }
 }
 
