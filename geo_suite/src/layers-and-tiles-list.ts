@@ -14,6 +14,7 @@ let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
 let _baseUrl = null; // Base URL for permalink
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
+let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -77,10 +78,13 @@ function getUI() {
     if (_parsedBaseTiles && _parsedBaseTiles.length) {
       // determine currently active basemap url (visible layer flagged as basemap)
       const layersAll = (reearth.layers && reearth.layers.layers) || [];
-      let currentBasemapUrl = '';
-      for (let i = 0; i < layersAll.length; i++) {
-        const l = layersAll[i];
-        if (l && l.data && l.data.isBasemap && l.visible) { currentBasemapUrl = l.data.url || ''; break; }
+      // Prefer last-added basemap URL (reliable), otherwise fall back to visible basemap layer
+      let currentBasemapUrl = _lastAddedBasemapUrl || '';
+      if (!currentBasemapUrl) {
+        for (let i = 0; i < layersAll.length; i++) {
+          const l = layersAll[i];
+          if (l && l.data && l.data.isBasemap && l.visible) { currentBasemapUrl = l.data.url || ''; break; }
+        }
       }
 
       // Build a deduplicated list of base entries using the same encoding used when creating layers
@@ -1417,11 +1421,13 @@ reearth.extension.on("message", async (msg) => {
                         },
                         "billboard": {
                             "image": imageUri,
-                            "scale": 0.5,
-                            "heightReference": "RELATIVE_TO_GROUND",
-                            "verticalOrigin": "CENTER",
-                            "horizontalOrigin": "CENTER",
-                            "disableDepthTestDistance": Number.POSITIVE_INFINITY
+                        if (!isBase) {
+                          _pluginAddedLayerIds.add(newId);
+                        } else {
+                          try { sendLog('[addXyzLayer] basemap layer added, not tracking as user layer', newId); } catch(e){}
+                        }
+                        // Record last-added basemap URL so UI can reflect latest selection reliably
+                        try { if (isBase) _lastAddedBasemapUrl = encodedUrl; } catch(e) {}
                         }
                     }
                 ];
@@ -1495,6 +1501,7 @@ reearth.extension.on("message", async (msg) => {
 
         if (!url) {
           // none selected
+          try { _lastAddedBasemapUrl = null; } catch(e){}
           try { reearth.ui.postMessage({ action: 'basemapChanged', url: null }); } catch(e){}
           try { reearth.ui.show(getUI()); } catch(e){}
           return;
@@ -1513,12 +1520,13 @@ reearth.extension.on("message", async (msg) => {
           try {
             if (typeof reearth.layers.show === 'function') reearth.layers.show(found.id);
             else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: found.id, visible: true });
+            try { _lastAddedBasemapUrl = found.data && found.data.url ? found.data.url : _lastAddedBasemapUrl; } catch(e){}
           } catch(e){}
         } else {
           // add new basemap layer
           try { addXyzLayer(url, title || null, 'tiles', true); } catch(e){}
         }
-
+        try { _lastAddedBasemapUrl = encodeNonAscii(url); } catch(e){}
         try { reearth.ui.postMessage({ action: 'basemapChanged', url: url }); } catch(e){}
         try { reearth.ui.show(getUI()); } catch(e){}
       } catch(e) {
