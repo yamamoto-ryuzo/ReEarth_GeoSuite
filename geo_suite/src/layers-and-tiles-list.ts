@@ -82,11 +82,30 @@ function getUI() {
         const l = layersAll[i];
         if (l && l.data && l.data.isBasemap && l.visible) { currentBasemapUrl = l.data.url || ''; break; }
       }
+
+      // Build a deduplicated list of base entries using the same encoding used when creating layers
+      const seen = new Set();
+      const uniq = [];
+      _parsedBaseTiles.forEach(b => {
+        try {
+          const encoded = (b && b.url) ? b.url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c)) : '';
+          if (!encoded) return;
+          if (seen.has(encoded)) return;
+          seen.add(encoded);
+          uniq.push({ url: b.url, encodedUrl: encoded, title: b.title });
+        } catch (e) {}
+      });
+
       basemapSelectHtml = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
         <label style="font-weight:600;min-width:80px;">Basemap</label>
         <select id="basemap-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
           <option value="">(None)</option>
-          ${_parsedBaseTiles.map(b => `<option value="${b.url}" data-title="${(b.title||'').replace(/"/g,'&quot;')}" ${(b.url===currentBasemapUrl)?'selected':''}>${(b.title||b.url)}</option>`).join('')}
+          ${uniq.map(b => {
+            const titleAttr = (b.title||'').replace(/"/g,'&quot;');
+            const display = (b.title||b.url);
+            const selected = (b.encodedUrl === currentBasemapUrl) || (function(){ try { return decodeURIComponent(currentBasemapUrl) === b.url; } catch(e){ return false; } })() ? 'selected' : '';
+            return `<option value="${b.encodedUrl}" data-title="${titleAttr}" ${selected}>${display}</option>`;
+          }).join('')}
         </select>
       </div>`;
     }
