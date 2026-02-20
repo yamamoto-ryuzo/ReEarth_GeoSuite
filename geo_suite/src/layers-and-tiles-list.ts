@@ -1714,6 +1714,20 @@ function postToUI(msg) {
   } catch (e) {}
 }
 
+// Wrapper for reearth.ui.show(getUI()) that logs caller stack for debugging
+function safeShowUI(context) {
+  try {
+    try { sendLog('[safeShowUI] context:', context); } catch(e){}
+    // capture stack to help identify call sites at runtime
+    try { sendLog('[safeShowUI] stack:', (new Error()).stack); } catch(e){}
+    if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
+      try { reearth.ui.show(getUI()); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
+    }
+  } catch (e) {
+    try { sendError('[safeShowUI] unexpected', e); } catch(_){}
+  }
+}
+
 // Safe stringify for debug logging (handles circular refs and functions)
 function safeStringify(obj) {
   try {
@@ -1757,31 +1771,31 @@ function urlsEqual(a, b) {
 }
 
 // Try multiple available APIs to set layer visibility, then re-render UI
-function setLayerVisibility(layerId, visible) {
+function setLayerVisibility(layerId, visible, renderUI = true) {
   if (!layerId) return false;
   try {
     // Prefer the show/hide API which works for system/preset layers in most runtimes
     if (reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
       if (visible) reearth.layers.show(layerId); else reearth.layers.hide(layerId);
-      try { sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible); } catch(_){}
-      try { if (reearth.ui && typeof reearth.ui.show === 'function') reearth.ui.show(getUI()); } catch(_){}
+      try { sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible); } catch(_){ }
+      try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
       return true;
     }
     // Fallback: try update if available
     if (reearth.layers && typeof reearth.layers.update === 'function') {
       try {
         reearth.layers.update({ id: layerId, visible: !!visible });
-        try { sendLog('[setLayerVisibility] used layers.update', layerId, visible); } catch(_){}
-        try { if (reearth.ui && typeof reearth.ui.show === 'function') reearth.ui.show(getUI()); } catch(_){}
+        try { sendLog('[setLayerVisibility] used layers.update', layerId, visible); } catch(_){ }
+        try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
         return true;
       } catch (e) {
-        try { sendError('[setLayerVisibility] layers.update threw', e); } catch(_){}
+        try { sendError('[setLayerVisibility] layers.update threw', e); } catch(_){ }
       }
     }
   } catch (e) {
-    try { sendError('[setLayerVisibility] unexpected error', e); } catch(_){}
+    try { sendError('[setLayerVisibility] unexpected error', e); } catch(_){ }
   }
-  try { if (reearth.ui && typeof reearth.ui.show === 'function') reearth.ui.show(getUI()); } catch(_){}
+  try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
   return false;
 }
 
@@ -1883,7 +1897,7 @@ reearth.extension.on("message", async (msg) => {
             // inspectorText を再構築
             rebuildInspectorText();
             // UI 再レンダリング
-            try { reearth.ui.show(getUI()); } catch(e){}
+            try { safeShowUI('updateCamPreset'); } catch(e){}
             try { sendLog('[updateCamPreset] updated preset', idx, _cameraPresets[idx].title); } catch(e){}
           }
         }
@@ -2240,22 +2254,24 @@ reearth.extension.on("message", async (msg) => {
 
   // Backward-compatible handling for messages using `type`
   switch (msg.type) {
-    case "delete":
-      reearth.layers.delete(msg.layerId);
-      break;
-    case "refreshLayers":
-      try {
-        if (reearth.ui && typeof reearth.ui.show === 'function') {
-          reearth.ui.show(getUI());
-        }
-      } catch (e) {}
-      break;
-    case "flyTo":
-      reearth.camera.flyTo(msg.layerId, { duration: 2 });
-      break;
     case "hide":
       try {
-        setLayerVisibility(msg.layerId, false);
+        // Called from UI: suppress full UI re-render to avoid re-initialization side-effects
+        setLayerVisibility(msg.layerId, false, false);
+        _userLayerVisibility.set(msg.layerId, false);
+      } catch (e) {
+        try { sendError('[hide] error setting visibility', msg.layerId, e); } catch(_){ }
+      }
+      break;
+    case "show":
+      try {
+        // Called from UI: suppress full UI re-render to avoid re-initialization side-effects
+        setLayerVisibility(msg.layerId, true, false);
+        _userLayerVisibility.set(msg.layerId, true);
+      } catch (e) {
+        try { sendError('[show] error setting visibility', msg.layerId, e); } catch(_){ }
+      }
+      break;
         _userLayerVisibility.set(msg.layerId, false);
       } catch (e) {
         try { sendError('[hide] error setting visibility', msg.layerId, e); } catch(_){}
@@ -2405,7 +2421,7 @@ function addXyzLayer(url, title, layerType, isBase = false) {
       // Re-render the widget UI so the new (non-basemap) layer appears in the list.
       // Avoid full UI re-render when adding basemap layers to prevent UI re-initialization side-effects.
       if (!isBase) {
-        try { reearth.ui.show(getUI()); } catch (e) { try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {} }
+        try { safeShowUI('addXyzLayer'); } catch (e) { try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {} }
       }
     } catch (e) {
       try { sendError('[addXyzLayer] unexpected error during UI update:', e); } catch (err) {}
@@ -2691,12 +2707,12 @@ function processInspectorText(text) {
             }
           } catch(e) {}
         }
-        try { reearth.ui.show(getUI()); } catch(e) {}
+        try { safeShowUI('processInspectorText: initial basemap apply'); } catch(e) {}
       }
     } catch(e) {}
   }
 
-  try { reearth.ui.show(getUI()); } catch(e){}
+  try { safeShowUI('processInspectorText: final render'); } catch(e){}
 
   // After UI render, send legend and info messages so iframe listeners are ready.
   // Use a short timeout to allow iframe initialization; log actions so we can debug.
