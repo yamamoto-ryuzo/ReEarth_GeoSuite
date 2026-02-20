@@ -1082,34 +1082,45 @@ function getUI() {
           gcb.addEventListener('change', event => {
             try {
               const checked = !!event.target.checked;
-              const idsAttr = event.target.getAttribute('data-child-ids') || '';
-              const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
               const isExclusive = event.target.getAttribute('data-exclusive') === 'true';
 
+              // Restrict affected checkboxes to those inside this group's DOM subtree
+              // This avoids touching unrelated checkboxes that may have been included
+              // in data-child-ids due to parsing/aggregation.
+              const groupItem = event.target.closest('.layer-group');
+              if (!groupItem) return;
+
+              // Find checkboxes for child layers inside this group's nested list
+              const childCheckboxes = Array.from(groupItem.querySelectorAll('input[data-layer-id]'));
+
               if (isExclusive && checked) {
-                // For exclusive groups, when turning group ON, enable only the first child and disable others
-                let first = null;
-                ids.forEach((id, idx) => {
+                // Enable only the first visible child checkbox, disable others
+                let firstFound = null;
+                for (let i = 0; i < childCheckboxes.length; i++) {
                   try {
-                    if (idx === 0) {
-                      first = id;
-                      parent.postMessage({ type: 'show', layerId: id }, '*');
-                      const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
-                      if (childCb) childCb.checked = true;
+                    const cb = childCheckboxes[i];
+                    const id = cb.getAttribute('data-layer-id');
+                    if (!id) continue;
+                    if (firstFound === null) {
+                      firstFound = id;
+                      cb.checked = true;
+                      try { parent.postMessage({ type: 'show', layerId: id }, '*'); } catch(e){}
                     } else {
-                      parent.postMessage({ type: 'hide', layerId: id }, '*');
-                      const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
-                      if (childCb) childCb.checked = false;
+                      cb.checked = false;
+                      try { parent.postMessage({ type: 'hide', layerId: id }, '*'); } catch(e){}
                     }
                   } catch(e){}
-                });
+                }
+                // Ensure group checkbox remains checked
+                event.target.checked = true;
               } else {
-                // Non-exclusive or group being turned off: set all to checked/unchecked
-                ids.forEach(id => {
-                  try { parent.postMessage({ type: checked ? 'show' : 'hide', layerId: id }, '*'); } catch(e){}
+                // Non-exclusive group: set all descendant child checkboxes to the group's state
+                childCheckboxes.forEach(cb => {
                   try {
-                    const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
-                    if (childCb) childCb.checked = checked;
+                    const id = cb.getAttribute('data-layer-id');
+                    if (!id) return;
+                    cb.checked = checked;
+                    try { parent.postMessage({ type: checked ? 'show' : 'hide', layerId: id }, '*'); } catch(e){}
                   } catch(e){}
                 });
               }
