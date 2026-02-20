@@ -2008,7 +2008,6 @@ reearth.extension.on("message", async (msg) => {
           // none selected
           try { _lastAddedBasemapUrl = null; } catch(e){}
           try { reearth.ui.postMessage({ action: 'basemapChanged', url: null }); } catch(e){}
-          try { reearth.ui.show(getUI()); } catch(e){}
           return;
         }
 
@@ -2033,7 +2032,6 @@ reearth.extension.on("message", async (msg) => {
         }
         try { _lastAddedBasemapUrl = encodeNonAscii(url); } catch(e){}
         try { reearth.ui.postMessage({ action: 'basemapChanged', url: url }); } catch(e){}
-        try { reearth.ui.show(getUI()); } catch(e){}
       } catch(e) {
         try { sendError('[setBasemap] error:', e); } catch(_){ }
       }
