@@ -1253,19 +1253,20 @@ function getUI() {
                   
                   // Auto-linkify if it looks like a plain URL
                   if (attr.startsWith('http') && attr.indexOf('<') === -1) {
-                    attr = '<a href="' + attr + '" target="_blank" rel="noopener">' + attr + '</a>';
+                    attr = '<a href="' + attr + '" target="_blank" rel="noopener noreferrer">' + attr + '</a>';
                   }
+
+                  // Upgrade HTTP to HTTPS to prevent Mixed Content blocking
+                  attr = attr.replace(/http:\/\/www\.openstreetmap\.org/g, 'https://www.openstreetmap.org');
 
                   attrEl.innerHTML = attr;
                   
                   // Ensure all links open in new tab (standard behavior)
-                  // "Note" link works, so target="_blank" is supported.
                   const links = attrEl.querySelectorAll('a');
                   for(let i=0; i<links.length; i++) {
                      links[i].setAttribute('target', '_blank');
                      links[i].setAttribute('rel', 'noopener noreferrer');
-                     // Remove any potential click handlers that might block navigation
-                     links[i].onclick = null;
+                     links[i].onclick = null; // Clear any conflicting handlers
                   }
                 }
               };
