@@ -319,6 +319,10 @@ function getUI() {
     font-size: 0.9em;
     font-weight: 500;
     color: #333;
+    cursor: pointer;
+  }
+  .layer-name:hover {
+    color: #000;
   }
 
   /* nested lists: indent to show tree structure */
@@ -1006,6 +1010,15 @@ function getUI() {
       // Add event listener for 'Show/Hide' for all layers (preset + plugin-added)
       Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
         try {
+          // Allow clicking layer name to toggle checkbox
+          const layerName = checkbox.nextElementSibling;
+          if (layerName && layerName.classList.contains('layer-name')) {
+            layerName.addEventListener('click', (e) => {
+               e.preventDefault();
+               checkbox.click();
+            });
+          }
+
           checkbox.addEventListener('change', event => {
             try {
               const layerId = event.target.getAttribute('data-layer-id');
