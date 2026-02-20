@@ -1990,13 +1990,13 @@ function processInspectorText(text) {
 
   lines.forEach(line => {
     const lowerLine = line.toLowerCase();
-    // Legend: "legend: https://..."
-    if (lowerLine.startsWith('legend:')) {
-      const url = line.substring(7).trim();
-      if (url) legends.push(url);
-      nonCamLines.push(line);
-      return;
-    }
+      // Legend: "legend: https://..."
+      if (lowerLine.startsWith('legend:')) {
+        const url = line.substring(7).trim();
+        if (url) legends.push(url);
+        nonCamLines.push(line);
+        return;
+      }
 
     // Background color setting: "background: #ffffff" or "bg: #fff"
     if (lowerLine.startsWith('background:') || lowerLine.startsWith('bg:')) {
