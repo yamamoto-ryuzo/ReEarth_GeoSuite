@@ -32,12 +32,12 @@ try {
 const generateLayerItem = (layer, isPreset, displayName) => {
   const name = (typeof displayName === 'string' && displayName.trim()) ? displayName.trim() : (layer && layer.title ? layer.title : 'Layer');
   return `
-    <li>
-      <span id="layer-name">${name}</span>
+    <li class="layer-item">
+      <span class="layer-name">${name}</span>
       <div class="actions">
         <input
+          class="layer-checkbox"
           type="checkbox"
-          id="show-hide-layer"
           data-layer-id="${layer.id}"
           data-is-plugin-added="${!isPreset}"
           ${layer.visible ? "checked" : ""}
@@ -232,23 +232,42 @@ function getUI() {
     padding: 0;
     margin: 0;
   }
-  .layers-list li {
+  /* layer items (rows) */
+  .layer-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin: 4px 0;
-    padding: 2px 8px;
+    padding: 6px 8px;
     line-height: 1;
-    background-color: rgba(248, 249, 250, 0.6);
-    min-height: 1.2em;
-    border-radius: 4px;
+    background-color: rgba(248, 249, 250, 0.9);
+    min-height: 1.6em;
+    border-radius: 6px;
   }
 
-  #layer-name{
+  .layer-name{
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin: 0
+    margin: 0;
+  }
+
+  /* nested lists: indent to show tree structure */
+  .layers-list ul {
+    margin-left: 14px;
+    padding-left: 6px;
+    border-left: 1px dashed rgba(200,200,200,0.15);
+    margin-top: 6px;
+  }
+  .group-header .group-name:before{
+    content: "▾";
+    display: inline-block;
+    margin-right: 6px;
+    transform-origin: center;
+    transition: transform 0.12s linear;
+  }
+  .group-header.collapsed .group-name:before{
+    content: "▸";
   }
   .actions{
     display: flex;
@@ -811,6 +830,21 @@ function getUI() {
               if (layerId) {
                 parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
               }
+              // Update parent group checkboxes' UI state (checked only when all descendants are checked)
+              try {
+                Array.from(document.querySelectorAll('input[data-group-path]')).forEach(gcb => {
+                  try {
+                    const idsAttr = gcb.getAttribute('data-child-ids') || '';
+                    const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
+                    if (!ids.length) return;
+                    const allChecked = ids.every(id => {
+                      const cb = document.querySelector('input[data-layer-id="' + id + '"]');
+                      return cb ? !!cb.checked : false;
+                    });
+                    gcb.checked = allChecked;
+                  } catch(e){}
+                });
+              } catch(e){}
             } catch (e) {}
           });
         } catch (e) {}
@@ -836,6 +870,41 @@ function getUI() {
           });
         } catch (e) {}
       });
+
+      // Add click-to-collapse behavior for group headers (toggle visibility of nested UL)
+      Array.from(document.querySelectorAll('.group-header')).forEach(header => {
+        try {
+          header.addEventListener('click', function(e) {
+            // Ignore clicks on the checkbox inside header
+            try {
+              const tgt = e.target || e.srcElement;
+              if (tgt && (tgt.tagName === 'INPUT' || tgt.type === 'checkbox')) return;
+            } catch (err) {}
+            try {
+              const next = this.nextElementSibling;
+              if (!next) return;
+              const collapsed = this.classList.toggle('collapsed');
+              next.style.display = collapsed ? 'none' : '';
+            } catch (err) {}
+          });
+        } catch (e) {}
+      });
+
+      // Initialize group checkbox states based on descendant layer checkboxes
+      try {
+        Array.from(document.querySelectorAll('input[data-group-path]')).forEach(gcb => {
+          try {
+            const idsAttr = gcb.getAttribute('data-child-ids') || '';
+            const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
+            if (!ids.length) return;
+            const allChecked = ids.every(id => {
+              const cb = document.querySelector('input[data-layer-id="' + id + '"]');
+              return cb ? !!cb.checked : false;
+            });
+            gcb.checked = allChecked;
+          } catch(e){}
+        });
+      } catch(e) {}
 
       // Add event listener for 'FlyTo' button (layer move)
       document.querySelectorAll(".move-btn").forEach(button => {
