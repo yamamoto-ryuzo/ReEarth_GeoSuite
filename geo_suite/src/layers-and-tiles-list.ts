@@ -1199,18 +1199,21 @@ function sendError(...args) {
 function postToUI(msg) {
   try {
     if (reearth && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+      try { sendLog('[postToUI] using reearth.ui.postMessage', msg && msg.action ? msg.action : msg); } catch (e) {}
       reearth.ui.postMessage(msg);
       return;
     }
   } catch (e) {}
   try {
     if (typeof window !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+      try { sendLog('[postToUI] falling back to window.parent.postMessage', msg && msg.action ? msg.action : msg); } catch (e) {}
       window.parent.postMessage(msg, '*');
       return;
     }
   } catch (e) {}
   try {
     if (typeof parent !== 'undefined' && parent && typeof parent.postMessage === 'function') {
+      try { sendLog('[postToUI] falling back to parent.postMessage', msg && msg.action ? msg.action : msg); } catch (e) {}
       parent.postMessage(msg, '*');
     }
   } catch (e) {}
@@ -2184,20 +2187,36 @@ function processInspectorText(text) {
 
   try { reearth.ui.show(getUI()); } catch(e){}
 
-  // After UI render, send legend and info messages so iframe listeners are ready
+  // After UI render, send legend and info messages so iframe listeners are ready.
+  // Use a short timeout to allow iframe initialization; log actions so we can debug.
   try {
-    if (legends.length > 0) {
-      try { postToUI({ action: 'updateLegends', urls: legends }); } catch(e) {}
-    }
-  } catch(e) {}
+    if (typeof setTimeout === 'function') {
+      setTimeout(function() {
+        try { sendLog('[processInspectorText] sending legends count:', legends ? legends.length : 0); } catch(e) {}
+        try {
+          if (legends && legends.length > 0) postToUI({ action: 'updateLegends', urls: legends });
+        } catch(e) { try { sendError('[processInspectorText] updateLegends post failed', e); } catch(_) {} }
 
-  try {
-    if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
-      try { sendLog('[processInspectorText] applying INFO url:', infoUrlFound); } catch(e){}
-      _lastInfoUrl = infoUrlFound;
-      try { postToUI({ action: 'loadInfoUrl', url: infoUrlFound }); } catch(e) {}
+        try {
+          if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
+            try { sendLog('[processInspectorText] applying INFO url (deferred):', infoUrlFound); } catch(e) {}
+            _lastInfoUrl = infoUrlFound;
+            postToUI({ action: 'loadInfoUrl', url: infoUrlFound });
+          }
+        } catch(e) { try { sendError('[processInspectorText] loadInfoUrl post failed', e); } catch(_) {} }
+      }, 50);
+    } else {
+      try { sendLog('[processInspectorText] sending legends count (no timeout):', legends ? legends.length : 0); } catch(e) {}
+      try { if (legends && legends.length > 0) postToUI({ action: 'updateLegends', urls: legends }); } catch(e) {}
+      try {
+        if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
+          try { sendLog('[processInspectorText] applying INFO url (immediate):', infoUrlFound); } catch(e) {}
+          _lastInfoUrl = infoUrlFound;
+          postToUI({ action: 'loadInfoUrl', url: infoUrlFound });
+        }
+      } catch(e) {}
     }
-  } catch(e) {}
+  } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
 }
 
 function restoreUserLayers(userRequests, force = false) {
