@@ -1261,7 +1261,12 @@ function getUI() {
                   const links = attrEl.querySelectorAll('a');
                   for(let i=0; i<links.length; i++) {
                      links[i].target = '_blank';
-                     links[i].rel = 'noopener';
+                     links[i].rel = 'noopener noreferrer';
+                     // Force window.open on click to bypass potential iframe restrictions
+                     links[i].onclick = function(e) {
+                         e.preventDefault();
+                         window.open(this.href, '_blank', 'noopener,noreferrer');
+                     };
                   }
                 }
               };
