@@ -218,7 +218,7 @@ function getUI() {
           if (!encoded) return;
           if (seen.has(encoded)) return;
           seen.add(encoded);
-          uniq.push({ url: b.url, encodedUrl: encoded, title: b.title });
+          uniq.push({ url: b.url, encodedUrl: encoded, title: b.title, attribution: b.attribution });
         } catch (e) {}
       });
 
@@ -227,11 +227,13 @@ function getUI() {
           <option value="">(None)</option>
           ${uniq.map(b => {
             const titleAttr = (b.title||'').replace(/"/g,'&quot;');
+            const attributionAttr = (b.attribution||'').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const display = (b.title||b.url);
               const selected = urlsEqual(b.encodedUrl, currentBasemapUrl) || urlsEqual(decodeURIComponent(currentBasemapUrl || ''), b.url || '') ? 'selected' : '';
-            return `<option value="${b.encodedUrl}" data-title="${titleAttr}" ${selected}>${display}</option>`;
+            return `<option value="${b.encodedUrl}" data-title="${titleAttr}" data-attribution="${attributionAttr}" ${selected}>${display}</option>`;
           }).join('')}
         </select>
+        <div id="basemap-attribution" style="font-size:0.7em;color:#666;margin-top:2px;min-height:1em;padding-left:2px;overflow-wrap:break-word;"></div>
       </div>`;
     }
   } catch(e) { basemapSelectHtml = ''; }
@@ -1148,11 +1150,29 @@ function getUI() {
             // Basemap select handler: forward selection to extension
             try {
               const basel = document.getElementById('basemap-select');
+              
+              // Helper to update attribution display
+              const updateAttr = () => {
+                const sel = document.getElementById('basemap-select');
+                const attrEl = document.getElementById('basemap-attribution');
+                if (sel && attrEl) {
+                  const opt = sel.options[sel.selectedIndex];
+                  const attr = (opt && opt.dataset.attribution) ? opt.dataset.attribution : '';
+                  attrEl.innerHTML = attr;
+                }
+              };
+
               if (basel) {
+                // Initialize attribution on load
+                updateAttr();
+
                 basel.addEventListener('change', function() {
                   const sel = this;
                   const url = sel.value || null;
                   const title = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.title : null;
+                  
+                  updateAttr();
+                  
                   parent.postMessage({ action: 'setBasemap', url: url, title: title }, '*');
                 });
               }
@@ -2475,17 +2495,25 @@ function processInspectorText(text) {
 
     let url = null;
     let title = null;
+    let attribution = null;
+
     if (tileStr.indexOf('|') !== -1) {
       const parts = tileStr.split('|').map(p => p.trim());
-      if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
-      else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+      // Handle optional 3rd part as attribution
+      if (parts.length >= 3) {
+        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; attribution = parts[2]; }
+        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; attribution = parts[2]; }
+      } else {
+        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+      }
     } else {
       if (tileStr.startsWith('http')) url = tileStr;
     }
 
     if (url) {
       tiles.push({ url, title, type: 'tiles', isBase: isBase });
-      if (isBase) _parsedBaseTiles.push({ url, title });
+      if (isBase) _parsedBaseTiles.push({ url, title, attribution });
     }
     nonCamLines.push(line);
   });
