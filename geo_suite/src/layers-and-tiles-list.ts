@@ -29,10 +29,11 @@ try {
   console.warn("Failed to set globe/background color to white:", e);
 }
 
-const generateLayerItem = (layer, isPreset) => {
+const generateLayerItem = (layer, isPreset, displayName) => {
+  const name = (typeof displayName === 'string' && displayName.trim()) ? displayName.trim() : (layer && layer.title ? layer.title : 'Layer');
   return `
     <li>
-      <span id="layer-name">${layer.title}</span>
+      <span id="layer-name">${name}</span>
       <div class="actions">
         <input
           type="checkbox"
@@ -69,9 +70,82 @@ function getUI() {
       presetLayers.push(layer);
     }
   });
-  
-  const presetLayerItems = presetLayers.map(layer => generateLayerItem(layer, true)).join('');
-  const userLayerItems = userLayers.map(layer => generateLayerItem(layer, false)).join('');
+
+  // Helper: build nested tree from layers using either layer.data.group (preferred)
+  // or fallback to title split by '/'. Returns a root node.
+  const buildTree = (arr) => {
+    const root = { name: null, children: new Map(), layers: [], allLayerIds: [] };
+    arr.forEach(layer => {
+      try {
+        // Determine path array
+        let pathArr = [];
+        if (layer && layer.data && typeof layer.data.group === 'string' && layer.data.group.trim()) {
+          pathArr = layer.data.group.split('/').map(s => s.trim()).filter(Boolean);
+        } else if (layer && typeof layer.title === 'string' && layer.title.indexOf('/') !== -1) {
+          // Fallback: treat title as path; last segment is layer name
+          pathArr = layer.title.split('/').map(s => s.trim()).filter(Boolean);
+          // We'll treat the last segment as the display name when rendering
+        } else {
+          pathArr = [];
+        }
+
+        // Insert into tree
+        let node = root;
+        // Add id to root's allLayerIds
+        if (layer && layer.id) root.allLayerIds.push(layer.id);
+        for (let i = 0; i < pathArr.length; i++) {
+          const seg = pathArr[i] || '';
+          if (!node.children.has(seg)) node.children.set(seg, { name: seg, children: new Map(), layers: [], allLayerIds: [] });
+          node = node.children.get(seg);
+          if (layer && layer.id) node.allLayerIds.push(layer.id);
+        }
+        node.layers.push(layer);
+      } catch (e) {}
+    });
+    return root;
+  };
+
+  // Helper: render tree to nested HTML. `pathPrefix` is used to compute data-group-path
+  const renderNode = (node, pathPrefix = '') => {
+    let html = '<ul class="layers-list">';
+    // First render direct layers at this node
+    node.layers.forEach(layer => {
+      // If title contained '/', and node path came from title, use last segment as displayName
+      let displayName = null;
+      try {
+        if ((!layer.data || !layer.data.group) && layer.title && layer.title.indexOf('/') !== -1) {
+          const parts = layer.title.split('/').map(s => s.trim()).filter(Boolean);
+          if (parts.length) displayName = parts[parts.length - 1];
+        }
+      } catch (e) {}
+      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, displayName);
+    });
+
+    // Then render child groups
+    for (const [seg, child] of node.children) {
+      try {
+        const groupPath = pathPrefix ? (pathPrefix + '/' + seg) : seg;
+        const childIds = (child.allLayerIds && child.allLayerIds.length) ? child.allLayerIds.join(',') : '';
+        html += `
+          <li class="layer-group">
+            <div class="group-header" style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" checked />
+                <span class="group-name">${child.name}</span>
+              </div>
+            </div>
+            ${renderNode(child, groupPath)}
+          </li>
+        `;
+      } catch (e) {}
+    }
+
+    html += '</ul>';
+    return html;
+  };
+
+  const presetLayerItems = renderNode(buildTree(presetLayers));
+  const userLayerItems = renderNode(buildTree(userLayers));
 
   // Basemap dropdown (show parsed base: entries if present)
   let basemapSelectHtml = '';
@@ -737,6 +811,27 @@ function getUI() {
               if (layerId) {
                 parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
               }
+            } catch (e) {}
+          });
+        } catch (e) {}
+      });
+
+      // Add event listener for group toggles (checkboxes that control descendant layers)
+      Array.from(document.querySelectorAll('input[data-group-path]')).forEach(gcb => {
+        try {
+          gcb.addEventListener('change', event => {
+            try {
+              const checked = !!event.target.checked;
+              const idsAttr = event.target.getAttribute('data-child-ids') || '';
+              const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
+              ids.forEach(id => {
+                try { parent.postMessage({ type: checked ? 'show' : 'hide', layerId: id }, '*'); } catch(e){}
+                // Update child checkboxes in UI
+                try {
+                  const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
+                  if (childCb) childCb.checked = checked;
+                } catch(e){}
+              });
             } catch (e) {}
           });
         } catch (e) {}
