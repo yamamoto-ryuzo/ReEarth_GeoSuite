@@ -1258,17 +1258,14 @@ function getUI() {
 
                   attrEl.innerHTML = attr;
                   
-                  // Force link behavior: prevent default navigation (which frames the content) and open in new window
+                  // Ensure all links open in new tab (standard behavior)
+                  // "Note" link works, so target="_blank" is supported.
                   const links = attrEl.querySelectorAll('a');
                   for(let i=0; i<links.length; i++) {
-                     links[i].target = '_blank';
-                     links[i].rel = 'noopener noreferrer';
-                     links[i].onclick = function(e) {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         window.open(this.getAttribute('href'), '_blank');
-                         return false;
-                     };
+                     links[i].setAttribute('target', '_blank');
+                     links[i].setAttribute('rel', 'noopener noreferrer');
+                     // Remove any potential click handlers that might block navigation
+                     links[i].onclick = null;
                   }
                 }
               };
