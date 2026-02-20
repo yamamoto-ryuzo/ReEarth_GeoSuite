@@ -1195,6 +1195,27 @@ function sendError(...args) {
   } catch (e) {}
 }
 
+// Fallback-safe UI message sender: prefer reearth.ui.postMessage, fallback to parent.postMessage
+function postToUI(msg) {
+  try {
+    if (reearth && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+      reearth.ui.postMessage(msg);
+      return;
+    }
+  } catch (e) {}
+  try {
+    if (typeof window !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+      window.parent.postMessage(msg, '*');
+      return;
+    }
+  } catch (e) {}
+  try {
+    if (typeof parent !== 'undefined' && parent && typeof parent.postMessage === 'function') {
+      parent.postMessage(msg, '*');
+    }
+  } catch (e) {}
+}
+
 // Safe stringify for debug logging (handles circular refs and functions)
 function safeStringify(obj) {
   try {
@@ -2123,8 +2144,8 @@ function processInspectorText(text) {
     nonCamLines.push(line);
   });
 
-  if (legends.length > 0 && reearth.ui && typeof reearth.ui.postMessage === 'function') {
-    reearth.ui.postMessage({ action: 'updateLegends', urls: legends });
+  if (legends.length > 0) {
+    try { postToUI({ action: 'updateLegends', urls: legends }); } catch(e) {}
   }
 
   if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
@@ -2283,9 +2304,7 @@ function loadInfoUrl(url) {
   if (!url || typeof url !== 'string') return;
   try {
     try { sendLog('[loadInfo] sending URL to UI:', url); } catch(e){}
-    if (reearth.ui && typeof reearth.ui.postMessage === 'function') {
-      reearth.ui.postMessage({ action: 'loadInfoUrl', url: url });
-    }
+    try { postToUI({ action: 'loadInfoUrl', url: url }); } catch(e) {}
   } catch (e) {
     try { sendError('[loadInfo] ERROR:', e); } catch(err){}
   }
