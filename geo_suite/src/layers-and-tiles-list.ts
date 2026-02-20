@@ -1261,13 +1261,14 @@ function getUI() {
 
                   attrEl.innerHTML = attr;
                   
-                  // Enforce target="_blank" on all links, identical to the "Note" link structure
+                  // Enforce target="_blank" on all links
                   const links = attrEl.querySelectorAll('a');
-                  links.forEach(link => {
+                  for (let i = 0; i < links.length; i++) {
+                     const link = links[i];
                      link.setAttribute('target', '_blank');
                      link.setAttribute('rel', 'noopener noreferrer');
                      link.style.cursor = 'pointer'; 
-                  });
+                  }
                 }
                 }
               };

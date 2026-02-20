@@ -26,9 +26,6 @@ extensions:
                 https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
                 3D Tilesの追加: 3dtiles: タイトル | URL
                 GeoJSONの追加: geojson: タイトル | URL
-                ベースマップの追加: base: タイトル | URL | 帰属表示
-                ※帰属表示にはHTMLタグ（<a href="URL">出典</a>）が利用可能です（自動的に別タブで開きます）。
-                パーマリンクベースURL: baseurl: https://...
               type: string
               ui: multiline
               defaultValue: |
