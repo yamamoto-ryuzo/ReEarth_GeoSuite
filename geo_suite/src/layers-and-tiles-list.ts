@@ -2144,15 +2144,7 @@ function processInspectorText(text) {
     nonCamLines.push(line);
   });
 
-  if (legends.length > 0) {
-    try { postToUI({ action: 'updateLegends', urls: legends }); } catch(e) {}
-  }
-
-  if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
-    try { sendLog('[processInspectorText] applying INFO url:', infoUrlFound); } catch(e){}
-    _lastInfoUrl = infoUrlFound;
-    loadInfoUrl(infoUrlFound);
-  }
+  // Defer sending legend/info messages until after UI is (re)rendered below
 
   _inspectorNonCamLines = nonCamLines;
   _cameraPresets = camsFound;
@@ -2191,6 +2183,21 @@ function processInspectorText(text) {
   }
 
   try { reearth.ui.show(getUI()); } catch(e){}
+
+  // After UI render, send legend and info messages so iframe listeners are ready
+  try {
+    if (legends.length > 0) {
+      try { postToUI({ action: 'updateLegends', urls: legends }); } catch(e) {}
+    }
+  } catch(e) {}
+
+  try {
+    if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
+      try { sendLog('[processInspectorText] applying INFO url:', infoUrlFound); } catch(e){}
+      _lastInfoUrl = infoUrlFound;
+      try { postToUI({ action: 'loadInfoUrl', url: infoUrlFound }); } catch(e) {}
+    }
+  } catch(e) {}
 }
 
 function restoreUserLayers(userRequests, force = false) {
