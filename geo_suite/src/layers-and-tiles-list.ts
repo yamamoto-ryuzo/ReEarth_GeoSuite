@@ -1257,17 +1257,18 @@ function getUI() {
                   }
 
                   attrEl.innerHTML = attr;
-                  // Ensure all links open in new tab and force window.open to bypass iframe restrictions
+                  
+                  // Force link behavior: prevent default navigation (which frames the content) and open in new window
                   const links = attrEl.querySelectorAll('a');
                   for(let i=0; i<links.length; i++) {
                      links[i].target = '_blank';
                      links[i].rel = 'noopener noreferrer';
-                     links[i].addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.open(this.href, '_blank', 'noopener,noreferrer');
-                        return false;
-                     });
+                     links[i].onclick = function(e) {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         window.open(this.getAttribute('href'), '_blank');
+                         return false;
+                     };
                   }
                 }
               };
@@ -2622,6 +2623,16 @@ function processInspectorText(text) {
     }
 
     if (url) {
+      // Fix: Ensure attribution links have target="_blank" and use HTTPS to prevent blocking
+      if (attribution && typeof attribution === 'string') {
+        // Upgrade HTTP to HTTPS for OSM
+        attribution = attribution.replace(/http:\/\/www\.openstreetmap\.org/g, 'https://www.openstreetmap.org');
+        // Inject target="_blank" if missing
+        if (attribution.indexOf('<a ') !== -1 && attribution.indexOf('target=') === -1) {
+           attribution = attribution.replace('<a ', '<a target="_blank" ');
+        }
+      }
+
       tiles.push({ url, title, type: 'tiles', isBase: isBase });
       if (isBase) _parsedBaseTiles.push({ url, title, attribution });
     }
