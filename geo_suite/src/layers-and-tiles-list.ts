@@ -110,10 +110,6 @@ function getUI() {
         let parsed = [];
         if (layer && layer.data && typeof layer.data.group === 'string' && layer.data.group.trim()) {
           parsed = parseGroupPath(layer.data.group.trim());
-        } else if (layer && typeof layer.title === 'string' && layer.title.indexOf('/') !== -1) {
-          // Fallback: simple split (no exclusive support in title fallback)
-          const parts = layer.title.split('/').map(s => ({ seg: s.trim(), exclusiveAfter: false })).filter(p => p.seg);
-          parsed = parts;
         } else {
           parsed = [];
         }
@@ -141,16 +137,8 @@ function getUI() {
     let html = '<ul class="layers-list">';
     // First render direct layers at this node
     node.layers.forEach(layer => {
-      // If title contained '/', and node path came from title, use last segment as displayName
-      let displayName = null;
-      try {
-        if ((!layer.data || !layer.data.group) && layer.title && layer.title.indexOf('/') !== -1) {
-          const parts = layer.title.split('/').map(s => s.trim()).filter(Boolean);
-          if (parts.length) displayName = parts[parts.length - 1];
-        }
-      } catch (e) {}
       // include parent group path so layer checkbox handlers can detect exclusive groups
-      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, displayName).replace('<input', `<input data-parent-group-path="${pathPrefix}"`);
+      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, null).replace('<input', `<input data-parent-group-path="${pathPrefix}"`);
     });
 
     // Then render child groups
@@ -159,26 +147,6 @@ function getUI() {
         const groupPath = pathPrefix ? (pathPrefix + '/' + seg) : seg;
         const childIds = (child.allLayerIds && child.allLayerIds.length) ? child.allLayerIds.join(',') : '';
         const isExclusive = !!child.exclusive;
-
-        // If the child group contains exactly one layer and no subgroups,
-        // and that single layer's display name equals the group name,
-        // then render just the layer (collapse redundant group header).
-        try {
-          if ((child.children && child.children.size === 0) && child.layers && child.layers.length === 1) {
-            const onlyLayer = child.layers[0];
-            let displayName = null;
-            if ((!onlyLayer.data || !onlyLayer.data.group) && onlyLayer.title && onlyLayer.title.indexOf('/') !== -1) {
-              const parts = onlyLayer.title.split('/').map(s => s.trim()).filter(Boolean);
-              if (parts.length) displayName = parts[parts.length - 1];
-            }
-            const labelToCompare = (displayName && displayName.trim()) ? displayName.trim() : ((onlyLayer && onlyLayer.title) ? String(onlyLayer.title).trim() : '');
-            if (labelToCompare && labelToCompare === String(child.name).trim()) {
-              html += generateLayerItem(onlyLayer, _pluginAddedLayerIds.has(onlyLayer.id) ? false : true, null);
-              // skip normal group rendering
-              continue;
-            }
-          }
-        } catch (e) {}
 
         html += `
           <li class="layer-group">
@@ -882,21 +850,30 @@ function getUI() {
               if (layerId) {
                 parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
               }
-              // Update parent group checkboxes' UI state (checked only when all descendants are checked)
+              
+              // If a child is turned ON, ensure the parent group checkbox is visually ON.
+              // This is a UI-only update and does not trigger the group's change event (no messages sent).
               try {
-                Array.from(document.querySelectorAll('input[data-group-path]')).forEach(gcb => {
-                  try {
-                    const idsAttr = gcb.getAttribute('data-child-ids') || '';
-                    const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
-                    if (!ids.length) return;
-                    const allChecked = ids.every(id => {
-                      const cb = document.querySelector('input[data-layer-id="' + id + '"]');
-                      return cb ? !!cb.checked : false;
-                    });
-                    gcb.checked = allChecked;
-                  } catch(e){}
-                });
+                if (isVisible) {
+                  const parentPath = event.target.getAttribute('data-parent-group-path') || '';
+                  if (parentPath) {
+                    // Find direct parent group checkbox
+                    const groupEl = document.querySelector('input[data-group-path="' + parentPath + '"]');
+                    if (groupEl && !groupEl.checked) {
+                      groupEl.checked = true;
+                    }
+                    // Also ensure ancestors are checked if needed (optional, but good for consistency)
+                     const parts = parentPath.split('/');
+                     let currentPath = '';
+                     parts.forEach(part => {
+                       currentPath = currentPath ? currentPath + '/' + part : part;
+                       const ancestor = document.querySelector('input[data-group-path="' + currentPath + '"]');
+                       if (ancestor && !ancestor.checked) ancestor.checked = true;
+                     });
+                  }
+                }
               } catch(e){}
+
               // Enforce exclusivity: if this layer was turned ON and its parent group is exclusive, hide siblings
               try {
                 if (isVisible) {
@@ -991,11 +968,12 @@ function getUI() {
             const idsAttr = gcb.getAttribute('data-child-ids') || '';
             const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
             if (!ids.length) return;
-            const allChecked = ids.every(id => {
+            // If any child is checked, set group to checked
+            const anyChecked = ids.some(id => {
               const cb = document.querySelector('input[data-layer-id="' + id + '"]');
               return cb ? !!cb.checked : false;
             });
-            gcb.checked = allChecked;
+            gcb.checked = anyChecked;
           } catch(e){}
         });
       } catch(e) {}
