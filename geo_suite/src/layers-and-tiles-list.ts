@@ -982,12 +982,48 @@ function getUI() {
             const idsAttr = gcb.getAttribute('data-child-ids') || '';
             const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
             if (!ids.length) return;
-            // If any child is checked, set group to checked
-            const anyChecked = ids.some(id => {
-              const cb = document.querySelector('input[data-layer-id="' + id + '"]');
-              return cb ? !!cb.checked : false;
-            });
-            gcb.checked = anyChecked;
+            const isExclusive = gcb.getAttribute('data-exclusive') === 'true';
+
+            if (isExclusive) {
+               // For exclusive groups:
+               // 1. Find which children are currently checked
+               const checkedChildren = ids.filter(id => {
+                  const cb = document.querySelector('input[data-layer-id="' + id + '"]');
+                  return cb ? !!cb.checked : false;
+               });
+
+               if (checkedChildren.length === 0) {
+                 // CASE: No child is ON -> Force First Child ON
+                 if (ids.length > 0) {
+                   const firstId = ids[0];
+                   const cb = document.querySelector('input[data-layer-id="' + firstId + '"]');
+                   if (cb) cb.checked = true;
+                   parent.postMessage({ type: 'show', layerId: firstId }, '*');
+                 }
+               } else {
+                 // CASE: One or more children are ON -> Keep only the first valid one, OFF others
+                 const keepId = checkedChildren[0];
+                 ids.forEach(id => {
+                   if (id !== keepId) {
+                      const cb = document.querySelector('input[data-layer-id="' + id + '"]');
+                      if (cb && cb.checked) {
+                        cb.checked = false;
+                        parent.postMessage({ type: 'hide', layerId: id }, '*');
+                      }
+                   }
+                 });
+               }
+               // Exclusive group is always ON (as one child is enforced ON)
+               gcb.checked = true;
+
+            } else {
+              // Normal group: If any child is checked, set group to checked
+              const anyChecked = ids.some(id => {
+                const cb = document.querySelector('input[data-layer-id="' + id + '"]');
+                return cb ? !!cb.checked : false;
+              });
+              gcb.checked = anyChecked;
+            }
           } catch(e){}
         });
       } catch(e) {}
