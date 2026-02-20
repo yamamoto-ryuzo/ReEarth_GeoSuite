@@ -1250,32 +1250,25 @@ function getUI() {
                   const opt = sel.options[sel.selectedIndex];
                   let attr = (opt && opt.dataset.attribution) ? opt.dataset.attribution : '';
                   try { attr = decodeURIComponent(attr); } catch(e){}
-                  if (!attr) attr = ''; // Ensure string
+                  
+                  // Ensure we have a string
+                  if (!attr) attr = '';
 
-                  // 1. Auto-linkify if it looks like a plain URL
-                  if (attr.startsWith('http') && attr.indexOf('<') === -1) {
-                    attr = '<a href="' + attr + '" target="_blank" rel="noopener noreferrer">' + attr + '</a>';
-                  }
-
-                  // 2. Upgrade HTTP to HTTPS (OpenStreetMap specifically)
-                  if (attr.indexOf('http://www.openstreetmap.org') !== -1) {
-                      attr = attr.replace(/http:\/\/www\.openstreetmap\.org/g, 'https://www.openstreetmap.org');
-                  }
-
-                  // 3. Inject target="_blank" if missing in anchor tags
-                  if (attr.indexOf('<a ') !== -1 && attr.indexOf('target=') === -1) {
-                      attr = attr.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+                  // Basic linkification for plain URLs (no HTML tags)
+                  if (attr.startsWith('http') && !attr.includes('<')) {
+                    attr = `<a href="${attr}" target="_blank" rel="noopener noreferrer">${attr}</a>`;
                   }
 
                   attrEl.innerHTML = attr;
                   
-                  // 4. Safety net: Enforce target="_blank" via DOM
+                  // Enforce target="_blank" on all links, identical to the "Note" link structure
                   const links = attrEl.querySelectorAll('a');
-                  for(let i=0; i<links.length; i++) {
-                     if (!links[i].target) links[i].target = '_blank';
-                     links[i].rel = 'noopener noreferrer';
-                     links[i].onclick = null; 
-                  }
+                  links.forEach(link => {
+                     link.setAttribute('target', '_blank');
+                     link.setAttribute('rel', 'noopener noreferrer');
+                     link.style.cursor = 'pointer'; 
+                  });
+                }
                 }
               };
 
