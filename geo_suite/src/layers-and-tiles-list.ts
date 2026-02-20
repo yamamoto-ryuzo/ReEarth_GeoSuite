@@ -126,10 +126,20 @@ function getUI() {
         for (let k = 0; k < parsed.length; k++) {
           const seg = parsed[k].seg || '';
           const exclusiveAfter = !!parsed[k].exclusiveAfter;
-          if (!node.children.has(seg)) node.children.set(seg, { name: seg, children: new Map(), layers: [], allLayerIds: [], exclusive: false });
-          node = node.children.get(seg);
-          // mark node.exclusive if its children are exclusive
-          if (exclusiveAfter) node.exclusive = true;
+          
+          // Use a key that differentiates grouping types so "Group" (normal) and "Group" (exclusive) are separate
+          const key = seg + (exclusiveAfter ? '@@exclusive' : '@@normal');
+
+          if (!node.children.has(key)) {
+             node.children.set(key, { 
+               name: seg, // Display name remains just the segment name
+               children: new Map(), 
+               layers: [], 
+               allLayerIds: [], 
+               exclusive: exclusiveAfter 
+             });
+          }
+          node = node.children.get(key);
           if (layer && layer.id) node.allLayerIds.push(layer.id);
         }
         node.layers.push(layer);
