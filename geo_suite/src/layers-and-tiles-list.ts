@@ -1255,8 +1255,8 @@ function getUI() {
                   if (!attr) attr = '';
 
                   // Basic linkification for plain URLs (no HTML tags)
-                  if (attr.startsWith('http') && !attr.includes('<')) {
-                    attr = `<a href="${attr}" target="_blank" rel="noopener noreferrer">${attr}</a>`;
+                  if (attr.startsWith('http') && attr.indexOf('<') === -1) {
+                    attr = '<a href="' + attr + '" target="_blank" rel="noopener noreferrer">' + attr + '</a>';
                   }
 
                   attrEl.innerHTML = attr;
@@ -1891,25 +1891,26 @@ reearth.extension.on("message", async (msg) => {
             try {
                 // Create SVG Reticle (Scope) - Simplified for robustness
                 // Removed filters to avoid loading errors, using encodeURIComponent for data URI
-                const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- Outer Ring -->
-  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />
-  <circle cx="128" cy="128" r="118" fill="none" stroke="#00ffff" stroke-width="2" opacity="0.5" />
-  
-  <!-- Crosshair -->
-  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />
-  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />
-  
-  <!-- Thick Posts -->
-  <line x1="128" y1="0" x2="128" y2="60" stroke="#00ffff" stroke-width="14" />
-  <line x1="128" y1="196" x2="128" y2="256" stroke="#00ffff" stroke-width="14" />
-  <line x1="0" y1="128" x2="60" y2="128" stroke="#00ffff" stroke-width="14" />
-  <line x1="196" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" />
-  
-  <!-- Center Dot -->
-  <circle cx="128" cy="128" r="4" fill="#ffffff" />
-</svg>`.trim();
+                const svg = [
+'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
+'  <!-- Outer Ring -->',
+'  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />',
+'  <circle cx="128" cy="128" r="118" fill="none" stroke="#00ffff" stroke-width="2" opacity="0.5" />',
+'  ',
+'  <!-- Crosshair -->',
+'  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />',
+'  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />',
+'  ',
+'  <!-- Thick Posts -->',
+'  <line x1="128" y1="0" x2="128" y2="60" stroke="#00ffff" stroke-width="14" />',
+'  <line x1="128" y1="196" x2="128" y2="256" stroke="#00ffff" stroke-width="14" />',
+'  <line x1="0" y1="128" x2="60" y2="128" stroke="#00ffff" stroke-width="14" />',
+'  <line x1="196" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" />',
+'  ',
+'  <!-- Center Dot -->',
+'  <circle cx="128" cy="128" r="4" fill="#ffffff" />',
+'</svg>'
+].join('\\n').trim();
 
                 // Use encodeURIComponent to create safe Data URI without base64 dependency
                 const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
