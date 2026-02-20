@@ -2272,19 +2272,6 @@ reearth.extension.on("message", async (msg) => {
         try { sendError('[show] error setting visibility', msg.layerId, e); } catch(_){ }
       }
       break;
-        _userLayerVisibility.set(msg.layerId, false);
-      } catch (e) {
-        try { sendError('[hide] error setting visibility', msg.layerId, e); } catch(_){}
-      }
-      break;
-    case "show":
-      try {
-        setLayerVisibility(msg.layerId, true);
-        _userLayerVisibility.set(msg.layerId, true);
-      } catch (e) {
-        try { sendError('[show] error setting visibility', msg.layerId, e); } catch(_){}
-      }
-      break;
     case "inspectorText":
       try {
         const v = msg.value || "";
