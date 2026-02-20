@@ -144,7 +144,9 @@ function getUI() {
   .primary-background.minimized #layers-panel,
   .primary-background.minimized #cams-panel,
   .primary-background.minimized #settings-panel,
-  .primary-background.minimized #info-panel{ display:none !important; }
+  .primary-background.minimized #info-panel,
+  .primary-background.minimized #legend-panel,
+  .primary-background.minimized #share-panel { display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
