@@ -1270,7 +1270,6 @@ function getUI() {
                      link.style.cursor = 'pointer'; 
                   }
                 }
-                }
               };
 
               if (basel) {
