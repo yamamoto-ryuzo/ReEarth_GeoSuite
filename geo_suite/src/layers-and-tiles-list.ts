@@ -126,6 +126,27 @@ function getUI() {
       try {
         const groupPath = pathPrefix ? (pathPrefix + '/' + seg) : seg;
         const childIds = (child.allLayerIds && child.allLayerIds.length) ? child.allLayerIds.join(',') : '';
+
+        // If the child group contains exactly one layer and no subgroups,
+        // and that single layer's display name equals the group name,
+        // then render just the layer (collapse redundant group header).
+        try {
+          if ((child.children && child.children.size === 0) && child.layers && child.layers.length === 1) {
+            const onlyLayer = child.layers[0];
+            let displayName = null;
+            if ((!onlyLayer.data || !onlyLayer.data.group) && onlyLayer.title && onlyLayer.title.indexOf('/') !== -1) {
+              const parts = onlyLayer.title.split('/').map(s => s.trim()).filter(Boolean);
+              if (parts.length) displayName = parts[parts.length - 1];
+            }
+            const labelToCompare = (displayName && displayName.trim()) ? displayName.trim() : ((onlyLayer && onlyLayer.title) ? String(onlyLayer.title).trim() : '');
+            if (labelToCompare && labelToCompare === String(child.name).trim()) {
+              html += generateLayerItem(onlyLayer, _pluginAddedLayerIds.has(onlyLayer.id) ? false : true, null);
+              // skip normal group rendering
+              continue;
+            }
+          }
+        } catch (e) {}
+
         html += `
           <li class="layer-group">
             <div class="group-header" style="display:flex;align-items:center;justify-content:space-between;">
