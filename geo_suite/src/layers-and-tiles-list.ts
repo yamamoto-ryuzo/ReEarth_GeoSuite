@@ -2402,10 +2402,13 @@ function addXyzLayer(url, title, layerType, isBase = false) {
     }
     sendLog(isBase ? "Added Basemap layer, id:" : "Added XYZ layer, id:", newId, "(src:", url, ")");
     try {
-      // Re-render the widget UI so the new layer appears in the list
-      reearth.ui.show(getUI());
+      // Re-render the widget UI so the new (non-basemap) layer appears in the list.
+      // Avoid full UI re-render when adding basemap layers to prevent UI re-initialization side-effects.
+      if (!isBase) {
+        try { reearth.ui.show(getUI()); } catch (e) { try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {} }
+      }
     } catch (e) {
-      try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {}
+      try { sendError('[addXyzLayer] unexpected error during UI update:', e); } catch (err) {}
     }
     return newId;
   } catch (e) {
