@@ -1250,23 +1250,31 @@ function getUI() {
                   const opt = sel.options[sel.selectedIndex];
                   let attr = (opt && opt.dataset.attribution) ? opt.dataset.attribution : '';
                   try { attr = decodeURIComponent(attr); } catch(e){}
-                  
-                  // Auto-linkify if it looks like a plain URL
+                  if (!attr) attr = ''; // Ensure string
+
+                  // 1. Auto-linkify if it looks like a plain URL
                   if (attr.startsWith('http') && attr.indexOf('<') === -1) {
                     attr = '<a href="' + attr + '" target="_blank" rel="noopener noreferrer">' + attr + '</a>';
                   }
 
-                  // Upgrade HTTP to HTTPS to prevent Mixed Content blocking
-                  attr = attr.replace(/http:\/\/www\.openstreetmap\.org/g, 'https://www.openstreetmap.org');
+                  // 2. Upgrade HTTP to HTTPS (OpenStreetMap specifically)
+                  if (attr.indexOf('http://www.openstreetmap.org') !== -1) {
+                      attr = attr.replace(/http:\/\/www\.openstreetmap\.org/g, 'https://www.openstreetmap.org');
+                  }
+
+                  // 3. Inject target="_blank" if missing in anchor tags
+                  if (attr.indexOf('<a ') !== -1 && attr.indexOf('target=') === -1) {
+                      attr = attr.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+                  }
 
                   attrEl.innerHTML = attr;
                   
-                  // Ensure all links open in new tab (standard behavior)
+                  // 4. Safety net: Enforce target="_blank" via DOM
                   const links = attrEl.querySelectorAll('a');
                   for(let i=0; i<links.length; i++) {
-                     links[i].setAttribute('target', '_blank');
-                     links[i].setAttribute('rel', 'noopener noreferrer');
-                     links[i].onclick = null; // Clear any conflicting handlers
+                     if (!links[i].target) links[i].target = '_blank';
+                     links[i].rel = 'noopener noreferrer';
+                     links[i].onclick = null; 
                   }
                 }
               };
