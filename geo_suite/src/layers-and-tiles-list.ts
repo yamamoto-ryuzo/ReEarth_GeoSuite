@@ -110,6 +110,9 @@ function getUI() {
         let parsed = [];
         if (layer && layer.data && typeof layer.data.group === 'string' && layer.data.group.trim()) {
           parsed = parseGroupPath(layer.data.group.trim());
+        } else if (layer && typeof layer.title === 'string' && layer.title.indexOf('/') !== -1) {
+          // Fallback: parse title with same parser
+          parsed = parseGroupPath(layer.title.trim()).filter(p => p && p.seg).map(p => ({ seg: p.seg.trim(), exclusiveAfter: p.exclusiveAfter }));
         } else {
           parsed = [];
         }
@@ -137,8 +140,16 @@ function getUI() {
     let html = '<ul class="layers-list">';
     // First render direct layers at this node
     node.layers.forEach(layer => {
+      // If title contained '/', and node path came from title, use last segment as displayName
+      let displayName = null;
+      try {
+        if ((!layer.data || !layer.data.group) && layer.title && layer.title.indexOf('/') !== -1) {
+          const parts = layer.title.split('/').map(s => s.trim()).filter(Boolean);
+          if (parts.length) displayName = parts[parts.length - 1];
+        }
+      } catch (e) {}
       // include parent group path so layer checkbox handlers can detect exclusive groups
-      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, null).replace('<input', `<input data-parent-group-path="${pathPrefix}"`);
+      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, displayName).replace('<input', `<input data-parent-group-path="${pathPrefix}"`);
     });
 
     // Then render child groups
