@@ -33,8 +33,7 @@ const generateLayerItem = (layer, isPreset, displayName) => {
   const name = (typeof displayName === 'string' && displayName.trim()) ? displayName.trim() : (layer && layer.title ? layer.title : 'Layer');
   return `
     <li class="layer-item">
-      <span class="layer-name">${name}</span>
-      <div class="actions">
+      <div class="layer-item-left">
         <input
           class="layer-checkbox"
           type="checkbox"
@@ -42,7 +41,10 @@ const generateLayerItem = (layer, isPreset, displayName) => {
           data-is-plugin-added="${!isPreset}"
           ${layer.visible ? "checked" : ""}
         />
-        <button class="btn-primary p-8 move-btn" data-layer-id="${layer.id}" aria-label="Move"></button>
+        <span class="layer-name" title="${name}">${name}</span>
+      </div>
+      <div class="actions">
+        <button class="btn-icon move-btn" data-layer-id="${layer.id}" aria-label="Move" title="Move Camera">📍</button>
       </div>
     </li>
   `;
@@ -176,11 +178,9 @@ function getUI() {
 
         html += `
           <li class="layer-group">
-            <div class="group-header" style="display:flex;align-items:center;justify-content:space-between;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" data-exclusive="${isExclusive ? 'true' : 'false'}" checked />
+            <div class="group-header">
+                <input type="checkbox" class="group-checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" data-exclusive="${isExclusive ? 'true' : 'false'}" checked />
                 <span class="group-name">${child.name}</span>
-              </div>
             </div>
             ${renderNode(child, groupPath)}
           </li>
@@ -227,7 +227,7 @@ function getUI() {
           <option value="">(None)</option>
           ${uniq.map(b => {
             const titleAttr = (b.title||'').replace(/"/g,'&quot;');
-            const attributionAttr = (b.attribution||'').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const attributionAttr = encodeURIComponent(b.attribution||'');
             const display = (b.title||b.url);
               const selected = urlsEqual(b.encodedUrl, currentBasemapUrl) || urlsEqual(decodeURIComponent(currentBasemapUrl || ''), b.url || '') ? 'selected' : '';
             return `<option value="${b.encodedUrl}" data-title="${titleAttr}" data-attribution="${attributionAttr}" ${selected}>${display}</option>`;
@@ -280,18 +280,35 @@ function getUI() {
     list-style: none;
     padding: 0;
     margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+  
   /* layer items (rows) */
   .layer-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 4px 0;
-    padding: 6px 8px;
-    line-height: 1;
-    background-color: rgba(248, 249, 250, 0.9);
-    min-height: 1.6em;
+    margin: 2px 0;
+    padding: 6px 10px;
+    line-height: 1.2;
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    min-height: 2em;
     border-radius: 6px;
+    transition: background-color 0.15s, transform 0.1s;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+  .layer-item:hover {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0,0,0,0.1);
+  }
+
+  .layer-item-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+    gap: 8px;
   }
 
   .layer-name{
@@ -299,39 +316,96 @@ function getUI() {
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #333;
   }
 
   /* nested lists: indent to show tree structure */
   .layers-list ul {
-    margin-left: 14px;
-    padding-left: 6px;
-    border-left: 1px dashed rgba(200,200,200,0.15);
-    margin-top: 6px;
+    margin-left: 12px;
+    padding-left: 10px;
+    border-left: 1.5px solid rgba(0,0,0,0.1);
+    margin-top: 4px;
+    margin-bottom: 4px;
   }
   
+  /* Group Header Styling */
+  .group-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 6px 8px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    background-color: rgba(240, 242, 245, 0.8);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+    user-select: none;
+    gap: 8px;
+  }
+  .group-header:hover {
+    background-color: rgba(230, 235, 240, 0.9);
+  }
+  
+  .group-name {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: #444;
+    flex: 1;
+  }
+
+  /* Custom triangle for open/close using CSS border */
+  .group-header .group-name:before {
+    content: "";
+    display: inline-block;
+    width: 0; 
+    height: 0; 
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #666; /* pointing down */
+    margin-right: 8px;
+    transform: rotate(0deg);
+    transition: transform 0.2s ease;
+    vertical-align: middle;
+    opacity: 0.7;
+  }
+  /* Collapsed state: pointing right */
+  .group-header.collapsed .group-name:before {
+    transform: rotate(-90deg);
+  }
+
   /* Exclusive group styling */
-  /* Indicator on group name */
+  /* Indicator on group name -> Badge style */
   input[data-exclusive="true"] + .group-name::after {
-    content: " ⊚"; /* Double circle to indicate exclusive/radio behavior */
-    font-size: 1.1em;
-    color: #667eea;
-    margin-left: 6px;
-    vertical-align: -1px;
+    content: "Exclusive";
+    display: inline-block;
+    font-size: 0.7em;
+    background-color: #667eea;
+    color: white;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+    font-weight: normal;
+    opacity: 0.8;
   }
   
   /* Make children of exclusive groups look like radio buttons */
   .exclusive-list .layer-checkbox {
     border-radius: 50%;
-    /* Re-style standard checkbox to look like radio if browser supports appearance */
     -webkit-appearance: none;
     appearance: none;
-    width: 13px;
-    height: 13px;
-    border: 1px solid #999;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #bbb;
     background-color: #fff;
     display: inline-block;
     position: relative;
     cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
   }
   .exclusive-list .layer-checkbox:checked {
     border-color: #667eea;
@@ -340,33 +414,50 @@ function getUI() {
   .exclusive-list .layer-checkbox:checked::after {
     content: '';
     position: absolute;
-    top: 2px;
-    left: 2px;
+    top: 3px;
+    left: 3px;
     width: 7px;
     height: 7px;
     border-radius: 50%;
     background-color: #667eea;
   }
-  /* Fallback for standard checkboxes in normal lists if needed (optional) */
-  .layer-checkbox {
+  
+  /* Standard Checkbox styling */
+  .layer-checkbox, .group-checkbox {
     cursor: pointer;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: #667eea; 
   }
 
-  .group-header .group-name:before{
-    content: "▾";
-    display: inline-block;
-    margin-right: 6px;
-    transform-origin: center;
-    transition: transform 0.12s linear;
-  }
-  .group-header.collapsed .group-name:before{
-    content: "▸";
-  }
   .actions{
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    }
+  }
+  
+  .btn-icon.move-btn {
+    border: none;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 1.2em;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .btn-icon.move-btn:hover {
+    opacity: 1;
+    color: #333;
+    background: rgba(0,0,0,0.05);
+  }
 
   /* Make primary background semi-transparent */
   .primary-background {
@@ -1157,8 +1248,21 @@ function getUI() {
                 const attrEl = document.getElementById('basemap-attribution');
                 if (sel && attrEl) {
                   const opt = sel.options[sel.selectedIndex];
-                  const attr = (opt && opt.dataset.attribution) ? opt.dataset.attribution : '';
+                  let attr = (opt && opt.dataset.attribution) ? opt.dataset.attribution : '';
+                  try { attr = decodeURIComponent(attr); } catch(e){}
+                  
+                  // Auto-linkify if it looks like a plain URL
+                  if (attr.startsWith('http') && attr.indexOf('<') === -1) {
+                    attr = '<a href="' + attr + '" target="_blank" rel="noopener">' + attr + '</a>';
+                  }
+
                   attrEl.innerHTML = attr;
+                  // Ensure all links open in new tab
+                  const links = attrEl.querySelectorAll('a');
+                  for(let i=0; i<links.length; i++) {
+                     links[i].target = '_blank';
+                     links[i].rel = 'noopener';
+                  }
                 }
               };
 
