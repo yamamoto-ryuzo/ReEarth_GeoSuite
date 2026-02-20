@@ -2146,6 +2146,27 @@ function processInspectorText(text) {
         try { _lastAddedBasemapUrl = encodeNonAscii(_parsedBaseTiles[0].url); } catch(e) {}
       }
     } catch(e) {}
+    // If we chose an initial basemap URL, ensure only that basemap is visible
+    try {
+      if (_lastAddedBasemapUrl) {
+        const layersAll = (reearth.layers && reearth.layers.layers) || [];
+        for (let i = 0; i < layersAll.length; i++) {
+          const l = layersAll[i];
+          try {
+            if (l && l.data && l.data.isBasemap && l.id) {
+              if (urlsEqual(l.data.url, _lastAddedBasemapUrl)) {
+                if (typeof reearth.layers.show === 'function') reearth.layers.show(l.id);
+                else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: l.id, visible: true });
+              } else {
+                if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
+                else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: l.id, visible: false });
+              }
+            }
+          } catch(e) {}
+        }
+        try { reearth.ui.show(getUI()); } catch(e) {}
+      }
+    } catch(e) {}
   }
 
   try { reearth.ui.show(getUI()); } catch(e){}
