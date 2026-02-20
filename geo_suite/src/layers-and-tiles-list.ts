@@ -2001,7 +2001,7 @@ function processInspectorText(text) {
       // Legend: "legend: https://..."
       if (lowerLine.startsWith('legend:')) {
         const url = line.substring(7).trim();
-        if (url) legends.push(url);
+        if (url) legends.push(encodeNonAscii(url));
         nonCamLines.push(line);
         return;
       }
@@ -2030,8 +2030,8 @@ function processInspectorText(text) {
     if (lowerLine.startsWith('info:')) {
       const url = line.substring(5).trim();
       if (url) {
-        infoUrlFound = url;
-        try { sendLog('[processInspectorText] found INFO url:', url); } catch(e){}
+        infoUrlFound = encodeNonAscii(url);
+        try { sendLog('[processInspectorText] found INFO url:', infoUrlFound); } catch(e){}
       }
       nonCamLines.push(line);
       return;
