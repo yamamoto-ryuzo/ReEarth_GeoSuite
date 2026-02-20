@@ -1257,11 +1257,17 @@ function getUI() {
                   }
 
                   attrEl.innerHTML = attr;
-                  // Ensure all links open in new tab
+                  // Ensure all links open in new tab and force window.open to bypass iframe restrictions
                   const links = attrEl.querySelectorAll('a');
                   for(let i=0; i<links.length; i++) {
                      links[i].target = '_blank';
                      links[i].rel = 'noopener noreferrer';
+                     links[i].addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(this.href, '_blank', 'noopener,noreferrer');
+                        return false;
+                     });
                   }
                 }
               };
