@@ -144,8 +144,7 @@ function getUI() {
     return html;
   };
 
-  const presetLayerItems = renderNode(buildTree(presetLayers));
-  const userLayerItems = renderNode(buildTree(userLayers));
+  const combinedLayerItems = renderNode(buildTree(presetLayers.concat(userLayers)));
 
   // Basemap dropdown (show parsed base: entries if present)
   let basemapSelectHtml = '';
@@ -463,9 +462,8 @@ function getUI() {
     </div>
     
     <ul class="layers-list">
-      ${presetLayerItems}
+      ${combinedLayerItems}
     </ul>
-    ${userLayerItems ? `<div style="font-weight:600;margin-top:12px;margin-bottom:8px;">UserLayers</div><ul class="layers-list">${userLayerItems}</ul>` : ''}
   </div>
 
   <div id="cams-panel" style="display:none;">
