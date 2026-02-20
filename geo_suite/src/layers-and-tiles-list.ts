@@ -126,6 +126,8 @@ function getUI() {
 
   // Information panel content
   // (Info content will be loaded from configured URL and injected into #info-content)
+  // Prepare legend HTML for initial render from cached inspector legend URLs
+  const legendContentHtml = (_inspectorLegendUrls && _inspectorLegendUrls.length) ? _inspectorLegendUrls.map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('') : '';
   
   return `
 <style>
@@ -446,7 +448,7 @@ function getUI() {
 
   <div id="legend-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;">Legend</div>
-    <div id="legend-content"></div>
+    <div id="legend-content">${legendContentHtml}</div>
     <div id="legend-instruction" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;">
       Add "legend: ImageURL" to inspector text.
     </div>
@@ -1805,6 +1807,11 @@ function tryInitFromProperty() {
   try {
     try { sendLog('[init] extension.widget:', reearth.extension.widget); } catch(e){}
     const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+    try { sendLog('[init] raw property object:', prop); } catch(e) {}
+    try {
+      // send property to UI for debugging (UI console will show it)
+      try { postToUI({ action: 'debugInspectorProperty', prop: prop }); } catch(e) {}
+    } catch(e) {}
     // property may nest inspector values under `settings` (e.g. { settings: { inspectorUrl: "..." } })
     const url = prop?.inspectorUrl || prop?.inspectorText || prop?.settings?.inspectorUrl || prop?.settings?.inspectorText;
     const title = prop?.inspectorTitle || prop?.settings?.inspectorTitle || null;
@@ -2151,6 +2158,7 @@ function processInspectorText(text) {
 
   _inspectorNonCamLines = nonCamLines;
   _cameraPresets = camsFound;
+  try { _inspectorLegendUrls = (legends && legends.length) ? legends.map(u => { try { return encodeNonAscii(u); } catch(e){ return u; } }) : []; } catch(e) {}
 
   if (tiles.length > 0) {
     try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
