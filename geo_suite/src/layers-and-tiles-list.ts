@@ -2139,6 +2139,13 @@ function processInspectorText(text) {
   if (tiles.length > 0) {
     try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
     addXyzLayersFromArray(tiles);
+    // If no basemap has been selected via other means (permalink / UI),
+    // prefer the first declared `base:` entry in inspector text as initial selection.
+    try {
+      if ((!_lastAddedBasemapUrl || _lastAddedBasemapUrl === '') && _parsedBaseTiles && _parsedBaseTiles.length) {
+        try { _lastAddedBasemapUrl = encodeNonAscii(_parsedBaseTiles[0].url); } catch(e) {}
+      }
+    } catch(e) {}
   }
 
   try { reearth.ui.show(getUI()); } catch(e){}
