@@ -1267,6 +1267,8 @@ function getUI() {
                      const link = links[i];
                      link.setAttribute('target', '_blank');
                      link.setAttribute('rel', 'noopener noreferrer');
+                     link.setAttribute('referrerpolicy', 'no-referrer');
+                     link.title = "開かない場合は右クリックから「新しいタブで開く」を選択してください";
                      link.style.cursor = 'pointer'; 
                   }
                 }
