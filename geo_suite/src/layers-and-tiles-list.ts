@@ -1150,7 +1150,8 @@ try { if (typeof tryInitFromProperty === 'function') tryInitFromProperty(); } ca
 try {
   const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
   const textInit = (propInit.settings && propInit.settings.inspectorText) || propInit.inspectorText;
-  const textToProcess = (textInit && typeof textInit === 'string' && textInit.trim()) ? textInit : _defaultInspectorText;
+  // If inspector property exists (even empty string), prefer it. Only fall back to _defaultInspectorText when property is undefined.
+  const textToProcess = (typeof textInit === 'string') ? textInit : _defaultInspectorText;
   if (textToProcess && textToProcess.trim()) {
     try { processInspectorText(textToProcess); } catch(e) { try { sendError('[init] processInspectorText failed', e); } catch(_){} }
   }
@@ -1933,8 +1934,8 @@ const _defaultInspectorText = ``;
 try {
   const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
   const textInit = (propInit.settings && propInit.settings.inspectorText) || propInit.inspectorText;
-  // Use default text if no user-configured text exists
-  const textToProcess = (textInit && typeof textInit === 'string' && textInit.trim()) ? textInit : _defaultInspectorText;
+  // If inspector property exists (even empty string), prefer it. Only fall back to _defaultInspectorText when property is undefined.
+  const textToProcess = (typeof textInit === 'string') ? textInit : _defaultInspectorText;
   if (textToProcess && textToProcess.trim()) {
     try { sendLog('[init] processing inspector text at startup, length:', textToProcess.length, 'isDefault:', textToProcess === _defaultInspectorText); } catch(e){}
     processInspectorText(textToProcess);
