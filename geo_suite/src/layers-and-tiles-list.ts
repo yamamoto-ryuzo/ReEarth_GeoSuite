@@ -150,7 +150,9 @@ function getUI() {
 
   // Helper: render tree to nested HTML. `pathPrefix` is used to compute data-group-path
   const renderNode = (node, pathPrefix = '') => {
-    let html = '<ul class="layers-list">';
+    // Add exclusive class if this node is marked exclusive (meaning its children are exclusive)
+    const isExclusiveNode = !!node.exclusive;
+    let html = `<ul class="layers-list ${isExclusiveNode ? 'exclusive-list' : ''}">`;
     // First render direct layers at this node
     node.layers.forEach(layer => {
       // If title contained '/', and node path came from title, use last segment as displayName
@@ -304,6 +306,50 @@ function getUI() {
     border-left: 1px dashed rgba(200,200,200,0.15);
     margin-top: 6px;
   }
+  
+  /* Exclusive group styling */
+  /* Indicator on group name */
+  input[data-exclusive="true"] + .group-name::after {
+    content: " ⊚"; /* Double circle to indicate exclusive/radio behavior */
+    font-size: 1.1em;
+    color: #667eea;
+    margin-left: 6px;
+    vertical-align: -1px;
+  }
+  
+  /* Make children of exclusive groups look like radio buttons */
+  .exclusive-list .layer-checkbox {
+    border-radius: 50%;
+    /* Re-style standard checkbox to look like radio if browser supports appearance */
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border: 1px solid #999;
+    background-color: #fff;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+  }
+  .exclusive-list .layer-checkbox:checked {
+    border-color: #667eea;
+    background-color: #fff;
+  }
+  .exclusive-list .layer-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #667eea;
+  }
+  /* Fallback for standard checkboxes in normal lists if needed (optional) */
+  .layer-checkbox {
+    cursor: pointer;
+  }
+
   .group-header .group-name:before{
     content: "▾";
     display: inline-block;
