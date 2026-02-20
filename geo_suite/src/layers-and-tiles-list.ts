@@ -14,6 +14,7 @@ let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
 let _baseUrl = null; // Base URL for permalink
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
+let _inspectorLegendUrls = []; // cached legend URLs from inspector for initial UI render
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 
 // Ensure globe and scene background are white before any tiles are applied
