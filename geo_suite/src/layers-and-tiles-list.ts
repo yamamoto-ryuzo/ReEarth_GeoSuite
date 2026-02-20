@@ -73,30 +73,61 @@ function getUI() {
 
   // Helper: build nested tree from layers using either layer.data.group (preferred)
   // or fallback to title split by '/'. Returns a root node.
+  // Parse group string allowing '//' to indicate exclusive (radio) grouping between segments.
+  const parseGroupPath = (groupStr) => {
+    // returns array of { seg, exclusiveAfter }
+    const res = [];
+    if (!groupStr || typeof groupStr !== 'string') return res;
+    let i = 0;
+    let cur = '';
+    while (i < groupStr.length) {
+      if (groupStr[i] === '/') {
+        // count slashes
+        let j = i;
+        while (j < groupStr.length && groupStr[j] === '/') j++;
+        const slashCount = j - i;
+        // commit current segment
+        if (cur !== '') {
+          res.push({ seg: cur, exclusiveAfter: (slashCount >= 2) });
+          cur = '';
+        }
+        // if multiple slashes, treat as delimiter with exclusive flag
+        i = j;
+      } else {
+        cur += groupStr[i];
+        i++;
+      }
+    }
+    if (cur !== '') res.push({ seg: cur, exclusiveAfter: false });
+    return res;
+  };
+
   const buildTree = (arr) => {
-    const root = { name: null, children: new Map(), layers: [], allLayerIds: [] };
+    const root = { name: null, children: new Map(), layers: [], allLayerIds: [], exclusive: false };
     arr.forEach(layer => {
       try {
-        // Determine path array
-        let pathArr = [];
+        // Determine path segments with exclusive markers
+        let parsed = [];
         if (layer && layer.data && typeof layer.data.group === 'string' && layer.data.group.trim()) {
-          pathArr = layer.data.group.split('/').map(s => s.trim()).filter(Boolean);
+          parsed = parseGroupPath(layer.data.group.trim());
         } else if (layer && typeof layer.title === 'string' && layer.title.indexOf('/') !== -1) {
-          // Fallback: treat title as path; last segment is layer name
-          pathArr = layer.title.split('/').map(s => s.trim()).filter(Boolean);
-          // We'll treat the last segment as the display name when rendering
+          // Fallback: simple split (no exclusive support in title fallback)
+          const parts = layer.title.split('/').map(s => ({ seg: s.trim(), exclusiveAfter: false })).filter(p => p.seg);
+          parsed = parts;
         } else {
-          pathArr = [];
+          parsed = [];
         }
 
-        // Insert into tree
+        // Insert into tree, honoring exclusiveAfter flags
         let node = root;
-        // Add id to root's allLayerIds
         if (layer && layer.id) root.allLayerIds.push(layer.id);
-        for (let i = 0; i < pathArr.length; i++) {
-          const seg = pathArr[i] || '';
-          if (!node.children.has(seg)) node.children.set(seg, { name: seg, children: new Map(), layers: [], allLayerIds: [] });
+        for (let k = 0; k < parsed.length; k++) {
+          const seg = parsed[k].seg || '';
+          const exclusiveAfter = !!parsed[k].exclusiveAfter;
+          if (!node.children.has(seg)) node.children.set(seg, { name: seg, children: new Map(), layers: [], allLayerIds: [], exclusive: false });
           node = node.children.get(seg);
+          // mark node.exclusive if its children are exclusive
+          if (exclusiveAfter) node.exclusive = true;
           if (layer && layer.id) node.allLayerIds.push(layer.id);
         }
         node.layers.push(layer);
@@ -118,7 +149,8 @@ function getUI() {
           if (parts.length) displayName = parts[parts.length - 1];
         }
       } catch (e) {}
-      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, displayName);
+      // include parent group path so layer checkbox handlers can detect exclusive groups
+      html += generateLayerItem(layer, _pluginAddedLayerIds.has(layer.id) ? false : true, displayName).replace('<input', `<input data-parent-group-path="${pathPrefix}"`);
     });
 
     // Then render child groups
@@ -126,6 +158,7 @@ function getUI() {
       try {
         const groupPath = pathPrefix ? (pathPrefix + '/' + seg) : seg;
         const childIds = (child.allLayerIds && child.allLayerIds.length) ? child.allLayerIds.join(',') : '';
+        const isExclusive = !!child.exclusive;
 
         // If the child group contains exactly one layer and no subgroups,
         // and that single layer's display name equals the group name,
@@ -151,7 +184,7 @@ function getUI() {
           <li class="layer-group">
             <div class="group-header" style="display:flex;align-items:center;justify-content:space-between;">
               <div style="display:flex;align-items:center;gap:8px;">
-                <input type="checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" checked />
+                <input type="checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" data-exclusive="${isExclusive ? 'true' : 'false'}" checked />
                 <span class="group-name">${child.name}</span>
               </div>
             </div>
@@ -864,6 +897,27 @@ function getUI() {
                   } catch(e){}
                 });
               } catch(e){}
+              // Enforce exclusivity: if this layer was turned ON and its parent group is exclusive, hide siblings
+              try {
+                if (isVisible) {
+                  const parentPath = event.target.getAttribute('data-parent-group-path') || '';
+                  if (parentPath) {
+                    const groupEl = document.querySelector('input[data-group-path="' + parentPath + '"]');
+                    if (groupEl && groupEl.getAttribute('data-exclusive') === 'true') {
+                      // hide all other siblings in same parent group
+                      Array.from(document.querySelectorAll('input[data-parent-group-path="' + parentPath + '"]')).forEach(cb => {
+                        try {
+                          const otherId = cb.getAttribute('data-layer-id');
+                          if (otherId && otherId !== layerId) {
+                            cb.checked = false;
+                            try { parent.postMessage({ type: 'hide', layerId: otherId }, '*'); } catch(e){}
+                          }
+                        } catch(e){}
+                      });
+                    }
+                  }
+                }
+              } catch(e){}
             } catch (e) {}
           });
         } catch (e) {}
@@ -877,14 +931,35 @@ function getUI() {
               const checked = !!event.target.checked;
               const idsAttr = event.target.getAttribute('data-child-ids') || '';
               const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
-              ids.forEach(id => {
-                try { parent.postMessage({ type: checked ? 'show' : 'hide', layerId: id }, '*'); } catch(e){}
-                // Update child checkboxes in UI
-                try {
-                  const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
-                  if (childCb) childCb.checked = checked;
-                } catch(e){}
-              });
+              const isExclusive = event.target.getAttribute('data-exclusive') === 'true';
+
+              if (isExclusive && checked) {
+                // For exclusive groups, when turning group ON, enable only the first child and disable others
+                let first = null;
+                ids.forEach((id, idx) => {
+                  try {
+                    if (idx === 0) {
+                      first = id;
+                      parent.postMessage({ type: 'show', layerId: id }, '*');
+                      const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
+                      if (childCb) childCb.checked = true;
+                    } else {
+                      parent.postMessage({ type: 'hide', layerId: id }, '*');
+                      const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
+                      if (childCb) childCb.checked = false;
+                    }
+                  } catch(e){}
+                });
+              } else {
+                // Non-exclusive or group being turned off: set all to checked/unchecked
+                ids.forEach(id => {
+                  try { parent.postMessage({ type: checked ? 'show' : 'hide', layerId: id }, '*'); } catch(e){}
+                  try {
+                    const childCb = document.querySelector('input[data-layer-id="' + id + '"]');
+                    if (childCb) childCb.checked = checked;
+                  } catch(e){}
+                });
+              }
             } catch (e) {}
           });
         } catch (e) {}
