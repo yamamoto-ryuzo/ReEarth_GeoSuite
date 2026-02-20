@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "9.0.0"
+version: "9.0.1"
 description: "XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -26,7 +26,9 @@ extensions:
                 https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
                 3D Tilesの追加: 3dtiles: タイトル | URL
                 GeoJSONの追加: geojson: タイトル | URL
-
+                ベースマップの追加: base: タイトル | URL | 帰属表示
+                ※帰属表示にはHTMLタグ（<a href="URL">出典</a>）が利用可能です（自動的に別タブで開きます）。
+                パーマリンクベースURL: baseurl: https://...
               type: string
               ui: multiline
               defaultValue: |
