@@ -233,7 +233,7 @@ function getUI() {
             return `<option value="${b.encodedUrl}" data-title="${titleAttr}" data-attribution="${attributionAttr}" ${selected}>${display}</option>`;
           }).join('')}
         </select>
-        <div id="basemap-attribution" style="font-size:0.7em;color:#666;margin-top:2px;min-height:1em;padding-left:2px;overflow-wrap:break-word;"></div>
+        <div id="basemap-attribution" style="font-size:0.7em;color:#000000;margin-top:2px;min-height:1em;padding-left:2px;overflow-wrap:break-word;"></div>
       </div>`;
     }
   } catch(e) { basemapSelectHtml = ''; }
