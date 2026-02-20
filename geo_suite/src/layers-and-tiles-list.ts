@@ -1261,7 +1261,7 @@ function getUI() {
 
                   attrEl.innerHTML = attr;
                   
-                  // Enforce target="_blank" on all links
+                  // Enforce target="_blank" on all links and style them like the "Note" button
                   const links = attrEl.querySelectorAll('a');
                   for (let i = 0; i < links.length; i++) {
                      const link = links[i];
@@ -1269,7 +1269,18 @@ function getUI() {
                      link.setAttribute('rel', 'noopener noreferrer');
                      link.setAttribute('referrerpolicy', 'no-referrer');
                      link.title = "開かない場合は右クリックから「新しいタブで開く」を選択してください";
-                     link.style.cursor = 'pointer'; 
+                     link.style.cursor = 'pointer';
+                     
+                     // Apply "Note" button style
+                     link.style.fontSize = '0.85em';
+                     link.style.color = '#000';
+                     link.style.textDecoration = 'none';
+                     link.style.border = '1px solid #ccc';
+                     link.style.padding = '2px 6px';
+                     link.style.borderRadius = '4px';
+                     link.style.backgroundColor = '#f9f9f9';
+                     link.style.display = 'inline-block';
+                     link.style.margin = '0 2px';
                   }
                 }
               };
