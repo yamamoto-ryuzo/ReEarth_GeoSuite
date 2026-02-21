@@ -16,9 +16,10 @@ export const html: string = `
     .status{font-size:10px;color:#333;margin-top:6px;text-align:center}
     button#syncBtn{margin-top:8px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer}
   </style>
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px 6px 6px;">
-    <div style="position:relative;display:flex;align-items:center;justify-content:center">
-      <div class="compass" id="compass">
+  <div style="width:100%;display:flex;justify-content:flex-end;padding:6px 4px 6px 6px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div style="position:relative;display:flex;align-items:center;justify-content:center">
+        <div class="compass" id="compass">
         <div id="needleWrap" class="needle-wrap">
           <svg id="needle" class="needle-svg" viewBox="0 0 24 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <polygon points="12,2 20,18 12,14 4,18" fill="#ff4d4d" />
@@ -27,9 +28,11 @@ export const html: string = `
         </div>
         <div id="nlabel" class="nlabel">N</div>
       </div>
+        </div>
+      </div>
+      <button id="syncBtn">Sync</button>
+      <div class="status"><div id="last">--</div></div>
     </div>
-    <button id="syncBtn">Sync</button>
-    <div class="status"><div id="last">--</div></div>
   </div>
   <script>
     (function(){
