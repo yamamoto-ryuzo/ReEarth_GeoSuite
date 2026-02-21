@@ -2254,6 +2254,12 @@ reearth.extension.on("message", async (msg) => {
 
   // Backward-compatible handling for messages using `type`
   switch (msg.type) {
+    case "flyTo":
+      try {
+        // Backward-compatible: allow UI to request flyTo by layerId
+        try { reearth.camera.flyTo(msg.layerId, { duration: 2 }); } catch(e) { try { sendError('[flyTo] failed', e); } catch(_){} }
+      } catch (e) {}
+      break;
     case "hide":
       try {
         // Called from UI: suppress full UI re-render to avoid re-initialization side-effects
