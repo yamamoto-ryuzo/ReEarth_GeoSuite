@@ -14,16 +14,6 @@ extensions:
         zone: outer
         section: left
         area: top
-  - id: navigation-toolbar
-    type: widget
-    name: "Navigation Toolbar"
-    description: "Compass, zoom and mode controls"
-    entry: navigation-toolbar.js
-    widgetLayout:
-      defaultLocation:
-        zone: outer
-        section: right
-        area: top
     schema:
       version: 2
       groups:
@@ -57,3 +47,13 @@ extensions:
                 base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
                 base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
                 base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
+  - id: navigation-toolbar
+    type: widget
+    name: "Navigation Toolbar"
+    description: "Compass, zoom and mode controls"
+    entry: navigation-toolbar.js
+    widgetLayout:
+      defaultLocation:
+        zone: outer
+        section: right
+        area: top
