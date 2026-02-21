@@ -212,12 +212,33 @@ export const onMessage = (msg: any): void => {
       try {
         const scr = msg.payload && msg.payload.screen;
         if (scr && typeof scr.x === 'number' && typeof scr.y === 'number') {
-          // try pixel-based APIs first
+          // try viewer-based pixel APIs first (preferred in some hosts)
           try {
-            if (reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
+            if (reearth && reearth.viewer && typeof reearth.viewer.screenToPosition === 'function') {
+              const pv = reearth.viewer.screenToPosition(scr.x, scr.y);
+              if (pv && typeof pv.lat === 'number' && typeof pv.lng === 'number') {
+                centerLat = pv.lat; centerLng = pv.lng;
+                try{ postToUI({ type: 'topDownDebug', payload: { method: 'viewer.screenToPosition' } }); }catch(e){}
+              }
+            }
+          } catch (e) {}
+          try {
+            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.viewer && typeof reearth.viewer.pick === 'function') {
+              const pv2 = reearth.viewer.pick(scr.x, scr.y);
+              if (pv2 && typeof pv2.lat === 'number' && typeof pv2.lng === 'number') {
+                centerLat = pv2.lat; centerLng = pv2.lng;
+                try{ postToUI({ type: 'topDownDebug', payload: { method: 'viewer.pick' } }); }catch(e){}
+              }
+            }
+          } catch (e) {}
+
+          // fallback to camera/scene APIs if viewer APIs not present
+          try {
+            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
               const p = reearth.camera.screenToPosition(scr.x, scr.y);
               if (p && typeof p.lat === 'number' && typeof p.lng === 'number') {
                 centerLat = p.lat; centerLng = p.lng;
+                try{ postToUI({ type: 'topDownDebug', payload: { method: 'camera.screenToPosition' } }); }catch(e){}
               }
             }
           } catch (e) {}
@@ -226,6 +247,7 @@ export const onMessage = (msg: any): void => {
               const p2 = reearth.scene.pick(scr.x, scr.y);
               if (p2 && typeof p2.lat === 'number' && typeof p2.lng === 'number') {
                 centerLat = p2.lat; centerLng = p2.lng;
+                try{ postToUI({ type: 'topDownDebug', payload: { method: 'scene.pick' } }); }catch(e){}
               }
             }
           } catch (e) {}
