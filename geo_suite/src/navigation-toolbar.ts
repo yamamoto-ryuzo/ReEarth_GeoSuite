@@ -140,8 +140,8 @@ export const html: string = `
         if(topDown){
           topDown.addEventListener('click', function(){
             try{
-              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
-                window.parent.postMessage({ action: 'topDown' }, '*');
+                if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+                window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter' } }, '*');
               }
             }catch(e){}
           });
@@ -197,12 +197,43 @@ export const onMessage = (msg: any): void => {
     try {
       const cur3 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
       const target: any = {};
+
+      // Determine center: prefer screen-center if requested, else fallback to camera position
+      let centerLat: number | undefined;
+      let centerLng: number | undefined;
+      try {
+        const mode = msg.payload && msg.payload.mode;
+        if (mode === 'screenCenter') {
+          // Try a few possible API methods (defensive): screenToPosition, scene.pick, etc.
+          try {
+            if (reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
+              const p = reearth.camera.screenToPosition(0.5, 0.5);
+              if (p && typeof p.lat === 'number' && typeof p.lng === 'number') {
+                centerLat = p.lat; centerLng = p.lng;
+              }
+            }
+          } catch (e) {}
+          try {
+            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.scene && typeof reearth.scene.pick === 'function') {
+              const p2 = reearth.scene.pick(0.5, 0.5);
+              if (p2 && typeof p2.lat === 'number' && typeof p2.lng === 'number') {
+                centerLat = p2.lat; centerLng = p2.lng;
+              }
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+
       if (cur3) {
-        if (typeof cur3.lat === 'number') target.lat = cur3.lat;
-        if (typeof cur3.lng === 'number') target.lng = cur3.lng;
+        if (centerLat === undefined && typeof cur3.lat === 'number') centerLat = cur3.lat;
+        if (centerLng === undefined && typeof cur3.lng === 'number') centerLng = cur3.lng;
         if (typeof cur3.height === 'number') target.height = cur3.height;
         if (typeof cur3.heading === 'number') target.heading = cur3.heading;
       }
+
+      if (typeof centerLat === 'number') target.lat = centerLat;
+      if (typeof centerLng === 'number') target.lng = centerLng;
+
       // straight top-down: pitch to -90 degrees (radians) and reset roll
       try { target.pitch = -Math.PI / 2; } catch (e) { target.pitch = -1.5707963267948966; }
       try { target.roll = 0; } catch (e) { target.roll = 0; }
