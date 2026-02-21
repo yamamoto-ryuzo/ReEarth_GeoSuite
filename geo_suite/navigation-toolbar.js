@@ -21,11 +21,14 @@ const styles = `
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background: transparent;
-    padding: 0;
+    background: rgba(255,255,255,0.95);
+    padding: 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     font-family: sans-serif;
     color: #333;
     user-select: none;
+    border: 1px solid rgba(0,0,0,0.06);
   }
   
   .reearth-nav-btn {
@@ -104,71 +107,45 @@ const html = `
   </div>
   
   <script>
-    console.log("NavToolbar: UI script loaded");
+    (function(){
+      try {
+        console.log("NavToolbar: UI script loaded");
+        function send(action, payload) { try { parent.postMessage({ action: action, payload: payload }, "*"); } catch(e) { console.warn('NavToolbar: parent.postMessage failed', e); } }
 
-    // Communication with Parent
-    function send(action, payload) {
-      console.log("NavToolbar: Sending " + action, payload);
-      parent.postMessage({ action: action, payload: payload }, "*");
-    }
+        window.addEventListener("message", function(e) {
+          try {
+            if (e.source !== parent) return;
+            if (e.data.type === "cameraUpdate") updateCompass(e.data.payload.heading);
+            if (e.data.type === "sceneModeUpdate") updateModeDisplay(e.data.payload.mode);
+          } catch (e) {}
+        });
 
-    window.addEventListener("message", function(e) {
-      if (e.source !== parent) return;
-      if (e.data.type === "cameraUpdate") {
-        updateCompass(e.data.payload.heading);
-      }
-      if (e.data.type === "sceneModeUpdate") {
-        updateModeDisplay(e.data.payload.mode);
-      }
-    });
+        document.addEventListener('DOMContentLoaded', function(){
+          try {
+            const compassIcon = document.getElementById('icon-compass');
+            const btnCompass = document.getElementById('btn-compass');
+            const btnZoomIn = document.getElementById('btn-zoom-in');
+            const btnZoomOut = document.getElementById('btn-zoom-out');
+            const btnHome = document.getElementById('btn-home');
+            const modeBtn = document.getElementById('btn-mode');
+            const modeText = document.getElementById('mode-text');
+            if (btnCompass) btnCompass.addEventListener('click', function() { send('setCamera', { heading: 0, pitch: -90, roll: 0 }); });
+            if (btnZoomIn) btnZoomIn.addEventListener('click', function() { send('zoom', { amount: 0.5 }); });
+            if (btnZoomOut) btnZoomOut.addEventListener('click', function() { send('zoom', { amount: 2.0 }); });
+            if (btnHome) btnHome.addEventListener('click', function() { send('flyHome'); });
 
-    // Compass
-    const compassIcon = document.getElementById('icon-compass');
-    document.getElementById('btn-compass').addEventListener('click', function() {
-      send('setCamera', { heading: 0, pitch: -90, roll: 0 });
-    });
-    
-    function updateCompass(headingRadians) {
-       if (typeof headingRadians !== 'number') return;
-       const deg = headingRadians * (180 / Math.PI);
-       // Use string concatenation to avoid template literal nesting issues
-       compassIcon.style.transform = "rotate(" + (-deg) + "deg)";
-    }
+            let currentMode = '3d';
+            const modes = ['3d','2d','columbus'];
+            if (modeBtn) modeBtn.addEventListener('click', function() { const currentIndex = modes.indexOf(currentMode); const nextIndex = (currentIndex + 1) % modes.length; const nextMode = modes[nextIndex]; send('setSceneMode', { mode: nextMode }); });
+            function updateModeDisplay(mode) { currentMode = mode; let label = '3D'; if (mode === '2d') label = '2D'; if (mode === 'columbus') label = '2.5D'; if (modeText) modeText.textContent = label; }
+            window.updateModeDisplay = updateModeDisplay; // expose for message handler safety
 
-    // Zoom
-    document.getElementById('btn-zoom-in').addEventListener('click', function() {
-      send('zoom', { amount: 0.5 });
-    });
-    
-    document.getElementById('btn-zoom-out').addEventListener('click', function() {
-      send('zoom', { amount: 2.0 });
-    });
-    
-    // Home
-    document.getElementById('btn-home').addEventListener('click', function() {
-      send('flyHome');
-    });
-
-    // Mode
-    const modeBtn = document.getElementById('btn-mode');
-    const modeText = document.getElementById('mode-text');
-    let currentMode = '3d'; 
-    const modes = ['3d', '2d', 'columbus'];
-    
-    modeBtn.addEventListener('click', function() {
-        const currentIndex = modes.indexOf(currentMode);
-        const nextIndex = (currentIndex + 1) % modes.length;
-        const nextMode = modes[nextIndex];
-        send('setSceneMode', { mode: nextMode });
-    });
-
-    function updateModeDisplay(mode) {
-        currentMode = mode;
-        let label = '3D';
-        if (mode === '2d') label = '2D';
-        if (mode === 'columbus') label = '2.5D';
-        modeText.textContent = label;
-    }
+            function updateCompass(headingRadians) { if (typeof headingRadians !== 'number' || !compassIcon) return; const deg = headingRadians * (180 / Math.PI); compassIcon.style.transform = "rotate(" + (-deg) + "deg)"; }
+            window.updateCompass = updateCompass;
+          } catch (e) { console.error('NavToolbar: UI init failed', e); }
+        });
+      } catch (e) { console.error('NavToolbar: UI script wrapper error', e); }
+    })();
   </script>
 `;
 // Plugin Logic
