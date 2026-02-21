@@ -65,10 +65,21 @@ const html = `
 `;
 
 // --- Plugin runtime logic (host side) ---
+// Helper: robust post to UI (try reearth.ui.postMessage, fall back to parent.postMessage)
+function postToUI(msg: any) {
+  try {
+    if (reearth && reearth.ui && typeof reearth.ui.postMessage === 'function') {
+      reearth.ui.postMessage(msg);
+      return;
+    }
+  } catch (e) {}
+  try { if (typeof window !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') window.parent.postMessage(msg, '*'); } catch (e) {}
+}
+
 try {
   // Send initial camera heading if available
   const postHeading = (heading: number | undefined) => {
-    reearth.ui.postMessage({ type: 'cameraUpdate', payload: { heading } });
+    postToUI({ type: 'cameraUpdate', payload: { heading } });
   };
 
   // Prefer camera.on if available
@@ -114,16 +125,23 @@ try {
     }
   };
 
-  if (reearth.extension && typeof reearth.extension.on === 'function') reearth.extension.on('message', onMessage);
-  else if (reearth.ui && typeof reearth.ui.on === 'function') reearth.ui.on('message', onMessage);
+  if (reearth && reearth.ui && typeof reearth.ui.on === 'function') reearth.ui.on('message', onMessage);
+  else if (reearth.extension && typeof reearth.extension.on === 'function') reearth.extension.on('message', onMessage);
   else if (typeof reearth.on === 'function') reearth.on('message', onMessage);
 
-  // Show UI; request top-right placement (some hosts honor this option)
-  try {
-    reearth.ui.show(html, { width: 60, height: 240, visible: true, position: 'top-right' });
-  } catch (e) {
-    console.error('NavToolbar: reearth.ui.show failed', e);
+  // Safe show helper (capture stack for debugging like layers-and-tiles-list.ts)
+  function safeShowUI(context?: any) {
+    try {
+      try { console.log('[safeShowUI] context:', context); } catch (e) {}
+      try { console.log('[safeShowUI] stack:', (new Error()).stack); } catch (e) {}
+      if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
+        try { reearth.ui.show(html, { width: 60, height: 240, visible: true, position: 'top-right' }); } catch (e) { console.error('[safeShowUI] show failed', e); }
+      }
+    } catch (e) { console.error('[safeShowUI] unexpected', e); }
   }
+
+  // Show the UI
+  safeShowUI('navigation-toolbar');
 } catch (e) {
   console.error('NavToolbar: initialization failed', e);
 }
