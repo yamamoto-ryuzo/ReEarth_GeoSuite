@@ -14,6 +14,16 @@ extensions:
         zone: outer
         section: left
         area: top
+  - id: navigation-toolbar
+    type: widget
+    name: "Navigation Toolbar"
+    description: "Compass, zoom and mode controls"
+    entry: navigation-toolbar.js
+    widgetLayout:
+      defaultLocation:
+        zone: outer
+        section: right
+        area: top
     schema:
       version: 2
       groups:
