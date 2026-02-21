@@ -13,7 +13,7 @@ export const html: string = `
     .nlabel{position:absolute;top:25%;left:50%;transform:translate(-50%,-50%);font-weight:700;color:#222;font-size:21px;letter-spacing:0.4px;text-shadow:0 1px 0 rgba(255,255,255,0.6)}
     .cap{position:absolute;left:50%;top:34px;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:linear-gradient(#fff,#f0f4fb);box-shadow:0 2px 4px rgba(2,8,23,0.25)}
     .gloss{position:absolute;inset:0;border-radius:50%;pointer-events:none;background:radial-gradient(60% 40% at 30% 25%, rgba(255,255,255,0.5), rgba(255,255,255,0.06) 40%, transparent 60%)}
-    .status{font-size:10px;color:#333;margin-top:6px;text-align:center}
+    /* status removed */
     button#syncBtn{margin-top:8px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer}
   </style>
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px 6px 6px;width:76px;box-sizing:border-box;margin:0 auto;">
@@ -29,13 +29,10 @@ export const html: string = `
       </div>
     </div>
     <button id="syncBtn">Sync</button>
-    <div class="status"><div id="last">--</div></div>
   </div>
   <script>
     (function(){
       var lastHeading = NaN;
-
-      function setLastText(t){ try { var el = document.getElementById('last'); if(el) el.textContent = t; } catch(e){} }
 
       function updateCompass(headingRadians){
         try {
@@ -44,7 +41,6 @@ export const html: string = `
           var wrap = document.getElementById('needleWrap');
           if (wrap) wrap.style.transform = 'rotate(' + (-deg) + 'deg)';
           lastHeading = headingRadians;
-          setLastText('heading: ' + (deg.toFixed(1)) + '°');
         } catch (e) { }
       }
 
@@ -53,7 +49,7 @@ export const html: string = `
         try {
           var wrap = document.getElementById('needleWrap');
           if (wrap) wrap.style.transform = 'rotate(0deg)';
-          try { var last = document.getElementById('last'); if (last) last.textContent = 'heading: 0.0°'; } catch(_){ }
+          // status text removed
           if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
             window.parent.postMessage({ action: 'setHeading', payload: { heading: 0 } }, '*');
           }
