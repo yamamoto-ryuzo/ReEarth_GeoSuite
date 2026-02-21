@@ -140,8 +140,16 @@ export const html: string = `
         if(topDown){
           topDown.addEventListener('click', function(){
             try{
-                if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
-                window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter' } }, '*');
+              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+                try{
+                  var w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
+                  var h = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+                  var cx = Math.round(w/2);
+                  var cy = Math.round(h/2);
+                  window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter', screen: { x: cx, y: cy } } }, '*');
+                }catch(e){
+                  window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter' } }, '*');
+                }
               }
             }catch(e){}
           });
@@ -198,13 +206,33 @@ export const onMessage = (msg: any): void => {
       const cur3 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
       const target: any = {};
 
-      // Determine center: prefer screen-center if requested, else fallback to camera position
+      // Prefer explicit screen pixel provided by UI
       let centerLat: number | undefined;
       let centerLng: number | undefined;
       try {
-        const mode = msg.payload && msg.payload.mode;
-        if (mode === 'screenCenter') {
-          // Try a few possible API methods (defensive): screenToPosition, scene.pick, etc.
+        const scr = msg.payload && msg.payload.screen;
+        if (scr && typeof scr.x === 'number' && typeof scr.y === 'number') {
+          // try pixel-based APIs first
+          try {
+            if (reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
+              const p = reearth.camera.screenToPosition(scr.x, scr.y);
+              if (p && typeof p.lat === 'number' && typeof p.lng === 'number') {
+                centerLat = p.lat; centerLng = p.lng;
+              }
+            }
+          } catch (e) {}
+          try {
+            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.scene && typeof reearth.scene.pick === 'function') {
+              const p2 = reearth.scene.pick(scr.x, scr.y);
+              if (p2 && typeof p2.lat === 'number' && typeof p2.lng === 'number') {
+                centerLat = p2.lat; centerLng = p2.lng;
+              }
+            }
+          } catch (e) {}
+        }
+
+        // If pixel-based failed, try normalized center
+        if ((centerLat === undefined || centerLng === undefined)) {
           try {
             if (reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
               const p = reearth.camera.screenToPosition(0.5, 0.5);
@@ -238,6 +266,15 @@ export const onMessage = (msg: any): void => {
       try { target.pitch = -Math.PI / 2; } catch (e) { target.pitch = -1.5707963267948966; }
       try { target.roll = 0; } catch (e) { target.roll = 0; }
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
+
+      // report back to UI whether we found a center
+      try{
+        if (typeof centerLat === 'number' && typeof centerLng === 'number') {
+          postToUI({ type: 'topDownResult', payload: { success: true, lat: centerLat, lng: centerLng } });
+        } else {
+          postToUI({ type: 'topDownResult', payload: { success: false } });
+        }
+      }catch(e){}
     } catch (e) {}
   }
 };
