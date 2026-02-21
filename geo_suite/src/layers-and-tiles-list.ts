@@ -288,7 +288,7 @@ function getUI() {
     justify-content: space-between;
     align-items: center;
     margin: 2px 0;
-    padding: 6px 8px;
+    padding: 6px 6px;
     line-height: 1.2;
     background-color: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(4px);
@@ -307,7 +307,7 @@ function getUI() {
     align-items: center;
     flex: 1;
     overflow: hidden;
-    gap: 6px;
+    gap: 4px;
   }
 
   .layer-name{
@@ -326,9 +326,9 @@ function getUI() {
 
   /* nested lists: indent to show tree structure */
   .layers-list ul {
-    /* Tighten nested list left spacing */
-    margin-left: 6px;
-    padding-left: 6px;
+    /* Further tighten nested list left spacing */
+    margin-left: 4px;
+    padding-left: 4px;
     border-left: none;
     margin-top: 4px;
     margin-bottom: 4px;
@@ -339,7 +339,7 @@ function getUI() {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 6px 6px;
+    padding: 6px 4px;
     margin-top: 6px;
     margin-bottom: 2px;
     background-color: rgba(240, 242, 245, 0.8);
@@ -347,7 +347,7 @@ function getUI() {
     cursor: pointer;
     transition: background-color 0.15s;
     user-select: none;
-    gap: 6px;
+    gap: 4px;
   }
   .group-header:hover {
     background-color: rgba(230, 235, 240, 0.9);
