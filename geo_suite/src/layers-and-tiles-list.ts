@@ -326,9 +326,10 @@ function getUI() {
 
   /* nested lists: indent to show tree structure */
   .layers-list ul {
-    margin-left: 12px;
-    padding-left: 10px;
-    border-left: 1.5px solid rgba(0,0,0,0.1);
+    margin-left: 10px;
+    padding-left: 8px;
+    /* Removed the left vertical line to give more horizontal space for names */
+    border-left: none;
     margin-top: 4px;
     margin-bottom: 4px;
   }
