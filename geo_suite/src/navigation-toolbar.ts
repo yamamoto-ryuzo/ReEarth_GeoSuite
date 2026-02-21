@@ -252,15 +252,20 @@ export const onMessage = (msg: any): void => {
         }
       } catch (e) {}
 
+      // Do NOT fallback to camera position for center; require screen-derived center.
       if (cur3) {
-        if (centerLat === undefined && typeof cur3.lat === 'number') centerLat = cur3.lat;
-        if (centerLng === undefined && typeof cur3.lng === 'number') centerLng = cur3.lng;
         if (typeof cur3.height === 'number') target.height = cur3.height;
         if (typeof cur3.heading === 'number') target.heading = cur3.heading;
       }
 
-      if (typeof centerLat === 'number') target.lat = centerLat;
-      if (typeof centerLng === 'number') target.lng = centerLng;
+      if (typeof centerLat === 'number' && typeof centerLng === 'number') {
+        target.lat = centerLat;
+        target.lng = centerLng;
+      } else {
+        // No valid center found — report failure and do not fly
+        try{ postToUI({ type: 'topDownResult', payload: { success: false } }); }catch(e){}
+        return;
+      }
 
       // straight top-down: pitch to -90 degrees (radians) and reset roll
       try { target.pitch = -Math.PI / 2; } catch (e) { target.pitch = -1.5707963267948966; }
