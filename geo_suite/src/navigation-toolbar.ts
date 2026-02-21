@@ -29,6 +29,7 @@ export const html: string = `
       </div>
     </div>
     <button id="syncBtn">Sync</button>
+    <button id="topDownBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">2D</button>
   </div>
   <script>
     (function(){
@@ -132,6 +133,20 @@ export const html: string = `
           });
         }
       }catch(e){}
+
+      // 2D (top-down) button: request host to move camera to straight top-down
+      try{
+        var topDown = document.getElementById('topDownBtn');
+        if(topDown){
+          topDown.addEventListener('click', function(){
+            try{
+              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+                window.parent.postMessage({ action: 'topDown' }, '*');
+              }
+            }catch(e){}
+          });
+        }
+      }catch(e){}
     })();
   </script>
 `;
@@ -177,6 +192,22 @@ export const onMessage = (msg: any): void => {
       const h = cur2 && typeof cur2.heading === 'number' ? cur2.heading : undefined;
       postToUI({ type: 'cameraUpdate', payload: { heading: h } });
     }catch(e){}
+  }
+  if (msg.action === 'topDown') {
+    try {
+      const cur3 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+      const target: any = {};
+      if (cur3) {
+        if (typeof cur3.lat === 'number') target.lat = cur3.lat;
+        if (typeof cur3.lng === 'number') target.lng = cur3.lng;
+        if (typeof cur3.height === 'number') target.height = cur3.height;
+        if (typeof cur3.heading === 'number') target.heading = cur3.heading;
+      }
+      // straight top-down: pitch to -90 degrees (radians) and reset roll
+      try { target.pitch = -Math.PI / 2; } catch (e) { target.pitch = -1.5707963267948966; }
+      try { target.roll = 0; } catch (e) { target.roll = 0; }
+      try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
+    } catch (e) {}
   }
 };
 
