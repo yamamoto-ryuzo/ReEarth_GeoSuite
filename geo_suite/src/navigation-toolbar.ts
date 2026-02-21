@@ -205,103 +205,20 @@ export const onMessage = (msg: any): void => {
     try {
       const cur3 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
       const target: any = {};
-
-      // Prefer explicit screen pixel provided by UI
-      let centerLat: number | undefined;
-      let centerLng: number | undefined;
-      try {
-        const scr = msg.payload && msg.payload.screen;
-        if (scr && typeof scr.x === 'number' && typeof scr.y === 'number') {
-          // try viewer-based pixel APIs first (preferred in some hosts)
-          try {
-            if (reearth && reearth.viewer && typeof reearth.viewer.screenToPosition === 'function') {
-              const pv = reearth.viewer.screenToPosition(scr.x, scr.y);
-              if (pv && typeof pv.lat === 'number' && typeof pv.lng === 'number') {
-                centerLat = pv.lat; centerLng = pv.lng;
-                try{ postToUI({ type: 'topDownDebug', payload: { method: 'viewer.screenToPosition' } }); }catch(e){}
-              }
-            }
-          } catch (e) {}
-          try {
-            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.viewer && typeof reearth.viewer.pick === 'function') {
-              const pv2 = reearth.viewer.pick(scr.x, scr.y);
-              if (pv2 && typeof pv2.lat === 'number' && typeof pv2.lng === 'number') {
-                centerLat = pv2.lat; centerLng = pv2.lng;
-                try{ postToUI({ type: 'topDownDebug', payload: { method: 'viewer.pick' } }); }catch(e){}
-              }
-            }
-          } catch (e) {}
-
-          // fallback to camera/scene APIs if viewer APIs not present
-          try {
-            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
-              const p = reearth.camera.screenToPosition(scr.x, scr.y);
-              if (p && typeof p.lat === 'number' && typeof p.lng === 'number') {
-                centerLat = p.lat; centerLng = p.lng;
-                try{ postToUI({ type: 'topDownDebug', payload: { method: 'camera.screenToPosition' } }); }catch(e){}
-              }
-            }
-          } catch (e) {}
-          try {
-            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.scene && typeof reearth.scene.pick === 'function') {
-              const p2 = reearth.scene.pick(scr.x, scr.y);
-              if (p2 && typeof p2.lat === 'number' && typeof p2.lng === 'number') {
-                centerLat = p2.lat; centerLng = p2.lng;
-                try{ postToUI({ type: 'topDownDebug', payload: { method: 'scene.pick' } }); }catch(e){}
-              }
-            }
-          } catch (e) {}
-        }
-
-        // If pixel-based failed, try normalized center
-        if ((centerLat === undefined || centerLng === undefined)) {
-          try {
-            if (reearth && reearth.camera && typeof reearth.camera.screenToPosition === 'function') {
-              const p = reearth.camera.screenToPosition(0.5, 0.5);
-              if (p && typeof p.lat === 'number' && typeof p.lng === 'number') {
-                centerLat = p.lat; centerLng = p.lng;
-              }
-            }
-          } catch (e) {}
-          try {
-            if ((centerLat === undefined || centerLng === undefined) && reearth && reearth.scene && typeof reearth.scene.pick === 'function') {
-              const p2 = reearth.scene.pick(0.5, 0.5);
-              if (p2 && typeof p2.lat === 'number' && typeof p2.lng === 'number') {
-                centerLat = p2.lat; centerLng = p2.lng;
-              }
-            }
-          } catch (e) {}
-        }
-      } catch (e) {}
-
-      // Do NOT fallback to camera position for center; require screen-derived center.
-      if (cur3) {
-        if (typeof cur3.height === 'number') target.height = cur3.height;
-        if (typeof cur3.heading === 'number') target.heading = cur3.heading;
-      }
-
-      if (typeof centerLat === 'number' && typeof centerLng === 'number') {
-        target.lat = centerLat;
-        target.lng = centerLng;
-      } else {
-        // No valid center found — report failure and do not fly
-        try{ postToUI({ type: 'topDownResult', payload: { success: false } }); }catch(e){}
+      if (!cur3 || typeof cur3.lat !== 'number' || typeof cur3.lng !== 'number') {
+        try{ postToUI({ type: 'topDownResult', payload: { success: false, reason: 'no_camera_position' } }); }catch(e){}
         return;
       }
-
-      // straight top-down: pitch to -90 degrees (radians) and reset roll
+      // Use camera position directly as center
+      target.lat = cur3.lat;
+      target.lng = cur3.lng;
+      if (typeof cur3.height === 'number') target.height = cur3.height;
+      if (typeof cur3.heading === 'number') target.heading = cur3.heading;
+      // straight top-down: pitch to -90 degrees and reset roll
       try { target.pitch = -Math.PI / 2; } catch (e) { target.pitch = -1.5707963267948966; }
       try { target.roll = 0; } catch (e) { target.roll = 0; }
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
-
-      // report back to UI whether we found a center
-      try{
-        if (typeof centerLat === 'number' && typeof centerLng === 'number') {
-          postToUI({ type: 'topDownResult', payload: { success: true, lat: centerLat, lng: centerLng } });
-        } else {
-          postToUI({ type: 'topDownResult', payload: { success: false } });
-        }
-      }catch(e){}
+      try{ postToUI({ type: 'topDownResult', payload: { success: true, lat: target.lat, lng: target.lng } }); }catch(e){}
     } catch (e) {}
   }
 };
