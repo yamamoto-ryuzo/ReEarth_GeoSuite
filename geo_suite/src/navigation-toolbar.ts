@@ -16,7 +16,7 @@ export const html: string = `
     .status{font-size:10px;color:#333;margin-top:6px;text-align:center}
     button#syncBtn{margin-top:8px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer}
   </style>
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px 6px 6px;width:76px;box-sizing:border-box;">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px 6px 6px;width:76px;box-sizing:border-box;margin:0 auto;">
     <div style="position:relative;display:flex;align-items:center;justify-content:center">
       <div class="compass" id="compass">
         <div id="needleWrap" class="needle-wrap">
@@ -196,6 +196,6 @@ try {
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-    reearth.ui.show(html, { width: 120, height: 120, visible: true, position: 'top-right' });
+    reearth.ui.show(html, { width: 80, height: 120, visible: true, position: 'top-right' });
   }
 } catch (e) {}
