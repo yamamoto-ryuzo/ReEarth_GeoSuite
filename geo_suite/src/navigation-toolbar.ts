@@ -178,6 +178,72 @@ export function postToUI(msg: any): void {
   } catch (e) {}
 }
 
+// Compute intersection point at altitude 0 (mean sea level) from camera position and orientation.
+// Uses a local ENU approximation (meters) — accurate for moderate distances.
+function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | null {
+  try {
+    if (!cameraPos) return null;
+    const lat0 = typeof cameraPos.lat === 'number' ? cameraPos.lat : undefined;
+    const lng0 = typeof cameraPos.lng === 'number' ? cameraPos.lng : undefined;
+    const h = typeof cameraPos.height === 'number' ? cameraPos.height : undefined;
+    var heading = typeof cameraPos.heading === 'number' ? cameraPos.heading : 0;
+    var pitch = typeof cameraPos.pitch === 'number' ? cameraPos.pitch : 0;
+    var origHeading = heading;
+    var origPitch = pitch;
+    // Auto-detect degrees vs radians: convert if values look like degrees
+    try {
+      if (Math.abs(heading) > 2 * Math.PI) {
+        heading = heading * Math.PI / 180;
+      }
+      if (Math.abs(pitch) > Math.PI) {
+        pitch = pitch * Math.PI / 180;
+      }
+    } catch (e) {}
+    if (lat0 === undefined || lng0 === undefined || h === undefined) return null;
+
+    // Direction vector in local ENU coordinates
+    // Heading: 0 = north, positive clockwise toward east (assumed)
+    // Pitch: 0 = horizontal, negative = looking down, -PI/2 = straight down
+    const cosPitch = Math.cos(pitch);
+    const dirE = Math.sin(heading) * cosPitch; // east component
+    const dirN = Math.cos(heading) * cosPitch; // north component
+    const dirU = Math.sin(pitch); // up component
+
+    // If not looking downwards, no intersection with ground
+    if (dirU >= 0) return null;
+
+    // Solve for t where z = 0: h + t*dirU = 0 => t = -h/dirU
+    const t = -h / dirU;
+    if (!isFinite(t) || t < 0) return null;
+
+    const eastMeters = dirE * t;
+    const northMeters = dirN * t;
+
+    // Convert meter offsets to lat/lng deltas
+    const latRad = lat0 * Math.PI / 180;
+    const metersPerDegLat = 111132.92 - 559.82 * Math.cos(2 * latRad) + 1.175 * Math.cos(4 * latRad) - 0.0023 * Math.cos(6 * latRad);
+    const metersPerDegLon = 111412.84 * Math.cos(latRad) - 93.5 * Math.cos(3 * latRad) + 0.118 * Math.cos(5 * latRad);
+    const dLat = northMeters / metersPerDegLat;
+    const dLng = eastMeters / metersPerDegLon;
+
+    const result = { lat: lat0 + dLat, lng: lng0 + dLng };
+    try {
+      postToUI({ type: 'groundDebug', payload: {
+        input: { lat: lat0, lng: lng0, height: h, heading: origHeading, pitch: origPitch },
+        converted: { headingRad: heading, pitchRad: pitch },
+        dir: { E: dirE, N: dirN, U: dirU },
+        t: t,
+        meters: { east: eastMeters, north: northMeters },
+        result: result
+      } });
+    } catch (e) {}
+
+    return result;
+  } catch (e) {
+    return null;
+  }
+}
+
 export const onMessage = (msg: any): void => {
   if (!msg || !msg.action) return;
   if (msg.action === 'setHeading') {
@@ -209,9 +275,15 @@ export const onMessage = (msg: any): void => {
         try{ postToUI({ type: 'topDownResult', payload: { success: false, reason: 'no_camera_position' } }); }catch(e){}
         return;
       }
-      // Use camera position directly as center
-      target.lat = cur3.lat;
-      target.lng = cur3.lng;
+      // Compute ground intersection at altitude 0 from camera orientation; fallback to camera lat/lng if not available
+      const ground = groundPointFromCamera(cur3);
+      if (ground) {
+        target.lat = ground.lat;
+        target.lng = ground.lng;
+      } else {
+        target.lat = cur3.lat;
+        target.lng = cur3.lng;
+      }
       if (typeof cur3.height === 'number') target.height = cur3.height;
       if (typeof cur3.heading === 'number') target.heading = cur3.heading;
       // straight top-down: pitch to -90 degrees and reset roll
