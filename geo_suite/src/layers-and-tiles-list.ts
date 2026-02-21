@@ -243,7 +243,6 @@ function getUI() {
     <li class="cam-item" data-cam-index="${i}" title="FlyTo ${cam.title}">
       <span class="cam-title">${cam.title}</span>
       <div class="actions">
-        <span style="font-size:0.8em;color:#888;">▶</span>
       </div>
     </li>
   `).join('');
