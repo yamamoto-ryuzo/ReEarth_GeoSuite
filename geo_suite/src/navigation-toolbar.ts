@@ -76,6 +76,27 @@ export const html: string = `
           comp.addEventListener('click', function(){
             try { doResetAndSend(); } catch (e) { }
           });
+          // double-click toggles minimized "N-only" view
+          var _minimized = false;
+          function minimizeUI(){
+            try{
+              var wrap = document.getElementById('needleWrap'); if(wrap) wrap.style.display = 'none';
+              var syncBtn = document.getElementById('syncBtn'); if(syncBtn) syncBtn.style.display = 'none';
+              comp.style.width = '28px'; comp.style.height = '28px';
+              var n = document.getElementById('nlabel'); if(n){ n.style.fontSize = '16px'; n.style.top = '50%'; }
+            }catch(e){}
+          }
+          function restoreUI(){
+            try{
+              var wrap = document.getElementById('needleWrap'); if(wrap) wrap.style.display = '';
+              var syncBtn = document.getElementById('syncBtn'); if(syncBtn) syncBtn.style.display = '';
+              comp.style.width = '64px'; comp.style.height = '64px';
+              var n = document.getElementById('nlabel'); if(n){ n.style.fontSize = '21px'; n.style.top = '25%'; }
+            }catch(e){}
+          }
+          comp.addEventListener('dblclick', function(ev){
+            try{ ev.stopPropagation && ev.stopPropagation(); _minimized = !_minimized; if(_minimized) minimizeUI(); else restoreUI(); }catch(e){}
+          });
         }
       } catch (e) { }
 
