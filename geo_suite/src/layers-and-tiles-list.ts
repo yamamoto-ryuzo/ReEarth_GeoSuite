@@ -1174,17 +1174,30 @@ function getUI() {
                    parent.postMessage({ type: 'show', layerId: firstId }, '*');
                  }
                } else {
-                 // CASE: One or more children are ON -> Keep only the first valid one, OFF others
-                 const keepId = checkedChildren[0];
-                 ids.forEach(id => {
-                   if (id !== keepId) {
-                      const cb = document.querySelector('input[data-layer-id="' + id + '"]');
-                      if (cb && cb.checked) {
-                        cb.checked = false;
-                        parent.postMessage({ type: 'hide', layerId: id }, '*');
-                      }
-                   }
-                 });
+                 // CASE: One or more children are ON
+                 if (checkedChildren.length === 1) {
+                   // already exactly one ON: keep as is
+                 } else {
+                   // 2つ以上ONの場合: 先頭の子 (ids[0]) をON にし、他は全てOFF
+                   const firstId = ids[0];
+                   ids.forEach(id => {
+                     try {
+                       const cb = document.querySelector('input[data-layer-id="' + id + '"]');
+                       if (!cb) return;
+                       if (id === firstId) {
+                         if (!cb.checked) {
+                           cb.checked = true;
+                           parent.postMessage({ type: 'show', layerId: id }, '*');
+                         }
+                       } else {
+                         if (cb.checked) {
+                           cb.checked = false;
+                           parent.postMessage({ type: 'hide', layerId: id }, '*');
+                         }
+                       }
+                     } catch(e){}
+                   });
+                 }
                }
                // Exclusive group is always ON (as one child is enforced ON)
                gcb.checked = true;
