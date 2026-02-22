@@ -2030,12 +2030,18 @@ reearth.extension.on("message", async (msg) => {
                   }
                 } catch(e) { try { sendError('[requestGeolocation] terrain height check failed:', e); } catch(_) {} }
 
+                // Build CZML with time-dynamic position to animate height from markerHeight -> 3m over 5s
+                const nowIso = new Date().toISOString();
                 const czml = [
                   { "id": "document", "version": "1.0" },
                   {
                     "id": "current-location-scope",
                     "position": {
-                      "cartographicDegrees": [myLocation.lng, myLocation.lat, markerHeight]
+                      "epoch": nowIso,
+                      // cartographicDegrees: [offsetSeconds, lon, lat, height, offsetSeconds, lon, lat, height]
+                      "cartographicDegrees": [0, myLocation.lng, myLocation.lat, markerHeight, 5, myLocation.lng, myLocation.lat, 3],
+                      "interpolationAlgorithm": "LINEAR",
+                      "interpolationDegree": 1
                     },
                     "billboard": {
                       "image": imageUri,
