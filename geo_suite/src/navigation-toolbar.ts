@@ -30,8 +30,7 @@ export const html: string = `
     </div>
     <button id="syncBtn">Sync</button>
     <button id="topDownBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">2D</button>
-    <button id="measureToggleBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">Measure</button>
-    <div id="measureReadout" style="margin-top:6px;font-size:11px;color:#222;line-height:1.2;min-width:120px;text-align:center;"> </div>
+    
   </div>
   <script>
     (function(){
@@ -47,55 +46,7 @@ export const html: string = `
         } catch (e) { }
       }
 
-      // Simple geodesic helpers (haversine)
-      function toRad(d){ return d * Math.PI / 180; }
-      function haversineDistance(lat1, lon1, lat2, lon2){
-        const R = 6371000; // meters
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-      }
-      function polygonAreaMeters(coords){
-        if (!coords || coords.length < 3) return 0;
-        // Project to local meters using mean latitude
-        const meanLat = coords.reduce((s,c)=>s+c[1],0)/coords.length;
-        const latFactor = 111132.92 - 559.82 * Math.cos(2*toRad(meanLat));
-        const lonFactor = (111412.84 * Math.cos(toRad(meanLat)) - 93.5 * Math.cos(3*toRad(meanLat)));
-        let area = 0;
-        for(let i=0;i<coords.length;i++){
-          const [x1,y1] = [coords[i][0]*lonFactor, coords[i][1]*latFactor];
-          const j = (i+1)%coords.length;
-          const [x2,y2] = [coords[j][0]*lonFactor, coords[j][1]*latFactor];
-          area += x1*y2 - x2*y1;
-        }
-        return Math.abs(area) / 2.0;
-      }
-
-      // Measurement state
-      var measureActive = false;
-      var measurePoints = []; // array of {lat,lng}
-      function updateMeasureReadout(){
-        var el = document.getElementById('measureReadout');
-        if(!el) return;
-        if(!measureActive){ el.textContent = ''; return; }
-        if(measurePoints.length === 0){ el.textContent = 'Measure: ready'; return; }
-        if(measurePoints.length === 1){ el.textContent = 'Points: 1'; return; }
-        // compute total length
-        var len = 0;
-        for(var i=0;i<measurePoints.length-1;i++){
-          len += haversineDistance(measurePoints[i].lat, measurePoints[i].lng, measurePoints[i+1].lat, measurePoints[i+1].lng);
-        }
-        var area = 0;
-        if(measurePoints.length >= 3){
-          var pts = measurePoints.map(p=>[p.lng,p.lat]);
-          area = polygonAreaMeters(pts);
-        }
-        var txt = 'Len: ' + (Math.round(len*10)/10) + ' m';
-        if(area > 0) txt += ' • Area: ' + (Math.round(area*10)/10) + ' m²';
-        el.textContent = txt;
-      }
+      
 
       // unify behavior: locally reset needle, update display, then notify host
       function doResetAndSend() {
@@ -113,31 +64,11 @@ export const html: string = `
         try{
           var d = e && e.data;
           if(!d) return;
-          // support both cameraUpdate (nav plugin) and updateCameraFields (main UI)
+          // support cameraUpdate for compass needle
           if(d.type === 'cameraUpdate') updateCompass(d.payload && d.payload.heading);
-          if(d.action === 'updateCameraFields' && d.camera) {
-            try {
-              // If measurement active, record point
-              if(measureActive){
-                var cam = d.camera;
-                var lat = typeof cam.lat === 'number' ? cam.lat : parseFloat(cam.lat) || 0;
-                var lng = typeof cam.lng === 'number' ? cam.lng : parseFloat(cam.lng) || 0;
-                measurePoints.push({ lat: lat, lng: lng });
-                updateMeasureReadout();
-                // Post a log to host for debugging
-                try{ window.parent.postMessage({ action: 'measurePointAdded', payload: { lat: lat, lng: lng, count: measurePoints.length } }, '*'); }catch(e){}
-              }
-            } catch(e) {}
-          }
-          // accept measurePointAdded messages from host (extension) to update UI readout
-          if(d.action === 'measurePointAdded' && d.payload) {
-            try{
-              var p = d.payload;
-              if(p && typeof p.lat === 'number' && typeof p.lng === 'number'){
-                measurePoints.push({ lat: p.lat, lng: p.lng });
-                updateMeasureReadout();
-              }
-            }catch(e){}
+          // support updateCameraFields if it carries heading
+          if(d.action === 'updateCameraFields' && d.camera && typeof d.camera.heading === 'number') {
+            updateCompass(d.camera.heading);
           }
         }catch(err){ }
       });
@@ -233,41 +164,9 @@ export const html: string = `
         }
       }catch(e){}
       
-      // Measure toggle: enable/disable measurement mode
-      try{
-        var measureToggle = document.getElementById('measureToggleBtn');
-        if(measureToggle){
-          measureToggle.addEventListener('click', function(){
-            try{
-              measureActive = !measureActive;
-              measurePoints = [];
-              // notify host so extension can create/clear measure layer
-              try{ window.parent.postMessage({ action: 'measureToggle', active: measureActive }, '*'); }catch(e){}
-              if(measureActive){ measureToggle.style.background = 'linear-gradient(rgba(102,126,234,0.9), rgba(122,75,184,0.9))'; measureToggle.style.color = '#fff'; }
-              else { measureToggle.style.background = ''; measureToggle.style.color = ''; }
-              updateMeasureReadout();
-            }catch(e){}
-          });
-        }
-      }catch(e){}
+      
 
-      // When in measurement mode, add point by requesting camera position (center)
-      try{
-        var measureReadoutClick = document.getElementById('measureReadout');
-        if(measureReadoutClick){
-          measureReadoutClick.style.cursor = 'pointer';
-          measureReadoutClick.title = 'Click to add point at screen center';
-          measureReadoutClick.addEventListener('click', function(){
-            try{
-              if(!measureActive) return;
-              // ask host for current camera; layers-and-tiles-list will reply with updateCameraFields
-              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
-                window.parent.postMessage({ action: 'requestCamera' }, '*');
-              }
-            }catch(e){}
-          });
-        }
-      }catch(e){}
+      
     })();
   </script>
 `;
@@ -374,92 +273,11 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
 }
 
 // Measurement state managed on extension side
-let _measureActive = false;
-let _measurePoints: Array<{ lat: number; lng: number; height?: number }> = [];
-let _measureLayerId: string | null = null;
 
-function _haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number){
-  const R = 6371000;
-  const toRad = (d:number)=>d*Math.PI/180;
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-function _totalLengthMeters(points: Array<{lat:number;lng:number;height?:number}>){
-  if(!points || points.length < 2) return 0;
-  let len = 0;
-  for(let i=0;i<points.length-1;i++){
-    const a = points[i];
-    const b = points[i+1];
-    const horiz = _haversineDistance(a.lat,a.lng,b.lat,b.lng);
-    const ha = typeof a.height === 'number' ? a.height : 0;
-    const hb = typeof b.height === 'number' ? b.height : 0;
-    const vert = hb - ha;
-    len += Math.sqrt(horiz*horiz + vert*vert);
-  }
-  return len;
-}
-
-async function _updateMeasureLayer(){
-  try{
-    const features: any[] = [];
-    for(const p of _measurePoints){
-      features.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [p.lng, p.lat, typeof p.height === 'number' ? p.height : 0] } });
-    }
-    if(_measurePoints.length >= 2){
-      const coords = _measurePoints.map(p=>[p.lng, p.lat, typeof p.height === 'number' ? p.height : 0]);
-      features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } });
-    }
-
-    const data = { type: 'geojson', value: { type: 'FeatureCollection', features: features } };
-
-    if(!_measureLayerId){
-      try{
-        _measureLayerId = reearth.layers.add({
-          type: 'simple',
-          title: 'Measurement',
-          data: data,
-          marker: { style: 'circle', color: '#0066ff', size: 6, heightReference: 'clamp' },
-          line: { color: '#0066ff', width: 2 }
-        });
-        if(_measureLayerId && typeof _pluginAddedLayerIds !== 'undefined') try{ _pluginAddedLayerIds.add(_measureLayerId); }catch(e){}
-      }catch(e){
-        try{ postToUI({ type: 'measureError', payload: { message: 'failed to add measure layer' } }); }catch(_){}
-      }
-    } else {
-      try{
-        reearth.layers.update({ id: _measureLayerId, data: data });
-      }catch(e){
-        try{ postToUI({ type: 'measureError', payload: { message: 'failed to update measure layer' } }); }catch(_){}
-      }
-    }
-  }catch(e){ }
-}
-
-function _clearMeasureLayer(){
-  try{
-    if(_measureLayerId){
-      if(typeof reearth.layers.delete === 'function') reearth.layers.delete(_measureLayerId);
-      else if(typeof reearth.layers.remove === 'function') reearth.layers.remove(_measureLayerId);
-      try{ if(typeof _pluginAddedLayerIds !== 'undefined') _pluginAddedLayerIds.delete(_measureLayerId); }catch(e){}
-      _measureLayerId = null;
-    }
-  }catch(e){}
-}
 
 export const onMessage = async (msg: any): Promise<void> => {
   if (!msg || !msg.action) return;
-  // handle measurement toggle from UI
-  if (msg.action === 'measureToggle') {
-    try{
-      _measureActive = !!msg.active;
-      if(!_measureActive){ _measurePoints = []; _clearMeasureLayer(); try{ postToUI({ action: 'measureCleared' }); }catch(e){} }
-      return;
-    }catch(e){}
-  }
+  
   if (msg.action === 'setHeading') {
     try {
       const target: any = { heading: msg.payload && typeof msg.payload.heading === 'number' ? msg.payload.heading : 0 };
@@ -480,34 +298,7 @@ export const onMessage = async (msg: any): Promise<void> => {
       const h = cur2 && typeof cur2.heading === 'number' ? cur2.heading : undefined;
       postToUI({ type: 'cameraUpdate', payload: { heading: h } });
 
-      // If measurement active on extension side, capture screen-center location and add point
-      if(_measureActive){
-        try{
-          const vp = (reearth && reearth.viewer && reearth.viewer.viewport) ? reearth.viewer.viewport : null;
-          const cx = vp && typeof vp.width === 'number' ? Math.round(vp.width/2) : Math.round((window && window.innerWidth) ? window.innerWidth/2 : 0);
-          const cy = vp && typeof vp.height === 'number' ? Math.round(vp.height/2) : Math.round((window && window.innerHeight) ? window.innerHeight/2 : 0);
-          let loc: any = undefined;
-          try{ if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getLocationFromScreenCoordinate === 'function') loc = reearth.viewer.tools.getLocationFromScreenCoordinate(cx, cy, true); }catch(e){}
-          // fallback: try globe intersection from camera
-          if(!loc){
-            try{
-              const curCam = (reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
-              const g = groundPointFromCamera(curCam);
-              if(g) loc = { lat: g.lat, lng: g.lng, height: (curCam && typeof curCam.height === 'number') ? curCam.height : 0 };
-            }catch(e){}
-          }
-          if(loc && typeof loc.lat === 'number' && typeof loc.lng === 'number'){
-            // optionally ask for terrain height if height undefined
-            if(typeof loc.height !== 'number' && reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function'){
-              try{ const hgt = await reearth.viewer.tools.getTerrainHeightAsync(loc.lat, loc.lng); if(typeof hgt === 'number') loc.height = hgt; }catch(e){}
-            }
-            _measurePoints.push({ lat: loc.lat, lng: loc.lng, height: typeof loc.height === 'number' ? loc.height : undefined });
-            await _updateMeasureLayer();
-            const total = _totalLengthMeters(_measurePoints);
-            try{ postToUI({ action: 'measurePointAdded', payload: { lat: loc.lat, lng: loc.lng, count: _measurePoints.length, lengthMeters: total } }); }catch(e){}
-          }
-        }catch(e){}
-      }
+      
     }catch(e){}
   }
   if (msg.action === 'topDown') {
