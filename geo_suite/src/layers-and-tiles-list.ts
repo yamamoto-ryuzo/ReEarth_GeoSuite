@@ -2027,19 +2027,20 @@ reearth.extension.on("message", async (msg) => {
                   }
                 } catch(e) { try { sendError('[requestGeolocation] terrain height check failed:', e); } catch(_) {} }
 
-                // Use static CZML position at terrainHeight + 10m (fallback to markerHeight if terrainHeight unavailable)
-                const finalHeight = (typeof terrainHeight === 'number' && !isNaN(terrainHeight)) ? (terrainHeight + 10) : markerHeight;
+                // Prefer clamping the billboard to terrain using CZML heightReference
+                // Use height 0 in position and set billboard.heightReference to RELATIVE_TO_GROUND
                 const czml = [
                   { "id": "document", "version": "1.0" },
                   {
                     "id": "current-location-scope",
                     "position": {
-                      "cartographicDegrees": [myLocation.lng, myLocation.lat, finalHeight]
+                      "cartographicDegrees": [myLocation.lng, myLocation.lat, 0]
                     },
                     "billboard": {
                       "image": imageUri,
                       "scale": 0.9,
-                      "verticalOrigin": "CENTER"
+                      "verticalOrigin": "BOTTOM",
+                      "heightReference": "RELATIVE_TO_GROUND"
                     }
                   }
                 ];
