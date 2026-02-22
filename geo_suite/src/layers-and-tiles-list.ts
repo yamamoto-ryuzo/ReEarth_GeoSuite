@@ -2002,19 +2002,39 @@ reearth.extension.on("message", async (msg) => {
                 // We still need base64 for the CZML file content itself because it's passed as data:application/json;base64,...
                 const str = JSON.stringify(czml);
                 let base64 = "";
-                if (typeof btoa === 'function') {
-                    base64 = btoa(str);
-                } else if (typeof Buffer !== 'undefined') {
-                    base64 = Buffer.from(str).toString('base64');
-                } else {
+                try {
+                  if (typeof Buffer !== 'undefined') {
+                    base64 = Buffer.from(str, 'utf8').toString('base64');
+                  } else if (typeof btoa === 'function') {
+                    // btoa doesn't accept full Unicode; convert to UTF-8 bytes first
+                    base64 = btoa(unescape(encodeURIComponent(str)));
+                  } else {
+                    // Fallback: produce base64 from UTF-8 bytes
+                    const utf8 = unescape(encodeURIComponent(str));
                     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-                    for (let i = 0; i < str.length; i += 3) {
-                        const c1 = str.charCodeAt(i), c2 = str.charCodeAt(i+1), c3 = str.charCodeAt(i+2);
-                        base64 += chars.charAt(c1 >> 2);
-                        base64 += chars.charAt(((c1 & 3) << 4) | ((c2 & 0xF0) >> 4));
-                        base64 += chars.charAt(((c2 & 0xF) << 2) | ((c3 & 0xC0) >> 6));
-                        base64 += chars.charAt(c3 & 0x3F);
+                    let result = '';
+                    for (let i = 0; i < utf8.length; i += 3) {
+                      const c1 = utf8.charCodeAt(i);
+                      const c2 = i + 1 < utf8.length ? utf8.charCodeAt(i + 1) : NaN;
+                      const c3 = i + 2 < utf8.length ? utf8.charCodeAt(i + 2) : NaN;
+                      result += chars.charAt(c1 >> 2);
+                      result += chars.charAt(((c1 & 3) << 4) | (isNaN(c2) ? 0 : (c2 >> 4)));
+                      if (!isNaN(c2)) {
+                        result += chars.charAt(((c2 & 15) << 2) | (isNaN(c3) ? 0 : (c3 >> 6)));
+                      } else {
+                        result += '=';
+                      }
+                      if (!isNaN(c3)) {
+                        result += chars.charAt(c3 & 63);
+                      } else {
+                        result += '=';
+                      }
                     }
+                    base64 = result;
+                  }
+                } catch (e) {
+                  try { console.error('Base64 encoding failed', e); } catch (err) {}
+                  base64 = '';
                 }
 
                 const dataUrl = "data:application/json;base64," + base64;
