@@ -1973,13 +1973,14 @@ reearth.extension.on("message", async (msg) => {
                 const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
                 // Determine marker height: prefer terrain height + offset when available
-                let markerHeight = 50;
+                // Use a larger offset so the marker stays visible above terrain geometry
+                let markerHeight = 200;
                 try {
                   if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
                     try {
                       const th = await reearth.viewer.tools.getTerrainHeightAsync(myLocation.lat, myLocation.lng);
                       if (typeof th === 'number' && !isNaN(th)) {
-                        markerHeight = th + 50; // offset above terrain
+                        markerHeight = th + 200; // offset above terrain to avoid being occluded
                       }
                     } catch(e) {}
                   }
@@ -1993,7 +1994,9 @@ reearth.extension.on("message", async (msg) => {
                       "cartographicDegrees": [myLocation.lng, myLocation.lat, markerHeight]
                     },
                     "billboard": {
-                      "image": imageUri
+                      "image": imageUri,
+                      "scale": 0.9,
+                      "verticalOrigin": "CENTER"
                     }
                   }
                 ];
