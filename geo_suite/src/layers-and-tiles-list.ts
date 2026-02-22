@@ -1969,64 +1969,6 @@ reearth.extension.on("message", async (msg) => {
                 // Use encodeURIComponent to create safe Data URI without base64 dependency
                 const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
-                // Determine marker height: prefer terrain height + offset when available
-                // Use a larger offset so the marker stays visible above terrain geometry
-                let markerHeight = 200;
-                let terrainHeight = null;
-                try {
-                  // Prefer platform intersection (withTerrain) if available
-                  try {
-                    if (reearth && reearth.camera && typeof reearth.camera.getGlobeIntersection === 'function') {
-                      try {
-                        const inter = reearth.camera.getGlobeIntersection({ withTerrain: true });
-                        if (inter && inter.center && typeof inter.center.height === 'number' && !isNaN(inter.center.height)) {
-                          terrainHeight = inter.center.height;
-                          try { sendLog('[requestGeolocation] terrain height from camera.getGlobeIntersection (m):', terrainHeight); } catch(e) {}
-                        }
-                      } catch(e) { try { sendError('[requestGeolocation] getGlobeIntersection failed:', e); } catch(_) {} }
-                    }
-                  } catch(e) {}
-
-                  // If not available via intersection, fall back to getTerrainHeightAsync and sampling
-                  if (terrainHeight === null && reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
-                    try {
-                      const th = await reearth.viewer.tools.getTerrainHeightAsync(myLocation.lat, myLocation.lng);
-                      if (typeof th === 'number' && !isNaN(th)) {
-                        terrainHeight = th;
-                        // If terrain returns 0, it may indicate no data at that exact point.
-                        // Try sampling nearby points to find a valid terrain height (useful near seams).
-                        if (terrainHeight === 0) {
-                          try { sendLog('[requestGeolocation] terrain height is 0, sampling nearby points...'); } catch(e) {}
-                          const deltas = [0.0005, -0.0005, 0.0007, -0.0007];
-                          const samples = [];
-                          for (let i = 0; i < deltas.length; i++) {
-                            try {
-                              const lat2 = myLocation.lat + deltas[i];
-                              const lng2 = myLocation.lng + deltas[(i+1) % deltas.length];
-                              const th2 = await reearth.viewer.tools.getTerrainHeightAsync(lat2, lng2);
-                              if (typeof th2 === 'number' && !isNaN(th2) && th2 !== 0) samples.push(th2);
-                            } catch(e) {}
-                          }
-                          if (samples.length) {
-                            const best = Math.max.apply(null, samples);
-                            terrainHeight = best;
-                            try { sendLog('[requestGeolocation] sampled terrain heights:', samples, 'using', best); } catch(e) {}
-                          } else {
-                            try { sendLog('[requestGeolocation] no valid nearby terrain samples found'); } catch(e) {}
-                          }
-                        }
-
-                        if (typeof terrainHeight === 'number' && !isNaN(terrainHeight) && terrainHeight !== 0) {
-                          markerHeight = terrainHeight + 200; // offset above terrain to avoid being occluded
-                        } else {
-                          markerHeight = 200; // fallback
-                        }
-                        try { sendLog('[requestGeolocation] terrain height (m):', terrainHeight); } catch(e) {}
-                      }
-                    } catch(e) { try { sendError('[requestGeolocation] getTerrainHeightAsync failed:', e); } catch(_) {} }
-                  }
-                } catch(e) { try { sendError('[requestGeolocation] terrain height check failed:', e); } catch(_) {} }
-
                 // Prefer clamping the billboard to terrain using CZML heightReference
                 // Use height 0 in position and set billboard.heightReference to RELATIVE_TO_GROUND
                 const czml = [
@@ -2115,7 +2057,7 @@ reearth.extension.on("message", async (msg) => {
                 console.error("Failed to add CZML marker", e);
             }
 
-            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId, terrainHeight: terrainHeight }); } catch (e) { }
+            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId }); } catch (e) { }
             try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
              try { sendError('[requestGeolocation] location not found'); } catch (e) { }
