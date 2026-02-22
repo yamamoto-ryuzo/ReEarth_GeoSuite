@@ -1977,7 +1977,21 @@ reearth.extension.on("message", async (msg) => {
                 let markerHeight = 200;
                 let terrainHeight = null;
                 try {
-                  if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
+                  // Prefer platform intersection (withTerrain) if available
+                  try {
+                    if (reearth && reearth.camera && typeof reearth.camera.getGlobeIntersection === 'function') {
+                      try {
+                        const inter = reearth.camera.getGlobeIntersection({ withTerrain: true });
+                        if (inter && inter.center && typeof inter.center.height === 'number' && !isNaN(inter.center.height)) {
+                          terrainHeight = inter.center.height;
+                          try { sendLog('[requestGeolocation] terrain height from camera.getGlobeIntersection (m):', terrainHeight); } catch(e) {}
+                        }
+                      } catch(e) { try { sendError('[requestGeolocation] getGlobeIntersection failed:', e); } catch(_) {} }
+                    }
+                  } catch(e) {}
+
+                  // If not available via intersection, fall back to getTerrainHeightAsync and sampling
+                  if (terrainHeight === null && reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
                     try {
                       const th = await reearth.viewer.tools.getTerrainHeightAsync(myLocation.lat, myLocation.lng);
                       if (typeof th === 'number' && !isNaN(th)) {
