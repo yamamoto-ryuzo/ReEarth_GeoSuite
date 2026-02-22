@@ -1972,12 +1972,25 @@ reearth.extension.on("message", async (msg) => {
                 // Use encodeURIComponent to create safe Data URI without base64 dependency
                 const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
+                // Determine marker height: prefer terrain height + offset when available
+                let markerHeight = 50;
+                try {
+                  if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
+                    try {
+                      const th = await reearth.viewer.tools.getTerrainHeightAsync(myLocation.lat, myLocation.lng);
+                      if (typeof th === 'number' && !isNaN(th)) {
+                        markerHeight = th + 50; // offset above terrain
+                      }
+                    } catch(e) {}
+                  }
+                } catch(e) {}
+
                 const czml = [
                   { "id": "document", "version": "1.0" },
                   {
                     "id": "current-location-scope",
                     "position": {
-                      "cartographicDegrees": [myLocation.lng, myLocation.lat, 50] // 50m relative height
+                      "cartographicDegrees": [myLocation.lng, myLocation.lat, markerHeight]
                     },
                     "billboard": {
                       "image": imageUri
