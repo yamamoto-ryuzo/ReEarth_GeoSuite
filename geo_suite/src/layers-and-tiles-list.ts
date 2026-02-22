@@ -1969,74 +1969,32 @@ reearth.extension.on("message", async (msg) => {
                 // Use encodeURIComponent to create safe Data URI without base64 dependency
                 const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
-                // Prefer clamping the billboard to terrain using CZML heightReference
-                // Use height 0 in position and set billboard.heightReference to RELATIVE_TO_GROUND
-                const czml = [
-                  { "id": "document", "version": "1.0" },
-                  {
-                    "id": "current-location-scope",
-                    "position": {
-                      "cartographicDegrees": [myLocation.lng, myLocation.lat, 0]
-                    },
-                    "billboard": {
-                      "image": imageUri,
-                      "scale": 0.9,
-                      "verticalOrigin": "BOTTOM",
-                      "heightReference": "RELATIVE_TO_GROUND"
-                    }
-                  }
-                ];
-                
-                // Manual JSON stringify and base64 for the CZML data URL (not the image)
-                // We still need base64 for the CZML file content itself because it's passed as data:application/json;base64,...
-                const str = JSON.stringify(czml);
-                let base64 = "";
-                try {
-                  if (typeof Buffer !== 'undefined') {
-                    base64 = Buffer.from(str, 'utf8').toString('base64');
-                  } else if (typeof btoa === 'function') {
-                    // btoa doesn't accept full Unicode; convert to UTF-8 bytes first
-                    base64 = btoa(unescape(encodeURIComponent(str)));
-                  } else {
-                    // Fallback: produce base64 from UTF-8 bytes
-                    const utf8 = unescape(encodeURIComponent(str));
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-                    let result = '';
-                    for (let i = 0; i < utf8.length; i += 3) {
-                      const c1 = utf8.charCodeAt(i);
-                      const c2 = i + 1 < utf8.length ? utf8.charCodeAt(i + 1) : NaN;
-                      const c3 = i + 2 < utf8.length ? utf8.charCodeAt(i + 2) : NaN;
-                      result += chars.charAt(c1 >> 2);
-                      result += chars.charAt(((c1 & 3) << 4) | (isNaN(c2) ? 0 : (c2 >> 4)));
-                      if (!isNaN(c2)) {
-                        result += chars.charAt(((c2 & 15) << 2) | (isNaN(c3) ? 0 : (c3 >> 6)));
-                      } else {
-                        result += '=';
-                      }
-                      if (!isNaN(c3)) {
-                        result += chars.charAt(c3 & 63);
-                      } else {
-                        result += '=';
-                      }
-                    }
-                    base64 = result;
-                  }
-                } catch (e) {
-                  try { console.error('Base64 encoding failed', e); } catch (err) {}
-                  base64 = '';
-                }
+                // Add a GeoJSON layer and use Re:Earth marker appearance to clamp to terrain
+                const feature = {
+                  type: "Feature",
+                  properties: {},
+                  geometry: { type: "Point", coordinates: [myLocation.lng, myLocation.lat] }
+                };
 
-                const dataUrl = "data:application/json;base64," + base64;
-                
                 layerId = null;
                 try {
                   layerId = reearth.layers.add({
-                      type: "simple",
-                      title: "Current Location Scope",
-                      data: {
-                          type: "czml",
-                          url: dataUrl
+                    type: "simple",
+                    title: "Current Location Scope",
+                    data: {
+                      type: "geojson",
+                      value: {
+                        type: "FeatureCollection",
+                        features: [feature]
                       }
+                    },
+                    marker: {
+                      style: "image",
+                      image: imageUri,
+                      imageSize: 1.2,
+                      heightReference: "clamp",
+                      height: 0
+                    }
                   });
                 } catch(e) {
                   try { sendError('[requestGeolocation] reearth.layers.add threw:', e); } catch(_) {}
