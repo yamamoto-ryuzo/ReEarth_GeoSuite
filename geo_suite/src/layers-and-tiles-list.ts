@@ -1991,7 +1991,7 @@ reearth.extension.on("message", async (msg) => {
                     marker: {
                       style: "image",
                       image: imageUri,
-                      imageSize: 1.2,
+                      imageSize: 0.6,
                       heightReference: "clamp",
                       height: 0
                     }
