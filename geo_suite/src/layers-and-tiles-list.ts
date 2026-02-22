@@ -1935,18 +1935,14 @@ reearth.extension.on("message", async (msg) => {
       try {
         const myLocation = await reearth.viewer.tools.getCurrentLocationAsync();
         if (myLocation) {
-            reearth.camera.flyTo({
-                lat: myLocation.lat,
-                lng: myLocation.lng,
-                height: 1000,
-                heading: 0,
-                pitch: -1.57,
-                roll: 0,
-            }, { duration: 2 });
+          const flyDuration = 2;
+          try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo({ lat: myLocation.lat, lng: myLocation.lng, height: 1000, heading: 0, pitch: -1.57, roll: 0 }, { duration: flyDuration }); } catch(e) {}
+          // Wait for flyTo to complete (duration + small buffer) before sampling terrain height
+          try { await new Promise(res => setTimeout(res, Math.round(flyDuration * 1000) + 300)); } catch(e) {}
 
-            // Show temporary target marker (Modern Reticle Scope Style via CZML Billboard)
-            let layerId;
-            try {
+          // Show temporary target marker (Modern Reticle Scope Style via CZML Billboard)
+          let layerId;
+          try {
                 // Create SVG Reticle (Scope) - Simplified for robustness
                 // Removed filters to avoid loading errors, using encodeURIComponent for data URI
                 const svg = [
