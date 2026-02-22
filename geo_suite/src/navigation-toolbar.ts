@@ -183,6 +183,17 @@ export function postToUI(msg: any): void {
 function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | null {
   try {
     if (!cameraPos) return null;
+    // Prefer platform API if available (accounts for terrain)
+    try {
+      if (typeof reearth !== 'undefined' && reearth && reearth.camera && typeof reearth.camera.getGlobeIntersection === 'function') {
+        const inter = reearth.camera.getGlobeIntersection({ withTerrain: true });
+        if (inter && inter.center && typeof inter.center.lat === 'number' && typeof inter.center.lng === 'number') {
+          return { lat: inter.center.lat, lng: inter.center.lng };
+        }
+      }
+    } catch (e) {}
+
+    // Fallback: local ENU straight-line intersection with z=0 (legacy behavior)
     const lat0 = typeof cameraPos.lat === 'number' ? cameraPos.lat : undefined;
     const lng0 = typeof cameraPos.lng === 'number' ? cameraPos.lng : undefined;
     const h = typeof cameraPos.height === 'number' ? cameraPos.height : undefined;
@@ -202,8 +213,6 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
     if (lat0 === undefined || lng0 === undefined || h === undefined) return null;
 
     // Direction vector in local ENU coordinates
-    // Heading: 0 = north, positive clockwise toward east (assumed)
-    // Pitch: 0 = horizontal, negative = looking down, -PI/2 = straight down
     const cosPitch = Math.cos(pitch);
     const dirE = Math.sin(heading) * cosPitch; // east component
     const dirN = Math.cos(heading) * cosPitch; // north component
@@ -212,9 +221,16 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
     // If not looking downwards, no intersection with ground
     if (dirU >= 0) return null;
 
+    // Guard against extremely small dirU (nearly horizontal)
+    if (Math.abs(dirU) < 1e-6) return null;
+
     // Solve for t where z = 0: h + t*dirU = 0 => t = -h/dirU
     const t = -h / dirU;
     if (!isFinite(t) || t < 0) return null;
+
+    // Cap maximum distance to avoid extreme far-field results
+    const MAX_DISTANCE_METERS = 1e7; // 10,000 km
+    if (t > MAX_DISTANCE_METERS) return null;
 
     const eastMeters = dirE * t;
     const northMeters = dirN * t;
