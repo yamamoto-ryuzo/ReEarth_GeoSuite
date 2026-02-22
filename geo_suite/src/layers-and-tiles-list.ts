@@ -1358,7 +1358,8 @@ function getUI() {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 if (msg.layerId) {
                     setTimeout(() => {
-                        parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
+                      try { console.log('[UI] requesting removeLayer for', msg.layerId); } catch(e) {}
+                      parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
                     }, 5000);
                 }
             } else {
