@@ -30,6 +30,8 @@ export const html: string = `
     </div>
     <button id="syncBtn">Sync</button>
     <button id="topDownBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">2D</button>
+    <button id="measureToggleBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">Measure</button>
+    <div id="measureReadout" style="margin-top:6px;font-size:11px;color:#222;line-height:1.2;min-width:120px;text-align:center;"> </div>
   </div>
   <script>
     (function(){
@@ -43,6 +45,56 @@ export const html: string = `
           if (wrap) wrap.style.transform = 'rotate(' + (-deg) + 'deg)';
           lastHeading = headingRadians;
         } catch (e) { }
+      }
+
+      // Simple geodesic helpers (haversine)
+      function toRad(d){ return d * Math.PI / 180; }
+      function haversineDistance(lat1, lon1, lat2, lon2){
+        const R = 6371000; // meters
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      }
+      function polygonAreaMeters(coords){
+        if (!coords || coords.length < 3) return 0;
+        // Project to local meters using mean latitude
+        const meanLat = coords.reduce((s,c)=>s+c[1],0)/coords.length;
+        const latFactor = 111132.92 - 559.82 * Math.cos(2*toRad(meanLat));
+        const lonFactor = (111412.84 * Math.cos(toRad(meanLat)) - 93.5 * Math.cos(3*toRad(meanLat)));
+        let area = 0;
+        for(let i=0;i<coords.length;i++){
+          const [x1,y1] = [coords[i][0]*lonFactor, coords[i][1]*latFactor];
+          const j = (i+1)%coords.length;
+          const [x2,y2] = [coords[j][0]*lonFactor, coords[j][1]*latFactor];
+          area += x1*y2 - x2*y1;
+        }
+        return Math.abs(area) / 2.0;
+      }
+
+      // Measurement state
+      var measureActive = false;
+      var measurePoints = []; // array of {lat,lng}
+      function updateMeasureReadout(){
+        var el = document.getElementById('measureReadout');
+        if(!el) return;
+        if(!measureActive){ el.textContent = ''; return; }
+        if(measurePoints.length === 0){ el.textContent = 'Measure: ready'; return; }
+        if(measurePoints.length === 1){ el.textContent = 'Points: 1'; return; }
+        // compute total length
+        var len = 0;
+        for(var i=0;i<measurePoints.length-1;i++){
+          len += haversineDistance(measurePoints[i].lat, measurePoints[i].lng, measurePoints[i+1].lat, measurePoints[i+1].lng);
+        }
+        var area = 0;
+        if(measurePoints.length >= 3){
+          var pts = measurePoints.map(p=>[p.lng,p.lat]);
+          area = polygonAreaMeters(pts);
+        }
+        var txt = 'Len: ' + (Math.round(len*10)/10) + ' m';
+        if(area > 0) txt += ' • Area: ' + (Math.round(area*10)/10) + ' m²';
+        el.textContent = txt;
       }
 
       // unify behavior: locally reset needle, update display, then notify host
@@ -61,7 +113,22 @@ export const html: string = `
         try{
           var d = e && e.data;
           if(!d) return;
+          // support both cameraUpdate (nav plugin) and updateCameraFields (main UI)
           if(d.type === 'cameraUpdate') updateCompass(d.payload && d.payload.heading);
+          if(d.action === 'updateCameraFields' && d.camera) {
+            try {
+              // If measurement active, record point
+              if(measureActive){
+                var cam = d.camera;
+                var lat = typeof cam.lat === 'number' ? cam.lat : parseFloat(cam.lat) || 0;
+                var lng = typeof cam.lng === 'number' ? cam.lng : parseFloat(cam.lng) || 0;
+                measurePoints.push({ lat: lat, lng: lng });
+                updateMeasureReadout();
+                // Post a log to host for debugging
+                try{ window.parent.postMessage({ action: 'measurePointAdded', payload: { lat: lat, lng: lng, count: measurePoints.length } }, '*'); }catch(e){}
+              }
+            } catch(e) {}
+          }
         }catch(err){ }
       });
 
@@ -150,6 +217,40 @@ export const html: string = `
                 }catch(e){
                   window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter' } }, '*');
                 }
+              }
+            }catch(e){}
+          });
+        }
+      }catch(e){}
+      
+      // Measure toggle: enable/disable measurement mode
+      try{
+        var measureToggle = document.getElementById('measureToggleBtn');
+        if(measureToggle){
+          measureToggle.addEventListener('click', function(){
+            try{
+              measureActive = !measureActive;
+              measurePoints = [];
+              if(measureActive){ measureToggle.style.background = 'linear-gradient(rgba(102,126,234,0.9), rgba(122,75,184,0.9))'; measureToggle.style.color = '#fff'; }
+              else { measureToggle.style.background = ''; measureToggle.style.color = ''; }
+              updateMeasureReadout();
+            }catch(e){}
+          });
+        }
+      }catch(e){}
+
+      // When in measurement mode, add point by requesting camera position (center)
+      try{
+        var measureReadoutClick = document.getElementById('measureReadout');
+        if(measureReadoutClick){
+          measureReadoutClick.style.cursor = 'pointer';
+          measureReadoutClick.title = 'Click to add point at screen center';
+          measureReadoutClick.addEventListener('click', function(){
+            try{
+              if(!measureActive) return;
+              // ask host for current camera; layers-and-tiles-list will reply with updateCameraFields
+              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+                window.parent.postMessage({ action: 'requestCamera' }, '*');
               }
             }catch(e){}
           });
