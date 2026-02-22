@@ -2092,17 +2092,29 @@ reearth.extension.on("message", async (msg) => {
 
                 const dataUrl = "data:application/json;base64," + base64;
                 
-                layerId = reearth.layers.add({
-                    type: "simple",
-                    title: "Current Location Scope",
-                    data: {
-                        type: "czml",
-                        url: dataUrl
-                    }
-                });
+                layerId = null;
+                try {
+                  layerId = reearth.layers.add({
+                      type: "simple",
+                      title: "Current Location Scope",
+                      data: {
+                          type: "czml",
+                          url: dataUrl
+                      }
+                  });
+                } catch(e) {
+                  try { sendError('[requestGeolocation] reearth.layers.add threw:', e); } catch(_) {}
+                }
 
                 // Track this temporary layer so plugin can remove it later
-                try { if (layerId) _pluginAddedLayerIds.add(layerId); } catch(e) {}
+                try {
+                  if (layerId) {
+                    _pluginAddedLayerIds.add(layerId);
+                    try { sendLog('[requestGeolocation] added layerId:', layerId, 'dataUrl length:', dataUrl ? dataUrl.length : 0); } catch(e) {}
+                  } else {
+                    try { sendError('[requestGeolocation] failed to add layer (layerId falsy). dataUrl length:', dataUrl ? dataUrl.length : 0); } catch(e) {}
+                  }
+                } catch(e) { try { sendError('[requestGeolocation] tracking added layer failed:', e); } catch(_) {} }
 
                 // Note: We send layerId to UI, and UI will request removal after delay.
             } catch(e) {
