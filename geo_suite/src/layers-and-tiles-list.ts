@@ -1975,16 +1975,19 @@ reearth.extension.on("message", async (msg) => {
                 // Determine marker height: prefer terrain height + offset when available
                 // Use a larger offset so the marker stays visible above terrain geometry
                 let markerHeight = 200;
+                let terrainHeight = null;
                 try {
                   if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
                     try {
                       const th = await reearth.viewer.tools.getTerrainHeightAsync(myLocation.lat, myLocation.lng);
                       if (typeof th === 'number' && !isNaN(th)) {
+                        terrainHeight = th;
                         markerHeight = th + 200; // offset above terrain to avoid being occluded
+                        try { sendLog('[requestGeolocation] terrain height (m):', th); } catch(e) {}
                       }
-                    } catch(e) {}
+                    } catch(e) { try { sendError('[requestGeolocation] getTerrainHeightAsync failed:', e); } catch(_) {} }
                   }
-                } catch(e) {}
+                } catch(e) { try { sendError('[requestGeolocation] terrain height check failed:', e); } catch(_) {} }
 
                 const czml = [
                   { "id": "document", "version": "1.0" },
@@ -2059,7 +2062,7 @@ reearth.extension.on("message", async (msg) => {
                 console.error("Failed to add CZML marker", e);
             }
 
-            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId }); } catch (e) { }
+            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId, terrainHeight: terrainHeight }); } catch (e) { }
             try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
              try { sendError('[requestGeolocation] location not found'); } catch (e) { }
