@@ -1201,6 +1201,19 @@ function getUI() {
                }
                // Exclusive group is always ON (as one child is enforced ON)
                gcb.checked = true;
+               // Ensure ancestor group checkboxes reflect the enforced state
+               try {
+                 const parentPath = gcb.getAttribute('data-group-path') || '';
+                 if (parentPath) {
+                   const parts = parentPath.split('/');
+                   let currentPath = '';
+                   parts.forEach(part => {
+                     currentPath = currentPath ? currentPath + '/' + part : part;
+                     const ancestor = document.querySelector('input[data-group-path="' + currentPath + '"]');
+                     if (ancestor && !ancestor.checked) ancestor.checked = true;
+                   });
+                 }
+               } catch(e) {}
 
             } else {
               // Normal group: If any child is checked, set group to checked
