@@ -1982,8 +1982,35 @@ reearth.extension.on("message", async (msg) => {
                       const th = await reearth.viewer.tools.getTerrainHeightAsync(myLocation.lat, myLocation.lng);
                       if (typeof th === 'number' && !isNaN(th)) {
                         terrainHeight = th;
-                        markerHeight = th + 200; // offset above terrain to avoid being occluded
-                        try { sendLog('[requestGeolocation] terrain height (m):', th); } catch(e) {}
+                        // If terrain returns 0, it may indicate no data at that exact point.
+                        // Try sampling nearby points to find a valid terrain height (useful near seams).
+                        if (terrainHeight === 0) {
+                          try { sendLog('[requestGeolocation] terrain height is 0, sampling nearby points...'); } catch(e) {}
+                          const deltas = [0.0005, -0.0005, 0.0007, -0.0007];
+                          const samples = [];
+                          for (let i = 0; i < deltas.length; i++) {
+                            try {
+                              const lat2 = myLocation.lat + deltas[i];
+                              const lng2 = myLocation.lng + deltas[(i+1) % deltas.length];
+                              const th2 = await reearth.viewer.tools.getTerrainHeightAsync(lat2, lng2);
+                              if (typeof th2 === 'number' && !isNaN(th2) && th2 !== 0) samples.push(th2);
+                            } catch(e) {}
+                          }
+                          if (samples.length) {
+                            const best = Math.max.apply(null, samples);
+                            terrainHeight = best;
+                            try { sendLog('[requestGeolocation] sampled terrain heights:', samples, 'using', best); } catch(e) {}
+                          } else {
+                            try { sendLog('[requestGeolocation] no valid nearby terrain samples found'); } catch(e) {}
+                          }
+                        }
+
+                        if (typeof terrainHeight === 'number' && !isNaN(terrainHeight) && terrainHeight !== 0) {
+                          markerHeight = terrainHeight + 200; // offset above terrain to avoid being occluded
+                        } else {
+                          markerHeight = 200; // fallback
+                        }
+                        try { sendLog('[requestGeolocation] terrain height (m):', terrainHeight); } catch(e) {}
                       }
                     } catch(e) { try { sendError('[requestGeolocation] getTerrainHeightAsync failed:', e); } catch(_) {} }
                   }
@@ -2073,9 +2100,22 @@ reearth.extension.on("message", async (msg) => {
           try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
       }
     } else if (msg.action === "removeLayer") {
-        if (msg.layerId) {
-            try { reearth.layers.delete(msg.layerId); } catch(e) {}
-        }
+      if (msg.layerId) {
+        try {
+          try { sendLog('[removeLayer] requested for', msg.layerId); } catch(e) {}
+          // Attempt delete
+          if (typeof reearth.layers.delete === 'function') {
+            reearth.layers.delete(msg.layerId);
+            try { sendLog('[removeLayer] deleted', msg.layerId); } catch(e) {}
+          } else if (typeof reearth.layers.remove === 'function') {
+            reearth.layers.remove(msg.layerId);
+            try { sendLog('[removeLayer] removed via remove()', msg.layerId); } catch(e) {}
+          } else {
+            try { sendError('[removeLayer] no delete/remove function available on reearth.layers'); } catch(e) {}
+          }
+          try { _pluginAddedLayerIds.delete(msg.layerId); } catch(e) {}
+        } catch(e) { try { sendError('[removeLayer] failed to delete layer:', e); } catch(err) {} }
+      }
     } else if (msg.action === 'setBasemap') {
       try {
         const url = msg.url || null;
