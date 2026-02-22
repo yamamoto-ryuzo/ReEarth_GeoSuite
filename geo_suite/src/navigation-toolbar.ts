@@ -129,6 +129,16 @@ export const html: string = `
               }
             } catch(e) {}
           }
+          // accept measurePointAdded messages from host (extension) to update UI readout
+          if(d.action === 'measurePointAdded' && d.payload) {
+            try{
+              var p = d.payload;
+              if(p && typeof p.lat === 'number' && typeof p.lng === 'number'){
+                measurePoints.push({ lat: p.lat, lng: p.lng });
+                updateMeasureReadout();
+              }
+            }catch(e){}
+          }
         }catch(err){ }
       });
 
@@ -231,6 +241,8 @@ export const html: string = `
             try{
               measureActive = !measureActive;
               measurePoints = [];
+              // notify host so extension can create/clear measure layer
+              try{ window.parent.postMessage({ action: 'measureToggle', active: measureActive }, '*'); }catch(e){}
               if(measureActive){ measureToggle.style.background = 'linear-gradient(rgba(102,126,234,0.9), rgba(122,75,184,0.9))'; measureToggle.style.color = '#fff'; }
               else { measureToggle.style.background = ''; measureToggle.style.color = ''; }
               updateMeasureReadout();
@@ -361,8 +373,93 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
   }
 }
 
-export const onMessage = (msg: any): void => {
+// Measurement state managed on extension side
+let _measureActive = false;
+let _measurePoints: Array<{ lat: number; lng: number; height?: number }> = [];
+let _measureLayerId: string | null = null;
+
+function _haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number){
+  const R = 6371000;
+  const toRad = (d:number)=>d*Math.PI/180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function _totalLengthMeters(points: Array<{lat:number;lng:number;height?:number}>){
+  if(!points || points.length < 2) return 0;
+  let len = 0;
+  for(let i=0;i<points.length-1;i++){
+    const a = points[i];
+    const b = points[i+1];
+    const horiz = _haversineDistance(a.lat,a.lng,b.lat,b.lng);
+    const ha = typeof a.height === 'number' ? a.height : 0;
+    const hb = typeof b.height === 'number' ? b.height : 0;
+    const vert = hb - ha;
+    len += Math.sqrt(horiz*horiz + vert*vert);
+  }
+  return len;
+}
+
+async function _updateMeasureLayer(){
+  try{
+    const features: any[] = [];
+    for(const p of _measurePoints){
+      features.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [p.lng, p.lat, typeof p.height === 'number' ? p.height : 0] } });
+    }
+    if(_measurePoints.length >= 2){
+      const coords = _measurePoints.map(p=>[p.lng, p.lat, typeof p.height === 'number' ? p.height : 0]);
+      features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } });
+    }
+
+    const data = { type: 'geojson', value: { type: 'FeatureCollection', features: features } };
+
+    if(!_measureLayerId){
+      try{
+        _measureLayerId = reearth.layers.add({
+          type: 'simple',
+          title: 'Measurement',
+          data: data,
+          marker: { style: 'circle', color: '#0066ff', size: 6, heightReference: 'clamp' },
+          line: { color: '#0066ff', width: 2 }
+        });
+        if(_measureLayerId && typeof _pluginAddedLayerIds !== 'undefined') try{ _pluginAddedLayerIds.add(_measureLayerId); }catch(e){}
+      }catch(e){
+        try{ postToUI({ type: 'measureError', payload: { message: 'failed to add measure layer' } }); }catch(_){}
+      }
+    } else {
+      try{
+        reearth.layers.update({ id: _measureLayerId, data: data });
+      }catch(e){
+        try{ postToUI({ type: 'measureError', payload: { message: 'failed to update measure layer' } }); }catch(_){}
+      }
+    }
+  }catch(e){ }
+}
+
+function _clearMeasureLayer(){
+  try{
+    if(_measureLayerId){
+      if(typeof reearth.layers.delete === 'function') reearth.layers.delete(_measureLayerId);
+      else if(typeof reearth.layers.remove === 'function') reearth.layers.remove(_measureLayerId);
+      try{ if(typeof _pluginAddedLayerIds !== 'undefined') _pluginAddedLayerIds.delete(_measureLayerId); }catch(e){}
+      _measureLayerId = null;
+    }
+  }catch(e){}
+}
+
+export const onMessage = async (msg: any): Promise<void> => {
   if (!msg || !msg.action) return;
+  // handle measurement toggle from UI
+  if (msg.action === 'measureToggle') {
+    try{
+      _measureActive = !!msg.active;
+      if(!_measureActive){ _measurePoints = []; _clearMeasureLayer(); try{ postToUI({ action: 'measureCleared' }); }catch(e){} }
+      return;
+    }catch(e){}
+  }
   if (msg.action === 'setHeading') {
     try {
       const target: any = { heading: msg.payload && typeof msg.payload.heading === 'number' ? msg.payload.heading : 0 };
@@ -382,6 +479,35 @@ export const onMessage = (msg: any): void => {
       const cur2 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
       const h = cur2 && typeof cur2.heading === 'number' ? cur2.heading : undefined;
       postToUI({ type: 'cameraUpdate', payload: { heading: h } });
+
+      // If measurement active on extension side, capture screen-center location and add point
+      if(_measureActive){
+        try{
+          const vp = (reearth && reearth.viewer && reearth.viewer.viewport) ? reearth.viewer.viewport : null;
+          const cx = vp && typeof vp.width === 'number' ? Math.round(vp.width/2) : Math.round((window && window.innerWidth) ? window.innerWidth/2 : 0);
+          const cy = vp && typeof vp.height === 'number' ? Math.round(vp.height/2) : Math.round((window && window.innerHeight) ? window.innerHeight/2 : 0);
+          let loc: any = undefined;
+          try{ if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getLocationFromScreenCoordinate === 'function') loc = reearth.viewer.tools.getLocationFromScreenCoordinate(cx, cy, true); }catch(e){}
+          // fallback: try globe intersection from camera
+          if(!loc){
+            try{
+              const curCam = (reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+              const g = groundPointFromCamera(curCam);
+              if(g) loc = { lat: g.lat, lng: g.lng, height: (curCam && typeof curCam.height === 'number') ? curCam.height : 0 };
+            }catch(e){}
+          }
+          if(loc && typeof loc.lat === 'number' && typeof loc.lng === 'number'){
+            // optionally ask for terrain height if height undefined
+            if(typeof loc.height !== 'number' && reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function'){
+              try{ const hgt = await reearth.viewer.tools.getTerrainHeightAsync(loc.lat, loc.lng); if(typeof hgt === 'number') loc.height = hgt; }catch(e){}
+            }
+            _measurePoints.push({ lat: loc.lat, lng: loc.lng, height: typeof loc.height === 'number' ? loc.height : undefined });
+            await _updateMeasureLayer();
+            const total = _totalLengthMeters(_measurePoints);
+            try{ postToUI({ action: 'measurePointAdded', payload: { lat: loc.lat, lng: loc.lng, count: _measurePoints.length, lengthMeters: total } }); }catch(e){}
+          }
+        }catch(e){}
+      }
     }catch(e){}
   }
   if (msg.action === 'topDown') {
