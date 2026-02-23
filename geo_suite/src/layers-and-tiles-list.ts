@@ -2198,13 +2198,13 @@ reearth.extension.on("message", async (msg) => {
           try { sendLog('[requestGeolocation] posting geolocationResult to UI', layerId); } catch(e){}
           try { postToUI({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId }); } catch (e) { try { sendError('[requestGeolocation] postToUI failed', e); } catch(_){} }
             try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
-        } else {
+           } else {
              try { sendError('[requestGeolocation] location not found'); } catch (e) { }
-             try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) { }
+             try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) { }
         }
       } catch (e) {
           try { sendError('[requestGeolocation] error:', e); } catch (err) { }
-          try { reearth.ui.postMessage({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
+          try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
       }
     } else if (msg.action === "removeLayer") {
       if (msg.layerId) {
