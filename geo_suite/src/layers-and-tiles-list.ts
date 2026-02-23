@@ -3,6 +3,9 @@
 const _pluginAddedLayerIds = new Set();
 // Store user-defined visibility state to restore it if story/other plugins change it
 const _userLayerVisibility = new Map();
+// Marker TTL and map of scheduled timers by layerId
+const MARKER_TTL_MS = 8000;
+const _markerTimers = Object.create(null);
 
 // Track last values for polling
 let _lastInspectorUrl = null;
@@ -1338,8 +1341,7 @@ function getUI() {
       }
 
       // Listen for camera state updates from the extension
-      // track scheduled removal timers by layerId to avoid duplicates
-      const __scheduledRemoveTimers = Object.create(null);
+      
 
       window.addEventListener('message', function(e) {
         try {
@@ -1356,38 +1358,18 @@ function getUI() {
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
           } else if (msg.action === 'geolocationResult') {
-            // 1. Update button state (isolated)
             try {
               const btn = document.getElementById('cam-flyto-current');
               if (msg.success) {
-                  if (btn) btn.textContent = 'Fly to Current Location';
+                if (btn) btn.textContent = 'Fly to Current Location';
               } else {
-                  if (btn) {
-                      btn.textContent = 'Error';
-                      setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
-                  }
+                if (btn) {
+                  btn.textContent = 'Error';
+                  setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                }
               }
             } catch(e) { try { console.error('[UI] btn update error', e); } catch(_){} }
 
-            // 2. Schedule removal timer (isolated)
-            try {
-              if (msg.success && msg.layerId) {
-                const lid = String(msg.layerId);
-                if (__scheduledRemoveTimers[lid]) {
-                  try { clearTimeout(__scheduledRemoveTimers[lid]); } catch(e) {}
-                  try { console.log('[UI] refreshing removeLayer timer for', lid); } catch(e) {}
-                } else {
-                  try { console.log('[UI] scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-                }
-                const tid = setTimeout(() => {
-                    try { console.log('[UI] timer fired: requesting removeLayer for', lid); } catch(e) {}
-                    try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
-                    try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
-                    try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
-                  }, 8000);
-                  try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
-              }
-            } catch(e) { try { console.error('[UI] removal timer schedule error', e); } catch(_){} }
           } else if (msg.action === 'permalinkGenerated') {
             
             const output = document.getElementById('permalink-output');
@@ -2052,6 +2034,13 @@ async function addTargetMarker(lat, lng) {
 function removeTargetMarker(layerId) {
   try {
     if (!layerId) return false;
+    try {
+      // clear any scheduled timer for this layer
+      if (_markerTimers && _markerTimers[layerId]) {
+        try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
+        try { delete _markerTimers[layerId]; } catch(e) {}
+      }
+    } catch(e) {}
     if (typeof reearth.layers.delete === 'function') {
       try { reearth.layers.delete(layerId); } catch (e) {
         try { reearth.layers.remove(layerId); } catch (e) {}
@@ -2148,6 +2137,19 @@ async function flyToAndNotify(lat, lng) {
       
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
+      }
+      // Schedule removal of the marker from extension side to centralize lifecycle
+      if (layerId) {
+        try {
+          if (_markerTimers[layerId]) {
+            try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
+          }
+          _markerTimers[layerId] = setTimeout(() => {
+            try { removeTargetMarker(layerId); } catch(e) {}
+            try { delete _markerTimers[layerId]; } catch(e) {}
+          }, MARKER_TTL_MS);
+          try { sendLog('[flyToAndNotify] scheduled marker removal in', MARKER_TTL_MS, 'ms for', layerId); } catch(e) {}
+        } catch(e) { try { sendError('[flyToAndNotify] scheduling timer failed', e); } catch(_){} }
       }
       // We now leave search-specific UI notifications to the caller.
     }

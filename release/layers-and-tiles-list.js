@@ -4,6 +4,9 @@
 const _pluginAddedLayerIds = new Set();
 // Store user-defined visibility state to restore it if story/other plugins change it
 const _userLayerVisibility = new Map();
+// Marker TTL and map of scheduled timers by layerId (managed in extension)
+const MARKER_TTL_MS = 8000;
+const _markerTimers = Object.create(null);
 // Track last values for polling
 let _lastInspectorUrl = null;
 let _lastInspectorApply = null;
@@ -1341,9 +1344,7 @@ function getUI() {
         });
       }
 
-      // Listen for camera state updates from the extension
-      // track scheduled removal timers by layerId to avoid duplicates
-      const __scheduledRemoveTimers: { [layerId: string]: number } = Object.create(null);
+    // Listen for camera state updates from the extension
 
       window.addEventListener('message', function(e) {
         try {
@@ -1359,49 +1360,16 @@ function getUI() {
             setVal('cam-height', c.height);
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
-          } else if (msg.action === 'geolocationResult') {
-            const btn = document.getElementById('cam-flyto-current');
-            if (msg.success) {
-                if (btn) btn.textContent = 'Fly to Current Location';
-                if (msg.layerId) {
-                        const lid = String(msg.layerId);
-                        if (__scheduledRemoveTimers[lid]) {
-                          try { console.log('[UI] remove already scheduled for', lid); } catch(e) {}
+                    } else if (msg.action === 'geolocationResult') {
+                        const btn = document.getElementById('cam-flyto-current');
+                        if (msg.success) {
+                                if (btn) btn.textContent = 'Fly to Current Location';
                         } else {
-                          try { console.log('[UI] scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-                          const tid = setTimeout(() => {
-                            try { console.log('[UI] timer fired: requesting removeLayer for', lid); } catch(e) {}
-                            try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
-                            try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
-                            try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
-                          }, 8000);
-                          try { __scheduledRemoveTimers[lid] = tid as unknown as number; } catch(e) {}
+                                if (btn) {
+                                        btn.textContent = 'Error';
+                                        setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                                }
                         }
-                    }
-            } else {
-                if (btn) {
-                    btn.textContent = 'Error';
-                    setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
-                }
-            }
-          } else if (msg.action === 'searchFlyMarker') {
-            // Extension notifies that a marker was created; UI schedules removal by layerId.
-            const layerId = msg.layerId || null;
-            if (layerId) {
-              const lid = String(layerId);
-              if (__scheduledRemoveTimers[lid]) {
-                try { console.log('[UI] searchFlyMarker received but remove already scheduled for', lid); } catch(e) {}
-              } else {
-                try { console.log('[UI] searchFlyMarker received (no existing schedule), scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-                const tid = setTimeout(() => {
-                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', lid); } catch(e) {}
-                  try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
-                  try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
-                  try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
-                }, 8000);
-                try { __scheduledRemoveTimers[lid] = tid as unknown as number; } catch(e) {}
-              }
-            }
           } else if (msg.action === 'permalinkGenerated') {
             
             const output = document.getElementById('permalink-output');
@@ -2178,6 +2146,12 @@ function removeTargetMarker(layerId) {
     try {
         if (!layerId)
             return false;
+        try {
+            if (_markerTimers && _markerTimers[layerId]) {
+                try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
+                try { delete _markerTimers[layerId]; } catch(e) {}
+            }
+        } catch(e) {}
         if (typeof reearth.layers.delete === 'function') {
             try {
                 reearth.layers.delete(layerId);
@@ -2365,6 +2339,20 @@ async function flyToAndNotify(lat, lng) {
                     sendLog('[flyToAndNotify] added marker layer', layerId);
                 }
                 catch (e) { }
+            }
+            // Schedule removal of marker from extension side to centralize lifecycle
+            if (layerId) {
+                try {
+                    if (_markerTimers[layerId]) {
+                        try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
+                    }
+                    _markerTimers[layerId] = setTimeout(() => {
+                        try { removeTargetMarker(layerId); } catch(e) {}
+                        try { delete _markerTimers[layerId]; } catch(e) {}
+                    }, MARKER_TTL_MS);
+                    try { sendLog('[flyToAndNotify] scheduled marker removal in', MARKER_TTL_MS, 'ms for', layerId); } catch(e) {}
+                }
+                catch (e) { try { sendError('[flyToAndNotify] scheduling timer failed', e); } catch(_){} }
             }
         }
         try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){}
