@@ -1369,16 +1369,53 @@ function getUI() {
                     setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
                 }
             }
+          } else if (msg.action === 'searchFlyMarkerPending') {
+            // Extension notifies that it will create a marker; UI should start its removal timer using a token.
+            const token = msg && msg.token ? String(msg.token) : null;
+            if (token) {
+              try { console.log('[UI] received searchFlyMarkerPending token', token); } catch(e) {}
+              try { window._searchFlyPending = window._searchFlyPending || {}; } catch(e) {}
+              try {
+                if (window._searchFlyPending[token] && window._searchFlyPending[token].timer) {
+                  clearTimeout(window._searchFlyPending[token].timer);
+                }
+              } catch(e) {}
+              try {
+                window._searchFlyPending[token] = { layerId: null, timer: setTimeout(() => {
+                  try { console.log('[UI] token timer fired: requesting removePending for', token); } catch(e) {}
+                  try { parent.postMessage({ action: 'removePending', token: token }, '*'); } catch(e) {}
+                  try { delete window._searchFlyPending[token]; } catch(e) {}
+                }, 8000) };
+              } catch(e) { console.error(e); }
+            }
           } else if (msg.action === 'searchFlyMarker') {
-            // When extension notifies about a marker created for a search fly-to,
-            // request the extension to remove it after a short delay (same as geolocation flow).
-            if (msg.layerId) {
-                try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', msg.layerId); } catch(e) {}
+            // Extension notifies that a marker was created; it may include a token if pending was used.
+            const token = msg && msg.token ? String(msg.token) : null;
+            const layerId = msg.layerId || null;
+            if (token) {
+              try { console.log('[UI] received searchFlyMarker for token', token, 'layerId', layerId); } catch(e) {}
+              try { window._searchFlyPending = window._searchFlyPending || {}; } catch(e) {}
+              if (window._searchFlyPending[token]) {
+                try { window._searchFlyPending[token].layerId = layerId; } catch(e) {}
+              } else {
+                if (layerId) {
+                  try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
+                  setTimeout(() => {
+                    try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
+                    try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+                  }, 8000);
+                }
+              }
+            } else {
+              // Legacy behavior without token
+              if (layerId) {
+                try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
                 setTimeout(() => {
-                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', msg.layerId); } catch(e) {}
-                  try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
+                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
+                  try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
                 }, 8000);
               }
+            }
           } else if (msg.action === 'permalinkGenerated') {
             const output = document.getElementById('permalink-output');
             if (output) {
@@ -2035,6 +2072,11 @@ async function addTargetMarker(lat, lng) {
   }
 }
 
+// Token maps for search->UI pending removal flow
+const _searchFlyTokenToLayer = {}; // token -> layerId|null
+const _searchFlyTokenRemoveRequested = {}; // token -> true when UI requested removal before layerId available
+
+
 // Utility: remove a target marker by layerId (safe wrapper)
 function removeTargetMarker(layerId) {
   try {
@@ -2105,9 +2147,32 @@ async function flyToAndNotify(lat, lng, opts) {
       }
     } catch(e) { try { sendError('[flyToAndNotify] flyTo threw', e); } catch(_){} }
 
-    try { await new Promise(res => setTimeout(res, Math.round(duration * 1000) + 300)); } catch(e){}
+    try {
+      const waitMs = Math.round(duration * 1000) + 300;
+      try { sendLog('[flyToAndNotify] waiting', waitMs, 'ms before addTargetMarker'); } catch(e){}
+      if (typeof setTimeout === 'function') {
+        await new Promise(res => setTimeout(res, waitMs));
+        try { sendLog('[flyToAndNotify] wait complete'); } catch(e){}
+      } else {
+        try { sendError('[flyToAndNotify] setTimeout not available in this runtime; skipping wait'); } catch(e){}
+      }
+    } catch(e) {
+      try { sendError('[flyToAndNotify] wait threw', e); } catch(_){}
+    }
+    try { sendLog('[flyToAndNotify] proceeding to addTargetMarker (post-wait)'); } catch(e){}
 
     let layerId = null;
+    // token support: inform UI immediately so UI starts its removal timer reliably
+    let pendingToken = null;
+    if (postSearch) {
+      try {
+        pendingToken = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+        try { sendLog('[flyToAndNotify] issuing pending token', pendingToken); } catch(e){}
+        try { _searchFlyTokenToLayer[pendingToken] = null; } catch(e){}
+        try { postToUI({ action: 'searchFlyMarkerPending', token: pendingToken }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarkerPending failed', e); } catch(_){} }
+      } catch(e) { try { sendError('[flyToAndNotify] token issuance failed', e); } catch(_){} }
+    }
+
     if (addMarkerFlag && typeof addTargetMarker === 'function' && !isNaN(lat) && !isNaN(lng)) {
       try {
         try { sendLog('[flyToAndNotify] about to call addTargetMarker', 'lat', lat, 'lng', lng); } catch(e){}
@@ -2116,6 +2181,18 @@ async function flyToAndNotify(lat, lng, opts) {
           try { sendLog('[flyToAndNotify] reearth.layers.add type:', reearth && reearth.layers ? typeof reearth.layers.add : 'no-reearth-layers'); } catch(e){}
         } catch(_) {}
         layerId = await addTargetMarker(lat, lng);
+        // record mapping for token flow
+        try {
+          if (pendingToken) {
+            _searchFlyTokenToLayer[pendingToken] = layerId || null;
+            try { sendLog('[flyToAndNotify] token mapped to layerId', pendingToken, layerId); } catch(e){}
+            // if UI already requested removal for this token, remove immediately
+            if (_searchFlyTokenRemoveRequested && _searchFlyTokenRemoveRequested[pendingToken]) {
+              try { sendLog('[flyToAndNotify] token was marked for removal; removing layer', pendingToken, layerId); } catch(e){}
+              try { if (layerId) removeTargetMarker(layerId); } catch(e){}
+            }
+          }
+        } catch(e) { try { sendError('[flyToAndNotify] token->layer recording failed', e); } catch(_){} }
       } catch(e) {
         try { sendError('[flyToAndNotify] addTargetMarker threw', e); } catch(_){}
         layerId = null;
@@ -2154,10 +2231,10 @@ async function flyToAndNotify(lat, lng, opts) {
       }
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
-        if (postSearch) {
-          try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', layerId); } catch(e){}
-          try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
-        }
+      }
+      if (postSearch) {
+        try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', pendingToken, layerId); } catch(e){}
+        try { postToUI({ action: 'searchFlyMarker', token: pendingToken, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
       }
     }
 
@@ -2302,6 +2379,21 @@ reearth.extension.on("message", async (msg) => {
       } catch(e) {
         try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
+    } else if (msg.action === "removePending") {
+      try {
+        const t = msg.token;
+        if (!t) return;
+        try { sendLog('[removePending] received for token', t); } catch(e){}
+        try {
+          const lid = _searchFlyTokenToLayer && _searchFlyTokenToLayer[t];
+          if (lid) {
+            try { removeTargetMarker(lid); } catch(e){}
+            try { delete _searchFlyTokenToLayer[t]; } catch(e){}
+            return;
+          }
+        } catch(e) {}
+        try { _searchFlyTokenRemoveRequested[t] = true; } catch(e){}
+      } catch(e) { try { sendError('[removePending] error', e); } catch(_){} }
     } else if (msg.action === "removeLayer") {
       if (msg.layerId) {
         try {
