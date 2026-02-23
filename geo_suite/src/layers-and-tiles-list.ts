@@ -2783,6 +2783,69 @@ function processInspectorText(text) {
       return;
     }
 
+    // Yahoo inspector line: "yahoo: label | APPID=${yahooAppId} | query=..." or "yahoo: query"
+    if (lowerLine.startsWith('yahoo:')) {
+      try {
+        const yahooStr = line.substring(line.indexOf(':') + 1).trim();
+        const parts = yahooStr.split('|').map(p => p.trim()).filter(Boolean);
+        let label = parts.length > 0 ? parts[0] : 'Yahoo Search';
+        // If only a single token that's not key=value, treat as query
+        let appid = null;
+        let query = null;
+        if (parts.length === 1 && parts[0] && parts[0].indexOf('=') === -1) {
+          query = parts[0];
+        } else {
+          for (let i = 0; i < parts.length; i++) {
+            const p = parts[i];
+            const m = p.match(/^([^=]+)=(.*)$/);
+            if (m) {
+              const k = m[1].trim().toLowerCase();
+              const v = m[2].trim();
+              if (k === 'appid' || k === 'appId'.toLowerCase()) appid = v;
+              else if (k === 'query') query = v;
+              else if (k === 'label') label = v;
+            } else {
+              // fallback: first non key=value part is query if not set
+              if (!query) query = p;
+            }
+          }
+        }
+
+        // Read yahooAppId from widget/block property if placeholder used or not provided
+        const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+        const propAppId = (prop && prop.settings && prop.settings.yahooAppId) ? prop.settings.yahooAppId : (prop && prop.yahooAppId ? prop.yahooAppId : null);
+        if (typeof appid === 'string' && appid.indexOf('${yahooAppId}') !== -1) appid = appid.replace('${yahooAppId}', propAppId || '');
+        if (!appid && propAppId) appid = propAppId;
+
+        query = (query || '').trim();
+        if (appid && query) {
+          const endpoint = 'https://map.yahooapis.jp/geocode/V1/geoCoder?appid=' + encodeURIComponent(appid) + '&query=' + encodeURIComponent(query) + '&output=json&results=1';
+          try {
+            fetch(endpoint).then(res => res.json()).then(json => {
+              try {
+                const feat = (json && json.Feature && json.Feature.length && json.Feature[0]) ? json.Feature[0] : null;
+                if (feat && feat.Geometry && feat.Geometry.Coordinates) {
+                  const coordStr = feat.Geometry.Coordinates || '';
+                  const partsC = coordStr.split(',').map(s => s.trim()).filter(Boolean);
+                  if (partsC.length >= 2) {
+                    const lat = parseFloat(partsC[0]);
+                    const lon = parseFloat(partsC[1]);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                      const geojson = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { title: label, source: 'yahoo' } }] };
+                      const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(geojson));
+                      try { addXyzLayer(dataUrl, label, 'geojson', false); } catch (e) { try { reearth.layers.add({ type: 'simple', title: label, visible: true, data: { type: 'geojson', url: dataUrl }, marker: { pointColor: '#ff5500', pointSize: 12 } }); } catch(_){} }
+                    }
+                  }
+                }
+              } catch (e) {}
+            }).catch(e=>{});
+          } catch (e) {}
+        }
+      } catch (e) {}
+      nonCamLines.push(line);
+      return;
+    }
+
     // Tile: xyz/tile/base
     let tileStr = line;
     let isBase = false;
