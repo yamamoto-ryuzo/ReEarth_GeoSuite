@@ -2292,23 +2292,10 @@ reearth.extension.on("message", async (msg) => {
               try { sendLog('[flyToManual] posting geolocationResult to UI', addedLayerId); } catch(e){}
               try { postToUI({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId }); } catch(e) { try { sendError('[flyToManual] postToUI geolocationResult failed', e); } catch(_){} }
             } catch(e) { try { sendError('[flyToManual] geolocationResult posting error', e); } catch(_){} }
-            // Fallback: if UI remove message does not arrive, ensure extension deletes marker after timeout.
-            // Try graceful hide first, then delete; attempt twice.
-            try {
-              const tryRemove = (id) => {
-                try {
-                  try { sendLog('[flyToManual] fallback remove attempt for', id); } catch(e){}
-                  // Try hiding first if API supports it
-                  if (reearth.layers && typeof reearth.layers.update === 'function') {
-                    try { reearth.layers.update({ id: id, visible: false }); } catch(e) { try { sendError('[flyToManual] fallback hide failed', e); } catch(_){} }
-                  }
-                  // Then try delete/remove
-                  try { removeTargetMarker(id); } catch(e) { try { sendError('[flyToManual] fallback removeTargetMarker failed', e); } catch(_){} }
-                } catch(e) {}
-              };
-              setTimeout(() => { tryRemove(addedLayerId); }, 5000);
-              setTimeout(() => { tryRemove(addedLayerId); }, 9000);
-            } catch(e) { try { sendError('[flyToManual] fallback timeout setup failed', e); } catch(_){} }
+            // Removal is delegated to the UI: the UI will request `removeLayer` after 5s.
+            // Do not schedule extension-side timeouts here to avoid runtime environments
+            // where `setTimeout` may be unavailable.
+            try { sendLog('[flyToManual] removal delegated to UI; not scheduling extension-side fallback'); } catch(e){}
           } else {
             try { sendLog('[flyToManual] skipping addTargetMarker (shouldAddMarker=' + shouldAddMarker + ')'); } catch(e){}
           }
