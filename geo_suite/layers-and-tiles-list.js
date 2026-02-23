@@ -2119,6 +2119,10 @@ async function addTargetMarker(lat, lng) {
         };
         let layerId = null;
         try {
+            try {
+                sendLog('[addTargetMarker] adding marker at', lat, lng);
+            }
+            catch (e) { }
             layerId = reearth.layers.add({
                 type: "simple",
                 title: "Target Marker",
@@ -2137,6 +2141,10 @@ async function addTargetMarker(lat, lng) {
                     height: 0
                 }
             });
+            try {
+                sendLog('[addTargetMarker] reearth.layers.add returned', layerId);
+            }
+            catch (e) { }
         }
         catch (e) {
             try {
@@ -2535,19 +2543,28 @@ reearth.extension.on("message", async (msg) => {
                     sendLog('[flyToManual]', msg.lat, msg.lng, msg.height, msg.heading, msg.pitch);
                 }
                 catch (e) { }
-                // If caller requested a marker, add one at the target location
+                // Decide whether to add a marker. Respect explicit false, but treat
+                // undefined (old UI) as a request to add a marker so search flow matches
+                // the requestGeolocation behavior.
                 try {
-                    if (msg.addMarker && typeof addTargetMarker === 'function' && !isNaN(msg.lat) && !isNaN(msg.lng)) {
-                        const addedLayerId = await addTargetMarker(msg.lat, msg.lng);
+                    const shouldAddMarker = (typeof msg.addMarker === 'undefined') ? true : !!msg.addMarker;
+                    try {
+                        sendLog('[flyToManual] addMarker flag:', msg.addMarker, '=> shouldAddMarker:', shouldAddMarker);
+                    }
+                    catch (e) { }
+                    let addedLayerId = null;
+                    if (shouldAddMarker && typeof addTargetMarker === 'function' && !isNaN(msg.lat) && !isNaN(msg.lng)) {
+                        addedLayerId = await addTargetMarker(msg.lat, msg.lng);
                         try {
                             sendLog('[flyToManual] added marker layer', addedLayerId);
                         }
                         catch (e) { }
                         try {
-                            reearth.ui.postMessage({ action: 'searchFlyMarker', layerId: addedLayerId });
+                            if (addedLayerId)
+                                reearth.ui.postMessage({ action: 'searchFlyMarker', layerId: addedLayerId });
                         }
                         catch (e) { }
-                        // Also notify UI using existing geolocationResult shape so UI can auto-remove the marker
+                        // Notify UI using existing geolocationResult shape so UI can auto-remove the marker
                         try {
                             reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId });
                         }
@@ -2562,6 +2579,12 @@ reearth.extension.on("message", async (msg) => {
                                 }
                                 catch (e) { }
                             }, 5000);
+                        }
+                        catch (e) { }
+                    }
+                    else {
+                        try {
+                            sendLog('[flyToManual] skipping addTargetMarker (shouldAddMarker=' + shouldAddMarker + ')');
                         }
                         catch (e) { }
                     }

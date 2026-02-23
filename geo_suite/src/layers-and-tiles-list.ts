@@ -2017,6 +2017,7 @@ async function addTargetMarker(lat, lng) {
 
     let layerId = null;
     try {
+      try { sendLog('[addTargetMarker] adding marker at', lat, lng); } catch(e){}
       layerId = reearth.layers.add({
         type: "simple",
         title: "Target Marker",
@@ -2035,6 +2036,7 @@ async function addTargetMarker(lat, lng) {
           height: 0
         }
       });
+      try { sendLog('[addTargetMarker] reearth.layers.add returned', layerId); } catch(e){}
     } catch (e) {
       try { sendError('[addTargetMarker] reearth.layers.add threw:', e); } catch(_) {}
     }
