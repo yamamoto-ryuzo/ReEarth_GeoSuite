@@ -2255,6 +2255,8 @@ reearth.extension.on("message", async (msg) => {
             const addedLayerId = await addTargetMarker(msg.lat, msg.lng);
             try { sendLog('[flyToManual] added marker layer', addedLayerId); } catch(e){}
             try { reearth.ui.postMessage({ action: 'searchFlyMarker', layerId: addedLayerId }); } catch(e){}
+            // Also notify UI using existing geolocationResult shape so UI can auto-remove the marker
+            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId }); } catch(e){}
           }
         } catch (e) {
           try { sendError('[flyToManual] addMarker error:', e); } catch(_){}
