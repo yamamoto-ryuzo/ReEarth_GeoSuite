@@ -2145,38 +2145,7 @@ async function flyToAndNotify(lat, lng) {
         try { sendError('[flyToAndNotify] addTargetMarker threw', e); } catch(_){}
         layerId = null;
       }
-      // Fallback: if addTargetMarker failed to return an id, try adding a minimal marker directly
-      if (!layerId) {
-        try {
-          try { sendLog('[flyToAndNotify] addTargetMarker returned null, attempting direct reearth.layers.add fallback'); } catch(e){}
-          if (reearth && reearth.layers && typeof reearth.layers.add === 'function') {
-            const svgFallback = [
-'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
-'  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />',
-'  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />',
-'  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />',
-'  <circle cx="128" cy="128" r="4" fill="#ffffff" />',
-'</svg>'
-            ].join('\n');
-            const imageUriFallback = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgFallback);
-            const featureFallback = { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [lng, lat] } };
-            try {
-              const newId = reearth.layers.add({ type: 'simple', title: 'Target Marker', data: { type: 'geojson', value: { type: 'FeatureCollection', features: [featureFallback] } }, marker: { style: 'image', image: imageUriFallback, imageSize: 0.6, heightReference: 'clamp', height: 0 } });
-              if (newId) {
-                try { _pluginAddedLayerIds.add(newId); } catch(_){}
-                layerId = newId;
-                try { sendLog('[flyToAndNotify] fallback reearth.layers.add succeeded', layerId); } catch(e){}
-              } else {
-                try { sendError('[flyToAndNotify] fallback reearth.layers.add returned falsy id'); } catch(e){}
-              }
-            } catch (e) {
-              try { sendError('[flyToAndNotify] fallback reearth.layers.add threw', e); } catch(_){}
-            }
-          } else {
-            try { sendError('[flyToAndNotify] no reearth.layers.add available for fallback'); } catch(e){}
-          }
-        } catch(e) { try { sendError('[flyToAndNotify] fallback error', e); } catch(_){} }
-      }
+      
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
       }
