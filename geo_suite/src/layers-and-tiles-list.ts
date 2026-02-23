@@ -1338,6 +1338,9 @@ function getUI() {
       }
 
       // Listen for camera state updates from the extension
+      // track scheduled removal timers by layerId to avoid duplicates
+      const __scheduledRemoveTimers: { [layerId: string]: number } = Object.create(null);
+
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data ? e.data : null;
@@ -1357,12 +1360,19 @@ function getUI() {
             if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 if (msg.layerId) {
-                        try { console.log('[UI] scheduling removeLayer in 8000ms for', msg.layerId); } catch(e) {}
-                        setTimeout(() => {
-                          try { console.log('[UI] timer fired: requesting removeLayer for', msg.layerId); } catch(e) {}
-                          try { parent.postMessage({ action: 'removeScheduledFired', layerId: msg.layerId }, '*'); } catch(e) {}
-                          try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
-                        }, 8000);
+                        const lid = String(msg.layerId);
+                        if (__scheduledRemoveTimers[lid]) {
+                          try { console.log('[UI] remove already scheduled for', lid); } catch(e) {}
+                        } else {
+                          try { console.log('[UI] scheduling removeLayer in 8000ms for', lid); } catch(e) {}
+                          const tid = setTimeout(() => {
+                            try { console.log('[UI] timer fired: requesting removeLayer for', lid); } catch(e) {}
+                            try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
+                            try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
+                            try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
+                          }, 8000);
+                          try { __scheduledRemoveTimers[lid] = tid as unknown as number; } catch(e) {}
+                        }
                     }
             } else {
                 if (btn) {
@@ -1374,12 +1384,19 @@ function getUI() {
             // Extension notifies that a marker was created; UI schedules removal by layerId.
             const layerId = msg.layerId || null;
             if (layerId) {
-              try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
-              setTimeout(() => {
-                try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
-                 try { parent.postMessage({ action: 'removeScheduledFired', layerId: layerId }, '*'); } catch(e) {}
-                 try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
-              }, 8000);
+              const lid = String(layerId);
+              if (__scheduledRemoveTimers[lid]) {
+                try { console.log('[UI] searchFlyMarker received but remove already scheduled for', lid); } catch(e) {}
+              } else {
+                try { console.log('[UI] searchFlyMarker received (no existing schedule), scheduling removeLayer in 8000ms for', lid); } catch(e) {}
+                const tid = setTimeout(() => {
+                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', lid); } catch(e) {}
+                  try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
+                  try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
+                  try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
+                }, 8000);
+                try { __scheduledRemoveTimers[lid] = tid as unknown as number; } catch(e) {}
+              }
             }
           } else if (msg.action === 'permalinkGenerated') {
             
@@ -2180,16 +2197,11 @@ async function flyToAndNotify(lat, lng, opts) {
         try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult (search) failed', e); } catch(_){} }
         try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', layerId); } catch(e){}
         try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
-        // Extension-side fallback: ensure removal happens even if UI timer fails
-        try {
-          if (layerId && typeof setTimeout === 'function') {
-            try { sendLog('[flyToAndNotify] extension scheduling fallback removal for', layerId, 'in 8000ms'); } catch(e){}
-            setTimeout(() => {
-              try { sendLog('[flyToAndNotify] extension fallback removal firing for', layerId); } catch(e){}
-              try { removeTargetMarker(layerId); } catch(e){}
-            }, 8000);
-          }
-        } catch(e) { try { sendError('[flyToAndNotify] scheduling extension fallback removal failed', e); } catch(_){} }
+        // No extension-side fallback timer: rely on UI to schedule removal
+        // UI will receive `geolocationResult` and set an ~8000ms timer, then
+        // send `removeLayer` to the extension which calls `removeTargetMarker`.
+        // This avoids relying on `setTimeout` in extension runtimes that may
+        // not provide timers.
       }
     }
 
