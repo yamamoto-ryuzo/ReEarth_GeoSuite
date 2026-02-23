@@ -2040,6 +2040,26 @@ async function addTargetMarker(lat, lng) {
   }
 }
 
+// Utility: remove a target marker by layerId (safe wrapper)
+function removeTargetMarker(layerId) {
+  try {
+    if (!layerId) return false;
+    if (typeof reearth.layers.delete === 'function') {
+      try { reearth.layers.delete(layerId); } catch (e) {
+        try { reearth.layers.remove(layerId); } catch (e) {}
+      }
+    } else if (typeof reearth.layers.remove === 'function') {
+      try { reearth.layers.remove(layerId); } catch (e) {}
+    }
+    try { _pluginAddedLayerIds.delete(layerId); } catch (e) {}
+    try { sendLog('[removeTargetMarker] removed', layerId); } catch (e) {}
+    return true;
+  } catch (e) {
+    try { sendError('[removeTargetMarker] error:', e); } catch (e) {}
+    return false;
+  }
+}
+
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", async (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
@@ -2176,17 +2196,7 @@ reearth.extension.on("message", async (msg) => {
       if (msg.layerId) {
         try {
           try { sendLog('[removeLayer] requested for', msg.layerId); } catch(e) {}
-          // Attempt delete
-          if (typeof reearth.layers.delete === 'function') {
-            reearth.layers.delete(msg.layerId);
-            try { sendLog('[removeLayer] deleted', msg.layerId); } catch(e) {}
-          } else if (typeof reearth.layers.remove === 'function') {
-            reearth.layers.remove(msg.layerId);
-            try { sendLog('[removeLayer] removed via remove()', msg.layerId); } catch(e) {}
-          } else {
-            try { sendError('[removeLayer] no delete/remove function available on reearth.layers'); } catch(e) {}
-          }
-          try { _pluginAddedLayerIds.delete(msg.layerId); } catch(e) {}
+          removeTargetMarker(msg.layerId);
         } catch(e) { try { sendError('[removeLayer] failed to delete layer:', e); } catch(err) {} }
       }
     } else if (msg.action === 'setBasemap') {
@@ -2257,6 +2267,16 @@ reearth.extension.on("message", async (msg) => {
             try { reearth.ui.postMessage({ action: 'searchFlyMarker', layerId: addedLayerId }); } catch(e){}
             // Also notify UI using existing geolocationResult shape so UI can auto-remove the marker
             try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId }); } catch(e){}
+            // Fallback: if UI remove message does not arrive, ensure extension deletes marker after timeout
+            try {
+              setTimeout(() => {
+                try {
+                  if (addedLayerId) {
+                    removeTargetMarker(addedLayerId);
+                  }
+                } catch(e) {}
+              }, 5000);
+            } catch(e) {}
           }
         } catch (e) {
           try { sendError('[flyToManual] addMarker error:', e); } catch(_){}
