@@ -2073,6 +2073,80 @@ function removeTargetMarker(layerId) {
   }
 }
 
+// Helper: obtain current location in a runtime-safe way
+async function getCurrentLocation() {
+  try {
+    // Prefer viewer.tools.getCurrentLocationAsync when available
+    if (reearth && reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getCurrentLocationAsync === 'function') {
+      try { sendLog('[getCurrentLocation] using viewer.tools.getCurrentLocationAsync'); } catch(e){}
+      const loc = await reearth.viewer.tools.getCurrentLocationAsync();
+      if (loc && (loc.lat != null || loc.lng != null)) return loc;
+    }
+
+    // Fallbacks: try common camera/location properties
+    try { sendLog('[getCurrentLocation] trying fallback location sources'); } catch(e){}
+    let cur = null;
+    try { cur = (reearth.camera && typeof reearth.camera.position === 'object' && reearth.camera.position) ? reearth.camera.position : null; } catch(e){}
+    if (!cur) try { cur = (reearth.camera && typeof reearth.camera.getCamera === 'function') ? reearth.camera.getCamera() : null; } catch(e){}
+    if (!cur) try { cur = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : null; } catch(e){}
+    if (!cur) try { cur = (reearth.view && reearth.view.camera) ? reearth.view.camera : null; } catch(e){}
+    if (!cur) try { cur = reearth.camera || null; } catch(e){}
+    if (cur && (cur.lat != null || cur.latitude != null)) {
+      const lat = cur.lat ?? cur.latitude ?? null;
+      const lng = cur.lng ?? cur.longitude ?? cur.lon ?? null;
+      if (lat != null && lng != null) return { lat, lng };
+    }
+    return null;
+  } catch (e) {
+    try { sendError('[getCurrentLocation] error:', e); } catch(_){}
+    return null;
+  }
+}
+
+// Helper: fly camera to coordinates, optionally add marker and notify UI
+// opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
+async function flyToAndNotify(lat, lng, opts) {
+  const o = opts || {};
+  const height = (o.height != null) ? o.height : 1000;
+  const headingRad = (o.headingRad != null) ? o.headingRad : 0;
+  const pitchRad = (o.pitchRad != null) ? o.pitchRad : -Math.PI / 2;
+  const duration = (o.duration != null) ? o.duration : 2;
+  const addMarkerFlag = (o.addMarker == null) ? true : !!o.addMarker;
+  const postSearch = !!o.postSearchFlyMarker;
+
+  try {
+    try { sendLog('[flyToAndNotify] flying to', lat, lng, 'height', height); } catch(e){}
+    try {
+      if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') {
+        reearth.camera.flyTo({ lat: lat, lng: lng, height: height, heading: headingRad, pitch: pitchRad, roll: 0 }, { duration: duration });
+      }
+    } catch(e) { try { sendError('[flyToAndNotify] flyTo threw', e); } catch(_){} }
+
+    try { await new Promise(res => setTimeout(res, Math.round(duration * 1000) + 300)); } catch(e){}
+
+    let layerId = null;
+    if (addMarkerFlag && typeof addTargetMarker === 'function' && !isNaN(lat) && !isNaN(lng)) {
+      try { layerId = await addTargetMarker(lat, lng); } catch(e) { layerId = null; }
+      if (layerId) {
+        try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
+        if (postSearch) {
+          try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', layerId); } catch(e){}
+          try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
+        }
+      }
+    }
+
+    try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){}
+    try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult failed', e); } catch(_){} }
+    try { sendLog('[flyToAndNotify] completed for', lat, lng); } catch(e){}
+    return { success: true, layerId: layerId };
+  } catch (e) {
+    try { sendError('[flyToAndNotify] error:', e); } catch(_){}
+    try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch(_){}
+    return { success: false };
+  }
+}
+
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", async (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
@@ -2182,25 +2256,13 @@ reearth.extension.on("message", async (msg) => {
 
     else if (msg.action === "requestGeolocation") {
       try {
-        const myLocation = await reearth.viewer.tools.getCurrentLocationAsync();
+        const myLocation = await getCurrentLocation();
         if (myLocation) {
-          const flyDuration = 2;
-          try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo({ lat: myLocation.lat, lng: myLocation.lng, height: 1000, heading: 0, pitch: -1.57, roll: 0 }, { duration: flyDuration }); } catch(e) {}
-          // Wait for flyTo to complete (duration + small buffer) before sampling terrain height
-          try { await new Promise(res => setTimeout(res, Math.round(flyDuration * 1000) + 300)); } catch(e) {}
-
-          // Show temporary target marker using utility
-          let layerId = null;
-          try {
-            layerId = await addTargetMarker(myLocation.lat, myLocation.lng);
-          } catch (e) { layerId = null; }
-
-          try { sendLog('[requestGeolocation] posting geolocationResult to UI', layerId); } catch(e){}
-          try { postToUI({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId }); } catch (e) { try { sendError('[requestGeolocation] postToUI failed', e); } catch(_){} }
-            try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
-           } else {
-             try { sendError('[requestGeolocation] location not found'); } catch (e) { }
-             try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) { }
+          await flyToAndNotify(myLocation.lat, myLocation.lng, { height: 1000, headingRad: 0, pitchRad: -1.57, duration: 2, addMarker: true, postSearchFlyMarker: false });
+          try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
+        } else {
+          try { sendError('[requestGeolocation] location not found'); } catch (e) { }
+          try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) { }
         }
       } catch (e) {
           try { sendError('[requestGeolocation] error:', e); } catch (err) { }
@@ -2264,46 +2326,11 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyToManual") {
       try {
-        reearth.camera.flyTo({
-          lat: msg.lat,
-          lng: msg.lng,
-          height: msg.height,
-          heading: msg.heading * Math.PI / 180,
-          pitch: msg.pitch * Math.PI / 180,
-          roll: 0,
-        }, { duration: 2 });
-        try { sendLog('[flyToManual]', msg.lat, msg.lng, msg.height, msg.heading, msg.pitch); } catch(e){}
-        // Decide whether to add a marker. Respect explicit false, but treat
-        // undefined (old UI) as a request to add a marker so search flow matches
-        // the requestGeolocation behavior.
-        try {
-          const shouldAddMarker = (typeof msg.addMarker === 'undefined') ? true : !!msg.addMarker;
-          try { sendLog('[flyToManual] addMarker flag:', msg.addMarker, '=> shouldAddMarker:', shouldAddMarker); } catch(e){}
-          let addedLayerId = null;
-          if (shouldAddMarker && typeof addTargetMarker === 'function' && !isNaN(msg.lat) && !isNaN(msg.lng)) {
-            addedLayerId = await addTargetMarker(msg.lat, msg.lng);
-            try { sendLog('[flyToManual] added marker layer', addedLayerId); } catch(e){}
-            try {
-              if (addedLayerId) {
-                try { sendLog('[flyToManual] posting searchFlyMarker to UI', addedLayerId); } catch(e){}
-                try { postToUI({ action: 'searchFlyMarker', layerId: addedLayerId }); } catch(e) { try { sendError('[flyToManual] postToUI searchFlyMarker failed', e); } catch(_){} }
-              }
-            } catch(e) { try { sendError('[flyToManual] searchFlyMarker posting error', e); } catch(_){} }
-            // Notify UI using existing geolocationResult shape so UI can auto-remove the marker
-            try {
-              try { sendLog('[flyToManual] posting geolocationResult to UI', addedLayerId); } catch(e){}
-              try { postToUI({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId }); } catch(e) { try { sendError('[flyToManual] postToUI geolocationResult failed', e); } catch(_){} }
-            } catch(e) { try { sendError('[flyToManual] geolocationResult posting error', e); } catch(_){} }
-            // Removal is delegated to the UI: the UI will request `removeLayer` after 5s.
-            // Do not schedule extension-side timeouts here to avoid runtime environments
-            // where `setTimeout` may be unavailable.
-            try { sendLog('[flyToManual] removal delegated to UI; not scheduling extension-side fallback'); } catch(e){}
-          } else {
-            try { sendLog('[flyToManual] skipping addTargetMarker (shouldAddMarker=' + shouldAddMarker + ')'); } catch(e){}
-          }
-        } catch (e) {
-          try { sendError('[flyToManual] addMarker error:', e); } catch(_){ }
-        }
+        try { sendLog('[flyToManual] received:', msg.lat, msg.lng, msg.height, msg.heading, msg.pitch, 'addMarker=', msg.addMarker); } catch(e){}
+        const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : 0;
+        const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : -Math.PI / 2;
+        const shouldAddMarker = (typeof msg.addMarker === 'undefined') ? true : !!msg.addMarker;
+        await flyToAndNotify(msg.lat, msg.lng, { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true });
       } catch(e) {
         try { sendError('[flyToManual] error:', e); } catch(err){}
       }
