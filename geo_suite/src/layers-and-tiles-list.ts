@@ -1381,25 +1381,6 @@ function getUI() {
                     setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
                 }
             }
-          } else if (msg.action === 'searchFlyMarker') {
-            // Extension notifies that a marker was created; UI schedules removal by layerId.
-            const layerId = msg.layerId || null;
-            if (layerId) {
-              const lid = String(layerId);
-              if (__scheduledRemoveTimers[lid]) {
-                try { clearTimeout(__scheduledRemoveTimers[lid]); } catch(e) {}
-                try { console.log('[UI] refreshing searchFlyMarker remove timer for', lid); } catch(e) {}
-              } else {
-                try { console.log('[UI] searchFlyMarker received, scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-              }
-              const tid = setTimeout(() => {
-                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', lid); } catch(e) {}
-                  try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
-                  try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
-                  try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
-                }, 8000);
-                try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
-            }
           } else if (msg.action === 'permalinkGenerated') {
             
             const output = document.getElementById('permalink-output');
