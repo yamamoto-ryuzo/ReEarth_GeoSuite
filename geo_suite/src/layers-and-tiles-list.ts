@@ -1395,17 +1395,35 @@ function getUI() {
             if (token) {
               try { console.log('[UI] received searchFlyMarker for token', token, 'layerId', layerId); } catch(e) {}
               try { window._searchFlyPending = window._searchFlyPending || {}; } catch(e) {}
-              if (window._searchFlyPending[token]) {
-                try { window._searchFlyPending[token].layerId = layerId; } catch(e) {}
-              } else {
-                if (layerId) {
-                  try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
-                  setTimeout(() => {
-                    try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
-                    try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
-                  }, 8000);
+                if (window._searchFlyPending[token]) {
+                  // If we have a pending entry, cancel its timer and schedule removal by layerId here.
+                  try {
+                    const pend = window._searchFlyPending[token];
+                    if (pend && pend.timer) {
+                      try { clearTimeout(pend.timer); } catch(e) {}
+                    }
+                    // If extension provided a layerId, schedule UI-side removal for that layerId
+                    if (layerId) {
+                      try { console.log('[UI] canceling pending timer and scheduling removeLayer in 8000ms for', layerId, 'token', token); } catch(e) {}
+                      try { delete window._searchFlyPending[token]; } catch(e) {}
+                      setTimeout(() => {
+                        try { console.log('[UI] timer fired (searchFlyMarker -> UI-scheduled): requesting removeLayer for', layerId); } catch(e) {}
+                        try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+                      }, 8000);
+                    } else {
+                      // No layerId provided yet; keep pending entry (it will fire its own timer)
+                      try { window._searchFlyPending[token].layerId = null; } catch(e) {}
+                    }
+                  } catch(e) { try { console.error('[UI] handling searchFlyMarker pending entry failed', e); } catch(_){} }
+                } else {
+                  if (layerId) {
+                    try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
+                    setTimeout(() => {
+                      try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
+                      try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+                    }, 8000);
+                  }
                 }
-              }
             } else {
               // Legacy behavior without token
               if (layerId) {
@@ -2207,7 +2225,8 @@ async function flyToAndNotify(lat, lng, opts) {
         layerId = await addTargetMarker(lat, lng);
         // record mapping for token flow
         try {
-          if (pendingToken) {
+            if (pendingToken) {
+              try { sendLog('[flyToAndNotify] pre-mapping state', { pendingToken: pendingToken, currentMapping: _searchFlyTokenToLayer && _searchFlyTokenToLayer[pendingToken], removeRequested: (_searchFlyTokenRemoveRequested && _searchFlyTokenRemoveRequested[pendingToken]) ? true : false, mappingKeys: Object.keys(_searchFlyTokenToLayer || {}), removeKeys: Object.keys(_searchFlyTokenRemoveRequested || {}) }); } catch(e){}
               _searchFlyTokenToLayer[pendingToken] = layerId || null;
               try { sendLog('[flyToAndNotify] token mapped to layerId', pendingToken, layerId); } catch(e){}
               // if UI already requested removal for this token, remove immediately and clean up mappings
