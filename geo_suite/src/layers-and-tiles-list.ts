@@ -1684,7 +1684,7 @@ function getUI() {
           // do not send inspector AppID from the client. If not, fall back to inspector-provided AppID.
           let serverHasAppId = false;
           try {
-            const envRes = await fetch('/api/yahoo-env', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+            const envRes = await fetch('/api/yahoo-env');
             if (envRes && envRes.ok) {
               const envJson = await envRes.json();
               serverHasAppId = !!(envJson && envJson.hasAppId);
@@ -1697,15 +1697,12 @@ function getUI() {
             return;
           }
 
-          // Call server proxy. If server has key, do not include appid in body.
+          // Call server proxy using GET to avoid CORS preflight. If server has key, do not include appid in query.
           const proxyEndpoint = '/api/yahoo-search';
           try {
             resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
-            const res = await fetch(proxyEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ query: q, appid: APPID })
-            });
+            const url = proxyEndpoint + '?query=' + encodeURIComponent(q) + (serverHasAppId ? '' : ('&appid=' + encodeURIComponent(inspectorAppId || '')));
+            const res = await fetch(url, { method: 'GET' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             // Yahoo Local Search returns Feature array
