@@ -80,13 +80,7 @@ module.exports = function (req, res) {
             return;
           }
 
-          // If localSearch returned results, forward them.
-          if (parsed && parsed.ResultInfo && parsed.ResultInfo.Count && parsed.ResultInfo.Count > 0) {
-            res.end(data);
-            return;
-          }
-
-          // No local search results — attempt geocoding fallback using Yahoo Geocoder API
+          // Attempt geocoding fallback first and prefer its coordinates if available
           try {
             const geoEndpoint = 'https://map.yahooapis.jp/geocode/V1/geoCoder?appid=' + encodeURIComponent(appid) + '&query=' + encodeURIComponent(q) + '&output=json';
             const geoUrl = new URL(geoEndpoint);
@@ -128,7 +122,13 @@ module.exports = function (req, res) {
               return;
             }
           } catch (e) {
-            // geocode failed — fall through to return original empty result
+            // geocode failed — continue to check localSearch
+          }
+
+          // If localSearch returned results, forward them.
+          if (parsed && parsed.ResultInfo && parsed.ResultInfo.Count && parsed.ResultInfo.Count > 0) {
+            res.end(data);
+            return;
           }
 
           // Fallback: return original localSearch response (likely empty)
