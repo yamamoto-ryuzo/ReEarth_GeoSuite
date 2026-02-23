@@ -2176,6 +2176,16 @@ async function flyToAndNotify(lat, lng, opts) {
       if (postSearch) {
         try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', pendingToken, layerId); } catch(e){}
         try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
+        // Extension-side fallback: ensure removal happens even if UI timer fails
+        try {
+          if (layerId && typeof setTimeout === 'function') {
+            try { sendLog('[flyToAndNotify] extension scheduling fallback removal for', layerId, 'in 8000ms'); } catch(e){}
+            setTimeout(() => {
+              try { sendLog('[flyToAndNotify] extension fallback removal firing for', layerId); } catch(e){}
+              try { removeTargetMarker(layerId); } catch(e){}
+            }, 8000);
+          }
+        } catch(e) { try { sendError('[flyToAndNotify] scheduling extension fallback removal failed', e); } catch(_){} }
       }
     }
 
