@@ -1375,11 +1375,11 @@ function getUI() {
             if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 if (msg.layerId) {
-                        try { console.log('[UI] scheduling removeLayer in 5000ms for', msg.layerId); } catch(e) {}
+                        try { console.log('[UI] scheduling removeLayer in 8000ms for', msg.layerId); } catch(e) {}
                         setTimeout(() => {
                           try { console.log('[UI] timer fired: requesting removeLayer for', msg.layerId); } catch(e) {}
                           try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
-                        }, 5000);
+                        }, 8000);
                     }
             } else {
                 if (btn) {
@@ -1391,11 +1391,11 @@ function getUI() {
             // When extension notifies about a marker created for a search fly-to,
             // request the extension to remove it after a short delay (same as geolocation flow).
             if (msg.layerId) {
-                try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 5000ms for', msg.layerId); } catch(e) {}
+                try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', msg.layerId); } catch(e) {}
                 setTimeout(() => {
                   try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', msg.layerId); } catch(e) {}
                   try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
-                }, 5000);
+                }, 8000);
               }
           } else if (msg.action === 'permalinkGenerated') {
             const output = document.getElementById('permalink-output');
@@ -2126,7 +2126,49 @@ async function flyToAndNotify(lat, lng, opts) {
 
     let layerId = null;
     if (addMarkerFlag && typeof addTargetMarker === 'function' && !isNaN(lat) && !isNaN(lng)) {
-      try { layerId = await addTargetMarker(lat, lng); } catch(e) { layerId = null; }
+      try {
+        try { sendLog('[flyToAndNotify] about to call addTargetMarker', 'lat', lat, 'lng', lng); } catch(e){}
+        try {
+          try { sendLog('[flyToAndNotify] reearth.layers present?', !!(reearth && reearth.layers)); } catch(e){}
+          try { sendLog('[flyToAndNotify] reearth.layers.add type:', reearth && reearth.layers ? typeof reearth.layers.add : 'no-reearth-layers'); } catch(e){}
+        } catch(_) {}
+        layerId = await addTargetMarker(lat, lng);
+      } catch(e) {
+        try { sendError('[flyToAndNotify] addTargetMarker threw', e); } catch(_){}
+        layerId = null;
+      }
+      // Fallback: if addTargetMarker failed to return an id, try adding a minimal marker directly
+      if (!layerId) {
+        try {
+          try { sendLog('[flyToAndNotify] addTargetMarker returned null, attempting direct reearth.layers.add fallback'); } catch(e){}
+          if (reearth && reearth.layers && typeof reearth.layers.add === 'function') {
+            const svgFallback = [
+'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
+'  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />',
+'  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />',
+'  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />',
+'  <circle cx="128" cy="128" r="4" fill="#ffffff" />',
+'</svg>'
+            ].join('\n');
+            const imageUriFallback = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgFallback);
+            const featureFallback = { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [lng, lat] } };
+            try {
+              const newId = reearth.layers.add({ type: 'simple', title: 'Target Marker', data: { type: 'geojson', value: { type: 'FeatureCollection', features: [featureFallback] } }, marker: { style: 'image', image: imageUriFallback, imageSize: 0.6, heightReference: 'clamp', height: 0 } });
+              if (newId) {
+                try { _pluginAddedLayerIds.add(newId); } catch(_){}
+                layerId = newId;
+                try { sendLog('[flyToAndNotify] fallback reearth.layers.add succeeded', layerId); } catch(e){}
+              } else {
+                try { sendError('[flyToAndNotify] fallback reearth.layers.add returned falsy id'); } catch(e){}
+              }
+            } catch (e) {
+              try { sendError('[flyToAndNotify] fallback reearth.layers.add threw', e); } catch(_){}
+            }
+          } else {
+            try { sendError('[flyToAndNotify] no reearth.layers.add available for fallback'); } catch(e){}
+          }
+        } catch(e) { try { sendError('[flyToAndNotify] fallback error', e); } catch(_){} }
+      }
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
         if (postSearch) {
@@ -2326,13 +2368,12 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyToManual") {
       try {
-        try { sendLog('[flyToManual] received:', msg.lat, msg.lng, msg.height, msg.heading, msg.pitch, 'addMarker=', msg.addMarker); } catch(e){}
         const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : 0;
         const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : -Math.PI / 2;
         const shouldAddMarker = (typeof msg.addMarker === 'undefined') ? true : !!msg.addMarker;
         await flyToAndNotify(msg.lat, msg.lng, { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true });
       } catch(e) {
-        try { sendError('[flyToManual] error:', e); } catch(err){}
+        try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
     } else if (msg.action === "flyToCamera") {
       try {
@@ -2367,10 +2408,11 @@ reearth.extension.on("message", async (msg) => {
             pitch: cam.pitch !== null ? cam.pitch : curPitch,
             roll: curRoll,
           }, { duration: 2 });
-          try { sendLog('[flyToCamera] flying to:', cam.title, cam.lat, cam.lng); } catch(e){}
+          // Delegate camera preset flyTo to flyToAndNotify for consistent logging
+          try { await flyToAndNotify(cam.lat, cam.lng, { height: cam.height !== null ? cam.height : curHeight, headingRad: cam.heading !== null ? cam.heading : curHeading, pitchRad: cam.pitch !== null ? cam.pitch : curPitch, duration: 2, addMarker: false, postSearchFlyMarker: false }); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
         }
       } catch(e) {
-        try { sendError('[flyToCamera] error:', e); } catch(err){}
+        try { sendError('[flyToAndNotify] flyToCamera outer error:', e); } catch(err){}
       }
       } else if (msg.action === "generatePermalink") {
         try {
@@ -2517,7 +2559,7 @@ reearth.extension.on("message", async (msg) => {
     case "flyTo":
       try {
         // Backward-compatible: allow UI to request flyTo by layerId
-        try { reearth.camera.flyTo(msg.layerId, { duration: 2 }); } catch(e) { try { sendError('[flyTo] failed', e); } catch(_){} }
+        try { reearth.camera.flyTo(msg.layerId, { duration: 2 }); } catch(e) { try { sendError('[flyToAndNotify] flyTo by layer failed', e); } catch(_){} }
       } catch (e) {}
       break;
     case "hide":
