@@ -2194,17 +2194,9 @@ async function flyToAndNotify(lat, lng, opts) {
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
       }
-      if (postSearch) {
-        try { sendLog('[flyToAndNotify] posting geolocationResult (search) to UI', layerId); } catch(e){}
-        try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult (search) failed', e); } catch(_){} }
-        try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', layerId); } catch(e){}
-        try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
-        // No extension-side fallback timer: rely on UI to schedule removal
-        // UI will receive `geolocationResult` and set an ~8000ms timer, then
-        // send `removeLayer` to the extension which calls `removeTargetMarker`.
-        // This avoids relying on `setTimeout` in extension runtimes that may
-        // not provide timers.
-      }
+      // Note: We used to send 'searchFlyMarker' here for search actions, but now we unify
+      // both geolocation and search flows to just send 'geolocationResult' at the end.
+      // This ensures UI schedules the removal timer exactly once for both cases.
     }
 
     try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){}
