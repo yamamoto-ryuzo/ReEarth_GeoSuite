@@ -2400,9 +2400,18 @@ reearth.extension.on("message", async (msg) => {
                         layerId = null;
                     }
                     try {
-                        reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId });
+                        sendLog('[requestGeolocation] posting geolocationResult to UI', layerId);
                     }
                     catch (e) { }
+                    try {
+                        postToUI({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId });
+                    }
+                    catch (e) {
+                        try {
+                            sendError('[requestGeolocation] postToUI failed', e);
+                        }
+                        catch (_) { }
+                    }
                     try {
                         sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng);
                     }
@@ -2560,27 +2569,93 @@ reearth.extension.on("message", async (msg) => {
                         }
                         catch (e) { }
                         try {
-                            if (addedLayerId)
-                                reearth.ui.postMessage({ action: 'searchFlyMarker', layerId: addedLayerId });
+                            if (addedLayerId) {
+                                try {
+                                    sendLog('[flyToManual] posting searchFlyMarker to UI', addedLayerId);
+                                }
+                                catch (e) { }
+                                try {
+                                    postToUI({ action: 'searchFlyMarker', layerId: addedLayerId });
+                                }
+                                catch (e) {
+                                    try {
+                                        sendError('[flyToManual] postToUI searchFlyMarker failed', e);
+                                    }
+                                    catch (_) { }
+                                }
+                            }
                         }
-                        catch (e) { }
+                        catch (e) {
+                            try {
+                                sendError('[flyToManual] searchFlyMarker posting error', e);
+                            }
+                            catch (_) { }
+                        }
                         // Notify UI using existing geolocationResult shape so UI can auto-remove the marker
                         try {
-                            reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId });
-                        }
-                        catch (e) { }
-                        // Fallback: if UI remove message does not arrive, ensure extension deletes marker after timeout
-                        try {
-                            setTimeout(() => {
+                            try {
+                                sendLog('[flyToManual] posting geolocationResult to UI', addedLayerId);
+                            }
+                            catch (e) { }
+                            try {
+                                postToUI({ action: 'geolocationResult', success: true, lat: msg.lat, lng: msg.lng, layerId: addedLayerId });
+                            }
+                            catch (e) {
                                 try {
-                                    if (addedLayerId) {
-                                        removeTargetMarker(addedLayerId);
+                                    sendError('[flyToManual] postToUI geolocationResult failed', e);
+                                }
+                                catch (_) { }
+                            }
+                        }
+                        catch (e) {
+                            try {
+                                sendError('[flyToManual] geolocationResult posting error', e);
+                            }
+                            catch (_) { }
+                        }
+                        // Fallback: if UI remove message does not arrive, ensure extension deletes marker after timeout.
+                        // Try graceful hide first, then delete; attempt twice.
+                        try {
+                            const tryRemove = (id) => {
+                                try {
+                                    try {
+                                        sendLog('[flyToManual] fallback remove attempt for', id);
+                                    }
+                                    catch (e) { }
+                                    // Try hiding first if API supports it
+                                    if (reearth.layers && typeof reearth.layers.update === 'function') {
+                                        try {
+                                            reearth.layers.update({ id: id, visible: false });
+                                        }
+                                        catch (e) {
+                                            try {
+                                                sendError('[flyToManual] fallback hide failed', e);
+                                            }
+                                            catch (_) { }
+                                        }
+                                    }
+                                    // Then try delete/remove
+                                    try {
+                                        removeTargetMarker(id);
+                                    }
+                                    catch (e) {
+                                        try {
+                                            sendError('[flyToManual] fallback removeTargetMarker failed', e);
+                                        }
+                                        catch (_) { }
                                     }
                                 }
                                 catch (e) { }
-                            }, 5000);
+                            };
+                            setTimeout(() => { tryRemove(addedLayerId); }, 5000);
+                            setTimeout(() => { tryRemove(addedLayerId); }, 9000);
                         }
-                        catch (e) { }
+                        catch (e) {
+                            try {
+                                sendError('[flyToManual] fallback timeout setup failed', e);
+                            }
+                            catch (_) { }
+                        }
                     }
                     else {
                         try {
