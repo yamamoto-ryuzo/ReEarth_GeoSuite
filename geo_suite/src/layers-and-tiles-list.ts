@@ -1369,96 +1369,18 @@ function getUI() {
                     setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
                 }
             }
-          } else if (msg.action === 'searchFlyMarkerPending') {
-            // Extension notifies that it will create a marker; UI should start its removal timer using a token.
-            const token = msg && msg.token ? String(msg.token) : null;
-            if (token) {
-              try { console.log('[UI] received searchFlyMarkerPending token', token); } catch(e) {}
-              try { window._searchFlyPending = window._searchFlyPending || {}; } catch(e) {}
-              try {
-                if (window._searchFlyPending[token] && window._searchFlyPending[token].timer) {
-                  clearTimeout(window._searchFlyPending[token].timer);
-                }
-              } catch(e) {}
-              try {
-                window._searchFlyPending[token] = { layerId: null, timer: setTimeout(() => {
-                  try { console.log('[UI] token timer fired: requesting removePending for', token); } catch(e) {}
-                  try { parent.postMessage({ action: 'removePending', token: token }, '*'); } catch(e) {}
-                  try { delete window._searchFlyPending[token]; } catch(e) {}
-                }, 8000) };
-              } catch(e) { console.error(e); }
-            }
           } else if (msg.action === 'searchFlyMarker') {
-            // Extension notifies that a marker was created; it may include a token if pending was used.
-            const token = msg && msg.token ? String(msg.token) : null;
+            // Extension notifies that a marker was created; UI schedules removal by layerId.
             const layerId = msg.layerId || null;
-            if (token) {
-              try { console.log('[UI] received searchFlyMarker for token', token, 'layerId', layerId); } catch(e) {}
-              try { window._searchFlyPending = window._searchFlyPending || {}; } catch(e) {}
-                if (window._searchFlyPending[token]) {
-                  // If we have a pending entry, cancel its timer and schedule removal by layerId here.
-                  try {
-                    const pend = window._searchFlyPending[token];
-                    if (pend && pend.timer) {
-                      try { clearTimeout(pend.timer); } catch(e) {}
-                    }
-                    // If extension provided a layerId, schedule UI-side removal for that layerId
-                    if (layerId) {
-                      try { console.log('[UI] canceling pending timer and scheduling removeLayer in 8000ms for', layerId, 'token', token); } catch(e) {}
-                      try { delete window._searchFlyPending[token]; } catch(e) {}
-                      setTimeout(() => {
-                        try { console.log('[UI] timer fired (searchFlyMarker -> UI-scheduled): requesting removeLayer for', layerId); } catch(e) {}
-                        try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
-                      }, 8000);
-                    } else {
-                      // No layerId provided yet; keep pending entry (it will fire its own timer)
-                      try { window._searchFlyPending[token].layerId = null; } catch(e) {}
-                    }
-                  } catch(e) { try { console.error('[UI] handling searchFlyMarker pending entry failed', e); } catch(_){} }
-                } else {
-                  if (layerId) {
-                    try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
-                    setTimeout(() => {
-                      try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
-                      try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
-                    }, 8000);
-                  }
-                }
-            } else {
-              // Legacy behavior without token
-              if (layerId) {
-                try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
-                setTimeout(() => {
-                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
-                  try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
-                }, 8000);
-              }
+            if (layerId) {
+              try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
+              setTimeout(() => {
+                try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
+                try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+              }, 8000);
             }
           } else if (msg.action === 'permalinkGenerated') {
             
-          } else if (msg.action === 'searchFlyMarkerRemoved') {
-            // Extension confirms it removed a marker for the given token/layer
-            const token = msg && msg.token ? String(msg.token) : null;
-            const layerId = msg && msg.layerId ? msg.layerId : null;
-            if (token) {
-              try { window._searchFlyPending = window._searchFlyPending || {}; } catch(e) {}
-              try {
-                if (window._searchFlyPending[token]) {
-                  try { clearTimeout(window._searchFlyPending[token].timer); } catch(_){}
-                  try { delete window._searchFlyPending[token]; } catch(_){}
-                  try { console.log('[UI] canceled pending token after extension removed marker', token); } catch(e){}
-                } else {
-                  // If no pending entry but layerId present, ensure UI does not attempt duplicate removal
-                  if (layerId) {
-                    try { console.log('[UI] extension removed layerId', layerId, 'but UI had no pending token'); } catch(e){}
-                  }
-                }
-              } catch(e) { try { console.error('[UI] handling searchFlyMarkerRemoved failed', e); } catch(_){} }
-            } else {
-              if (layerId) {
-                try { console.log('[UI] extension removed layerId (no token)', layerId); } catch(e){}
-              }
-            }
             const output = document.getElementById('permalink-output');
             if (output) {
                 // Construct URL in UI context
@@ -2114,9 +2036,7 @@ async function addTargetMarker(lat, lng) {
   }
 }
 
-// Token maps for search->UI pending removal flow
-const _searchFlyTokenToLayer = {}; // token -> layerId|null
-const _searchFlyTokenRemoveRequested = {}; // token -> true when UI requested removal before layerId available
+// (Removed token-based pending flow; UI will receive `searchFlyMarker` with `layerId` and schedule removal)
 
 
 // Utility: remove a target marker by layerId (safe wrapper)
@@ -2204,16 +2124,6 @@ async function flyToAndNotify(lat, lng, opts) {
     try { sendLog('[flyToAndNotify] proceeding to addTargetMarker (post-wait)'); } catch(e){}
 
     let layerId = null;
-    // token support: inform UI immediately so UI starts its removal timer reliably
-    let pendingToken = null;
-    if (postSearch) {
-      try {
-        pendingToken = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-        try { sendLog('[flyToAndNotify] issuing pending token', pendingToken); } catch(e){}
-        try { _searchFlyTokenToLayer[pendingToken] = null; } catch(e){}
-        try { postToUI({ action: 'searchFlyMarkerPending', token: pendingToken }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarkerPending failed', e); } catch(_){} }
-      } catch(e) { try { sendError('[flyToAndNotify] token issuance failed', e); } catch(_){} }
-    }
 
     if (addMarkerFlag && typeof addTargetMarker === 'function' && !isNaN(lat) && !isNaN(lng)) {
       try {
@@ -2223,26 +2133,7 @@ async function flyToAndNotify(lat, lng, opts) {
           try { sendLog('[flyToAndNotify] reearth.layers.add type:', reearth && reearth.layers ? typeof reearth.layers.add : 'no-reearth-layers'); } catch(e){}
         } catch(_) {}
         layerId = await addTargetMarker(lat, lng);
-        // record mapping for token flow
-        try {
-            if (pendingToken) {
-              try { sendLog('[flyToAndNotify] pre-mapping state', { pendingToken: pendingToken, currentMapping: _searchFlyTokenToLayer && _searchFlyTokenToLayer[pendingToken], removeRequested: (_searchFlyTokenRemoveRequested && _searchFlyTokenRemoveRequested[pendingToken]) ? true : false, mappingKeys: Object.keys(_searchFlyTokenToLayer || {}), removeKeys: Object.keys(_searchFlyTokenRemoveRequested || {}) }); } catch(e){}
-              _searchFlyTokenToLayer[pendingToken] = layerId || null;
-              try { sendLog('[flyToAndNotify] token mapped to layerId', pendingToken, layerId); } catch(e){}
-              // if UI already requested removal for this token, remove immediately and clean up mappings
-              try {
-                if (_searchFlyTokenRemoveRequested && _searchFlyTokenRemoveRequested[pendingToken]) {
-                  try { sendLog('[flyToAndNotify] token was marked for removal; removing layer', pendingToken, layerId); } catch(e){}
-                  try {
-                    if (layerId) removeTargetMarker(layerId);
-                  } catch(e){}
-                  try { delete _searchFlyTokenToLayer[pendingToken]; } catch(e){}
-                  try { delete _searchFlyTokenRemoveRequested[pendingToken]; } catch(e){}
-                  try { postToUI({ action: 'searchFlyMarkerRemoved', token: pendingToken, layerId: layerId }); } catch(e){}
-                }
-              } catch(e) { try { sendError('[flyToAndNotify] removal-after-pending check failed', e); } catch(_){} }
-          }
-        } catch(e) { try { sendError('[flyToAndNotify] token->layer recording failed', e); } catch(_){} }
+        // no token mapping: UI will receive layerId and schedule removal
       } catch(e) {
         try { sendError('[flyToAndNotify] addTargetMarker threw', e); } catch(_){}
         layerId = null;
@@ -2284,7 +2175,7 @@ async function flyToAndNotify(lat, lng, opts) {
       }
       if (postSearch) {
         try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', pendingToken, layerId); } catch(e){}
-        try { postToUI({ action: 'searchFlyMarker', token: pendingToken, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
+        try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
       }
     }
 
@@ -2429,26 +2320,7 @@ reearth.extension.on("message", async (msg) => {
       } catch(e) {
         try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
-    } else if (msg.action === "removePending") {
-      try {
-        const t = msg.token;
-        if (!t) return;
-        try { sendLog('[removePending] received for token', t); } catch(e){}
-        // _searchFlyTokenRemoveRequested is initialized as an object above; no reassignment needed
-        try {
-          const lid = _searchFlyTokenToLayer && _searchFlyTokenToLayer[t];
-          if (lid) {
-            try { sendLog('[removePending] have layerId for token; removing now', t, lid); } catch(e){}
-            try { removeTargetMarker(lid); } catch(e){}
-            try { delete _searchFlyTokenToLayer[t]; } catch(e){}
-            try { delete _searchFlyTokenRemoveRequested[t]; } catch(e){}
-            try { postToUI({ action: 'searchFlyMarkerRemoved', token: t, layerId: lid }); } catch(e){}
-            return;
-          }
-        } catch(e) { try { sendError('[removePending] check existing mapping failed', e); } catch(_){} }
-        try { sendLog('[removePending] no mapping yet; marking token for later removal', t); } catch(e){}
-        try { _searchFlyTokenRemoveRequested[t] = true; } catch(e){}
-      } catch(e) { try { sendError('[removePending] error', e); } catch(_){} }
+    
     } else if (msg.action === "removeLayer") {
       if (msg.layerId) {
         try {
