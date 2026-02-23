@@ -653,7 +653,7 @@ function getUI() {
     <div id="search-results" style="max-height:320px;overflow:auto;">
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
     </div>
-    <div style="font-size:0.9em;color:#a33;margin-top:8px;">注意: この検索はインスペクターに設定した `yahooAppId` をリクエスト時にサーバへ送信します。公開サイトでの利用は推奨しません。テスト用途または自己責任でのみ使用してください。</div>
+    <div style="font-size:0.9em;color:#a33;margin-top:8px;">注意: この検索はインスペクターに設定した <code>yahooAppId</code> をリクエスト時にサーバへ送信します。公開サイトでの利用は推奨しません。テスト用途または自己責任でのみ使用してください。</div>
   </div>
 
   <div id="layers-panel">
