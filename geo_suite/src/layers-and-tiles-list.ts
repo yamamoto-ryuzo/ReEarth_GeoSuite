@@ -2415,7 +2415,7 @@ reearth.extension.on("message", async (msg) => {
         const t = msg.token;
         if (!t) return;
         try { sendLog('[removePending] received for token', t); } catch(e){}
-        _searchFlyTokenRemoveRequested = _searchFlyTokenRemoveRequested || {};
+        // _searchFlyTokenRemoveRequested is initialized as an object above; no reassignment needed
         try {
           const lid = _searchFlyTokenToLayer && _searchFlyTokenToLayer[t];
           if (lid) {
