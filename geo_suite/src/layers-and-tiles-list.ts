@@ -1356,31 +1356,38 @@ function getUI() {
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
           } else if (msg.action === 'geolocationResult') {
-            const btn = document.getElementById('cam-flyto-current');
-            if (msg.success) {
-                if (btn) btn.textContent = 'Fly to Current Location';
-                if (msg.layerId) {
-                        const lid = String(msg.layerId);
-                        if (__scheduledRemoveTimers[lid]) {
-                          try { clearTimeout(__scheduledRemoveTimers[lid]); } catch(e) {}
-                          try { console.log('[UI] refreshing removeLayer timer for', lid); } catch(e) {}
-                        } else {
-                          try { console.log('[UI] scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-                        }
-                        const tid = setTimeout(() => {
-                            try { console.log('[UI] timer fired: requesting removeLayer for', lid); } catch(e) {}
-                            try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
-                            try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
-                            try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
-                          }, 8000);
-                          try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
-                    }
-            } else {
-                if (btn) {
-                    btn.textContent = 'Error';
-                    setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+            // 1. Update button state (isolated)
+            try {
+              const btn = document.getElementById('cam-flyto-current');
+              if (msg.success) {
+                  if (btn) btn.textContent = 'Fly to Current Location';
+              } else {
+                  if (btn) {
+                      btn.textContent = 'Error';
+                      setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                  }
+              }
+            } catch(e) { try { console.error('[UI] btn update error', e); } catch(_){} }
+
+            // 2. Schedule removal timer (isolated)
+            try {
+              if (msg.success && msg.layerId) {
+                const lid = String(msg.layerId);
+                if (__scheduledRemoveTimers[lid]) {
+                  try { clearTimeout(__scheduledRemoveTimers[lid]); } catch(e) {}
+                  try { console.log('[UI] refreshing removeLayer timer for', lid); } catch(e) {}
+                } else {
+                  try { console.log('[UI] scheduling removeLayer in 8000ms for', lid); } catch(e) {}
                 }
-            }
+                const tid = setTimeout(() => {
+                    try { console.log('[UI] timer fired: requesting removeLayer for', lid); } catch(e) {}
+                    try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
+                    try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
+                    try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
+                  }, 8000);
+                  try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
+              }
+            } catch(e) { try { console.error('[UI] removal timer schedule error', e); } catch(_){} }
           } else if (msg.action === 'permalinkGenerated') {
             
             const output = document.getElementById('permalink-output');
