@@ -1386,6 +1386,15 @@ function getUI() {
                     setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
                 }
             }
+          } else if (msg.action === 'searchFlyMarker') {
+            // When extension notifies about a marker created for a search fly-to,
+            // request the extension to remove it after a short delay (same as geolocation flow).
+            if (msg.layerId) {
+              setTimeout(() => {
+                try { console.log('[UI] requesting removeLayer for (searchFlyMarker)', msg.layerId); } catch(e) {}
+                parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
+              }, 5000);
+            }
           } else if (msg.action === 'permalinkGenerated') {
             const output = document.getElementById('permalink-output');
             if (output) {
