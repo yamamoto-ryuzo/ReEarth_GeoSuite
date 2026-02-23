@@ -1360,15 +1360,20 @@ function getUI() {
             setVal('cam-height', c.height);
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
-                    } else if (msg.action === 'geolocationResult') {
+                        } else if (msg.action === 'geolocationResult') {
                         const btn = document.getElementById('cam-flyto-current');
                         if (msg.success) {
-                                if (btn) btn.textContent = 'Fly to Current Location';
-                        } else {
-                                if (btn) {
-                                        btn.textContent = 'Error';
-                                        setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                            if (btn) btn.textContent = 'Fly to Current Location';
+                            try {
+                                if (msg.layerId) {
+                                setTimeout(() => { try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e){} }, 8000);
                                 }
+                            } catch(e) {}
+                        } else {
+                            if (btn) {
+                                btn.textContent = 'Error';
+                                setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                            }
                         }
           } else if (msg.action === 'permalinkGenerated') {
             
@@ -2340,19 +2345,8 @@ async function flyToAndNotify(lat, lng) {
                 }
                 catch (e) { }
             }
-            // Schedule removal of marker from extension side to centralize lifecycle
             if (layerId) {
-                try {
-                    if (_markerTimers[layerId]) {
-                        try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
-                    }
-                    _markerTimers[layerId] = setTimeout(() => {
-                        try { removeTargetMarker(layerId); } catch(e) {}
-                        try { delete _markerTimers[layerId]; } catch(e) {}
-                    }, MARKER_TTL_MS);
-                    try { sendLog('[flyToAndNotify] scheduled marker removal in', MARKER_TTL_MS, 'ms for', layerId); } catch(e) {}
-                }
-                catch (e) { try { sendError('[flyToAndNotify] scheduling timer failed', e); } catch(_){} }
+                try { sendLog('[flyToAndNotify] delegating marker removal scheduling to UI for', layerId); } catch(e){}
             }
         }
         try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){}

@@ -1362,6 +1362,13 @@ function getUI() {
               const btn = document.getElementById('cam-flyto-current');
               if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
+                try {
+                  if (msg.layerId) {
+                    setTimeout(() => {
+                      try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e){}
+                    }, 8000);
+                  }
+                } catch(e) {}
               } else {
                 if (btn) {
                   btn.textContent = 'Error';
@@ -2140,16 +2147,7 @@ async function flyToAndNotify(lat, lng) {
       }
       // Schedule removal of the marker from extension side to centralize lifecycle
       if (layerId) {
-        try {
-          if (_markerTimers[layerId]) {
-            try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
-          }
-          _markerTimers[layerId] = setTimeout(() => {
-            try { removeTargetMarker(layerId); } catch(e) {}
-            try { delete _markerTimers[layerId]; } catch(e) {}
-          }, MARKER_TTL_MS);
-          try { sendLog('[flyToAndNotify] scheduled marker removal in', MARKER_TTL_MS, 'ms for', layerId); } catch(e) {}
-        } catch(e) { try { sendError('[flyToAndNotify] scheduling timer failed', e); } catch(_){} }
+        try { sendLog('[flyToAndNotify] delegating marker removal scheduling to UI for', layerId); } catch(e){}
       }
       // We now leave search-specific UI notifications to the caller.
     }
