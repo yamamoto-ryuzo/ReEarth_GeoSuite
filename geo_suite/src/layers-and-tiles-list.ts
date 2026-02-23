@@ -1375,11 +1375,12 @@ function getUI() {
             if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 if (msg.layerId) {
-                    setTimeout(() => {
-                      try { console.log('[UI] requesting removeLayer for', msg.layerId); } catch(e) {}
-                      parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
-                    }, 5000);
-                }
+                        try { console.log('[UI] scheduling removeLayer in 5000ms for', msg.layerId); } catch(e) {}
+                        setTimeout(() => {
+                          try { console.log('[UI] timer fired: requesting removeLayer for', msg.layerId); } catch(e) {}
+                          try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
+                        }, 5000);
+                    }
             } else {
                 if (btn) {
                     btn.textContent = 'Error';
@@ -1390,11 +1391,12 @@ function getUI() {
             // When extension notifies about a marker created for a search fly-to,
             // request the extension to remove it after a short delay (same as geolocation flow).
             if (msg.layerId) {
-              setTimeout(() => {
-                try { console.log('[UI] requesting removeLayer for (searchFlyMarker)', msg.layerId); } catch(e) {}
-                parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*');
-              }, 5000);
-            }
+                try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 5000ms for', msg.layerId); } catch(e) {}
+                setTimeout(() => {
+                  try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', msg.layerId); } catch(e) {}
+                  try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
+                }, 5000);
+              }
           } else if (msg.action === 'permalinkGenerated') {
             const output = document.getElementById('permalink-output');
             if (output) {
