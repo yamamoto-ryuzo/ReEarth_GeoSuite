@@ -1680,14 +1680,25 @@ function getUI() {
 
         const performSearch = async (q) => {
           if (!q || !q.trim()) { renderSearchResults([]); return; }
-          // NOTE: Replace APPID with your Yahoo API AppID. Consider using a server-side proxy to avoid exposing keys / CORS.
-            const APPID = (window && window._yahooAppId) ? window._yahooAppId : null;
-            if (!APPID) {
-              resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">yahooAppId: あなたのYahoo AppID</div></li>';
-              return;
+          // Check whether server has a configured YAHOO_APPID; if so, prefer server-side key and
+          // do not send inspector AppID from the client. If not, fall back to inspector-provided AppID.
+          let serverHasAppId = false;
+          try {
+            const envRes = await fetch('/api/yahoo-env', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+            if (envRes && envRes.ok) {
+              const envJson = await envRes.json();
+              serverHasAppId = !!(envJson && envJson.hasAppId);
             }
-            // Call server proxy and send inspector AppID (note: this will expose the AppID in transit)
-            const proxyEndpoint = '/api/yahoo-search';
+          } catch (e) { /* ignore, assume no server-side key */ }
+
+          const inspectorAppId = (window && window._yahooAppId) ? window._yahooAppId : null;
+          if (!serverHasAppId && !inspectorAppId) {
+            resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">yahooAppId: あなたのYahoo AppID</div></li>';
+            return;
+          }
+
+          // Call server proxy. If server has key, do not include appid in body.
+          const proxyEndpoint = '/api/yahoo-search';
           try {
             resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
             const res = await fetch(proxyEndpoint, {
