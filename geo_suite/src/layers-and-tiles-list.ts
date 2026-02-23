@@ -2249,6 +2249,16 @@ reearth.extension.on("message", async (msg) => {
           roll: 0,
         }, { duration: 2 });
         try { sendLog('[flyToManual]', msg.lat, msg.lng, msg.height, msg.heading, msg.pitch); } catch(e){}
+        // If caller requested a marker, add one at the target location
+        try {
+          if (msg.addMarker && typeof addTargetMarker === 'function' && !isNaN(msg.lat) && !isNaN(msg.lng)) {
+            const addedLayerId = await addTargetMarker(msg.lat, msg.lng);
+            try { sendLog('[flyToManual] added marker layer', addedLayerId); } catch(e){}
+            try { reearth.ui.postMessage({ action: 'searchFlyMarker', layerId: addedLayerId }); } catch(e){}
+          }
+        } catch (e) {
+          try { sendError('[flyToManual] addMarker error:', e); } catch(_){}
+        }
       } catch(e) {
         try { sendError('[flyToManual] error:', e); } catch(err){}
       }
