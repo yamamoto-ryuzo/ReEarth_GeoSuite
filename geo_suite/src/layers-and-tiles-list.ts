@@ -1680,8 +1680,9 @@ function getUI() {
         const performSearch = async (q) => {
           if (!q || !q.trim()) { renderSearchResults([]); return; }
           // NOTE: Replace APPID with your Yahoo API AppID. Consider using a server-side proxy to avoid exposing keys / CORS.
-          const APPID = (window && window._yahooAppId) ? window._yahooAppId : 'YOUR_YAHOO_APPID_HERE';
-          const endpoint = 'https://map.yahooapis.jp/search/local/V1/localSearch?appid=' + encodeURIComponent(APPID) + '&query=' + encodeURIComponent(q) + '&output=json';
+            const APPID = (window && window._yahooAppId) ? window._yahooAppId : null;
+            if (!APPID) { resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません</li>'; return; }
+            const endpoint = 'https://map.yahooapis.jp/search/local/V1/localSearch?appid=' + encodeURIComponent(APPID) + '&query=' + encodeURIComponent(q) + '&output=json';
           try {
             resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
             const res = await fetch(endpoint, { method: 'GET', mode: 'cors' });
@@ -2811,11 +2812,10 @@ function processInspectorText(text) {
           }
         }
 
-        // Read yahooAppId from widget/block property if placeholder used or not provided
+        // Use yahooAppId from widget/block property only (no fallbacks or inline appid)
         const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
         const propAppId = (prop && prop.settings && prop.settings.yahooAppId) ? prop.settings.yahooAppId : (prop && prop.yahooAppId ? prop.yahooAppId : null);
-        if (typeof appid === 'string' && appid.indexOf('${yahooAppId}') !== -1) appid = appid.replace('${yahooAppId}', propAppId || '');
-        if (!appid && propAppId) appid = propAppId;
+        appid = propAppId || null;
 
         query = (query || '').trim();
         if (appid && query) {
