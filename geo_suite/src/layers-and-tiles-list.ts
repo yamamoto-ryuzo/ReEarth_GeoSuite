@@ -2079,21 +2079,13 @@ reearth.extension.on("message", async (msg) => {
       } catch(e) {
         try { sendError('[updateCamPreset] error:', e); } catch(err){}
       }
-    } else if (msg.action === "requestGeolocation") {
-      try {
-        const myLocation = await reearth.viewer.tools.getCurrentLocationAsync();
-        if (myLocation) {
-          const flyDuration = 2;
-          try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo({ lat: myLocation.lat, lng: myLocation.lng, height: 1000, heading: 0, pitch: -1.57, roll: 0 }, { duration: flyDuration }); } catch(e) {}
-          // Wait for flyTo to complete (duration + small buffer) before sampling terrain height
-          try { await new Promise(res => setTimeout(res, Math.round(flyDuration * 1000) + 300)); } catch(e) {}
+    }
 
-          // Show temporary target marker (Modern Reticle Scope Style via CZML Billboard)
-          let layerId;
-          try {
-                // Create SVG Reticle (Scope) - Simplified for robustness
-                // Removed filters to avoid loading errors, using encodeURIComponent for data URI
-                const svg = [
+    // Utility: add a temporary target marker (returns layerId or null)
+    async function addTargetMarker(lat, lng) {
+      try {
+        // Create SVG Reticle same as requestGeolocation
+        const svg = [
 '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
 '  <!-- Outer Ring -->',
 '  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />',
@@ -2112,58 +2104,66 @@ reearth.extension.on("message", async (msg) => {
 '  <!-- Center Dot -->',
 '  <circle cx="128" cy="128" r="4" fill="#ffffff" />',
 '</svg>'
-].join('\\n').trim();
+        ].join('\n').trim();
 
-                // Use encodeURIComponent to create safe Data URI without base64 dependency
-                const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
-                // Add a GeoJSON layer and use Re:Earth marker appearance to clamp to terrain
-                const feature = {
-                  type: "Feature",
-                  properties: {},
-                  geometry: { type: "Point", coordinates: [myLocation.lng, myLocation.lat] }
-                };
+        const feature = {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "Point", coordinates: [lng, lat] }
+        };
 
-                layerId = null;
-                try {
-                  layerId = reearth.layers.add({
-                    type: "simple",
-                    title: "Current Location Scope",
-                    data: {
-                      type: "geojson",
-                      value: {
-                        type: "FeatureCollection",
-                        features: [feature]
-                      }
-                    },
-                    marker: {
-                      style: "image",
-                      image: imageUri,
-                      imageSize: 0.6,
-                      heightReference: "clamp",
-                      height: 0
-                    }
-                  });
-                } catch(e) {
-                  try { sendError('[requestGeolocation] reearth.layers.add threw:', e); } catch(_) {}
-                }
-
-                // Track this temporary layer so plugin can remove it later
-                try {
-                  if (layerId) {
-                    _pluginAddedLayerIds.add(layerId);
-                    try { sendLog('[requestGeolocation] added layerId:', layerId, 'dataUrl length:', dataUrl ? dataUrl.length : 0); } catch(e) {}
-                  } else {
-                    try { sendError('[requestGeolocation] failed to add layer (layerId falsy). dataUrl length:', dataUrl ? dataUrl.length : 0); } catch(e) {}
-                  }
-                } catch(e) { try { sendError('[requestGeolocation] tracking added layer failed:', e); } catch(_) {} }
-
-                // Note: We send layerId to UI, and UI will request removal after delay.
-            } catch(e) {
-                console.error("Failed to add CZML marker", e);
+        let layerId = null;
+        try {
+          layerId = reearth.layers.add({
+            type: "simple",
+            title: "Target Marker",
+            data: {
+              type: "geojson",
+              value: {
+                type: "FeatureCollection",
+                features: [feature]
+              }
+            },
+            marker: {
+              style: "image",
+              image: imageUri,
+              imageSize: 0.6,
+              heightReference: "clamp",
+              height: 0
             }
+          });
+        } catch (e) {
+          try { sendError('[addTargetMarker] reearth.layers.add threw:', e); } catch(_) {}
+        }
 
-            try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId }); } catch (e) { }
+        if (layerId) {
+          try { _pluginAddedLayerIds.add(layerId); } catch (_) {}
+        }
+        return layerId || null;
+      } catch (e) {
+        try { sendError('[addTargetMarker] error:', e); } catch(_) {}
+        return null;
+      }
+    }
+
+    else if (msg.action === "requestGeolocation") {
+      try {
+        const myLocation = await reearth.viewer.tools.getCurrentLocationAsync();
+        if (myLocation) {
+          const flyDuration = 2;
+          try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo({ lat: myLocation.lat, lng: myLocation.lng, height: 1000, heading: 0, pitch: -1.57, roll: 0 }, { duration: flyDuration }); } catch(e) {}
+          // Wait for flyTo to complete (duration + small buffer) before sampling terrain height
+          try { await new Promise(res => setTimeout(res, Math.round(flyDuration * 1000) + 300)); } catch(e) {}
+
+          // Show temporary target marker using utility
+          let layerId = null;
+          try {
+            layerId = await addTargetMarker(myLocation.lat, myLocation.lng);
+          } catch (e) { layerId = null; }
+
+          try { reearth.ui.postMessage({ action: 'geolocationResult', success: true, lat: myLocation.lat, lng: myLocation.lng, layerId: layerId }); } catch (e) { }
             try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
              try { sendError('[requestGeolocation] location not found'); } catch (e) { }
