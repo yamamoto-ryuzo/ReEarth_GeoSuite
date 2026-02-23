@@ -1666,7 +1666,8 @@ function getUI() {
 
                   if (!isNaN(lat) && !isNaN(lng)) {
                     // send heading/pitch in degrees: heading 0 = north, pitch -90 = top-down
-                    parent.postMessage({ action: 'flyToManual', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90 }, '*');
+                    // Request the extension to add a temporary marker when flying to search result
+                    parent.postMessage({ action: 'flyToManual', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: true }, '*');
                   }
                 } catch (e) { console.error('search fly error', e); }
               });
