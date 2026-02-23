@@ -1660,7 +1660,7 @@ function getUI() {
                   if (!isNaN(lat) && !isNaN(lng)) {
                     // send heading/pitch in degrees: heading 0 = north, pitch -90 = top-down
                     // Request the extension to add a temporary marker when flying to search result
-                    parent.postMessage({ action: 'flyToManual', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: true }, '*');
+                    parent.postMessage({ action: 'flyToAndNotify', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: true }, '*');
                   }
                 } catch (e) { console.error('search fly error', e); }
               });
@@ -2292,6 +2292,15 @@ reearth.extension.on("message", async (msg) => {
       } catch (e) {
           try { sendError('[requestGeolocation] error:', e); } catch (err) { }
           try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
+      }
+    } else if (msg.action === "flyToAndNotify") {
+      try {
+        const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : 0;
+        const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : -Math.PI / 2;
+        const shouldAddMarker = (msg.addMarker === false) ? false : true;
+        await flyToAndNotify(msg.lat, msg.lng, { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true });
+      } catch(e) {
+        try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
     } else if (msg.action === "removeLayer") {
       if (msg.layerId) {
