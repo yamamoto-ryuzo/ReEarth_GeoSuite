@@ -28,6 +28,7 @@ module.exports = function (req, res) {
         const u = new URL(req.url, 'http://localhost');
         payload.query = u.searchParams.get('query') || '';
         payload.appid = u.searchParams.get('appid') || '';
+        payload.debug = u.searchParams.get('debug') || '';
       } else {
         if (body && body.length) {
           try { payload = JSON.parse(body); } catch(e) { payload = {}; }
@@ -68,7 +69,14 @@ module.exports = function (req, res) {
           res.statusCode = proxyRes.statusCode || 200;
           // Ensure response is JSON
           res.setHeader('Content-Type', 'application/json');
-          res.end(data);
+          const debugEnabled = (process.env.DEBUG_YAHOO === '1') || (payload && payload.debug && String(payload.debug) !== '');
+          if (debugEnabled) {
+            let parsed;
+            try { parsed = JSON.parse(data); } catch (e) { parsed = data; }
+            res.end(JSON.stringify({ proxiedUrl: endpoint, body: parsed }));
+          } else {
+            res.end(data);
+          }
         });
       });
 

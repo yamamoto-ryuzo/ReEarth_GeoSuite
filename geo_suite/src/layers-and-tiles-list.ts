@@ -1665,7 +1665,8 @@ function getUI() {
                   } else if (it.lon && it.lat) { lat = parseFloat(it.lat); lng = parseFloat(it.lon); }
 
                   if (!isNaN(lat) && !isNaN(lng)) {
-                    parent.postMessage({ action: 'flyToManual', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -1.57 }, '*');
+                    // send heading/pitch in degrees: heading 0 = north, pitch -90 = top-down
+                    parent.postMessage({ action: 'flyToManual', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90 }, '*');
                   }
                 } catch (e) { console.error('search fly error', e); }
               });
