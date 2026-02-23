@@ -1360,6 +1360,7 @@ function getUI() {
                         try { console.log('[UI] scheduling removeLayer in 8000ms for', msg.layerId); } catch(e) {}
                         setTimeout(() => {
                           try { console.log('[UI] timer fired: requesting removeLayer for', msg.layerId); } catch(e) {}
+                          try { parent.postMessage({ action: 'removeScheduledFired', layerId: msg.layerId }, '*'); } catch(e) {}
                           try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
                         }, 8000);
                     }
@@ -1376,7 +1377,8 @@ function getUI() {
               try { console.log('[UI] scheduling removeLayer (searchFlyMarker) in 8000ms for', layerId); } catch(e) {}
               setTimeout(() => {
                 try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', layerId); } catch(e) {}
-                try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+                 try { parent.postMessage({ action: 'removeScheduledFired', layerId: layerId }, '*'); } catch(e) {}
+                 try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
               }, 8000);
             }
           } else if (msg.action === 'permalinkGenerated') {
@@ -2174,7 +2176,9 @@ async function flyToAndNotify(lat, lng, opts) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
       }
       if (postSearch) {
-        try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', pendingToken, layerId); } catch(e){}
+        try { sendLog('[flyToAndNotify] posting geolocationResult (search) to UI', layerId); } catch(e){}
+        try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult (search) failed', e); } catch(_){} }
+        try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', layerId); } catch(e){}
         try { postToUI({ action: 'searchFlyMarker', layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI searchFlyMarker failed', e); } catch(_){} }
         // Extension-side fallback: ensure removal happens even if UI timer fails
         try {
@@ -3096,11 +3100,13 @@ function restoreUserLayers(userRequests, force = false) {
       const layer = layerMap.get(id);
       if (layer) {
         // If force is true, update regardless of current state.
-        // If force is false (auto-check), only update if state differs.
-        if (force || layer.visible !== desired) {
-            if (typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
-                if (desired) reearth.layers.show(id);
-                else reearth.layers.hide(id);
+                        const rmWhen = Date.now() + 8000;
+                        try { parent.postMessage({ action: 'removeScheduled', layerId: msg.layerId, when: rmWhen }, '*'); } catch(e) {}
+                        setTimeout(() => {
+                          try { console.log('[UI] timer fired: requesting removeLayer for', msg.layerId); } catch(e) {}
+                          try { parent.postMessage({ action: 'removeScheduledFired', layerId: msg.layerId }, '*'); } catch(e) {}
+                          try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
+                        }, 8000);
             } else if (typeof reearth.layers.update === 'function') {
                 reearth.layers.update({ id: id, visible: !!desired });
             }
