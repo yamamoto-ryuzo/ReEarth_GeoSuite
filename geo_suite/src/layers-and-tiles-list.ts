@@ -2100,14 +2100,12 @@ async function getCurrentLocation() {
 
 // Helper: fly camera to coordinates, optionally add marker and notify UI
 // opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
-async function flyToAndNotify(lat, lng, opts) {
-  const o = opts || {};
-  const height = (o.height != null) ? o.height : 1000;
-  const headingRad = (o.headingRad != null) ? o.headingRad : 0;
-  const pitchRad = (o.pitchRad != null) ? o.pitchRad : -Math.PI / 2;
-  const duration = (o.duration != null) ? o.duration : 2;
-  const addMarkerFlag = (o.addMarker === false) ? false : true;
-  const postSearch = !!o.postSearchFlyMarker;
+async function flyToAndNotify(lat, lng) {
+  const height = 1000;
+  const headingRad = 0;
+  const pitchRad = -Math.PI / 2;
+  const duration = 2;
+  const addMarkerFlag = true;
   try { sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag, 'postSearch:', postSearch); } catch(e){}
 
   try {
@@ -2182,12 +2180,10 @@ async function flyToAndNotify(lat, lng, opts) {
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
       }
-      // Note: We used to send 'searchFlyMarker' here for search actions, but now we unify
-      // both geolocation and search flows to just send 'geolocationResult' at the end.
-      // This ensures UI schedules the removal timer exactly once for both cases.
+      // We now leave search-specific UI notifications to the caller.
     }
 
-    try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){}
+    try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){ }
     try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult failed', e); } catch(_){} }
     try { sendLog('[flyToAndNotify] completed for', lat, lng); } catch(e){}
     return { success: true, layerId: layerId };
@@ -2311,8 +2307,7 @@ reearth.extension.on("message", async (msg) => {
       try {
         const myLocation = await getCurrentLocation();
         if (myLocation) {
-          const opts = { height: 1000, headingRad: 0, pitchRad: -Math.PI / 2, duration: 2, addMarker: true, postSearchFlyMarker: false };
-          await flyToAndNotify(myLocation.lat, myLocation.lng, opts);
+          const res = await flyToAndNotify(myLocation.lat, myLocation.lng);
           try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
           try { sendError('[requestGeolocation] location not found'); } catch (e) { }
@@ -2324,11 +2319,13 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyToAndNotify") {
       try {
-        const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : (typeof msg.headingRad === 'number' ? msg.headingRad : 0);
-        const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : (typeof msg.pitchRad === 'number' ? msg.pitchRad : -Math.PI / 2);
-        const shouldAddMarker = (msg.addMarker === false) ? false : true;
-        const opts = { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true };
-        await flyToAndNotify(msg.lat, msg.lng, opts);
+        const res = await flyToAndNotify(msg.lat, msg.lng);
+        try {
+          if (res && res.layerId) {
+            try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', res.layerId); } catch(e){}
+            postToUI({ action: 'searchFlyMarker', layerId: res.layerId });
+          }
+        } catch(e) { try { sendError('[flyToAndNotify] post searchFlyMarker failed', e); } catch(_){} }
       } catch(e) {
         try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
@@ -2423,7 +2420,7 @@ reearth.extension.on("message", async (msg) => {
             roll: curRoll,
           }, { duration: 2 });
           // Delegate camera preset flyTo to flyToAndNotify for consistent logging
-          try { await flyToAndNotify(cam.lat, cam.lng, { height: cam.height !== null ? cam.height : curHeight, headingRad: cam.heading !== null ? cam.heading : curHeading, pitchRad: cam.pitch !== null ? cam.pitch : curPitch, duration: 2, addMarker: false, postSearchFlyMarker: false }); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
+          try { await flyToAndNotify(cam.lat, cam.lng); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
         }
       } catch(e) {
         try { sendError('[flyToAndNotify] flyToCamera outer error:', e); } catch(err){}
