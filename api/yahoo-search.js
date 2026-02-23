@@ -64,19 +64,75 @@ module.exports = function (req, res) {
       const proxyReq = https.request(reqOptions, proxyRes => {
         let data = '';
         proxyRes.on('data', d => { data += d; });
-        proxyRes.on('end', () => {
+        proxyRes.on('end', async () => {
           // forward status and body
           res.statusCode = proxyRes.statusCode || 200;
           // Ensure response is JSON
           res.setHeader('Content-Type', 'application/json');
           const debugEnabled = (process.env.DEBUG_YAHOO === '1') || (payload && payload.debug && String(payload.debug) !== '');
+          let parsed;
+          try { parsed = JSON.parse(data); } catch (e) { parsed = null; }
+
+          // If debug mode, return proxied URL and parsed body
           if (debugEnabled) {
-            let parsed;
-            try { parsed = JSON.parse(data); } catch (e) { parsed = data; }
-            res.end(JSON.stringify({ proxiedUrl: endpoint, body: parsed }));
-          } else {
-            res.end(data);
+            const bodyOut = parsed !== null ? parsed : data;
+            res.end(JSON.stringify({ proxiedUrl: endpoint, body: bodyOut }));
+            return;
           }
+
+          // If localSearch returned results, forward them.
+          if (parsed && parsed.ResultInfo && parsed.ResultInfo.Count && parsed.ResultInfo.Count > 0) {
+            res.end(data);
+            return;
+          }
+
+          // No local search results — attempt geocoding fallback using Yahoo Geocoder API
+          try {
+            const geoEndpoint = 'https://map.yahooapis.jp/geocode/V1/geoCoder?appid=' + encodeURIComponent(appid) + '&query=' + encodeURIComponent(q) + '&output=json';
+            const geoUrl = new URL(geoEndpoint);
+            const geoOptions = { hostname: geoUrl.hostname, path: geoUrl.pathname + geoUrl.search, method: 'GET' };
+            const geoData = await new Promise((resolve, reject) => {
+              const r = https.request(geoOptions, gr => {
+                let buf = '';
+                gr.on('data', c => { buf += c; });
+                gr.on('end', () => resolve(buf));
+                gr.on('error', e => reject(e));
+              });
+              r.on('error', e => reject(e));
+              r.end();
+            });
+            let parsedGeo = null;
+            try { parsedGeo = JSON.parse(geoData); } catch (e) { parsedGeo = null; }
+
+            // Try to extract coordinates from parsedGeo
+            let coords = null;
+            try {
+              if (parsedGeo && parsedGeo.Feature && parsedGeo.Feature.length) {
+                const f0 = parsedGeo.Feature[0];
+                if (f0.Geometry && f0.Geometry.Coordinates) coords = f0.Geometry.Coordinates;
+                else if (f0.geometry && f0.geometry.coordinates) coords = Array.isArray(f0.geometry.coordinates) ? f0.geometry.coordinates.join(',') : String(f0.geometry.coordinates);
+                else if (f0.Point && f0.Point.coordinates) coords = Array.isArray(f0.Point.coordinates) ? f0.Point.coordinates.join(',') : String(f0.Point.coordinates);
+              }
+            } catch (e) { coords = null; }
+
+            if (coords) {
+              // Build a minimal Feature response compatible with client expectations
+              const feature = {
+                Id: (parsedGeo.Feature && parsedGeo.Feature[0] && (parsedGeo.Feature[0].Id || parsedGeo.Feature[0].Gid)) || 'geocode-1',
+                Name: (parsedGeo.Feature && parsedGeo.Feature[0] && (parsedGeo.Feature[0].Name || (parsedGeo.Feature[0].Property && parsedGeo.Feature[0].Property.Address))) || q,
+                Geometry: { Type: 'point', Coordinates: coords },
+                Property: (parsedGeo.Feature && parsedGeo.Feature[0] && parsedGeo.Feature[0].Property) || {}
+              };
+              const out = { ResultInfo: { Count: 1, Total: 1, Start: 1, Status: 200 }, Feature: [feature] };
+              res.end(JSON.stringify(out));
+              return;
+            }
+          } catch (e) {
+            // geocode failed — fall through to return original empty result
+          }
+
+          // Fallback: return original localSearch response (likely empty)
+          res.end(data);
         });
       });
 
