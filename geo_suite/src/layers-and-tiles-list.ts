@@ -1973,6 +1973,71 @@ function setLayerVisibility(layerId, visible, renderUI = true) {
   try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
   return false;
 }
+// Utility: add a temporary target marker (returns layerId or null)
+async function addTargetMarker(lat, lng) {
+  try {
+    const svg = [
+'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
+'  <!-- Outer Ring -->',
+'  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />',
+'  <circle cx="128" cy="128" r="118" fill="none" stroke="#00ffff" stroke-width="2" opacity="0.5" />',
+'  ',
+'  <!-- Crosshair -->',
+'  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />',
+'  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />',
+'  ',
+'  <!-- Thick Posts -->',
+'  <line x1="128" y1="0" x2="128" y2="60" stroke="#00ffff" stroke-width="14" />',
+'  <line x1="128" y1="196" x2="128" y2="256" stroke="#00ffff" stroke-width="14" />',
+'  <line x1="0" y1="128" x2="60" y2="128" stroke="#00ffff" stroke-width="14" />',
+'  <line x1="196" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" />',
+'  ',
+'  <!-- Center Dot -->',
+'  <circle cx="128" cy="128" r="4" fill="#ffffff" />',
+'</svg>'
+    ].join('\n').trim();
+
+    const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+
+    const feature = {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "Point", coordinates: [lng, lat] }
+    };
+
+    let layerId = null;
+    try {
+      layerId = reearth.layers.add({
+        type: "simple",
+        title: "Target Marker",
+        data: {
+          type: "geojson",
+          value: {
+            type: "FeatureCollection",
+            features: [feature]
+          }
+        },
+        marker: {
+          style: "image",
+          image: imageUri,
+          imageSize: 0.6,
+          heightReference: "clamp",
+          height: 0
+        }
+      });
+    } catch (e) {
+      try { sendError('[addTargetMarker] reearth.layers.add threw:', e); } catch(_) {}
+    }
+
+    if (layerId) {
+      try { _pluginAddedLayerIds.add(layerId); } catch (_) {}
+    }
+    return layerId || null;
+  } catch (e) {
+    try { sendError('[addTargetMarker] error:', e); } catch(_) {}
+    return null;
+  }
+}
 
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", async (msg) => {
@@ -2078,73 +2143,6 @@ reearth.extension.on("message", async (msg) => {
         }
       } catch(e) {
         try { sendError('[updateCamPreset] error:', e); } catch(err){}
-      }
-    }
-
-    // Utility: add a temporary target marker (returns layerId or null)
-    async function addTargetMarker(lat, lng) {
-      try {
-        // Create SVG Reticle same as requestGeolocation
-        const svg = [
-'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
-'  <!-- Outer Ring -->',
-'  <circle cx="128" cy="128" r="110" fill="none" stroke="#00ffff" stroke-width="6" />',
-'  <circle cx="128" cy="128" r="118" fill="none" stroke="#00ffff" stroke-width="2" opacity="0.5" />',
-'  ',
-'  <!-- Crosshair -->',
-'  <line x1="128" y1="60" x2="128" y2="196" stroke="#00ffff" stroke-width="3" />',
-'  <line x1="60" y1="128" x2="196" y2="128" stroke="#00ffff" stroke-width="3" />',
-'  ',
-'  <!-- Thick Posts -->',
-'  <line x1="128" y1="0" x2="128" y2="60" stroke="#00ffff" stroke-width="14" />',
-'  <line x1="128" y1="196" x2="128" y2="256" stroke="#00ffff" stroke-width="14" />',
-'  <line x1="0" y1="128" x2="60" y2="128" stroke="#00ffff" stroke-width="14" />',
-'  <line x1="196" y1="128" x2="256" y2="128" stroke="#00ffff" stroke-width="14" />',
-'  ',
-'  <!-- Center Dot -->',
-'  <circle cx="128" cy="128" r="4" fill="#ffffff" />',
-'</svg>'
-        ].join('\n').trim();
-
-        const imageUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-
-        const feature = {
-          type: "Feature",
-          properties: {},
-          geometry: { type: "Point", coordinates: [lng, lat] }
-        };
-
-        let layerId = null;
-        try {
-          layerId = reearth.layers.add({
-            type: "simple",
-            title: "Target Marker",
-            data: {
-              type: "geojson",
-              value: {
-                type: "FeatureCollection",
-                features: [feature]
-              }
-            },
-            marker: {
-              style: "image",
-              image: imageUri,
-              imageSize: 0.6,
-              heightReference: "clamp",
-              height: 0
-            }
-          });
-        } catch (e) {
-          try { sendError('[addTargetMarker] reearth.layers.add threw:', e); } catch(_) {}
-        }
-
-        if (layerId) {
-          try { _pluginAddedLayerIds.add(layerId); } catch (_) {}
-        }
-        return layerId || null;
-      } catch (e) {
-        try { sendError('[addTargetMarker] error:', e); } catch(_) {}
-        return null;
       }
     }
 
