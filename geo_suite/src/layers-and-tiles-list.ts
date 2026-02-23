@@ -1271,25 +1271,7 @@ function getUI() {
         });
       });
 
-      // Manual FlyTo from editable camera fields
-      const manualFlyBtn = document.getElementById('cam-manual-flyto');
-      if (manualFlyBtn) {
-        manualFlyBtn.addEventListener('click', function() {
-          const lat = parseFloat(document.getElementById('cam-lat').value);
-          const lng = parseFloat(document.getElementById('cam-lng').value);
-          const height = parseFloat(document.getElementById('cam-height').value);
-          const heading = parseFloat(document.getElementById('cam-heading').value);
-          const pitch = parseFloat(document.getElementById('cam-pitch').value);
-          parent.postMessage({
-            action: 'flyToManual',
-            lat: isNaN(lat) ? 0 : lat,
-            lng: isNaN(lng) ? 0 : lng,
-            height: isNaN(height) ? 1000 : height,
-            heading: isNaN(heading) ? 0 : heading,
-            pitch: isNaN(pitch) ? 0 : pitch,
-          }, '*');
-        });
-      }
+      // Manual FlyTo from editable camera fields (removed: uses unified flyTo flow)
 
       // FlyTo current geolocation (browser) -> send to parent as manual flyTo
       const flyToCurrentBtn = document.getElementById('cam-flyto-current');
@@ -2111,8 +2093,9 @@ async function flyToAndNotify(lat, lng, opts) {
   const headingRad = (o.headingRad != null) ? o.headingRad : 0;
   const pitchRad = (o.pitchRad != null) ? o.pitchRad : -Math.PI / 2;
   const duration = (o.duration != null) ? o.duration : 2;
-  const addMarkerFlag = (o.addMarker == null) ? true : !!o.addMarker;
+  const addMarkerFlag = (o.addMarker === false) ? false : true;
   const postSearch = !!o.postSearchFlyMarker;
+  try { sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag, 'postSearch:', postSearch); } catch(e){}
 
   try {
     try { sendLog('[flyToAndNotify] flying to', lat, lng, 'height', height); } catch(e){}
@@ -2365,15 +2348,6 @@ reearth.extension.on("message", async (msg) => {
         try { reearth.ui.postMessage({ action: 'basemapChanged', url: url }); } catch(e){}
       } catch(e) {
         try { sendError('[setBasemap] error:', e); } catch(_){ }
-      }
-    } else if (msg.action === "flyToManual") {
-      try {
-        const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : 0;
-        const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : -Math.PI / 2;
-        const shouldAddMarker = (typeof msg.addMarker === 'undefined') ? true : !!msg.addMarker;
-        await flyToAndNotify(msg.lat, msg.lng, { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true });
-      } catch(e) {
-        try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
     } else if (msg.action === "flyToCamera") {
       try {
