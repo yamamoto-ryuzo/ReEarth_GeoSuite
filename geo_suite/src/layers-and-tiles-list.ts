@@ -1339,7 +1339,7 @@ function getUI() {
 
       // Listen for camera state updates from the extension
       // track scheduled removal timers by layerId to avoid duplicates
-      const __scheduledRemoveTimers: { [layerId: string]: number } = Object.create(null);
+      const __scheduledRemoveTimers = Object.create(null);
 
       window.addEventListener('message', function(e) {
         try {
@@ -1371,7 +1371,7 @@ function getUI() {
                             try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
                             try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
                           }, 8000);
-                          try { __scheduledRemoveTimers[lid] = tid as unknown as number; } catch(e) {}
+                          try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
                         }
                     }
             } else {
@@ -1395,7 +1395,7 @@ function getUI() {
                   try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
                   try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
                 }, 8000);
-                try { __scheduledRemoveTimers[lid] = tid as unknown as number; } catch(e) {}
+                try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
               }
             }
           } else if (msg.action === 'permalinkGenerated') {
