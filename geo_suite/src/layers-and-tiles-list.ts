@@ -1700,6 +1700,8 @@ function getUI() {
           // Call server proxy using GET to avoid CORS preflight. If server has key, do not include appid in query.
           const proxyEndpoint = 'https://re-earth-geo-suite.vercel.app/api/yahoo-search';
           try {
+            // expose query for debugging and notify parent that search started
+            try { window._lastYahooQuery = q; if (window.parent) window.parent.postMessage({ action: 'yahooDebug', event: 'search-start', query: q }, '*'); } catch(e){}
             resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
             const url = proxyEndpoint + '?query=' + encodeURIComponent(q) + (serverHasAppId ? '' : ('&appid=' + encodeURIComponent(inspectorAppId || '')));
             const res = await fetch(url, { method: 'GET' });
@@ -1712,9 +1714,12 @@ function getUI() {
               const addr = (f && f.Property && f.Property.Address) ? f.Property.Address : (f && f.Property && f.Property.Address) ? f.Property.Address : '';
               return { name: (f.Name || f.name || (f.Property && f.Property.Title) || ''), address: addr, Geometry: f.Geometry, geometry: f.geometry, coordinates: coord };
             });
+            // notify parent with basic result info for debugging
+            try { if (window.parent) window.parent.postMessage({ action: 'yahooDebug', event: 'search-result', query: q, count: (items && items.length) || 0, raw: data }, '*'); } catch(e){}
             renderSearchResults(items);
           } catch (e) {
-            try { console.error('Yahoo search failed', e); } catch(_){}
+            try { console.error('Yahoo search failed', e); } catch(_){ }
+            try { if (window.parent) window.parent.postMessage({ action: 'yahooDebug', event: 'search-error', query: q, detail: String(e) }, '*'); } catch(_){}
             if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。</li>';
           }
         };
