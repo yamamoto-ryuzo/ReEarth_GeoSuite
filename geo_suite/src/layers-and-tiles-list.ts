@@ -1362,17 +1362,18 @@ function getUI() {
                 if (msg.layerId) {
                         const lid = String(msg.layerId);
                         if (__scheduledRemoveTimers[lid]) {
-                          try { console.log('[UI] remove already scheduled for', lid); } catch(e) {}
+                          try { clearTimeout(__scheduledRemoveTimers[lid]); } catch(e) {}
+                          try { console.log('[UI] refreshing removeLayer timer for', lid); } catch(e) {}
                         } else {
                           try { console.log('[UI] scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-                          const tid = setTimeout(() => {
+                        }
+                        const tid = setTimeout(() => {
                             try { console.log('[UI] timer fired: requesting removeLayer for', lid); } catch(e) {}
                             try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
                             try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
                             try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
                           }, 8000);
                           try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
-                        }
                     }
             } else {
                 if (btn) {
@@ -1386,17 +1387,18 @@ function getUI() {
             if (layerId) {
               const lid = String(layerId);
               if (__scheduledRemoveTimers[lid]) {
-                try { console.log('[UI] searchFlyMarker received but remove already scheduled for', lid); } catch(e) {}
+                try { clearTimeout(__scheduledRemoveTimers[lid]); } catch(e) {}
+                try { console.log('[UI] refreshing searchFlyMarker remove timer for', lid); } catch(e) {}
               } else {
-                try { console.log('[UI] searchFlyMarker received (no existing schedule), scheduling removeLayer in 8000ms for', lid); } catch(e) {}
-                const tid = setTimeout(() => {
+                try { console.log('[UI] searchFlyMarker received, scheduling removeLayer in 8000ms for', lid); } catch(e) {}
+              }
+              const tid = setTimeout(() => {
                   try { console.log('[UI] timer fired (searchFlyMarker): requesting removeLayer for', lid); } catch(e) {}
                   try { parent.postMessage({ action: 'removeScheduledFired', layerId: lid }, '*'); } catch(e) {}
                   try { parent.postMessage({ action: 'removeLayer', layerId: lid }, '*'); } catch(e) {}
                   try { delete __scheduledRemoveTimers[lid]; } catch(e) {}
                 }, 8000);
                 try { __scheduledRemoveTimers[lid] = tid; } catch(e) {}
-              }
             }
           } else if (msg.action === 'permalinkGenerated') {
             
