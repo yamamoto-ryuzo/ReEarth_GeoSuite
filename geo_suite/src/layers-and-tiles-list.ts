@@ -2198,6 +2198,8 @@ async function flyToAndNotify(lat, lng, opts) {
   }
 }
 
+  // wrappers removed; normalize in message handler and call flyToAndNotify directly
+
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", async (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
@@ -2309,7 +2311,8 @@ reearth.extension.on("message", async (msg) => {
       try {
         const myLocation = await getCurrentLocation();
         if (myLocation) {
-          await flyToAndNotify(myLocation.lat, myLocation.lng, { height: 1000, headingRad: 0, pitchRad: -1.57, duration: 2, addMarker: true, postSearchFlyMarker: false });
+          const opts = { height: 1000, headingRad: 0, pitchRad: -Math.PI / 2, duration: 2, addMarker: true, postSearchFlyMarker: false };
+          await flyToAndNotify(myLocation.lat, myLocation.lng, opts);
           try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
         } else {
           try { sendError('[requestGeolocation] location not found'); } catch (e) { }
@@ -2321,14 +2324,15 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyToAndNotify") {
       try {
-        const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : 0;
-        const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : -Math.PI / 2;
+        const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : (typeof msg.headingRad === 'number' ? msg.headingRad : 0);
+        const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : (typeof msg.pitchRad === 'number' ? msg.pitchRad : -Math.PI / 2);
         const shouldAddMarker = (msg.addMarker === false) ? false : true;
-        await flyToAndNotify(msg.lat, msg.lng, { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true });
+        const opts = { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true };
+        await flyToAndNotify(msg.lat, msg.lng, opts);
       } catch(e) {
         try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
-    
+
     } else if (msg.action === "removeLayer") {
       if (msg.layerId) {
         try {

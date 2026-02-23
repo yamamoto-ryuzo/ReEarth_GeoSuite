@@ -2276,6 +2276,8 @@ async function getCurrentLocation() {
 // Helper: fly camera to coordinates, optionally add marker and notify UI
 // opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
 async function flyToAndNotify(lat, lng, opts) {
+// opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
+async function flyToAndNotify(lat, lng, opts) {
     const o = opts || {};
     const height = (o.height != null) ? o.height : 1000;
     const headingRad = (o.headingRad != null) ? o.headingRad : 0;
@@ -2491,6 +2493,9 @@ async function flyToAndNotify(lat, lng, opts) {
         return { success: false };
     }
 }
+
+// Simple wrapper for "Fly to Current Location" flow
+// (wrappers removed) Use unified flyToAndNotify with normalized opts below
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
 reearth.extension.on("message", async (msg) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22;
@@ -2663,7 +2668,9 @@ reearth.extension.on("message", async (msg) => {
             try {
                 const myLocation = await getCurrentLocation();
                 if (myLocation) {
-                    await flyToAndNotify(myLocation.lat, myLocation.lng, { height: 1000, headingRad: 0, pitchRad: -1.57, duration: 2, addMarker: true, postSearchFlyMarker: false });
+                    // normalize options for current-location flow
+                    const opts = { height: 1000, headingRad: 0, pitchRad: -Math.PI / 2, duration: 2, addMarker: true, postSearchFlyMarker: false };
+                    await flyToAndNotify(myLocation.lat, myLocation.lng, opts);
                     try {
                         sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng);
                     }
@@ -2693,10 +2700,12 @@ reearth.extension.on("message", async (msg) => {
         }
         else if (msg.action === "flyToAndNotify") {
             try {
-                const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : 0;
-                const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : -Math.PI / 2;
+                // normalize incoming message and call unified flyToAndNotify
+                const headingRad = (typeof msg.heading === 'number') ? (msg.heading * Math.PI / 180) : (typeof msg.headingRad === 'number' ? msg.headingRad : 0);
+                const pitchRad = (typeof msg.pitch === 'number') ? (msg.pitch * Math.PI / 180) : (typeof msg.pitchRad === 'number' ? msg.pitchRad : -Math.PI / 2);
                 const shouldAddMarker = (msg.addMarker === false) ? false : true;
-                await flyToAndNotify(msg.lat, msg.lng, { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true });
+                const opts = { height: msg.height || 1000, headingRad: headingRad, pitchRad: pitchRad, duration: 2, addMarker: shouldAddMarker, postSearchFlyMarker: true };
+                await flyToAndNotify(msg.lat, msg.lng, opts);
             }
             catch (e) {
                 try {
