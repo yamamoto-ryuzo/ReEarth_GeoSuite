@@ -611,6 +611,7 @@ function getUI() {
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
     <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
+    <button class="tab" data-target="search-panel" aria-selected="false">Search</button>
     <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
     <button class="tab" data-target="share-panel" aria-selected="false">Share</button>
@@ -638,6 +639,20 @@ function getUI() {
             <button id="reload-from-url-btn" class="btn-primary p-8" style="width:100%;font-size:0.85em;">Reload from Browser URL</button>
         </div>
     </div>
+  </div>
+
+  <div id="search-panel" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-weight:600;">Search (Yahoo)</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;" />
+      <button id="search-btn" class="btn-primary p-8">Search</button>
+    </div>
+    <div id="search-results" style="max-height:320px;overflow:auto;">
+      <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
+    </div>
+    <div style="font-size:0.8em;color:#666;margin-top:8px;">※Yahoo API の AppID（APIキー）はサーバー側または環境変数で管理してください。</div>
   </div>
 
   <div id="layers-panel">
@@ -772,7 +787,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','cams-panel','info-panel','settings-panel','legend-panel','share-panel'].forEach(id => {
+              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -951,6 +966,8 @@ function getUI() {
                       instruction.style.display = msg.urls.length > 0 ? 'none' : 'block';
                     }
                   }
+                } else if (msg.action === 'yahooAppId') {
+                  try { window._yahooAppId = msg.appid || ''; } catch(e) {}
                 }
               } catch (e) {}
             });
@@ -1584,6 +1601,112 @@ function getUI() {
           });
       }
 
+      // --- Search (Yahoo API) handlers ---
+      try {
+        const searchInput = document.getElementById('search-query');
+        const searchBtn = document.getElementById('search-btn');
+        const resultsList = document.getElementById('search-results-list');
+
+        const renderSearchResults = (items) => {
+          if (!resultsList) return;
+          resultsList.innerHTML = '';
+          if (!items || !items.length) {
+            const li = document.createElement('li');
+            li.style.padding = '8px';
+            li.style.color = '#666';
+            li.textContent = 'No results';
+            resultsList.appendChild(li);
+            return;
+          }
+          items.forEach((it, i) => {
+            try {
+              const li = document.createElement('li');
+              li.style.padding = '8px';
+              li.style.borderBottom = '1px solid #eee';
+              li.style.display = 'flex';
+              li.style.justifyContent = 'space-between';
+              li.style.alignItems = 'center';
+
+              const info = document.createElement('div');
+              info.style.flex = '1';
+              info.style.marginRight = '8px';
+              const title = document.createElement('div');
+              title.style.fontWeight = '600';
+              title.style.fontSize = '0.95em';
+              title.textContent = it.name || it.title || '';
+              const addr = document.createElement('div');
+              addr.style.fontSize = '0.85em';
+              addr.style.color = '#555';
+              addr.textContent = it.address || it.Address || '';
+              info.appendChild(title);
+              info.appendChild(addr);
+
+              const actions = document.createElement('div');
+              actions.style.display = 'flex';
+              actions.style.gap = '6px';
+
+              const flyBtn = document.createElement('button');
+              flyBtn.className = 'btn-primary p-6';
+              flyBtn.textContent = 'Fly';
+              flyBtn.addEventListener('click', () => {
+                try {
+                  const coords = it.coordinates || it.Coordinates || it.geometry || it.Geometry || null;
+                  let lat = null, lng = null;
+                  if (it.geometry && it.geometry.coordinates) {
+                    // GeoJSON style [lng, lat]
+                    lng = parseFloat(it.geometry.coordinates[0]);
+                    lat = parseFloat(it.geometry.coordinates[1]);
+                  } else if (it.Geometry && it.Geometry.Coordinates) {
+                    const parts = String(it.Geometry.Coordinates || it.coordinates || '').split(',');
+                    if (parts.length >= 2) { lng = parseFloat(parts[0]); lat = parseFloat(parts[1]); }
+                  } else if (it.coordinates && typeof it.coordinates === 'string') {
+                    const parts = it.coordinates.split(','); if (parts.length>=2) { lng = parseFloat(parts[0]); lat = parseFloat(parts[1]); }
+                  } else if (it.lon && it.lat) { lat = parseFloat(it.lat); lng = parseFloat(it.lon); }
+
+                  if (!isNaN(lat) && !isNaN(lng)) {
+                    parent.postMessage({ action: 'flyToManual', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -1.57 }, '*');
+                  }
+                } catch (e) { console.error('search fly error', e); }
+              });
+
+              actions.appendChild(flyBtn);
+              li.appendChild(info);
+              li.appendChild(actions);
+              resultsList.appendChild(li);
+            } catch (e) {}
+          });
+        };
+
+        const performSearch = async (q) => {
+          if (!q || !q.trim()) { renderSearchResults([]); return; }
+          // NOTE: Replace APPID with your Yahoo API AppID. Consider using a server-side proxy to avoid exposing keys / CORS.
+          const APPID = (window && window._yahooAppId) ? window._yahooAppId : 'YOUR_YAHOO_APPID_HERE';
+          const endpoint = 'https://map.yahooapis.jp/search/local/V1/localSearch?appid=' + encodeURIComponent(APPID) + '&query=' + encodeURIComponent(q) + '&output=json';
+          try {
+            resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
+            const res = await fetch(endpoint, { method: 'GET', mode: 'cors' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            // Yahoo Local Search returns Feature array
+            const features = (data && data.Feature) ? data.Feature : [];
+            const items = features.map(f => {
+              const coord = (f && f.Geometry && f.Geometry.Coordinates) ? String(f.Geometry.Coordinates) : (f && f.geometry && f.geometry.coordinates ? f.geometry.coordinates.join(',') : null);
+              const addr = (f && f.Property && f.Property.Address) ? f.Property.Address : (f && f.Property && f.Property.Address) ? f.Property.Address : '';
+              return { name: (f.Name || f.name || (f.Property && f.Property.Title) || ''), address: addr, Geometry: f.Geometry, geometry: f.geometry, coordinates: coord };
+            });
+            renderSearchResults(items);
+          } catch (e) {
+            try { console.error('Yahoo search failed', e); } catch(_){}
+            if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">Search failed</li>';
+          }
+        };
+
+        if (searchBtn && searchInput) {
+          searchBtn.addEventListener('click', () => performSearch(String(searchInput.value || '')));
+          searchInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); performSearch(String(searchInput.value || '')); } });
+        }
+      } catch (e) { console.error('search init failed', e); }
+
   });
 
   // On-screen plugin log removed (logs go to console only)
@@ -1690,6 +1813,11 @@ try {
     reearth.ui.postMessage({ action: 'shadowState', enabled: shadowEnabled });
     try { sendLog('[init] sending depthTest state to UI', { enabled: depthTest }); } catch(e){}
     reearth.ui.postMessage({ action: 'depthTestState', enabled: depthTest });
+    try {
+      const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+      const yahooAppId = (prop && prop.settings && prop.settings.yahooAppId) ? prop.settings.yahooAppId : (prop && prop.yahooAppId ? prop.yahooAppId : null);
+      try { reearth.ui.postMessage({ action: 'yahooAppId', appid: yahooAppId }); } catch(e) {}
+    } catch(e) {}
     // Attempt to send initial camera state if available
     try {
       const cam = (reearth.viewer && typeof reearth.viewer.getCamera === 'function') ? reearth.viewer.getCamera() : (reearth.view && (reearth.view.camera || reearth.view.getCamera && reearth.view.getCamera && typeof reearth.view.getCamera === 'function' ? reearth.view.getCamera() : null));

@@ -47,6 +47,13 @@ extensions:
                 base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
                 base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
                 base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
+            - id: yahooAppId
+              title: "Yahoo Local Search AppID"
+              description: "Yahoo Local Search API の AppID を入力します。ブラウザから直接利用するとキーが露出するため、可能であればサーバー側プロキシ経由での利用を推奨します。"
+              type: string
+              ui:
+                widget: password
+              defaultValue: ""
   - id: navigation-toolbar
     type: widget
     name: "Navigation Toolbar"
