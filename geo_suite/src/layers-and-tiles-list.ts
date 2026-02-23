@@ -653,7 +653,7 @@ function getUI() {
     <div id="search-results" style="max-height:320px;overflow:auto;">
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
     </div>
-    <div style="font-size:0.8em;color:#666;margin-top:8px;">※Yahoo API の AppID（APIキー）はサーバー側または環境変数で管理してください。</div>
+    <div style="font-size:0.9em;color:#a33;margin-top:8px;">注意: この検索はインスペクターに設定した `yahooAppId` をリクエスト時にサーバへ送信します。公開サイトでの利用は推奨しません。テスト用途または自己責任でのみ使用してください。</div>
   </div>
 
   <div id="layers-panel">
@@ -1682,11 +1682,19 @@ function getUI() {
           if (!q || !q.trim()) { renderSearchResults([]); return; }
           // NOTE: Replace APPID with your Yahoo API AppID. Consider using a server-side proxy to avoid exposing keys / CORS.
             const APPID = (window && window._yahooAppId) ? window._yahooAppId : null;
-            if (!APPID) { resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません</li>'; return; }
-            const endpoint = 'https://map.yahooapis.jp/search/local/V1/localSearch?appid=' + encodeURIComponent(APPID) + '&query=' + encodeURIComponent(q) + '&output=json';
+            if (!APPID) {
+              resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">yahooAppId: あなたのYahoo AppID</div></li>';
+              return;
+            }
+            // Call server proxy and send inspector AppID (note: this will expose the AppID in transit)
+            const proxyEndpoint = '/api/yahoo-search';
           try {
             resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
-            const res = await fetch(endpoint, { method: 'GET', mode: 'cors' });
+            const res = await fetch(proxyEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: q, appid: APPID })
+            });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             // Yahoo Local Search returns Feature array
@@ -1699,7 +1707,7 @@ function getUI() {
             renderSearchResults(items);
           } catch (e) {
             try { console.error('Yahoo search failed', e); } catch(_){}
-            if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">Search failed</li>';
+            if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。</li>';
           }
         };
 
