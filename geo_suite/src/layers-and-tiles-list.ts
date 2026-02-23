@@ -1684,7 +1684,7 @@ function getUI() {
           // do not send inspector AppID from the client. If not, fall back to inspector-provided AppID.
           let serverHasAppId = false;
           try {
-            const envRes = await fetch('/api/yahoo-env');
+            const envRes = await fetch('https://re-earth-geo-suite.vercel.app/api/yahoo-env');
             if (envRes && envRes.ok) {
               const envJson = await envRes.json();
               serverHasAppId = !!(envJson && envJson.hasAppId);
@@ -1698,7 +1698,7 @@ function getUI() {
           }
 
           // Call server proxy using GET to avoid CORS preflight. If server has key, do not include appid in query.
-          const proxyEndpoint = '/api/yahoo-search';
+          const proxyEndpoint = 'https://re-earth-geo-suite.vercel.app/api/yahoo-search';
           try {
             resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
             const url = proxyEndpoint + '?query=' + encodeURIComponent(q) + (serverHasAppId ? '' : ('&appid=' + encodeURIComponent(inspectorAppId || '')));
