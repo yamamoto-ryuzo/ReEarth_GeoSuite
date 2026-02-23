@@ -3099,18 +3099,17 @@ function restoreUserLayers(userRequests, force = false) {
     for (const [id, desired] of _userLayerVisibility.entries()) {
       const layer = layerMap.get(id);
       if (layer) {
-        // If force is true, update regardless of current state.
-                        const rmWhen = Date.now() + 8000;
-                        try { parent.postMessage({ action: 'removeScheduled', layerId: msg.layerId, when: rmWhen }, '*'); } catch(e) {}
-                        setTimeout(() => {
-                          try { console.log('[UI] timer fired: requesting removeLayer for', msg.layerId); } catch(e) {}
-                          try { parent.postMessage({ action: 'removeScheduledFired', layerId: msg.layerId }, '*'); } catch(e) {}
-                          try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e) {}
-                        }, 8000);
-            } else if (typeof reearth.layers.update === 'function') {
-                reearth.layers.update({ id: id, visible: !!desired });
-            }
-        }
+        try {
+          if (typeof reearth.layers.update === 'function') {
+            reearth.layers.update({ id: id, visible: !!desired });
+          } else {
+            // Fallback: toggle via show/hide if available
+            try {
+              if (!!desired && typeof reearth.layers.show === 'function') reearth.layers.show(id);
+              else if (!desired && typeof reearth.layers.hide === 'function') reearth.layers.hide(id);
+            } catch (e) {}
+          }
+        } catch (e) {}
       }
     }
   } catch(e) {
