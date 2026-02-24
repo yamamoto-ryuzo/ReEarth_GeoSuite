@@ -1683,8 +1683,8 @@ function getUI() {
 
                   if (!isNaN(lat) && !isNaN(lng)) {
                     // send heading/pitch in degrees: heading 0 = north, pitch -90 = top-down
-                    // Request the extension to add a temporary marker when flying to search result
-                    parent.postMessage({ action: 'flyMoveMarkAndNotify', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: true }, '*');
+                    // For search-origin flies we do not create a temporary marker (use plain flyTo)
+                    parent.postMessage({ action: 'flyMoveMarkAndNotify', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: false }, '*');
                   }
                 } catch (e) { console.error('search fly error', e); }
               });
@@ -2199,12 +2199,12 @@ async function getCurrentLocation() {
 
 // Helper: fly camera to coordinates, optionally add marker and notify UI
 // opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
-async function flyToAndNotify(lat, lng) {
+async function flyToAndNotify(lat, lng, opts) {
   const height = 1000;
   const headingRad = 0;
   const pitchRad = -Math.PI / 2;
   const duration = 2;
-  const addMarkerFlag = true;
+  const addMarkerFlag = !(opts && opts.addMarker === false);
   try { sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag); } catch(e){}
 
   try {
@@ -2457,18 +2457,16 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyMoveMarkAndNotify") {
       try {
-        try { sendLog('[message] flyMoveMarkAndNotify received', msg && msg.lat, msg && msg.lng); } catch(e){}
-        // Use unified helper so search-origin moves use the same logging/notification flow
-        const res = await moveToCoordsAndLog(msg.lat, msg.lng);
+        try { sendLog('[message] flyMoveMarkAndNotify received', msg && msg.lat, msg && msg.lng, 'addMarker:', msg && msg.addMarker); } catch(e){}
+        // Use flyToAndNotify directly and honor the addMarker flag from the UI
+        const res = await flyToAndNotify(msg.lat, msg.lng, { addMarker: !!(msg && msg.addMarker) });
         try { sendLog('[message] flyMoveMarkAndNotify result', res); } catch(e){}
-        // Safety: ensure UI receives geolocationResult for search-origin flows
+        // Ensure UI receives geolocationResult for search-origin flows
         try {
-          if (res && res.layerId) {
-            try { postToUI({ action: 'geolocationResult', success: res.success, lat: msg.lat, lng: msg.lng, layerId: res.layerId }); } catch(e){}
-          }
+          try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: msg.lat, lng: msg.lng, layerId: res && res.layerId }); } catch(e){}
         } catch(e) { try { sendError('[flyMoveMarkAndNotify] postToUI fallback threw', e); } catch(_){} }
       } catch(e) {
-        try { sendError('[flyMoveMarkAndNotify] moveToCoordsAndLog error:', e); } catch(err) {}
+        try { sendError('[flyMoveMarkAndNotify] flyToAndNotify error:', e); } catch(err) {}
       }
 
     } else if (msg.action === "removeLayer") {
