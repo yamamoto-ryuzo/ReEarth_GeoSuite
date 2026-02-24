@@ -1377,6 +1377,15 @@ function getUI() {
               }
             } catch(e) { try { console.error('[UI] btn update error', e); } catch(_){} }
 
+          } else if (msg.action === 'searchFlyMarker') {
+            try {
+              if (msg.layerId) {
+                setTimeout(() => {
+                  try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e){}
+                }, 8000);
+              }
+            } catch(e) { try { console.error('[UI] searchFlyMarker error', e); } catch(_){} }
+
           } else if (msg.action === 'permalinkGenerated') {
             
             const output = document.getElementById('permalink-output');
@@ -2102,7 +2111,7 @@ async function flyToAndNotify(lat, lng) {
   const pitchRad = -Math.PI / 2;
   const duration = 2;
   const addMarkerFlag = true;
-  try { sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag, 'postSearch:', postSearch); } catch(e){}
+  try { sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag); } catch(e){}
 
   try {
     try { sendLog('[flyToAndNotify] flying to', lat, lng, 'height', height); } catch(e){}
@@ -2144,16 +2153,17 @@ async function flyToAndNotify(lat, lng) {
       
       if (layerId) {
         try { sendLog('[flyToAndNotify] added marker layer', layerId); } catch(e){}
+        // 8秒後にマーカーを削除するようUIに通知
+        try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult failed', e); } catch(_){} }
+      } else {
+        // マーカーが追加できなかった場合も通知
+        try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: null }); } catch(e) {}
       }
-      // Schedule removal of the marker from extension side to centralize lifecycle
-      if (layerId) {
-        try { sendLog('[flyToAndNotify] delegating marker removal scheduling to UI for', layerId); } catch(e){}
-      }
-      // We now leave search-specific UI notifications to the caller.
+    } else {
+      // マーカー追加なしの場合
+      try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: null }); } catch(e) {}
     }
 
-    try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){ }
-    try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult failed', e); } catch(_){} }
     try { sendLog('[flyToAndNotify] completed for', lat, lng); } catch(e){}
     return { success: true, layerId: layerId };
   } catch (e) {
@@ -2288,13 +2298,8 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyToAndNotify") {
       try {
+        // 共通化のため、UIへの通知はflyToAndNotify内で行う
         const res = await flyToAndNotify(msg.lat, msg.lng);
-        try {
-          if (res && res.layerId) {
-            try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', res.layerId); } catch(e){}
-            postToUI({ action: 'searchFlyMarker', layerId: res.layerId });
-          }
-        } catch(e) { try { sendError('[flyToAndNotify] post searchFlyMarker failed', e); } catch(_){} }
       } catch(e) {
         try { sendError('[flyToAndNotify] error:', e); } catch(err){}
       }
