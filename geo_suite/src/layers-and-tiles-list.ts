@@ -2154,6 +2154,24 @@ async function flyToAndNotify(lat, lng) {
   }
 }
 
+// Orchestrator: obtain current location, fly, add marker and notify UI
+async function performGeolocationAndNotify() {
+  try {
+    const myLocation = await getCurrentLocation();
+    if (myLocation) {
+      const res = await flyToAndNotify(myLocation.lat, myLocation.lng);
+      try { sendLog('[performGeolocationAndNotify] flew to', myLocation.lat, myLocation.lng); } catch (e) {}
+      try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: myLocation.lat, lng: myLocation.lng, layerId: res && res.layerId }); } catch (e) {}
+    } else {
+      try { sendError('[performGeolocationAndNotify] location not found'); } catch (e) {}
+      try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) {}
+    }
+  } catch (e) {
+    try { sendError('[performGeolocationAndNotify] error:', e); } catch (err) {}
+    try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) {}
+  }
+}
+
   // wrappers removed; normalize in message handler and call flyToAndNotify directly
 
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
@@ -2265,19 +2283,9 @@ reearth.extension.on("message", async (msg) => {
 
     else if (msg.action === "requestGeolocation") {
       try {
-        const myLocation = await getCurrentLocation();
-        if (myLocation) {
-          const res = await flyToAndNotify(myLocation.lat, myLocation.lng);
-          try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch (e) { }
-          // After flying, post the specific result message for geolocation
-          try { postToUI({ action: 'geolocationResult', success: res.success, lat: myLocation.lat, lng: myLocation.lng, layerId: res.layerId }); } catch(e){}
-        } else {
-          try { sendError('[requestGeolocation] location not found'); } catch (e) { }
-          try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) { }
-        }
+        await performGeolocationAndNotify();
       } catch (e) {
-          try { sendError('[requestGeolocation] error:', e); } catch (err) { }
-          try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) { }
+        try { sendError('[requestGeolocation] performGeolocationAndNotify failed', e); } catch(_) {}
       }
     } else if (msg.action === "flyToAndNotify") {
       try {
