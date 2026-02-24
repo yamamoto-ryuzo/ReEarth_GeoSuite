@@ -58,7 +58,13 @@ const generateLayerItem = (layer, isPreset, displayName) => {
 
 function getUI() {
   // Build layer items from current layers so UI reflects runtime changes
-  const layers = (reearth.layers && reearth.layers.layers) || [];
+  const layers = (reearth.layers && reearth.layers.layers) || []; // Ensure layers are fetched correctly
+  
+  // Check if layers are available
+  if (!layers.length) {
+    console.warn('[getUI] No layers found.');
+    return '';
+  }
 
   // Separate preset layers and plugin-added layers, but exclude basemap layers
   const presetLayers = [];
