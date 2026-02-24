@@ -1342,6 +1342,22 @@ function getUI() {
 
       // Listen for camera state updates from the extension
       
+      // UI-managed map of scheduled removal timers for temporary marker layers
+      const _uiMarkerRemovalTimers = Object.create(null);
+      function scheduleLayerRemoval(layerId, ttlMs = 8000) {
+        try {
+          if (!layerId) return;
+          // clear existing timer for this layer if present
+          if (_uiMarkerRemovalTimers[layerId]) {
+            try { clearTimeout(_uiMarkerRemovalTimers[layerId]); } catch(e) {}
+            try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
+          }
+          _uiMarkerRemovalTimers[layerId] = setTimeout(() => {
+            try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+            try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
+          }, ttlMs);
+        } catch(e) {}
+      }
 
       window.addEventListener('message', function(e) {
         try {
@@ -1364,9 +1380,8 @@ function getUI() {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 try {
                   if (msg.layerId) {
-                    setTimeout(() => {
-                      try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e){}
-                    }, 8000);
+                    // Use shared scheduler so search and geolocation both trigger removal
+                    scheduleLayerRemoval(msg.layerId, 8000);
                   }
                 } catch(e) {}
               } else {
