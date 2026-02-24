@@ -1352,6 +1352,7 @@ function getUI() {
             try { clearTimeout(_uiMarkerRemovalTimers[layerId]); } catch(e) {}
             try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
           }
+          try { console.log('[UI] scheduleLayerRemoval', layerId, ttlMs); } catch(e) {}
           _uiMarkerRemovalTimers[layerId] = setTimeout(() => {
             try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
             try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
@@ -1376,6 +1377,7 @@ function getUI() {
           } else if (msg.action === 'geolocationResult') {
             try {
               const btn = document.getElementById('cam-flyto-current');
+              try { console.log('[UI] geolocationResult received:', msg); } catch(e) {}
               if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 try {
@@ -2167,6 +2169,7 @@ async function moveToCoordinates(lat, lng) {
   try {
     const res = await flyToAndNotify(lat, lng);
     try { sendLog('[moveToCoordinates] result', lat, lng, res); } catch (e) {}
+    try { sendLog('[moveToCoordinates] posting geolocationResult', { lat, lng, layerId: res && res.layerId, success: res && res.success }); } catch (e) {}
     try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId }); } catch (e) {}
     return res;
   } catch (e) {
@@ -2178,6 +2181,7 @@ async function moveToCoordinates(lat, lng) {
 
 // Helper: move to coordinates and log the action. Uses a unified log tag.
 async function moveToCoordsAndLog(lat, lng) {
+  try { sendLog('[moveToCoords] called', lat, lng); } catch (e) {}
   try {
     const res = await moveToCoordinates(lat, lng);
     try { sendLog('[moveToCoords] moved to', lat, lng); } catch (e) {}
