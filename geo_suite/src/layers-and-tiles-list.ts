@@ -2147,14 +2147,40 @@ async function flyToAndNotify(lat, lng) {
   }
 }
 
+// Simple wrapper: move to given coordinates, add marker and notify UI
+async function moveToCoordinates(lat, lng) {
+  try {
+    const res = await flyToAndNotify(lat, lng);
+    try { sendLog('[moveToCoordinates] result', lat, lng, res); } catch (e) {}
+    try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId }); } catch (e) {}
+    return res;
+  } catch (e) {
+    try { sendError('[moveToCoordinates] error:', e); } catch (err) {}
+    try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) {}
+    return { success: false, layerId: null };
+  }
+}
+
+// Helper: move to coordinates and log the action. Uses a unified log tag.
+async function moveToCoordsAndLog(lat, lng) {
+  try {
+    const res = await moveToCoordinates(lat, lng);
+    try { sendLog('[moveToCoords] moved to', lat, lng); } catch (e) {}
+    return res;
+  } catch (e) {
+    try { sendError('[moveToCoords] error:', e); } catch (err) {}
+    try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) {}
+    return { success: false, layerId: null };
+  }
+}
+
 // Orchestrator: obtain current location, fly, add marker and notify UI
 async function performGeolocationAndNotify() {
   try {
     const myLocation = await getCurrentLocation();
     if (myLocation) {
-      const res = await flyMoveMarkAndNotify(myLocation.lat, myLocation.lng, 'geolocation');
-      try { sendLog('[performGeolocationAndNotify] flew to', myLocation.lat, myLocation.lng); } catch (e) {}
-      return res;
+      // delegate to extracted helper that accepts lat,lng
+      return await moveToCoordsAndLog(myLocation.lat, myLocation.lng, 'performGeolocationAndNotify');
     } else {
       try { sendError('[performGeolocationAndNotify] location not found'); } catch (e) {}
       try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) {}
@@ -2169,15 +2195,12 @@ async function performGeolocationAndNotify() {
 
 // Wrapper: move, mark, and notify UI for different call sites
 async function flyMoveMarkAndNotify(lat, lng, kind) {
-    try {
-    const res = await flyToAndNotify(lat, lng);
-    try { sendLog('[flyMoveMarkAndNotify] completed', kind, lat, lng, res); } catch (e) {}
-    // Normalize: always notify UI using geolocationResult so UI handles marker lifecycle uniformly
-    try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId }); } catch (e) {}
-    return res;
+  // Kept for compatibility: delegate to moveToCoordinates which implements the simple two-step flow
+  try {
+    return await moveToCoordinates(lat, lng);
   } catch (e) {
-    try { sendError('[flyMoveMarkAndNotify] error:', e); } catch (err) {}
-    try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) {}
+    try { sendError('[flyMoveMarkAndNotify] delegate error:', e); } catch (_) {}
+    try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (_) {}
     return { success: false, layerId: null };
   }
 }
@@ -2299,10 +2322,10 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyMoveMarkAndNotify") {
       try {
-        const kind = msg.kind || 'geolocation';
-        await flyMoveMarkAndNotify(msg.lat, msg.lng, kind);
+        // Use unified helper so search-origin moves use the same logging/notification flow
+        await moveToCoordsAndLog(msg.lat, msg.lng);
       } catch(e) {
-        try { sendError('[flyMoveMarkAndNotify] flyMoveMarkAndNotify error:', e); } catch(err){}
+        try { sendError('[flyMoveMarkAndNotify] moveToCoordsAndLog error:', e); } catch(err) {}
       }
 
     } else if (msg.action === "removeLayer") {
