@@ -1668,7 +1668,7 @@ function getUI() {
                   if (!isNaN(lat) && !isNaN(lng)) {
                     // send heading/pitch in degrees: heading 0 = north, pitch -90 = top-down
                     // Request the extension to add a temporary marker when flying to search result
-                    parent.postMessage({ action: 'flyToAndNotify', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: true }, '*');
+                    parent.postMessage({ action: 'flyMoveMarkAndNotify', lat: lat, lng: lng, kind: 'search', height: 1000, heading: 0, pitch: -90, addMarker: true }, '*');
                   }
                 } catch (e) { console.error('search fly error', e); }
               });
@@ -2159,16 +2159,38 @@ async function performGeolocationAndNotify() {
   try {
     const myLocation = await getCurrentLocation();
     if (myLocation) {
-      const res = await flyToAndNotify(myLocation.lat, myLocation.lng);
+      const res = await flyMoveMarkAndNotify(myLocation.lat, myLocation.lng, 'geolocation');
       try { sendLog('[performGeolocationAndNotify] flew to', myLocation.lat, myLocation.lng); } catch (e) {}
-      try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: myLocation.lat, lng: myLocation.lng, layerId: res && res.layerId }); } catch (e) {}
+      return res;
     } else {
       try { sendError('[performGeolocationAndNotify] location not found'); } catch (e) {}
       try { postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' }); } catch (e) {}
+      return { success: false };
     }
   } catch (e) {
     try { sendError('[performGeolocationAndNotify] error:', e); } catch (err) {}
     try { postToUI({ action: 'geolocationResult', success: false, reason: 'error' }); } catch (e) {}
+    return { success: false };
+  }
+}
+
+// Wrapper: move, mark, and notify UI for different call sites
+async function flyMoveMarkAndNotify(lat, lng, kind) {
+  try {
+    const res = await flyToAndNotify(lat, lng);
+    try { sendLog('[flyMoveMarkAndNotify] completed', kind, lat, lng, res); } catch (e) {}
+    if (kind === 'geolocation') {
+      try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId }); } catch (e) {}
+    } else if (kind === 'search') {
+      try { if (res && res.layerId) postToUI({ action: 'searchFlyMarker', layerId: res.layerId }); } catch (e) {}
+    } else {
+      try { postToUI({ action: 'flyResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId, kind: kind }); } catch (e) {}
+    }
+    return res;
+  } catch (e) {
+    try { sendError('[flyMoveMarkAndNotify] error:', e); } catch (err) {}
+    try { postToUI({ action: (kind === 'search' ? 'searchFlyMarker' : 'geolocationResult'), success: false, reason: 'error' }); } catch (e) {}
+    return { success: false, layerId: null };
   }
 }
 
@@ -2287,18 +2309,12 @@ reearth.extension.on("message", async (msg) => {
       } catch (e) {
         try { sendError('[requestGeolocation] performGeolocationAndNotify failed', e); } catch(_) {}
       }
-    } else if (msg.action === "flyToAndNotify") {
+    } else if (msg.action === "flyMoveMarkAndNotify") {
       try {
-        const res = await flyToAndNotify(msg.lat, msg.lng);
-        // After flying, post the specific result message for search
-        try {
-          if (res && res.layerId) {
-            try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', res.layerId); } catch(e){}
-            postToUI({ action: 'searchFlyMarker', layerId: res.layerId });
-          }
-        } catch(e) { try { sendError('[flyToAndNotify] post searchFlyMarker failed', e); } catch(_){} }
+        const kind = msg.kind || 'search';
+        await flyMoveMarkAndNotify(msg.lat, msg.lng, kind);
       } catch(e) {
-        try { sendError('[flyToAndNotify] error:', e); } catch(err){}
+        try { sendError('[flyMoveMarkAndNotify] flyMoveMarkAndNotify error:', e); } catch(err){}
       }
 
     } else if (msg.action === "removeLayer") {
