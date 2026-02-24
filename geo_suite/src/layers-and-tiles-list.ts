@@ -2313,6 +2313,21 @@ try {
   }
 } catch(e) {}
 
+// Debug helper: allow posting a geolocationResult from the console to test UI TTL flow
+try {
+  if (typeof window !== 'undefined') {
+    window.__debug_postGeolocation = function(obj) {
+      try { sendLog('[__debug_postGeolocation] posting geolocationResult', obj); } catch(_){}
+      try {
+        const payload = Object.assign({ action: 'geolocationResult' }, obj || {});
+        try { postToUI(payload); } catch(e) { try { sendError('[__debug_postGeolocation] postToUI threw', e); } catch(_){} }
+      } catch (e) {
+        try { sendError('[__debug_postGeolocation] error', e); } catch(_){}
+      }
+    };
+  }
+} catch(e) {}
+
 reearth.extension.on("message", async (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
