@@ -2296,6 +2296,23 @@ async function flyMoveMarkAndNotify(lat, lng, kind) {
   // wrappers removed; normalize in message handler and call flyToAndNotify directly
 
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
+// Fallback listener: also listen for raw window messages (parent.postMessage from UI)
+try {
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('message', function(e) {
+      try {
+        const msg = e && e.data ? e.data : null;
+        if (!msg) return;
+        // Only handle removeLayer here to avoid duplicating full message handling
+        if (msg.action === 'removeLayer' && msg.layerId) {
+          try { sendLog('[window.message listener] forwarding removeLayer for', msg.layerId); } catch(e) {}
+          try { removeTargetMarker(msg.layerId); } catch(e) { try { sendError('[window.message listener] removeTargetMarker threw', e); } catch(_){} }
+        }
+      } catch (e) {}
+    });
+  }
+} catch(e) {}
+
 reearth.extension.on("message", async (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
