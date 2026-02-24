@@ -2085,41 +2085,28 @@ function removeTargetMarker(layerId) {
     }
 
     let removed = false;
+
+    // Try removal attempts (multiple immediate tries to handle environment quirks)
     try {
       if (reearth && reearth.layers) {
-        if (typeof reearth.layers.delete === 'function') {
+        const tryRemoveOnce = () => {
           try {
-            const r = reearth.layers.delete(layerId);
-            try { sendLog('[removeTargetMarker] reearth.layers.delete returned:', safeStringify(r)); } catch(_){}
-            removed = true;
-          } catch (e) {
-            try { sendError('[removeTargetMarker] reearth.layers.delete threw', e); } catch(_){}
-            // try remove fallback
-            try {
-              const r2 = (typeof reearth.layers.remove === 'function') ? reearth.layers.remove(layerId) : null;
-              try { sendLog('[removeTargetMarker] reearth.layers.remove returned:', safeStringify(r2)); } catch(_){}
-              removed = true;
-            } catch (e2) {
-              try { sendError('[removeTargetMarker] reearth.layers.remove threw', e2); } catch(_){}
-              removed = false;
+            if (typeof reearth.layers.delete === 'function') {
+              try { reearth.layers.delete(layerId); } catch (e) { try { sendError('[removeTargetMarker] delete threw', e); } catch(_){} }
+            } else if (typeof reearth.layers.remove === 'function') {
+              try { reearth.layers.remove(layerId); } catch (e) { try { sendError('[removeTargetMarker] remove threw', e); } catch(_){} }
+            } else {
+              try { sendError('[removeTargetMarker] no delete/remove API available on reearth.layers'); } catch(_){}
             }
-          }
-        } else if (typeof reearth.layers.remove === 'function') {
-          try {
-            const r = reearth.layers.remove(layerId);
-            try { sendLog('[removeTargetMarker] reearth.layers.remove returned:', safeStringify(r)); } catch(_){}
-            removed = true;
-          } catch (e) {
-            try { sendError('[removeTargetMarker] reearth.layers.remove threw', e); } catch(_){}
-            removed = false;
-          }
-        } else {
-          try { sendError('[removeTargetMarker] no delete/remove API available on reearth.layers'); } catch(_){}
-        }
+          } catch (e) { try { sendError('[removeTargetMarker] tryRemoveOnce error', e); } catch(_){} }
+        };
+
+        // Initial attempt + a few immediate retries
+        tryRemoveOnce();
+        for (let i = 0; i < 2; i++) tryRemoveOnce();
       }
     } catch (e) {
       try { sendError('[removeTargetMarker] remove attempt error', e); } catch(_){}
-      removed = false;
     }
 
     // clear any scheduled timer for this layer
@@ -2132,13 +2119,41 @@ function removeTargetMarker(layerId) {
 
     try { _pluginAddedLayerIds.delete(layerId); } catch (e) {}
 
+    // Verify whether the layer still exists; if so, try a fallback (hide via update)
+    try {
+      const listFn = (reearth && reearth.layers && typeof reearth.layers.list === 'function') ? reearth.layers.list : null;
+      const layersAfter = listFn ? listFn() : (reearth && reearth.layers && reearth.layers.layers ? reearth.layers.layers : []);
+      const existsAfter = Array.isArray(layersAfter) && layersAfter.some(l => l && l.id === layerId);
+      try { sendLog('[removeTargetMarker] existsAfter initial check?', existsAfter); } catch(_){}
+      if (!existsAfter) {
+        removed = true;
+      } else {
+        // Fallback: try hide (update) if available
+        try {
+          if (reearth && reearth.layers && typeof reearth.layers.update === 'function') {
+            try { reearth.layers.update({ id: layerId, visible: false }); } catch (e) { try { sendError('[removeTargetMarker] update threw', e); } catch(_){} }
+            try { sendLog('[removeTargetMarker] fallback update visible:false called for', layerId); } catch(_){}
+          }
+        } catch (e) { try { sendError('[removeTargetMarker] fallback update error', e); } catch(_){} }
+
+        // Re-check presence
+        const layersFinal = listFn ? listFn() : (reearth && reearth.layers && reearth.layers.layers ? reearth.layers.layers : []);
+        const existsFinal = Array.isArray(layersFinal) && layersFinal.some(l => l && l.id === layerId);
+        try { sendLog('[removeTargetMarker] existsAfter final check?', existsFinal); } catch(_){}
+        removed = !existsFinal;
+      }
+    } catch (e) {
+      try { sendError('[removeTargetMarker] error verifying existence', e); } catch(_){}
+      removed = false;
+    }
+
     // List layers after removal for diagnostics
     try {
       if (reearth && reearth.layers) {
-        const listFn = (typeof reearth.layers.list === 'function') ? reearth.layers.list : null;
-        const layersAfter = listFn ? listFn() : (reearth.layers.layers || []);
-        try { sendLog('[removeTargetMarker] layers after remove count:', (layersAfter && layersAfter.length) || 0); } catch(_){}
-        try { sendLog('[removeTargetMarker] layers after sample:', safeStringify((layersAfter || []).slice(-5).map(l => ({ id: l && l.id, title: l && l.title })))); } catch(_){}
+        const listFn2 = (typeof reearth.layers.list === 'function') ? reearth.layers.list : null;
+        const layersAfter2 = listFn2 ? listFn2() : (reearth.layers.layers || []);
+        try { sendLog('[removeTargetMarker] layers after remove count:', (layersAfter2 && layersAfter2.length) || 0); } catch(_){}
+        try { sendLog('[removeTargetMarker] layers after sample:', safeStringify((layersAfter2 || []).slice(-5).map(l => ({ id: l && l.id, title: l && l.title })))); } catch(_){}
       }
     } catch (e) {
       try { sendError('[removeTargetMarker] error listing layers after remove', e); } catch(_){}
