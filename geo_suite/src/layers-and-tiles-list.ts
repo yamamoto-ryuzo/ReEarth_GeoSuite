@@ -2171,29 +2171,6 @@ async function moveToCoordinates(lat, lng) {
     try { sendLog('[moveToCoordinates] result', lat, lng, res); } catch (e) {}
     try { sendLog('[moveToCoordinates] posting geolocationResult', { lat, lng, layerId: res && res.layerId, success: res && res.success }); } catch (e) {}
     try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId }); } catch (e) {}
-
-    // Fallback: schedule extension-side removal of the temporary marker after TTL
-    try {
-      const layerId = res && res.layerId;
-      const ttlMs = 8000;
-      if (layerId) {
-        try { sendLog('[moveToCoordinates] scheduling fallback removeTargetMarker', layerId, ttlMs); } catch(e){}
-        if (typeof setTimeout === 'function') {
-          setTimeout(async () => {
-            try {
-              try { sendLog('[moveToCoordinates] fallback removing layer', layerId); } catch(e){}
-              removeTargetMarker(layerId);
-              try { postToUI({ action: 'searchFlyMarkerRemoved', layerId: layerId }); } catch(e){}
-            } catch (e) {
-              try { sendError('[moveToCoordinates] fallback removeTargetMarker threw', e); } catch(_){}
-            }
-          }, ttlMs);
-        } else {
-          try { sendError('[moveToCoordinates] setTimeout not available; cannot schedule fallback removal for', layerId); } catch(e){}
-        }
-      }
-    } catch(e) { try { sendError('[moveToCoordinates] scheduling fallback threw', e); } catch(_){} }
-
     return res;
   } catch (e) {
     try { sendError('[moveToCoordinates] error:', e); } catch (err) {}
@@ -2364,8 +2341,16 @@ reearth.extension.on("message", async (msg) => {
       }
     } else if (msg.action === "flyMoveMarkAndNotify") {
       try {
+        try { sendLog('[message] flyMoveMarkAndNotify received', msg && msg.lat, msg && msg.lng); } catch(e){}
         // Use unified helper so search-origin moves use the same logging/notification flow
-        await moveToCoordsAndLog(msg.lat, msg.lng);
+        const res = await moveToCoordsAndLog(msg.lat, msg.lng);
+        try { sendLog('[message] flyMoveMarkAndNotify result', res); } catch(e){}
+        // Safety: ensure UI receives geolocationResult for search-origin flows
+        try {
+          if (res && res.layerId) {
+            try { postToUI({ action: 'geolocationResult', success: res.success, lat: msg.lat, lng: msg.lng, layerId: res.layerId }); } catch(e){}
+          }
+        } catch(e) { try { sendError('[flyMoveMarkAndNotify] postToUI fallback threw', e); } catch(_){} }
       } catch(e) {
         try { sendError('[flyMoveMarkAndNotify] moveToCoordsAndLog error:', e); } catch(err) {}
       }
