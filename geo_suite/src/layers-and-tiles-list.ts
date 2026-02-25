@@ -299,12 +299,12 @@ function getUI() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 2px 0;
-    padding: 6px 6px;
+    margin: 1px 0;
+    padding: 3px 6px;
     line-height: 1.2;
     background-color: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(4px);
-    min-height: 2em;
+    min-height: 1.6em;
     border-radius: 6px;
     transition: background-color 0.15s, transform 0.1s;
     border: 1px solid rgba(0,0,0,0.05);
@@ -351,9 +351,9 @@ function getUI() {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 6px 4px;
-    margin-top: 6px;
-    margin-bottom: 2px;
+    padding: 3px 4px;
+    margin-top: 2px;
+    margin-bottom: 1px;
     background-color: rgba(240, 242, 245, 0.8);
     border-radius: 6px;
     cursor: pointer;
