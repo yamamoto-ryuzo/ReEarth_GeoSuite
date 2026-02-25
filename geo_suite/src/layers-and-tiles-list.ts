@@ -164,7 +164,9 @@ function getUI() {
   const renderNode = (node, pathPrefix = '') => {
     // Add exclusive class if this node is marked exclusive (meaning its children are exclusive)
     const isExclusiveNode = !!node.exclusive;
-    let html = `<ul class="layers-list ${isExclusiveNode ? 'exclusive-list' : ''}">`;
+    // Hide nested lists by default (initial state: collapsed)
+    const style = pathPrefix ? 'style="display:none;"' : '';
+    let html = `<ul class="layers-list ${isExclusiveNode ? 'exclusive-list' : ''}" ${style}>`;
     // First render direct layers at this node
     node.layers.forEach(layer => {
       // If title contained '/', and node path came from title, use last segment as displayName
@@ -188,7 +190,7 @@ function getUI() {
 
         html += `
           <li class="layer-group">
-            <div class="group-header">
+            <div class="group-header collapsed">
                 <input type="checkbox" class="group-checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" data-exclusive="${isExclusive ? 'true' : 'false'}" checked />
                 <span class="group-name">${child.name}</span>
             </div>
