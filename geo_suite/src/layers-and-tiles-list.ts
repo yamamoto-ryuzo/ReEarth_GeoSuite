@@ -284,35 +284,13 @@ function getUI() {
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
-  /* Global Layout - Fix height to prevent infinite scroll */
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden; /* Force container scroll */
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Scrollable Panels Configuration */
-  #layers-panel, #cams-panel, #info-panel, #settings-panel, #search-panel {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
+  /* Scrollable Lists Configuration */
+  /* Only apply scroll to the list containers, not the whole body layout */
+  .layers-list, #search-results {
+    max-height: 65vh; /* Limit list height to fit in typical widget window */
     overflow-y: auto;
-    min-height: 0;
     scrollbar-width: thin;
-    padding: 4px;
-    box-sizing: border-box;
-    max-height: none; 
-  }
-  
-  /* Ensure tab bar stays at top */
-  .tab-bar {
-    flex: 0 0 auto;
-    width: 100%;
-    box-sizing: border-box;
+    padding-right: 2px;
   }
 
   ::-webkit-scrollbar { width: 6px; }
