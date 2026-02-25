@@ -284,13 +284,37 @@ function getUI() {
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
-  /* Scrollable Panels Configuration */
-  #layers-panel, #cams-panel {
-    max-height: calc(100vh - 50px); /* Adjust for tab bar height */
-    overflow-y: auto;
-    scrollbar-width: thin;
-    padding-right: 2px;
+  /* Global Layout - Fix height to prevent infinite scroll */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Force container scroll */
+    display: flex;
+    flex-direction: column;
   }
+
+  /* Scrollable Panels Configuration */
+  #layers-panel, #cams-panel, #info-panel, #settings-panel, #search-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    scrollbar-width: thin;
+    padding: 4px;
+    box-sizing: border-box;
+    max-height: none; 
+  }
+  
+  /* Ensure tab bar stays at top */
+  .tab-bar {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
