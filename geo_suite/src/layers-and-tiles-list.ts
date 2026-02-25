@@ -3275,7 +3275,23 @@ function restoreUserLayers(userRequests, force = false) {
     // Then apply other layers (so they render above basemap)
     for (let i = 0; i < otherEntries.length; i++) {
       const [id, desired] = otherEntries[i];
-      applyEntry(id, desired);
+      // If the desired state is visible, try toggling off->on to force a visual "reset".
+      if (desired) {
+        try {
+          if (typeof reearth.layers.update === 'function') {
+            // toggle via update API
+            reearth.layers.update({ id: id, visible: false });
+            try { reearth.layers.update({ id: id, visible: true }); } catch(e) {}
+          } else {
+            // fallback to hide/show
+            try { if (typeof reearth.layers.hide === 'function') reearth.layers.hide(id); } catch(e) {}
+            try { if (typeof reearth.layers.show === 'function') reearth.layers.show(id); } catch(e) {}
+          }
+        } catch (e) {}
+      } else {
+        // simply apply hidden state
+        applyEntry(id, desired);
+      }
     }
   } catch(e) {
     // ignore errors during restore
