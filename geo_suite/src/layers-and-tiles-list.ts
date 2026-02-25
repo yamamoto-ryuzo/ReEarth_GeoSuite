@@ -1033,11 +1033,9 @@ function getUI() {
             if (!id) continue;
             const desired = !!checkbox.checked;
             requests[id] = desired;
-            try {
-              parent.postMessage({ type: desired ? 'show' : 'hide', layerId: id }, '*');
-            } catch (e) {}
           }
-          // Also send consolidated restore message for compatibility with other handlers
+          // Send consolidated restore message; let extension decide how to apply without
+          // sending individual show/hide messages from the UI which may change stacking order.
           try { parent.postMessage({ action: 'restoreUserLayers', requests: requests }, '*'); } catch(e) {}
         });
       }
@@ -1975,14 +1973,7 @@ function urlsEqual(a, b) {
 function setLayerVisibility(layerId, visible, renderUI = true) {
   if (!layerId) return false;
   try {
-    // Prefer the show/hide API which works for system/preset layers in most runtimes
-    if (reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
-      if (visible) reearth.layers.show(layerId); else reearth.layers.hide(layerId);
-      try { sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible); } catch(_){ }
-      try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
-      return true;
-    }
-    // Fallback: try update if available
+    // Prefer update API first to avoid potential show() side-effects (like moving layer to top).
     if (reearth.layers && typeof reearth.layers.update === 'function') {
       try {
         reearth.layers.update({ id: layerId, visible: !!visible });
@@ -1992,6 +1983,13 @@ function setLayerVisibility(layerId, visible, renderUI = true) {
       } catch (e) {
         try { sendError('[setLayerVisibility] layers.update threw', e); } catch(_){ }
       }
+    }
+    // Fallback: use show/hide if update is not available
+    if (reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
+      if (visible) reearth.layers.show(layerId); else reearth.layers.hide(layerId);
+      try { sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible); } catch(_){ }
+      try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
+      return true;
     }
   } catch (e) {
     try { sendError('[setLayerVisibility] unexpected error', e); } catch(_){ }
