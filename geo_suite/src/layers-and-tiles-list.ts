@@ -1031,10 +1031,10 @@ function getUI() {
       const restoreBtn = document.getElementById("restore-user-layers");
       if (restoreBtn) {
         restoreBtn.addEventListener("click", () => {
-          // Iterate UI checkboxes in DOM order (top-down) and apply visibility using toggleLayer.
-          // This resets the view by hiding then showing layers that should be visible.
+          // Iterate UI checkboxes in REVERSE DOM order (bottom-up) and apply visibility using toggleLayer.
+          // Since 'show' brings a layer to the front, processing from bottom to top ensures the top UI layer is shown last (on top).
           const checkboxes = Array.from(document.querySelectorAll('input[data-layer-id]'));
-          for (let i = 0; i < checkboxes.length; i++) {
+          for (let i = checkboxes.length - 1; i >= 0; i--) {
             const checkbox = checkboxes[i];
             const id = checkbox.getAttribute('data-layer-id');
             if (!id) continue;
