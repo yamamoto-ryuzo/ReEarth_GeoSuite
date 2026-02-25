@@ -1027,12 +1027,9 @@ function getUI() {
         } catch(e) {}
       };
 
-      // Add event listener for 'Restore All' button
-      const restoreBtn = document.getElementById("restore-user-layers");
-      if (restoreBtn) {
-        restoreBtn.addEventListener("click", () => {
+      const refreshUserLayers = () => {
           // Iterate UI checkboxes. First hide all layers that are checked (to force reset),
-          // then after a short delay, show them in REVERSE order (bottom-up) so they stack correctly.
+          // then after a short delay, show them sequentially.
           const checkboxes = Array.from(document.querySelectorAll('input[data-layer-id]'));
           
           // 1. Ensure all unchecked layers are hidden, and momentarily hide checked layers too.
@@ -1042,7 +1039,6 @@ function getUI() {
           });
 
           // 2. After a delay, show the checked layers from top to bottom sequentially.
-          // Adding a stagger delay ensures the order is respected by the renderer.
           // Increase initial delay to 300ms to mimic manual operation.
           let delay = 300;
           for (let i = 0; i < checkboxes.length; i++) {
@@ -1052,6 +1048,13 @@ function getUI() {
                setTimeout(() => toggleLayer(id, true), delay);
             }
           }
+      };
+
+      // Add event listener for 'Restore All' button
+      const restoreBtn = document.getElementById("restore-user-layers");
+      if (restoreBtn) {
+        restoreBtn.addEventListener("click", () => {
+           refreshUserLayers();
         });
       }
 
@@ -1356,6 +1359,9 @@ function getUI() {
                   updateAttr();
                   
                   parent.postMessage({ action: 'setBasemap', url: url, title: title }, '*');
+                  
+                  // Trigger layer refresh/reset when basemap changes
+                  try { refreshUserLayers(); } catch(e){}
                 });
               }
             } catch(e) {}
