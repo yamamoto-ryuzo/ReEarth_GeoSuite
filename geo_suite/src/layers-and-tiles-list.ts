@@ -284,8 +284,16 @@ function getUI() {
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
-  /* Scrollable Lists Configuration */
-  /* Allow lists to expand fully; rely on window/iframe scrollbar (single scrollbar) */
+  /* Panel Scroll Configuration */
+  /* Limit panels to viewport height (95%) and enable internal scrolling */
+  #layers-panel, #cams-panel, #settings-panel, #search-panel {
+    max-height: 95vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 4px;
+  }
+
+  /* List itself creates no scrollbar, the panel does */
   .layers-list {
     overflow: visible;
     padding-right: 0;
