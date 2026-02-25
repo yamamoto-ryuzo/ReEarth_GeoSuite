@@ -1041,11 +1041,11 @@ function getUI() {
             if (id) toggleLayer(id, false);
           });
 
-          // 2. After a delay, show the checked layers from bottom to top sequentially.
+          // 2. After a delay, show the checked layers from top to bottom sequentially.
           // Adding a stagger delay ensures the order is respected by the renderer.
           // Increase initial delay to 300ms and interval to 100ms to mimic manual operation.
           let delay = 300;
-          for (let i = checkboxes.length - 1; i >= 0; i--) {
+          for (let i = 0; i < checkboxes.length; i++) {
             const checkbox = checkboxes[i];
             const id = checkbox.getAttribute('data-layer-id');
             if (id && checkbox.checked) {
