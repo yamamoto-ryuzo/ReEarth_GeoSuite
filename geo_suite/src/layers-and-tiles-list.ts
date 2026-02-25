@@ -1331,7 +1331,38 @@ function getUI() {
         });
       });
 
-      // Manual FlyTo from editable camera fields (removed: uses unified flyTo flow)
+      // Manual FlyTo from editable camera fields
+      const manualFlyToBtn = document.getElementById('cam-manual-flyto');
+      if (manualFlyToBtn) {
+        manualFlyToBtn.addEventListener('click', function() {
+            try {
+               const latIn = document.getElementById('cam-lat');
+               const lngIn = document.getElementById('cam-lng');
+               const hIn = document.getElementById('cam-height');
+               const headIn = document.getElementById('cam-heading');
+               const pitchIn = document.getElementById('cam-pitch');
+               
+               if (latIn && lngIn) {
+                   const lat = parseFloat(latIn.value);
+                   const lng = parseFloat(lngIn.value);
+                   const height = hIn ? parseFloat(hIn.value) : 1000;
+                   const headingDeg = headIn ? parseFloat(headIn.value) : 0;
+                   const pitchDeg = pitchIn ? parseFloat(pitchIn.value) : -90;
+                   
+                   if (!isNaN(lat) && !isNaN(lng)) {
+                      parent.postMessage({
+                         action: "flyToManual",
+                         lat: lat,
+                         lng: lng,
+                         height: isNaN(height) ? 1000 : height,
+                         heading: isNaN(headingDeg) ? 0 : headingDeg * Math.PI / 180, // to Radians
+                         pitch: isNaN(pitchDeg) ? -Math.PI/2 : pitchDeg * Math.PI / 180 // to Radians
+                      }, "*");
+                   }
+               }
+            } catch(e) {}
+        });
+      }
 
       // FlyTo current geolocation (browser) -> send to parent as manual flyTo
       const flyToCurrentBtn = document.getElementById('cam-flyto-current');
@@ -2619,21 +2650,23 @@ reearth.extension.on("message", async (msg) => {
               if (typeof r === 'number') curRoll = r;
             }
           } catch(e){}
-          reearth.camera.flyTo({
-            lat: cam.lat,
-            lng: cam.lng,
-            height: cam.height !== null ? cam.height : curHeight,
-            heading: cam.heading !== null ? cam.heading : curHeading,
-            pitch: cam.pitch !== null ? cam.pitch : curPitch,
-            roll: curRoll,
-          }, { duration: 2 });
           // Delegate camera preset flyTo to flyToAndNotify for consistent logging
           try { await flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false }); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
         }
       } catch(e) {
         try { sendError('[flyToAndNotify] flyToCamera outer error:', e); } catch(err){}
       }
-      } else if (msg.action === "generatePermalink") {
+    } else if (msg.action === "flyToManual") {
+      try {
+        await flyToAndNotify(msg.lat, msg.lng, { 
+          height: msg.height, 
+          heading: msg.heading, 
+          pitch: msg.pitch, 
+          duration: 2, 
+          addMarker: false 
+        });
+      } catch(e) { try { sendError('[flyToAndNotify] flyToManual failed', e); } catch(_){} }
+    } else if (msg.action === "generatePermalink") {
         try {
             // 1. Get Camera
             let cur = null;
