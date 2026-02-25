@@ -285,9 +285,9 @@ function getUI() {
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
   /* Panel Scroll Configuration */
-  /* Limit panels to viewport height (95%) and enable internal scrolling */
+  /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
   #layers-panel, #cams-panel, #settings-panel, #search-panel {
-    max-height: 95vh;
+    max-height: 600px;
     overflow-y: auto;
     scrollbar-width: thin;
     padding-right: 4px;
@@ -2254,18 +2254,33 @@ async function getCurrentLocation() {
 // Helper: fly camera to coordinates, optionally add marker and notify UI
 // opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
 async function flyToAndNotify(lat, lng, opts) {
-  const height = 1000;
-  const headingRad = 0;
-  const pitchRad = -Math.PI / 2;
-  const duration = 2;
+  // Use opts if provided, otherwise fallback to defaults (height=1000, pitch=-90deg)
+  const duration = (opts && typeof opts.duration === 'number') ? opts.duration : 2;
   const addMarkerFlag = !(opts && opts.addMarker === false);
   try { sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag); } catch(e){}
 
   try {
-    try { sendLog('[flyToAndNotify] flying to', lat, lng, 'height', height); } catch(e){}
+    const dest = { lat: lat, lng: lng };
+    
+    // If no options provided (legacy behavior for search/geolocation), force defaults
+    if (!opts) {
+        dest.height = 1000;
+        dest.heading = 0;
+        dest.pitch = -Math.PI / 2;
+        dest.roll = 0;
+    } else {
+        // Use provided options. If a property is missing in opts, do not add it to dest,
+        // so ReEarth maintains current camera value for that property.
+        if (typeof opts.height === 'number') dest.height = opts.height;
+        if (typeof opts.heading === 'number') dest.heading = opts.heading;
+        if (typeof opts.pitch === 'number') dest.pitch = opts.pitch;
+        if (typeof opts.roll === 'number') dest.roll = opts.roll;
+    }
+
+    try { sendLog('[flyToAndNotify] flying to', dest); } catch(e){}
     try {
       if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') {
-        reearth.camera.flyTo({ lat: lat, lng: lng, height: height, heading: headingRad, pitch: pitchRad, roll: 0 }, { duration: duration });
+        reearth.camera.flyTo(dest, { duration: duration });
       }
     } catch(e) { try { sendError('[flyToAndNotify] flyTo threw', e); } catch(_){} }
 
@@ -2613,7 +2628,7 @@ reearth.extension.on("message", async (msg) => {
             roll: curRoll,
           }, { duration: 2 });
           // Delegate camera preset flyTo to flyToAndNotify for consistent logging
-          try { await flyToAndNotify(cam.lat, cam.lng); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
+          try { await flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false }); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
         }
       } catch(e) {
         try { sendError('[flyToAndNotify] flyToCamera outer error:', e); } catch(err){}

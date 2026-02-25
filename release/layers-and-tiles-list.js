@@ -4,7 +4,7 @@
 const _pluginAddedLayerIds = new Set();
 // Store user-defined visibility state to restore it if story/other plugins change it
 const _userLayerVisibility = new Map();
-// Marker TTL and map of scheduled timers by layerId (managed in extension)
+// Marker TTL and map of scheduled timers by layerId
 const MARKER_TTL_MS = 8000;
 const _markerTimers = Object.create(null);
 // Track last values for polling
@@ -55,7 +55,12 @@ const generateLayerItem = (layer, isPreset, displayName) => {
 // Note: preset layer items are generated dynamically inside getUI()
 function getUI() {
     // Build layer items from current layers so UI reflects runtime changes
-    const layers = (reearth.layers && reearth.layers.layers) || [];
+    const layers = (reearth.layers && reearth.layers.layers) || []; // Ensure layers are fetched correctly
+    // Check if layers are available
+    if (!layers.length) {
+        console.warn('[getUI] No layers found.');
+        return '';
+    }
     // Separate preset layers and plugin-added layers, but exclude basemap layers
     const presetLayers = [];
     const userLayers = [];
@@ -160,7 +165,9 @@ function getUI() {
     const renderNode = (node, pathPrefix = '') => {
         // Add exclusive class if this node is marked exclusive (meaning its children are exclusive)
         const isExclusiveNode = !!node.exclusive;
-        let html = `<ul class="layers-list ${isExclusiveNode ? 'exclusive-list' : ''}">`;
+        // Hide nested lists by default (initial state: collapsed)
+        const style = pathPrefix ? 'style="display:none;"' : '';
+        let html = `<ul class="layers-list ${isExclusiveNode ? 'exclusive-list' : ''}" ${style}>`;
         // First render direct layers at this node
         node.layers.forEach(layer => {
             // If title contained '/', and node path came from title, use last segment as displayName
@@ -184,7 +191,7 @@ function getUI() {
                 const isExclusive = !!child.exclusive;
                 html += `
           <li class="layer-group">
-            <div class="group-header">
+            <div class="group-header collapsed">
                 <input type="checkbox" class="group-checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" data-exclusive="${isExclusive ? 'true' : 'false'}" checked />
                 <span class="group-name">${child.name}</span>
             </div>
@@ -280,6 +287,32 @@ function getUI() {
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
+  /* Panel Scroll Configuration */
+  /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
+  #layers-panel, #cams-panel, #settings-panel, #search-panel {
+    max-height: 600px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 4px;
+  }
+
+  /* List itself creates no scrollbar, the panel does */
+  .layers-list {
+    overflow: visible;
+    padding-right: 0;
+  }
+  
+  /* Keep search results contained */
+  #search-results {
+    max-height: 50vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
   @import url("https://reearth.github.io/visualizer-plugin-sample-data/public/css/preset-ui.css");
 
   /* Plugin-specific styling */
@@ -295,12 +328,12 @@ function getUI() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 2px 0;
-    padding: 6px 6px;
+    margin: 1px 0;
+    padding: 3px 6px;
     line-height: 1.2;
     background-color: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(4px);
-    min-height: 2em;
+    min-height: 1.6em;
     border-radius: 6px;
     transition: background-color 0.15s, transform 0.1s;
     border: 1px solid rgba(0,0,0,0.05);
@@ -347,9 +380,9 @@ function getUI() {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 6px 4px;
-    margin-top: 6px;
-    margin-bottom: 2px;
+    padding: 3px 4px;
+    margin-top: 2px;
+    margin-bottom: 1px;
     background-color: rgba(240, 242, 245, 0.8);
     border-radius: 6px;
     cursor: pointer;
@@ -1017,18 +1050,42 @@ function getUI() {
             }
 
         
+      const toggleLayer = (layerId, isVisible) => {
+        try {
+          if (layerId) {
+            parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
+          }
+        } catch(e) {}
+      };
+
+      const refreshUserLayers = () => {
+          // Iterate UI checkboxes. First hide all layers that are checked (to force reset),
+          // then after a short delay, show them sequentially.
+          const checkboxes = Array.from(document.querySelectorAll('input[data-layer-id]'));
+          
+          // 1. Ensure all unchecked layers are hidden, and momentarily hide checked layers too.
+          checkboxes.forEach(checkbox => {
+            const id = checkbox.getAttribute('data-layer-id');
+            if (id) toggleLayer(id, false);
+          });
+
+          // 2. After a delay, show the checked layers from top to bottom sequentially.
+          // Increase initial delay to 300ms to mimic manual operation.
+          let delay = 300;
+          for (let i = 0; i < checkboxes.length; i++) {
+            const checkbox = checkboxes[i];
+            const id = checkbox.getAttribute('data-layer-id');
+            if (id && checkbox.checked) {
+               setTimeout(() => toggleLayer(id, true), delay);
+            }
+          }
+      };
+
       // Add event listener for 'Restore All' button
       const restoreBtn = document.getElementById("restore-user-layers");
       if (restoreBtn) {
         restoreBtn.addEventListener("click", () => {
-          // Collect current checkbox states
-          const requests = {};
-          Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
-             const id = checkbox.getAttribute('data-layer-id');
-             if (id) requests[id] = !!checkbox.checked;
-          });
-          // Send restore command with current UI state
-          parent.postMessage({ action: 'restoreUserLayers', requests: requests }, '*');
+           refreshUserLayers();
         });
       }
 
@@ -1048,9 +1105,8 @@ function getUI() {
             try {
               const layerId = event.target.getAttribute('data-layer-id');
               const isVisible = !!event.target.checked;
-              if (layerId) {
-                parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
-              }
+              
+              toggleLayer(layerId, isVisible);
               
               // If a child is turned ON, ensure the parent group checkbox is visually ON.
               // This is a UI-only update and does not trigger the group's change event (no messages sent).
@@ -1334,6 +1390,9 @@ function getUI() {
                   updateAttr();
                   
                   parent.postMessage({ action: 'setBasemap', url: url, title: title }, '*');
+                  
+                  // Trigger layer refresh/reset when basemap changes
+                  try { refreshUserLayers(); } catch(e){}
                 });
               }
             } catch(e) {}
@@ -1344,7 +1403,25 @@ function getUI() {
         });
       }
 
-    // Listen for camera state updates from the extension
+      // Listen for camera state updates from the extension
+      
+      // UI-managed map of scheduled removal timers for temporary marker layers
+      const _uiMarkerRemovalTimers = Object.create(null);
+      function scheduleLayerRemoval(layerId, ttlMs = 8000) {
+        try {
+          if (!layerId) return;
+          // clear existing timer for this layer if present
+          if (_uiMarkerRemovalTimers[layerId]) {
+            try { clearTimeout(_uiMarkerRemovalTimers[layerId]); } catch(e) {}
+            try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
+          }
+          try { console.log('[UI] scheduleLayerRemoval', layerId, ttlMs); } catch(e) {}
+          _uiMarkerRemovalTimers[layerId] = setTimeout(() => {
+            try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
+            try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
+          }, ttlMs);
+        } catch(e) {}
+      }
 
       window.addEventListener('message', function(e) {
         try {
@@ -1360,21 +1437,28 @@ function getUI() {
             setVal('cam-height', c.height);
             setVal('cam-heading', c.heading);
             setVal('cam-pitch', c.pitch);
-                        } else if (msg.action === 'geolocationResult') {
-                        const btn = document.getElementById('cam-flyto-current');
-                        if (msg.success) {
-                            if (btn) btn.textContent = 'Fly to Current Location';
-                            try {
-                                if (msg.layerId) {
-                                setTimeout(() => { try { parent.postMessage({ action: 'removeLayer', layerId: msg.layerId }, '*'); } catch(e){} }, 8000);
-                                }
-                            } catch(e) {}
-                        } else {
-                            if (btn) {
-                                btn.textContent = 'Error';
-                                setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
-                            }
-                        }
+          } else if (msg.action === 'geolocationResult') {
+            try {
+              const btn = document.getElementById('cam-flyto-current');
+              try { console.log('[UI] geolocationResult received:', msg); } catch(e) {}
+              if (msg.success) {
+                if (btn) btn.textContent = 'Fly to Current Location';
+                try {
+                  if (msg.layerId) {
+                    // Use shared scheduler so search and geolocation both trigger removal
+                    scheduleLayerRemoval(msg.layerId, 8000);
+                  }
+                } catch(e) {}
+              } else {
+                if (btn) {
+                  btn.textContent = 'Error';
+                  setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                }
+              }
+            } catch(e) { try { console.error('[UI] btn update error', e); } catch(_){} }
+
+                // (deprecated) 'searchFlyMarker' handling removed; geolocationResult now used uniformly
+
           } else if (msg.action === 'permalinkGenerated') {
             
             const output = document.getElementById('permalink-output');
@@ -1656,8 +1740,8 @@ function getUI() {
 
                   if (!isNaN(lat) && !isNaN(lng)) {
                     // send heading/pitch in degrees: heading 0 = north, pitch -90 = top-down
-                    // Request the extension to add a temporary marker when flying to search result
-                    parent.postMessage({ action: 'flyToAndNotify', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: false }, '*');
+                    // For search-origin flies we do not create a temporary marker (use plain flyTo)
+                    parent.postMessage({ action: 'flyMoveMarkAndNotify', lat: lat, lng: lng, height: 1000, heading: 0, pitch: -90, addMarker: false }, '*');
                   }
                 } catch (e) { console.error('search fly error', e); }
               });
@@ -2012,24 +2096,7 @@ function setLayerVisibility(layerId, visible, renderUI = true) {
     if (!layerId)
         return false;
     try {
-        // Prefer the show/hide API which works for system/preset layers in most runtimes
-        if (reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
-            if (visible)
-                reearth.layers.show(layerId);
-            else
-                reearth.layers.hide(layerId);
-            try {
-                sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible);
-            }
-            catch (_) { }
-            try {
-                if (renderUI)
-                    safeShowUI('setLayerVisibility');
-            }
-            catch (_) { }
-            return true;
-        }
-        // Fallback: try update if available
+        // Prefer update API first to avoid potential show() side-effects (like moving layer to top).
         if (reearth.layers && typeof reearth.layers.update === 'function') {
             try {
                 reearth.layers.update({ id: layerId, visible: !!visible });
@@ -2050,6 +2117,23 @@ function setLayerVisibility(layerId, visible, renderUI = true) {
                 }
                 catch (_) { }
             }
+        }
+        // Fallback: use show/hide if update is not available
+        if (reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
+            if (visible)
+                reearth.layers.show(layerId);
+            else
+                reearth.layers.hide(layerId);
+            try {
+                sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible);
+            }
+            catch (_) { }
+            try {
+                if (renderUI)
+                    safeShowUI('setLayerVisibility');
+            }
+            catch (_) { }
+            return true;
         }
     }
     catch (e) {
@@ -2149,46 +2233,196 @@ async function addTargetMarker(lat, lng) {
 // Utility: remove a target marker by layerId (safe wrapper)
 function removeTargetMarker(layerId) {
     try {
-        if (!layerId)
+        if (!layerId) {
+            try {
+                sendLog('[removeTargetMarker] no layerId provided');
+            }
+            catch (_) { }
             return false;
+        }
+        try {
+            sendLog('[removeTargetMarker] attempting to remove layerId:', layerId);
+        }
+        catch (_) { }
+        // List layers before removal for diagnostics
+        try {
+            if (reearth && reearth.layers) {
+                const listFn = (typeof reearth.layers.list === 'function') ? reearth.layers.list : null;
+                const layersBefore = listFn ? listFn() : (reearth.layers.layers || []);
+                try {
+                    sendLog('[removeTargetMarker] layers before remove count:', (layersBefore && layersBefore.length) || 0);
+                }
+                catch (_) { }
+                try {
+                    sendLog('[removeTargetMarker] layers before sample:', safeStringify((layersBefore || []).slice(-5).map(l => ({ id: l && l.id, title: l && l.title }))));
+                }
+                catch (_) { }
+            }
+        }
+        catch (e) {
+            try {
+                sendError('[removeTargetMarker] error listing layers before remove', e);
+            }
+            catch (_) { }
+        }
+        let removed = false;
+        // Try removal attempts (multiple immediate tries to handle environment quirks)
+        try {
+            if (reearth && reearth.layers) {
+                const tryRemoveOnce = () => {
+                    try {
+                        if (typeof reearth.layers.delete === 'function') {
+                            try {
+                                reearth.layers.delete(layerId);
+                            }
+                            catch (e) {
+                                try {
+                                    sendError('[removeTargetMarker] delete threw', e);
+                                }
+                                catch (_) { }
+                            }
+                        }
+                        else if (typeof reearth.layers.remove === 'function') {
+                            try {
+                                reearth.layers.remove(layerId);
+                            }
+                            catch (e) {
+                                try {
+                                    sendError('[removeTargetMarker] remove threw', e);
+                                }
+                                catch (_) { }
+                            }
+                        }
+                        else {
+                            try {
+                                sendError('[removeTargetMarker] no delete/remove API available on reearth.layers');
+                            }
+                            catch (_) { }
+                        }
+                    }
+                    catch (e) {
+                        try {
+                            sendError('[removeTargetMarker] tryRemoveOnce error', e);
+                        }
+                        catch (_) { }
+                    }
+                };
+                // Initial attempt + a few immediate retries
+                tryRemoveOnce();
+                for (let i = 0; i < 2; i++)
+                    tryRemoveOnce();
+            }
+        }
+        catch (e) {
+            try {
+                sendError('[removeTargetMarker] remove attempt error', e);
+            }
+            catch (_) { }
+        }
+        // clear any scheduled timer for this layer
         try {
             if (_markerTimers && _markerTimers[layerId]) {
-                try { clearTimeout(_markerTimers[layerId]); } catch(e) {}
-                try { delete _markerTimers[layerId]; } catch(e) {}
-            }
-        } catch(e) {}
-        if (typeof reearth.layers.delete === 'function') {
-            try {
-                reearth.layers.delete(layerId);
-            }
-            catch (e) {
                 try {
-                    reearth.layers.remove(layerId);
+                    clearTimeout(_markerTimers[layerId]);
+                }
+                catch (e) { }
+                try {
+                    delete _markerTimers[layerId];
                 }
                 catch (e) { }
             }
         }
-        else if (typeof reearth.layers.remove === 'function') {
-            try {
-                reearth.layers.remove(layerId);
-            }
-            catch (e) { }
-        }
+        catch (e) { }
         try {
             _pluginAddedLayerIds.delete(layerId);
         }
         catch (e) { }
+        // Verify whether the layer still exists; if so, try a fallback (hide via update)
         try {
-            sendLog('[removeTargetMarker] removed', layerId);
+            const listFn = (reearth && reearth.layers && typeof reearth.layers.list === 'function') ? reearth.layers.list : null;
+            const layersAfter = listFn ? listFn() : (reearth && reearth.layers && reearth.layers.layers ? reearth.layers.layers : []);
+            const existsAfter = Array.isArray(layersAfter) && layersAfter.some(l => l && l.id === layerId);
+            try {
+                sendLog('[removeTargetMarker] existsAfter initial check?', existsAfter);
+            }
+            catch (_) { }
+            if (!existsAfter) {
+                removed = true;
+            }
+            else {
+                // Fallback: try hide (update) if available
+                try {
+                    if (reearth && reearth.layers && typeof reearth.layers.update === 'function') {
+                        try {
+                            reearth.layers.update({ id: layerId, visible: false });
+                        }
+                        catch (e) {
+                            try {
+                                sendError('[removeTargetMarker] update threw', e);
+                            }
+                            catch (_) { }
+                        }
+                        try {
+                            sendLog('[removeTargetMarker] fallback update visible:false called for', layerId);
+                        }
+                        catch (_) { }
+                    }
+                }
+                catch (e) {
+                    try {
+                        sendError('[removeTargetMarker] fallback update error', e);
+                    }
+                    catch (_) { }
+                }
+                // Re-check presence
+                const layersFinal = listFn ? listFn() : (reearth && reearth.layers && reearth.layers.layers ? reearth.layers.layers : []);
+                const existsFinal = Array.isArray(layersFinal) && layersFinal.some(l => l && l.id === layerId);
+                try {
+                    sendLog('[removeTargetMarker] existsAfter final check?', existsFinal);
+                }
+                catch (_) { }
+                removed = !existsFinal;
+            }
         }
-        catch (e) { }
-        return true;
+        catch (e) {
+            try {
+                sendError('[removeTargetMarker] error verifying existence', e);
+            }
+            catch (_) { }
+            removed = false;
+        }
+        // List layers after removal for diagnostics
+        try {
+            if (reearth && reearth.layers) {
+                const listFn2 = (typeof reearth.layers.list === 'function') ? reearth.layers.list : null;
+                const layersAfter2 = listFn2 ? listFn2() : (reearth.layers.layers || []);
+                try {
+                    sendLog('[removeTargetMarker] layers after remove count:', (layersAfter2 && layersAfter2.length) || 0);
+                }
+                catch (_) { }
+                try {
+                    sendLog('[removeTargetMarker] layers after sample:', safeStringify((layersAfter2 || []).slice(-5).map(l => ({ id: l && l.id, title: l && l.title }))));
+                }
+                catch (_) { }
+            }
+        }
+        catch (e) {
+            try {
+                sendError('[removeTargetMarker] error listing layers after remove', e);
+            }
+            catch (_) { }
+        }
+        try {
+            sendLog('[removeTargetMarker] removed?', removed);
+        }
+        catch (_) { }
+        return removed;
     }
     catch (e) {
         try {
-            sendError('[removeTargetMarker] error:', e);
+            sendError('[removeTargetMarker] error', e);
         }
-        catch (e) { }
+        catch (_) { }
         return false;
     }
 }
@@ -2254,24 +2488,42 @@ async function getCurrentLocation() {
 }
 // Helper: fly camera to coordinates, optionally add marker and notify UI
 // opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
-async function flyToAndNotify(lat, lng) {
-    const height = 1000;
-    const headingRad = 0;
-    const pitchRad = -Math.PI / 2;
-    const duration = 2;
-    const addMarkerFlag = true;
+async function flyToAndNotify(lat, lng, opts) {
+    // Use opts if provided, otherwise fallback to defaults (height=1000, pitch=-90deg)
+    const duration = (opts && typeof opts.duration === 'number') ? opts.duration : 2;
+    const addMarkerFlag = !(opts && opts.addMarker === false);
     try {
         sendLog('[flyToAndNotify] addMarkerFlag:', addMarkerFlag);
     }
     catch (e) { }
     try {
+        const dest = { lat: lat, lng: lng };
+        // If no options provided (legacy behavior for search/geolocation), force defaults
+        if (!opts) {
+            dest.height = 1000;
+            dest.heading = 0;
+            dest.pitch = -Math.PI / 2;
+            dest.roll = 0;
+        }
+        else {
+            // Use provided options. If a property is missing in opts, do not add it to dest,
+            // so ReEarth maintains current camera value for that property.
+            if (typeof opts.height === 'number')
+                dest.height = opts.height;
+            if (typeof opts.heading === 'number')
+                dest.heading = opts.heading;
+            if (typeof opts.pitch === 'number')
+                dest.pitch = opts.pitch;
+            if (typeof opts.roll === 'number')
+                dest.roll = opts.roll;
+        }
         try {
-            sendLog('[flyToAndNotify] flying to', lat, lng, 'height', height);
+            sendLog('[flyToAndNotify] flying to', dest);
         }
         catch (e) { }
         try {
             if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') {
-                reearth.camera.flyTo({ lat: lat, lng: lng, height: height, heading: headingRad, pitch: pitchRad, roll: 0 }, { duration: duration });
+                reearth.camera.flyTo(dest, { duration: duration });
             }
         }
         catch (e) {
@@ -2313,23 +2565,7 @@ async function flyToAndNotify(lat, lng) {
         let layerId = null;
         if (addMarkerFlag && typeof addTargetMarker === 'function' && !isNaN(lat) && !isNaN(lng)) {
             try {
-                try {
-                    sendLog('[flyToAndNotify] about to call addTargetMarker', 'lat', lat, 'lng', lng);
-                }
-                catch (e) { }
-                try {
-                    try {
-                        sendLog('[flyToAndNotify] reearth.layers present?', !!(reearth && reearth.layers));
-                    }
-                    catch (e) { }
-                    try {
-                        sendLog('[flyToAndNotify] reearth.layers.add type:', reearth && reearth.layers ? typeof reearth.layers.add : 'no-reearth-layers');
-                    }
-                    catch (e) { }
-                }
-                catch (_) { }
                 layerId = await addTargetMarker(lat, lng);
-                // no token mapping: UI will receive layerId and schedule removal
             }
             catch (e) {
                 try {
@@ -2338,19 +2574,7 @@ async function flyToAndNotify(lat, lng) {
                 catch (_) { }
                 layerId = null;
             }
-            
-            if (layerId) {
-                try {
-                    sendLog('[flyToAndNotify] added marker layer', layerId);
-                }
-                catch (e) { }
-            }
-            if (layerId) {
-                try { sendLog('[flyToAndNotify] delegating marker removal scheduling to UI for', layerId); } catch(e){}
-            }
         }
-        try { sendLog('[flyToAndNotify] posting geolocationResult to UI', layerId); } catch(e){}
-        try { postToUI({ action: 'geolocationResult', success: true, lat: lat, lng: lng, layerId: layerId }); } catch(e) { try { sendError('[flyToAndNotify] postToUI geolocationResult failed', e); } catch(_){} }
         try {
             sendLog('[flyToAndNotify] completed for', lat, lng);
         }
@@ -2362,17 +2586,177 @@ async function flyToAndNotify(lat, lng) {
             sendError('[flyToAndNotify] error:', e);
         }
         catch (_) { }
+        return { success: false, layerId: null };
+    }
+}
+// Simple wrapper: move to given coordinates, add marker and notify UI
+async function moveToCoordinates(lat, lng) {
+    try {
+        const res = await flyToAndNotify(lat, lng);
+        try {
+            sendLog('[moveToCoordinates] result', lat, lng, res);
+        }
+        catch (e) { }
+        try {
+            sendLog('[moveToCoordinates] posting geolocationResult', { lat, lng, layerId: res && res.layerId, success: res && res.success });
+        }
+        catch (e) { }
+        try {
+            postToUI({ action: 'geolocationResult', success: res && res.success, lat: lat, lng: lng, layerId: res && res.layerId });
+        }
+        catch (e) { }
+        return res;
+    }
+    catch (e) {
+        try {
+            sendError('[moveToCoordinates] error:', e);
+        }
+        catch (err) { }
+        try {
+            postToUI({ action: 'geolocationResult', success: false, reason: 'error' });
+        }
+        catch (e) { }
+        return { success: false, layerId: null };
+    }
+}
+// Helper: move to coordinates and log the action. Uses a unified log tag.
+async function moveToCoordsAndLog(lat, lng) {
+    try {
+        sendLog('[moveToCoords] called', lat, lng);
+    }
+    catch (e) { }
+    try {
+        const res = await moveToCoordinates(lat, lng);
+        try {
+            sendLog('[moveToCoords] moved to', lat, lng);
+        }
+        catch (e) { }
+        return res;
+    }
+    catch (e) {
+        try {
+            sendError('[moveToCoords] error:', e);
+        }
+        catch (err) { }
+        try {
+            postToUI({ action: 'geolocationResult', success: false, reason: 'error' });
+        }
+        catch (e) { }
+        return { success: false, layerId: null };
+    }
+}
+// Orchestrator: obtain current location, fly, add marker and notify UI
+async function performGeolocationAndNotify() {
+    try {
+        const myLocation = await getCurrentLocation();
+        if (myLocation) {
+            // delegate to extracted helper that accepts lat,lng
+            return await moveToCoordsAndLog(myLocation.lat, myLocation.lng, 'performGeolocationAndNotify');
+        }
+        else {
+            try {
+                sendError('[performGeolocationAndNotify] location not found');
+            }
+            catch (e) { }
+            try {
+                postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' });
+            }
+            catch (e) { }
+            return { success: false };
+        }
+    }
+    catch (e) {
+        try {
+            sendError('[performGeolocationAndNotify] error:', e);
+        }
+        catch (err) { }
+        try {
+            postToUI({ action: 'geolocationResult', success: false, reason: 'error' });
+        }
+        catch (e) { }
+        return { success: false };
+    }
+}
+// Wrapper: move, mark, and notify UI for different call sites
+async function flyMoveMarkAndNotify(lat, lng, kind) {
+    // Kept for compatibility: delegate to moveToCoordinates which implements the simple two-step flow
+    try {
+        return await moveToCoordinates(lat, lng);
+    }
+    catch (e) {
+        try {
+            sendError('[flyMoveMarkAndNotify] delegate error:', e);
+        }
+        catch (_) { }
         try {
             postToUI({ action: 'geolocationResult', success: false, reason: 'error' });
         }
         catch (_) { }
-        return { success: false };
+        return { success: false, layerId: null };
     }
 }
-
-// Simple wrapper for "Fly to Current Location" flow
-// (wrappers removed) Use unified flyToAndNotify with normalized opts below
+// wrappers removed; normalize in message handler and call flyToAndNotify directly
 // Documentation on Extension "on" event: https://visualizer.developer.reearth.io/plugin-api/extension/#message-1
+// Fallback listener: also listen for raw window messages (parent.postMessage from UI)
+try {
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        window.addEventListener('message', function (e) {
+            try {
+                const msg = e && e.data ? e.data : null;
+                if (!msg)
+                    return;
+                // Only handle removeLayer here to avoid duplicating full message handling
+                if (msg.action === 'removeLayer' && msg.layerId) {
+                    try {
+                        sendLog('[window.message listener] forwarding removeLayer for', msg.layerId);
+                    }
+                    catch (e) { }
+                    try {
+                        removeTargetMarker(msg.layerId);
+                    }
+                    catch (e) {
+                        try {
+                            sendError('[window.message listener] removeTargetMarker threw', e);
+                        }
+                        catch (_) { }
+                    }
+                }
+            }
+            catch (e) { }
+        });
+    }
+}
+catch (e) { }
+// Debug helper: allow posting a geolocationResult from the console to test UI TTL flow
+try {
+    if (typeof window !== 'undefined') {
+        window.__debug_postGeolocation = function (obj) {
+            try {
+                sendLog('[__debug_postGeolocation] posting geolocationResult', obj);
+            }
+            catch (_) { }
+            try {
+                const payload = Object.assign({ action: 'geolocationResult' }, obj || {});
+                try {
+                    postToUI(payload);
+                }
+                catch (e) {
+                    try {
+                        sendError('[__debug_postGeolocation] postToUI threw', e);
+                    }
+                    catch (_) { }
+                }
+            }
+            catch (e) {
+                try {
+                    sendError('[__debug_postGeolocation] error', e);
+                }
+                catch (_) { }
+            }
+        };
+    }
+}
+catch (e) { }
 reearth.extension.on("message", async (msg) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22;
     try {
@@ -2542,53 +2926,44 @@ reearth.extension.on("message", async (msg) => {
         }
         else if (msg.action === "requestGeolocation") {
             try {
-                const myLocation = await getCurrentLocation();
-                if (myLocation) {
-                    const res = await flyToAndNotify(myLocation.lat, myLocation.lng);
-                    try { sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng); } catch(e){}
-                    // post-search-specific UI actions are not needed for current location
-                    try {
-                        sendLog('[requestGeolocation] flew to', myLocation.lat, myLocation.lng);
-                    }
-                    catch (e) { }
-                }
-                else {
-                    try {
-                        sendError('[requestGeolocation] location not found');
-                    }
-                    catch (e) { }
-                    try {
-                        postToUI({ action: 'geolocationResult', success: false, reason: 'not_found' });
-                    }
-                    catch (e) { }
-                }
+                await performGeolocationAndNotify();
             }
             catch (e) {
                 try {
-                    sendError('[requestGeolocation] error:', e);
+                    sendError('[requestGeolocation] performGeolocationAndNotify failed', e);
                 }
-                catch (err) { }
-                try {
-                    postToUI({ action: 'geolocationResult', success: false, reason: 'error' });
-                }
-                catch (e) { }
+                catch (_) { }
             }
         }
-        else if (msg.action === "flyToAndNotify") {
+        else if (msg.action === "flyMoveMarkAndNotify") {
             try {
-                // normalize incoming message and call unified flyToAndNotify
-                const res = await flyToAndNotify(msg.lat, msg.lng);
-                // For search-originated fly, notify UI about searchFlyMarker so UI can schedule removal
                 try {
-                    if (res && res.layerId) {
-                        try { sendLog('[flyToAndNotify] posting searchFlyMarker to UI', res.layerId); } catch(e){}
-                        postToUI({ action: 'searchFlyMarker', layerId: res.layerId });
+                    sendLog('[message] flyMoveMarkAndNotify received', msg && msg.lat, msg && msg.lng, 'addMarker:', msg && msg.addMarker);
+                }
+                catch (e) { }
+                // Use flyToAndNotify directly and honor the addMarker flag from the UI
+                const res = await flyToAndNotify(msg.lat, msg.lng, { addMarker: !!(msg && msg.addMarker) });
+                try {
+                    sendLog('[message] flyMoveMarkAndNotify result', res);
+                }
+                catch (e) { }
+                // Ensure UI receives geolocationResult for search-origin flows
+                try {
+                    try {
+                        postToUI({ action: 'geolocationResult', success: res && res.success, lat: msg.lat, lng: msg.lng, layerId: res && res.layerId });
                     }
-                } catch (e) { try { sendError('[flyToAndNotify] post searchFlyMarker failed', e); } catch(_){} }
+                    catch (e) { }
+                }
+                catch (e) {
+                    try {
+                        sendError('[flyMoveMarkAndNotify] postToUI fallback threw', e);
+                    }
+                    catch (_) { }
+                }
             }
             catch (e) {
                 try {
-                    sendError('[flyToAndNotify] error:', e);
+                    sendError('[flyMoveMarkAndNotify] flyToAndNotify error:', e);
                 }
                 catch (err) { }
             }
@@ -2751,7 +3126,7 @@ reearth.extension.on("message", async (msg) => {
                     }, { duration: 2 });
                     // Delegate camera preset flyTo to flyToAndNotify for consistent logging
                     try {
-                        await flyToAndNotify(cam.lat, cam.lng);
+                        await flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false });
                     }
                     catch (e) {
                         try {
@@ -3742,26 +4117,67 @@ function restoreUserLayers(userRequests, force = false) {
             }
         }
         // Restore from internal state
-        for (const [id, desired] of _userLayerVisibility.entries()) {
-            const layer = layerMap.get(id);
-            if (layer) {
-                try {
-                    if (typeof reearth.layers.update === 'function') {
-                        reearth.layers.update({ id: id, visible: !!desired });
-                    }
-                    else {
-                        // Fallback: toggle via show/hide if available
-                        try {
-                            if (!!desired && typeof reearth.layers.show === 'function')
-                                reearth.layers.show(id);
-                            else if (!desired && typeof reearth.layers.hide === 'function')
-                                reearth.layers.hide(id);
+        // If UI provided explicit ordered requests, apply them in that order using show/hide
+        // to reflect UI stacking behavior. Otherwise, fall back to stored _userLayerVisibility.
+        const applyShowHide = (id, desired) => {
+            try {
+                if (desired) {
+                    // First hide (or update to false) to force a reset, then show (or update to true)
+                    try {
+                        if (typeof reearth.layers.hide === 'function') {
+                            reearth.layers.hide(id);
                         }
-                        catch (e) { }
+                        else if (typeof reearth.layers.update === 'function') {
+                            reearth.layers.update({ id: id, visible: false });
+                        }
                     }
+                    catch (e) { }
+                    try {
+                        if (typeof reearth.layers.show === 'function') {
+                            reearth.layers.show(id);
+                        }
+                        else if (typeof reearth.layers.update === 'function') {
+                            reearth.layers.update({ id: id, visible: true });
+                        }
+                    }
+                    catch (e) { }
+                }
+                else {
+                    // Simply hide (or update to false)
+                    try {
+                        if (typeof reearth.layers.hide === 'function') {
+                            reearth.layers.hide(id);
+                        }
+                        else if (typeof reearth.layers.update === 'function') {
+                            reearth.layers.update({ id: id, visible: false });
+                        }
+                    }
+                    catch (e) { }
+                }
+            }
+            catch (e) { }
+        };
+        if (userRequests && typeof userRequests === 'object') {
+            // Honor UI-sent order (Object.entries preserves insertion order)
+            for (const [id, desired] of Object.entries(userRequests)) {
+                const layer = layerMap.get(id);
+                if (!layer)
+                    continue;
+                // Update internal state
+                try {
+                    _userLayerVisibility.set(id, !!desired);
                 }
                 catch (e) { }
+                applyShowHide(id, !!desired);
             }
+            return;
+        }
+        // No ordered requests provided; apply from internal state (in insertion order)
+        for (const [id, desired] of _userLayerVisibility.entries()) {
+            const layer = layerMap.get(id);
+            if (!layer)
+                continue;
+            applyShowHide(id, desired);
         }
     }
     catch (e) {
