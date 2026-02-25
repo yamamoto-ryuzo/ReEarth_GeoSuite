@@ -3238,21 +3238,44 @@ function restoreUserLayers(userRequests, force = false) {
     }
 
     // Restore from internal state
+    // To avoid basemap layers being brought to the top when toggled,
+    // apply basemap visibility changes first, then non-basemap layers.
+    const basemapEntries = [];
+    const otherEntries = [];
     for (const [id, desired] of _userLayerVisibility.entries()) {
       const layer = layerMap.get(id);
       if (layer) {
         try {
-          if (typeof reearth.layers.update === 'function') {
-            reearth.layers.update({ id: id, visible: !!desired });
-          } else {
-            // Fallback: toggle via show/hide if available
-            try {
-              if (!!desired && typeof reearth.layers.show === 'function') reearth.layers.show(id);
-              else if (!desired && typeof reearth.layers.hide === 'function') reearth.layers.hide(id);
-            } catch (e) {}
-          }
-        } catch (e) {}
+          const isBase = !!(layer.data && layer.data.isBasemap);
+          if (isBase) basemapEntries.push([id, desired]); else otherEntries.push([id, desired]);
+        } catch (e) {
+          otherEntries.push([id, desired]);
+        }
       }
+    }
+
+    const applyEntry = (id, desired) => {
+      try {
+        if (typeof reearth.layers.update === 'function') {
+          reearth.layers.update({ id: id, visible: !!desired });
+        } else {
+          try {
+            if (!!desired && typeof reearth.layers.show === 'function') reearth.layers.show(id);
+            else if (!desired && typeof reearth.layers.hide === 'function') reearth.layers.hide(id);
+          } catch (e) {}
+        }
+      } catch (e) {}
+    };
+
+    // Apply basemap entries first
+    for (let i = 0; i < basemapEntries.length; i++) {
+      const [id, desired] = basemapEntries[i];
+      applyEntry(id, desired);
+    }
+    // Then apply other layers (so they render above basemap)
+    for (let i = 0; i < otherEntries.length; i++) {
+      const [id, desired] = otherEntries[i];
+      applyEntry(id, desired);
     }
   } catch(e) {
     // ignore errors during restore
