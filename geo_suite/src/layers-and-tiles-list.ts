@@ -284,6 +284,17 @@ function getUI() {
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
+  /* Scrollable Panels Configuration */
+  #layers-panel, #cams-panel {
+    max-height: calc(100vh - 50px); /* Adjust for tab bar height */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 2px;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
   @import url("https://reearth.github.io/visualizer-plugin-sample-data/public/css/preset-ui.css");
 
   /* Plugin-specific styling */
