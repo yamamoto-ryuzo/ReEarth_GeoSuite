@@ -1023,14 +1023,22 @@ function getUI() {
       const restoreBtn = document.getElementById("restore-user-layers");
       if (restoreBtn) {
         restoreBtn.addEventListener("click", () => {
-          // Collect current checkbox states
+          // Iterate UI checkboxes in DOM order (top-down) and send individual show/hide messages.
+          // This keeps behavior simple and deterministic: UI order -> apply visibility.
+          const checkboxes = Array.from(document.querySelectorAll('input[data-layer-id]'));
           const requests = {};
-          Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
-             const id = checkbox.getAttribute('data-layer-id');
-             if (id) requests[id] = !!checkbox.checked;
-          });
-          // Send restore command with current UI state
-          parent.postMessage({ action: 'restoreUserLayers', requests: requests }, '*');
+          for (let i = 0; i < checkboxes.length; i++) {
+            const checkbox = checkboxes[i];
+            const id = checkbox.getAttribute('data-layer-id');
+            if (!id) continue;
+            const desired = !!checkbox.checked;
+            requests[id] = desired;
+            try {
+              parent.postMessage({ type: desired ? 'show' : 'hide', layerId: id }, '*');
+            } catch (e) {}
+          }
+          // Also send consolidated restore message for compatibility with other handlers
+          try { parent.postMessage({ action: 'restoreUserLayers', requests: requests }, '*'); } catch(e) {}
         });
       }
 
