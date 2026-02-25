@@ -3234,62 +3234,57 @@ function restoreUserLayers(userRequests, force = false) {
              _userLayerVisibility.set(id, desired);
         }
     }
-
     // Restore from internal state
-    // To avoid basemap layers being brought to the top when toggled,
-    // apply basemap visibility changes first, then non-basemap layers.
-    const basemapEntries = [];
-    const otherEntries = [];
-    for (const [id, desired] of _userLayerVisibility.entries()) {
-      const layer = layerMap.get(id);
-      if (layer) {
-        try {
-          const isBase = !!(layer.data && layer.data.isBasemap);
-          if (isBase) basemapEntries.push([id, desired]); else otherEntries.push([id, desired]);
-        } catch (e) {
-          otherEntries.push([id, desired]);
-        }
-      }
-    }
-
-    const applyEntry = (id, desired) => {
+    // If UI provided explicit ordered requests, apply them in that order using show/hide
+    // to reflect UI stacking behavior. Otherwise, fall back to stored _userLayerVisibility.
+    const applyShowHide = (id, desired) => {
       try {
-        if (typeof reearth.layers.update === 'function') {
-          reearth.layers.update({ id: id, visible: !!desired });
-        } else {
+        if (desired) {
+          // First hide (or update to false) to force a reset, then show (or update to true)
           try {
-            if (!!desired && typeof reearth.layers.show === 'function') reearth.layers.show(id);
-            else if (!desired && typeof reearth.layers.hide === 'function') reearth.layers.hide(id);
+            if (typeof reearth.layers.hide === 'function') {
+              reearth.layers.hide(id);
+            } else if (typeof reearth.layers.update === 'function') {
+              reearth.layers.update({ id: id, visible: false });
+            }
+          } catch (e) {}
+          try {
+            if (typeof reearth.layers.show === 'function') {
+              reearth.layers.show(id);
+            } else if (typeof reearth.layers.update === 'function') {
+              reearth.layers.update({ id: id, visible: true });
+            }
+          } catch (e) {}
+        } else {
+          // Simply hide (or update to false)
+          try {
+            if (typeof reearth.layers.hide === 'function') {
+              reearth.layers.hide(id);
+            } else if (typeof reearth.layers.update === 'function') {
+              reearth.layers.update({ id: id, visible: false });
+            }
           } catch (e) {}
         }
       } catch (e) {}
     };
 
-    // Apply basemap entries first
-    for (let i = 0; i < basemapEntries.length; i++) {
-      const [id, desired] = basemapEntries[i];
-      applyEntry(id, desired);
-    }
-    // Then apply other layers (so they render above basemap)
-    for (let i = 0; i < otherEntries.length; i++) {
-      const [id, desired] = otherEntries[i];
-      // If the desired state is visible, try toggling off->on to force a visual "reset".
-      if (desired) {
-        try {
-          if (typeof reearth.layers.update === 'function') {
-            // toggle via update API
-            reearth.layers.update({ id: id, visible: false });
-            try { reearth.layers.update({ id: id, visible: true }); } catch(e) {}
-          } else {
-            // fallback to hide/show
-            try { if (typeof reearth.layers.hide === 'function') reearth.layers.hide(id); } catch(e) {}
-            try { if (typeof reearth.layers.show === 'function') reearth.layers.show(id); } catch(e) {}
-          }
-        } catch (e) {}
-      } else {
-        // simply apply hidden state
-        applyEntry(id, desired);
+    if (userRequests && typeof userRequests === 'object') {
+      // Honor UI-sent order (Object.entries preserves insertion order)
+      for (const [id, desired] of Object.entries(userRequests)) {
+        const layer = layerMap.get(id);
+        if (!layer) continue;
+        // Update internal state
+        try { _userLayerVisibility.set(id, !!desired); } catch(e) {}
+        applyShowHide(id, !!desired);
       }
+      return;
+    }
+
+    // No ordered requests provided; apply from internal state (in insertion order)
+    for (const [id, desired] of _userLayerVisibility.entries()) {
+      const layer = layerMap.get(id);
+      if (!layer) continue;
+      applyShowHide(id, desired);
     }
   } catch(e) {
     // ignore errors during restore
