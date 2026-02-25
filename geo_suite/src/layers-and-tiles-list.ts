@@ -1031,21 +1031,26 @@ function getUI() {
       const restoreBtn = document.getElementById("restore-user-layers");
       if (restoreBtn) {
         restoreBtn.addEventListener("click", () => {
-          // Iterate UI checkboxes in REVERSE DOM order (bottom-up) and apply visibility using toggleLayer.
-          // Since 'show' brings a layer to the front, processing from bottom to top ensures the top UI layer is shown last (on top).
+          // Iterate UI checkboxes. First hide all layers that are checked (to force reset),
+          // then after a short delay, show them in REVERSE order (bottom-up) so they stack correctly.
           const checkboxes = Array.from(document.querySelectorAll('input[data-layer-id]'));
+          
+          // 1. Ensure all unchecked layers are hidden, and momentarily hide checked layers too.
+          checkboxes.forEach(checkbox => {
+            const id = checkbox.getAttribute('data-layer-id');
+            if (id) toggleLayer(id, false);
+          });
+
+          // 2. After a delay, show the checked layers from bottom to top sequentially.
+          // Adding a stagger delay ensures the order is respected by the renderer.
+          // Increase initial delay to 300ms and interval to 100ms to mimic manual operation.
+          let delay = 300;
           for (let i = checkboxes.length - 1; i >= 0; i--) {
             const checkbox = checkboxes[i];
             const id = checkbox.getAttribute('data-layer-id');
-            if (!id) continue;
-            const desired = !!checkbox.checked;
-            
-            // For reset: if visible, hide then show to force refresh/reorder
-            if (desired) {
-              toggleLayer(id, false);
-              toggleLayer(id, true);
-            } else {
-              toggleLayer(id, false);
+            if (id && checkbox.checked) {
+               setTimeout(() => toggleLayer(id, true), delay);
+               delay += 100; // stagger each show by 100ms
             }
           }
         });
