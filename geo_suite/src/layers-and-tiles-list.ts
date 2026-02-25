@@ -285,12 +285,17 @@ function getUI() {
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
   /* Scrollable Lists Configuration */
-  /* Only apply scroll to the list containers, not the whole body layout */
-  .layers-list, #search-results {
-    max-height: 65vh; /* Limit list height to fit in typical widget window */
+  /* Allow lists to expand fully; rely on window/iframe scrollbar (single scrollbar) */
+  .layers-list {
+    overflow: visible;
+    padding-right: 0;
+  }
+  
+  /* Keep search results contained */
+  #search-results {
+    max-height: 50vh;
     overflow-y: auto;
     scrollbar-width: thin;
-    padding-right: 2px;
   }
 
   ::-webkit-scrollbar { width: 6px; }
