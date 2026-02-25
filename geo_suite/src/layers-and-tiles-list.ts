@@ -1019,24 +1019,35 @@ function getUI() {
             }
 
         
+      const toggleLayer = (layerId, isVisible) => {
+        try {
+          if (layerId) {
+            parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
+          }
+        } catch(e) {}
+      };
+
       // Add event listener for 'Restore All' button
       const restoreBtn = document.getElementById("restore-user-layers");
       if (restoreBtn) {
         restoreBtn.addEventListener("click", () => {
-          // Iterate UI checkboxes in DOM order (top-down) and send individual show/hide messages.
-          // This keeps behavior simple and deterministic: UI order -> apply visibility.
+          // Iterate UI checkboxes in DOM order (top-down) and apply visibility using toggleLayer.
+          // This resets the view by hiding then showing layers that should be visible.
           const checkboxes = Array.from(document.querySelectorAll('input[data-layer-id]'));
-          const requests = {};
           for (let i = 0; i < checkboxes.length; i++) {
             const checkbox = checkboxes[i];
             const id = checkbox.getAttribute('data-layer-id');
             if (!id) continue;
             const desired = !!checkbox.checked;
-            requests[id] = desired;
+            
+            // For reset: if visible, hide then show to force refresh/reorder
+            if (desired) {
+              toggleLayer(id, false);
+              toggleLayer(id, true);
+            } else {
+              toggleLayer(id, false);
+            }
           }
-          // Send consolidated restore message; let extension decide how to apply without
-          // sending individual show/hide messages from the UI which may change stacking order.
-          try { parent.postMessage({ action: 'restoreUserLayers', requests: requests }, '*'); } catch(e) {}
         });
       }
 
@@ -1056,9 +1067,8 @@ function getUI() {
             try {
               const layerId = event.target.getAttribute('data-layer-id');
               const isVisible = !!event.target.checked;
-              if (layerId) {
-                parent.postMessage({ type: isVisible ? 'show' : 'hide', layerId: layerId }, '*');
-              }
+              
+              toggleLayer(layerId, isVisible);
               
               // If a child is turned ON, ensure the parent group checkbox is visually ON.
               // This is a UI-only update and does not trigger the group's change event (no messages sent).
