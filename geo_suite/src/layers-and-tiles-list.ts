@@ -2323,19 +2323,26 @@ async function flyToAndNotify(lat, lng, opts) {
   try {
     const dest = { lat: lat, lng: lng };
     
-    // If no options provided (legacy behavior for search/geolocation), force defaults
-    if (!opts) {
-        dest.height = 1000;
-        dest.heading = 0;
-        dest.pitch = -Math.PI / 2;
-        dest.roll = 0;
+    // Defaults: for pinpoint (search) flies we prefer a top-down view.
+    // If no camera params are provided in `opts` (common for search-origin flows),
+    // set sensible defaults so the camera looks straight down at the coordinate.
+    const defaultHeight = 1000;
+    const defaultHeading = 0;
+    const defaultPitch = -Math.PI / 2; // top-down
+    const defaultRoll = 0;
+
+    const hasCameraParams = opts && (typeof opts.height === 'number' || typeof opts.heading === 'number' || typeof opts.pitch === 'number' || typeof opts.roll === 'number');
+    if (!opts || !hasCameraParams) {
+      dest.height = defaultHeight;
+      dest.heading = defaultHeading;
+      dest.pitch = defaultPitch;
+      dest.roll = defaultRoll;
     } else {
-        // Use provided options. If a property is missing in opts, do not add it to dest,
-        // so ReEarth maintains current camera value for that property.
-        if (typeof opts.height === 'number') dest.height = opts.height;
-        if (typeof opts.heading === 'number') dest.heading = opts.heading;
-        if (typeof opts.pitch === 'number') dest.pitch = opts.pitch;
-        if (typeof opts.roll === 'number') dest.roll = opts.roll;
+      // Respect explicitly provided camera params and only override missing ones.
+      if (typeof opts.height === 'number') dest.height = opts.height; else dest.height = defaultHeight;
+      if (typeof opts.heading === 'number') dest.heading = opts.heading; else dest.heading = defaultHeading;
+      if (typeof opts.pitch === 'number') dest.pitch = opts.pitch; else dest.pitch = defaultPitch;
+      if (typeof opts.roll === 'number') dest.roll = opts.roll; else dest.roll = defaultRoll;
     }
 
     try { sendLog('[flyToAndNotify] flying to', dest); } catch(e){}
