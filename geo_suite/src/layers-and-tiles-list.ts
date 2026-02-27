@@ -2924,10 +2924,13 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
   
   // Encode only non-ASCII characters but keep template braces {z}/{x}/{y} intact
   const encodedUrl = url.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
+  
+  // ReEarth issue workaround: Always add as visible:true to ensure resource loading,
+  // then hide immediately if requested (OFF).
   const layer = {
     type: "simple",
     title: titleToUse,
-    visible: !!visible,
+    visible: true, // Always true initially
     data: {
       type: type,
       url: encodedUrl,
@@ -2962,6 +2965,19 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
     // Track this layer as plugin-added
     if (newId) {
       _pluginAddedLayerIds.add(newId);
+      
+      // If requested OFF, hide it now (after creation)
+      if (!visible) {
+         try {
+           if (typeof reearth.layers.hide === 'function') {
+             reearth.layers.hide(newId);
+           } else if (typeof reearth.layers.update === 'function') {
+             reearth.layers.update({ id: newId, visible: false });
+           }
+         } catch(e) {
+            try { sendError("[addXyzLayer] failed to hide layer:", e); } catch(_){}
+         }
+      }
     }
     sendLog(isBase ? "Added Basemap layer, id:" : "Added XYZ layer, id:", newId, "(src:", url, ")");
     try {
