@@ -224,7 +224,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v10.0.0</span></h1>
+            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v10.2.0</span></h1>
             <p>統合プラグイン for Re:Earth Visualizer </p>
         </header>
         
@@ -300,7 +300,7 @@
                     <p>
                         Inspector（歯車アイコン）の「一括設定」を開き、「設定テキスト」に以下の形式で行ごとに入力してください。
                     </p>
-                    <pre><code>xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+                    <pre><code>xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png｜off
 xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
 base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors
 3dtiles: タイトル | https://example.com/tileset.json
@@ -360,6 +360,12 @@ legend: https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pr
                         <li>チェックボックスをON/OFFすることで、レイヤーの表示/非表示を切り替えられます</li>
                     </ol>
                 </div>
+                    <p style="margin-top:8px; color:#333;">Inspector で初期表示を指定するには、該当行のパイプ（<code>|</code>）で区切った任意の位置に <code>ON</code> / <code>OFF</code> を追記してください（大文字小文字は区別しません）。例：</p>
+                    <pre style="background:#f8f9fa;padding:10px;border-radius:6px;margin-top:6px;"><code>xyz: Tokyo Basemap | https://tile.example/{z}/{x}/{y}.png | OFF
+geojson: 避難所 | https://example.com/shelters.geojson | ON
+3dtiles: 建物LOD | https://example.com/tileset.json | OFF</code></pre>
+                    <p style="margin-top:6px; color:#666;">注: プラグインはレイヤ追加時に一旦 <code>visible: true</code> で追加し、<code>OFF</code> 指定のあるレイヤは UI 側で短時間後に非表示にする仕組みです（Extension 側での遅延タイマーが利用できないための回避）。</p>
+                    <p style="margin-top:6px; color:#666;">補足: 現在 <code>visible=true</code>/<code>visible=false</code> 形式は自動的にパースされません。必要であれば対応を追加できますので指示ください。</p>
                 
                 <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0;">
                     <h3>⚠️ 注意事項</h3>
@@ -379,13 +385,6 @@ legend: https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pr
                     </div>
                 </div>
                 
-                <div class="install-steps">
-                    <h3>⛰️ Terrain（地形）/ Shadow（影）の切替</h3>
-                    <ol>
-                        <li>プラグインUI下部に<strong>「Terrain」</strong>と<strong>「Shadow」</strong>のトグルスイッチがあります</li>
-                        <li>クリックすることで、シーン全体の地形表示と影表示をON/OFFできます</li>
-                    </ol>
-                </div>
 
               </section>
 
