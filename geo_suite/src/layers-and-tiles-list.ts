@@ -1,6 +1,8 @@
 // @ts-nocheck
 // Track layer IDs added by this plugin
 const _pluginAddedLayerIds = new Set();
+// Track layers that need to be hidden shortly after creation (workaround for initial load issues)
+const _layersPendingHide = new Set();
 // Store user-defined visibility state to restore it if story/other plugins change it
 const _userLayerVisibility = new Map();
 // Marker TTL and map of scheduled timers by layerId
@@ -35,6 +37,11 @@ try {
 
 const generateLayerItem = (layer, isPreset, displayName) => {
   const name = (typeof displayName === 'string' && displayName.trim()) ? displayName.trim() : (layer && layer.title ? layer.title : 'Layer');
+  // Check if this layer is pending hide (was added visible:true but requested OFF)
+  const isPendingHide = layer && layer.id && _layersPendingHide.has(layer.id);
+  // If pending hide, show as unchecked (OFF) in UI
+  const isChecked = !isPendingHide && layer.visible;
+  
   return `
     <li class="layer-item">
       <div class="layer-item-left">
@@ -43,7 +50,8 @@ const generateLayerItem = (layer, isPreset, displayName) => {
           type="checkbox"
           data-layer-id="${layer.id}"
           data-is-plugin-added="${!isPreset}"
-          ${layer.visible ? "checked" : ""}
+          ${isChecked ? "checked" : ""}
+          ${isPendingHide ? 'data-pending-hide="true"' : ""}
         />
         <span class="layer-name" title="${name}">${name}</span>
       </div>
@@ -798,6 +806,28 @@ function getUI() {
   try { window._yahooAppId = ${JSON.stringify(_inspectorYahooAppId || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
+      // Process pending hides (layers that were added as visible:true but need to be hidden)
+      try {
+        const pendingHides = document.querySelectorAll('input[data-pending-hide="true"]');
+        if (pendingHides.length > 0) {
+           setTimeout(() => {
+             pendingHides.forEach(el => {
+                const id = el.getAttribute('data-layer-id');
+                if (id) {
+                   // Send hide message to parent (Extension)
+                   // Extension handles the actual reearth.layers.hide call
+                   try { 
+                     // Also ensure checkbox is unchecked (it should be already due to template logic)
+                     el.checked = false;
+                     // Send message
+                     if (window.parent) window.parent.postMessage({ type: 'hide', layerId: id }, '*');
+                   } catch(e){}
+                }
+             });
+           }, 500); // 500ms delay to allow initial load in Cesium
+        }
+      } catch(e) { console.error('pending hide processing failed', e); }
+
       // Tab switching: handle normal tabs and a minimize-action tab
       try {
         const tabs = document.querySelectorAll('.tab-bar .tab');
@@ -2966,30 +2996,18 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
     if (newId) {
       _pluginAddedLayerIds.add(newId);
       
-      // If requested OFF, hide it with a slight delay to allow initial load to trigger,
-      // then update UI.
+      // If requested OFF, do NOT hide immediately in Extension side (avoid setTimeout issues).
+      // Instead, mark it as pending hide. The UI side will pick this up and send a 'hide' message
+      // after a short delay (using UI's working setTimeout).
       if (!visible) {
-         setTimeout(() => {
-           try {
-             if (typeof reearth.layers.hide === 'function') {
-               reearth.layers.hide(newId);
-             } else if (typeof reearth.layers.update === 'function') {
-               reearth.layers.update({ id: newId, visible: false });
-             }
-             // Update UI after hiding
-             if (!isBase) {
-                try { safeShowUI('addXyzLayer delayed hide'); } catch(e){}
-             }
-           } catch(e) {
-              try { sendError("[addXyzLayer] failed to hide layer:", e); } catch(_){}
-           }
-         }, 200); // Wait 200ms
+         _layersPendingHide.add(newId);
       }
     }
     sendLog(isBase ? "Added Basemap layer, id:" : "Added XYZ layer, id:", newId, "(src:", url, ")");
     try {
-      // If visible, update UI immediately. If hidden, UI update is handled in setTimeout above.
-      if (!isBase && visible) {
+      // Re-render the widget UI so the new (non-basemap) layer appears in the list.
+      // Avoid full UI re-render when adding basemap layers to prevent UI re-initialization side-effects.
+      if (!isBase) {
         try { safeShowUI('addXyzLayer'); } catch (e) { try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {} }
       }
     } catch (e) {
