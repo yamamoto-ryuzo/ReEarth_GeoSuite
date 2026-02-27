@@ -2966,24 +2966,30 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
     if (newId) {
       _pluginAddedLayerIds.add(newId);
       
-      // If requested OFF, hide it now (after creation)
+      // If requested OFF, hide it with a slight delay to allow initial load to trigger,
+      // then update UI.
       if (!visible) {
-         try {
-           if (typeof reearth.layers.hide === 'function') {
-             reearth.layers.hide(newId);
-           } else if (typeof reearth.layers.update === 'function') {
-             reearth.layers.update({ id: newId, visible: false });
+         setTimeout(() => {
+           try {
+             if (typeof reearth.layers.hide === 'function') {
+               reearth.layers.hide(newId);
+             } else if (typeof reearth.layers.update === 'function') {
+               reearth.layers.update({ id: newId, visible: false });
+             }
+             // Update UI after hiding
+             if (!isBase) {
+                try { safeShowUI('addXyzLayer delayed hide'); } catch(e){}
+             }
+           } catch(e) {
+              try { sendError("[addXyzLayer] failed to hide layer:", e); } catch(_){}
            }
-         } catch(e) {
-            try { sendError("[addXyzLayer] failed to hide layer:", e); } catch(_){}
-         }
+         }, 200); // Wait 200ms
       }
     }
     sendLog(isBase ? "Added Basemap layer, id:" : "Added XYZ layer, id:", newId, "(src:", url, ")");
     try {
-      // Re-render the widget UI so the new (non-basemap) layer appears in the list.
-      // Avoid full UI re-render when adding basemap layers to prevent UI re-initialization side-effects.
-      if (!isBase) {
+      // If visible, update UI immediately. If hidden, UI update is handled in setTimeout above.
+      if (!isBase && visible) {
         try { safeShowUI('addXyzLayer'); } catch (e) { try { sendError('[addXyzLayer] failed to re-render UI:', e); } catch (err) {} }
       }
     } catch (e) {
