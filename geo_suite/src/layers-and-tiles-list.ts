@@ -71,7 +71,8 @@ function getUI() {
   // Check if layers are available
   if (!layers.length) {
     console.warn('[getUI] No layers found.');
-    return '';
+    // Do not return early here — still render the UI so users can add layers
+    // even when there are currently no layers present.
   }
 
   // Separate preset layers and plugin-added layers, but exclude basemap layers
