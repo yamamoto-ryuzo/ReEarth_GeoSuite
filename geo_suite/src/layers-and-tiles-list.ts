@@ -65,26 +65,27 @@ const generateLayerItem = (layer, isPreset, displayName) => {
 // Note: preset layer items are generated dynamically inside getUI()
 
 function getUI() {
-  // Build layer items from current layers so UI reflects runtime changes
-  // Coerce `reearth.layers.layers` into a real array to guard against Proxy/iterable-like objects
-  let layers = [];
   try {
-    const raw = (reearth.layers && reearth.layers.layers);
-    if (!raw) {
-      layers = [];
-    } else if (Array.isArray(raw)) {
-      layers = raw;
-    } else if (typeof raw.forEach === 'function') {
-      // array-like with forEach
-      layers = raw;
-    } else if (typeof raw === 'object') {
-      try { layers = Object.values(raw); } catch(e) { layers = [] }
-    } else {
+    // Build layer items from current layers so UI reflects runtime changes
+    // Coerce `reearth.layers.layers` into a real array to guard against Proxy/iterable-like objects
+    let layers = [];
+    try {
+      const raw = (reearth.layers && reearth.layers.layers);
+      if (!raw) {
+        layers = [];
+      } else if (Array.isArray(raw)) {
+        layers = raw;
+      } else if (typeof raw.forEach === 'function') {
+        // array-like with forEach
+        layers = raw;
+      } else if (typeof raw === 'object') {
+        try { layers = Object.values(raw); } catch(e) { layers = [] }
+      } else {
+        layers = [];
+      }
+    } catch (e) {
       layers = [];
     }
-  } catch (e) {
-    layers = [];
-  }
   
   // Check if layers are available
   if (!layers.length) {
@@ -1958,6 +1959,15 @@ function getUI() {
 
 </script>
 `;
+  } catch (e) {
+    try {
+      sendError('[getUI] unexpected error', e, {
+        reearthLayersType: typeof (reearth && reearth.layers && reearth.layers.layers),
+        sample: safeStringify((reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? (reearth.layers.layers.slice ? reearth.layers.layers.slice(0,5) : reearth.layers.layers) : Object.keys(reearth.layers.layers || {}).slice(0,10)) : null)
+      });
+    } catch (_) {}
+    return `<div style="padding:8px;color:#c00;">UI error</div>`;
+  }
 }
 
 // Initial render
