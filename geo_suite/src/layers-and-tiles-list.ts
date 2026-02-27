@@ -2909,7 +2909,7 @@ function tryInitFromProperty() {
   }
 }
 
-function addXyzLayer(url, title, layerType, isBase = false) {
+function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
   let titleToUse = title;
@@ -2927,7 +2927,7 @@ function addXyzLayer(url, title, layerType, isBase = false) {
   const layer = {
     type: "simple",
     title: titleToUse,
-    visible: true,
+    visible: !!visible,
     data: {
       type: type,
       url: encodedUrl,
@@ -3040,6 +3040,26 @@ function processInspectorText(text) {
   // reset inspector-sourced yahooAppId each time we parse inspector text
   try { _inspectorYahooAppId = null; } catch(e) {}
   const tiles = [];
+
+  // Helper to extract visible flag from parts array (modifies parts in place)
+  const extractVisible = (parts) => {
+    let v = true;
+    if (!Array.isArray(parts)) return v;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i].toLowerCase();
+      if (p === 'off') {
+        v = false;
+        parts.splice(i, 1);
+        i--;
+      } else if (p === 'on') {
+        v = true;
+        parts.splice(i, 1);
+        i--;
+      }
+    }
+    return v;
+  };
+
   let infoUrlFound = null;
   const camsFound = [];
   const legends = [];
@@ -3164,14 +3184,16 @@ function processInspectorText(text) {
       const tileStr = line.substring(line.indexOf(':') + 1).trim();
       let url = null;
       let title = null;
+      let visible = true;
       if (tileStr.indexOf('|') !== -1) {
         const parts = tileStr.split('|').map(p => p.trim());
+        visible = extractVisible(parts);
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
         else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
       } else {
         if (tileStr.startsWith('http')) url = tileStr;
       }
-      if (url) tiles.push({ url, title, type: '3dtiles' });
+      if (url) tiles.push({ url, title, type: '3dtiles', visible });
       nonCamLines.push(line);
       return;
     }
@@ -3181,14 +3203,16 @@ function processInspectorText(text) {
       const geoStr = line.substring(8).trim();
       let url = null;
       let title = null;
+      let visible = true;
       if (geoStr.indexOf('|') !== -1) {
         const parts = geoStr.split('|').map(p => p.trim());
+        visible = extractVisible(parts);
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
         else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
       } else {
         if (geoStr.startsWith('http')) url = geoStr;
       }
-      if (url) tiles.push({ url, title, type: 'geojson' });
+      if (url) tiles.push({ url, title, type: 'geojson', visible });
       nonCamLines.push(line);
       return;
     }
@@ -3205,9 +3229,11 @@ function processInspectorText(text) {
     let url = null;
     let title = null;
     let attribution = null;
+    let visible = true;
 
     if (tileStr.indexOf('|') !== -1) {
       const parts = tileStr.split('|').map(p => p.trim());
+      visible = extractVisible(parts);
       // Handle optional 3rd part as attribution
       if (parts.length >= 3) {
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; attribution = parts[2]; }
@@ -3231,7 +3257,7 @@ function processInspectorText(text) {
         }
       }
 
-      tiles.push({ url, title, type: 'tiles', isBase: isBase });
+      tiles.push({ url, title, type: 'tiles', isBase: isBase, visible });
       if (isBase) _parsedBaseTiles.push({ url, title, attribution });
     }
     nonCamLines.push(line);
@@ -3439,6 +3465,7 @@ function addXyzLayersFromArray(items) {
     const t = (it.title || it.inspectorTitle || null);
     const type = it.type || "tiles";
     const isBase = !!it.isBase;
+    const visible = (it.visible !== undefined) ? it.visible : true;
     if (!u) continue;
     if (!/^https?:\/\//.test(u)) continue;
     const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
@@ -3447,7 +3474,7 @@ function addXyzLayersFromArray(items) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
       continue;
     }
-    addXyzLayer(u, t, type, isBase);
+    addXyzLayer(u, t, type, isBase, visible);
   }
 }
 
