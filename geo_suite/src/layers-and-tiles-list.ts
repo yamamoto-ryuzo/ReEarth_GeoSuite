@@ -66,7 +66,25 @@ const generateLayerItem = (layer, isPreset, displayName) => {
 
 function getUI() {
   // Build layer items from current layers so UI reflects runtime changes
-  const layers = (reearth.layers && reearth.layers.layers) || []; // Ensure layers are fetched correctly
+  // Coerce `reearth.layers.layers` into a real array to guard against Proxy/iterable-like objects
+  let layers = [];
+  try {
+    const raw = (reearth.layers && reearth.layers.layers);
+    if (!raw) {
+      layers = [];
+    } else if (Array.isArray(raw)) {
+      layers = raw;
+    } else if (typeof raw.forEach === 'function') {
+      // array-like with forEach
+      layers = raw;
+    } else if (typeof raw === 'object') {
+      try { layers = Object.values(raw); } catch(e) { layers = [] }
+    } else {
+      layers = [];
+    }
+  } catch (e) {
+    layers = [];
+  }
   
   // Check if layers are available
   if (!layers.length) {
