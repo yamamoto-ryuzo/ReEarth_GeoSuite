@@ -152,7 +152,7 @@ function getUI() {
         let parsed = [];
         if (layer && layer.data && typeof layer.data.group === 'string' && layer.data.group.trim()) {
           parsed = parseGroupPath(layer.data.group.trim());
-        } else if (layer && typeof layer.title === 'string' && layer.title.indexOf('/') !== -1) {
+        } else if (layer && typeof layer.title === 'string' && (layer.title.indexOf('/') !== -1 || layer.title.indexOf('\\') !== -1)) {
           // Fallback: parse title with same parser
           const temp = parseGroupPath(layer.title.trim()).filter(p => p && p.seg).map(p => ({ seg: p.seg.trim(), exclusiveAfter: p.exclusiveAfter, expandAfter: p.expandAfter }));
           // For title-based grouping, the last segment is the layer name itself, not a group folder.
