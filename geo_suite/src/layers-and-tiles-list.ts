@@ -115,30 +115,32 @@ function getUI() {
   // or fallback to title split by '/'. Returns a root node.
   // Parse group string allowing '//' to indicate exclusive (radio) grouping between segments.
   const parseGroupPath = (groupStr) => {
-    // returns array of { seg, exclusiveAfter }
+    // returns array of { seg, sepChar, sepCount, exclusiveAfter, expandAfter }
+    // sepChar: '/' or '\\' (string), sepCount: number of separators after this segment
+    // exclusiveAfter: true if separator count >= 2 (// or \\\\)
+    // expandAfter: true if separator char is backslash (\\) => expand children by default
     const res = [];
     if (!groupStr || typeof groupStr !== 'string') return res;
     let i = 0;
     let cur = '';
     while (i < groupStr.length) {
-      if (groupStr[i] === '/') {
-        // count slashes
+      const ch = groupStr[i];
+      if (ch === '/' || ch === "\\") {
+        // count repeated same-type separators
         let j = i;
-        while (j < groupStr.length && groupStr[j] === '/') j++;
-        const slashCount = j - i;
-        // commit current segment
+        while (j < groupStr.length && groupStr[j] === ch) j++;
+        const sepCount = j - i;
         if (cur !== '') {
-          res.push({ seg: cur, exclusiveAfter: (slashCount >= 2) });
+          res.push({ seg: cur, sepChar: ch, sepCount: sepCount, exclusiveAfter: (sepCount >= 2), expandAfter: (ch === "\\") });
           cur = '';
         }
-        // if multiple slashes, treat as delimiter with exclusive flag
         i = j;
       } else {
-        cur += groupStr[i];
+        cur += ch;
         i++;
       }
     }
-    if (cur !== '') res.push({ seg: cur, exclusiveAfter: false });
+    if (cur !== '') res.push({ seg: cur, sepChar: null, sepCount: 0, exclusiveAfter: false, expandAfter: false });
     return res;
   };
 
@@ -152,7 +154,7 @@ function getUI() {
           parsed = parseGroupPath(layer.data.group.trim());
         } else if (layer && typeof layer.title === 'string' && layer.title.indexOf('/') !== -1) {
           // Fallback: parse title with same parser
-          const temp = parseGroupPath(layer.title.trim()).filter(p => p && p.seg).map(p => ({ seg: p.seg.trim(), exclusiveAfter: p.exclusiveAfter }));
+          const temp = parseGroupPath(layer.title.trim()).filter(p => p && p.seg).map(p => ({ seg: p.seg.trim(), exclusiveAfter: p.exclusiveAfter, expandAfter: p.expandAfter }));
           // For title-based grouping, the last segment is the layer name itself, not a group folder.
           if (temp.length > 0) temp.pop();
           parsed = temp;
@@ -164,11 +166,13 @@ function getUI() {
         let node = root;
         if (layer && layer.id) root.allLayerIds.push(layer.id);
         for (let k = 0; k < parsed.length; k++) {
-          const seg = parsed[k].seg || '';
+          const seg = (parsed[k].seg || '').trim();
           const exclusiveAfter = !!parsed[k].exclusiveAfter;
-          
-          // Use a key that differentiates grouping types so "Group" (normal) and "Group" (exclusive) are separate
-          const key = seg + (exclusiveAfter ? '@@exclusive' : '@@normal');
+          const expandAfter = !!parsed[k].expandAfter;
+
+          // Use a key that differentiates grouping types so groups with different
+          // exclusive/expanded semantics do not collide.
+          const key = seg + '@@' + (exclusiveAfter ? 'exclusive' : 'normal') + '@@' + (expandAfter ? 'expanded' : 'collapsed');
 
           if (!node.children.has(key)) {
              node.children.set(key, { 
@@ -176,7 +180,8 @@ function getUI() {
                children: new Map(), 
                layers: [], 
                allLayerIds: [], 
-               exclusive: exclusiveAfter 
+               exclusive: exclusiveAfter,
+               expanded: expandAfter
              });
           }
           node = node.children.get(key);
@@ -192,8 +197,9 @@ function getUI() {
   const renderNode = (node, pathPrefix = '') => {
     // Add exclusive class if this node is marked exclusive (meaning its children are exclusive)
     const isExclusiveNode = !!node.exclusive;
-    // Hide nested lists by default (initial state: collapsed)
-    const style = pathPrefix ? 'style="display:none;"' : '';
+    // Determine collapsed state based on node.expanded (root is always expanded)
+    const collapsed = pathPrefix ? !node.expanded : false;
+    const style = collapsed ? 'style="display:none;"' : '';
     let html = `<ul class="layers-list ${isExclusiveNode ? 'exclusive-list' : ''}" ${style}>`;
     // First render direct layers at this node
     node.layers.forEach(layer => {
@@ -216,9 +222,10 @@ function getUI() {
         const childIds = (child.allLayerIds && child.allLayerIds.length) ? child.allLayerIds.join(',') : '';
         const isExclusive = !!child.exclusive;
 
+        const childCollapsed = !child.expanded;
         html += `
           <li class="layer-group">
-            <div class="group-header collapsed">
+            <div class="group-header ${childCollapsed ? 'collapsed' : ''}">
                 <input type="checkbox" class="group-checkbox" data-group-path="${groupPath}" data-child-ids="${childIds}" data-exclusive="${isExclusive ? 'true' : 'false'}" checked />
                 <span class="group-name">${child.name}</span>
             </div>
