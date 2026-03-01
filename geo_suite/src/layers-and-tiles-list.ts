@@ -170,28 +170,21 @@ function getUI() {
           const exclusiveAfter = !!parsed[k].exclusiveAfter;
           const expandAfter = !!parsed[k].expandAfter;
 
-          // Normalize group identity by segment name only so mixed separators
-          // ("/" vs "\\") yield the same group when the name matches.
-          const key = seg;
+          // Use a key that differentiates grouping types so groups with different
+          // exclusive/expanded semantics do not collide (separator type retained
+          // via expandAfter).
+          const key = seg + '@@' + (exclusiveAfter ? 'exclusive' : 'normal') + '@@' + (expandAfter ? 'expanded' : 'collapsed');
 
           if (!node.children.has(key)) {
-             node.children.set(key, {
-               name: seg,
-               children: new Map(),
-               layers: [],
-               allLayerIds: [],
+             node.children.set(key, { 
+               name: seg, // Display name remains just the segment name
+               children: new Map(), 
+               layers: [], 
+               allLayerIds: [], 
                exclusive: exclusiveAfter,
                expanded: expandAfter
              });
-          } else {
-            // Merge semantics when the same-named group appears with different
-            // separators: exclusive is true if any appearance is exclusive;
-            // expanded is true if any appearance used backslash (expandAfter).
-            const existing = node.children.get(key);
-            existing.exclusive = existing.exclusive || exclusiveAfter;
-            existing.expanded = existing.expanded || expandAfter;
           }
-
           node = node.children.get(key);
           if (layer && layer.id) node.allLayerIds.push(layer.id);
         }
