@@ -221,8 +221,8 @@ function getUI() {
       // If title contained '/', and node path came from title, use last segment as displayName
       let displayName = null;
       try {
-        if ((!layer.data || !layer.data.group) && layer.title && layer.title.indexOf('/') !== -1) {
-          const parts = layer.title.split('/').map(s => s.trim()).filter(Boolean);
+        if ((!layer.data || !layer.data.group) && layer.title && (layer.title.indexOf('/') !== -1 || layer.title.indexOf('\\') !== -1)) {
+          const parts = layer.title.split(/[\/\\\\]/).map(s => s.trim()).filter(Boolean);
           if (parts.length) displayName = parts[parts.length - 1];
         }
       } catch (e) {}
