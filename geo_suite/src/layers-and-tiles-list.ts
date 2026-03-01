@@ -169,22 +169,36 @@ function getUI() {
           const seg = (parsed[k].seg || '').trim();
           const exclusiveAfter = !!parsed[k].exclusiveAfter;
           const expandAfter = !!parsed[k].expandAfter;
+          const sepChar = parsed[k].sepChar || null;
 
-          // Use a key that differentiates grouping types so groups with different
-          // exclusive/expanded semantics do not collide (separator type retained
-          // via expandAfter).
-          const key = seg + '@@' + (exclusiveAfter ? 'exclusive' : 'normal') + '@@' + (expandAfter ? 'expanded' : 'collapsed');
+          // For single separators, treat '/' and '\\' as the same group (normal group).
+          // For double separators (exclusive groups), keep separator type distinct
+          // so '//' and '\\' exclusive groups are different when names collide.
+          let key;
+          if (exclusiveAfter) {
+            // include separator char so '//' vs '\\' exclusive groups differ
+            key = seg + '@@exclusive@@' + (sepChar === '\\' ? '\\' : '/');
+          } else {
+            // normal group: only segment name (so / and \\ map together)
+            key = seg + '@@normal';
+          }
 
           if (!node.children.has(key)) {
-             node.children.set(key, { 
-               name: seg, // Display name remains just the segment name
-               children: new Map(), 
-               layers: [], 
-               allLayerIds: [], 
-               exclusive: exclusiveAfter,
-               expanded: expandAfter
-             });
+            node.children.set(key, {
+              name: seg,
+              children: new Map(),
+              layers: [],
+              allLayerIds: [],
+              exclusive: exclusiveAfter,
+              expanded: expandAfter
+            });
+          } else {
+            // merge semantics: if multiple appearances, combine flags
+            const existing = node.children.get(key);
+            existing.exclusive = existing.exclusive || exclusiveAfter;
+            existing.expanded = existing.expanded || expandAfter;
           }
+
           node = node.children.get(key);
           if (layer && layer.id) node.allLayerIds.push(layer.id);
         }
