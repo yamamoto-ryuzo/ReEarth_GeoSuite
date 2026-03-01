@@ -353,32 +353,49 @@ legend: https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pr
                 </div>
                              
             </section>
-            
+
             <section>
                 <h2>📖 使い方</h2>
-                              
-                <div class="install-steps">
+
+                <div class="install-steps" style="margin-bottom:14px;">
                     <h3>👁️ レイヤーの表示/非表示切替</h3>
                     <ol>
-                        <li>左側のプラグインUI内で、各レイヤーの横に<strong>チェックボックス</strong>があります</li>
-                        <li>チェックボックスをON/OFFすることで、レイヤーの表示/非表示を切り替えられます</li>
+                        <li>左側のプラグインUI内で、各レイヤーの横に<strong>チェックボックス</strong>があります。</li>
+                        <li>チェックボックスをON/OFFすることで、レイヤーの表示/非表示を切り替えられます。</li>
                     </ol>
                 </div>
-                    <p style="margin-top:8px; color:#333;">Inspector で初期表示を指定するには、該当行のパイプ（<code>|</code>）で区切った任意の位置に <code>ON</code> / <code>OFF</code> を追記してください（大文字小文字は区別しません）。例：</p>
+
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>🧩 グループルール</h3>
+                    <p>レイヤのグループ化はインスペクター内の区切り文字で指定します。ルールは以下の通りです。</p>
+                    <ul>
+                        <li><code>/</code>：一括・折りたたみ — グループ内をまとめてON/OFF。初期表示は折りたたみ。</li>
+                        <li><code>//</code>：排他・折りたたみ — グループ内は排他（ラジオ）で、同時に1つのみON。初期表示は折りたたみ。</li>
+                        <li><code>\</code>：一括・展開 — グループ内をまとめてON/OFF。初期表示は展開（開いた状態）。</li>
+                        <li><code>\\</code>：排他・展開 — グループ内は排他（ラジオ）で、初期表示は展開。</li>
+                    </ul>
+                    <p style="margin-top:8px;">補足: 単一の <code>/</code> と <code>\</code> は通常グループとして同一視されますが、二重区切りの <code>//</code> と <code>\\</code> は排他グループとして区別されます。バックスラッシュ由来の区切りは展開優先となります。</p>
+                    <p>詳細はドキュメントを参照してください： <a href="docs/layer-grouping-specification.md" target="_blank">layer-grouping-specification.md</a></p>
+                </div>
+
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>Inspector での初期表示指定</h3>
+                    <p>Inspector で初期表示を指定するには、該当行のパイプ（<code>|</code>）で区切った任意の位置に <code>ON</code> / <code>OFF</code> を追記してください（大文字小文字は区別しません）。</p>
                     <pre style="background:#f8f9fa;padding:10px;border-radius:6px;margin-top:6px;"><code>xyz: Tokyo Basemap | https://tile.example/{z}/{x}/{y}.png | OFF
 geojson: 避難所 | https://example.com/shelters.geojson | ON
 3dtiles: 建物LOD | https://example.com/tileset.json | OFF</code></pre>
-                    <p style="margin-top:6px; color:#666;">注: プラグインはレイヤ追加時に一旦 <code>visible: true</code> で追加し、<code>OFF</code> 指定のあるレイヤは UI 側で短時間後に非表示にする仕組みです（Extension 側での遅延タイマーが利用できないための回避）。</p>
                     <p style="margin-top:6px; color:#666;">補足: 現在 <code>visible=true</code>/<code>visible=false</code> 形式は自動的にパースされません。必要であれば対応を追加できますので指示ください。</p>
-                
-                <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0;">
-                    <h3>⚠️ 注意事項</h3>
-                                        <div>
-                                            <p style="color:#333;">システムレイヤはプラグインにて状態確認が制御不可であるため、基本的にはシステムレイヤ表示をONにし、制御は必ず本プラグインで行ってください。</p>
-                                        </div>
                 </div>
 
-                <div class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0;">
+                <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:8px;">
+                    <h3>⚠️ 注意事項</h3>
+                    <div>
+                        <p style="color:#333;">プラグインはレイヤ追加時に一旦 <code>visible: true</code> で追加し、<code>OFF</code> 指定のあるレイヤは UI 側で短時間後に非表示にする仕組みです（Extension 側での遅延タイマーが利用できないための回避）。</p>
+                        <p style="color:#333;">システムレイヤはプラグインにて状態確認が制御不可であるため、基本的にはシステムレイヤ表示をONにし、制御は必ず本プラグインで行ってください。</p>
+                    </div>
+                </div>
+
+                <div class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:12px;">
                     <h3>⚠️ Google Photorealistic 3D Tiles 利用時の注意</h3>
                     <div>
                         <p style="color:#333;">
@@ -388,9 +405,8 @@ geojson: 避難所 | https://example.com/shelters.geojson | ON
                         </p>
                     </div>
                 </div>
-                
 
-              </section>
+            </section>
 
             <section>
                 <h2>🛠️ 開発について</h2>
