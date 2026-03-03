@@ -31,6 +31,7 @@ export const html: string = `
     <button id="syncBtn">Sync</button>
     <button id="topDownBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">2D</button>
     
+    <button id="rotateRightBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">↻</button>
   </div>
   <script>
     (function(){
@@ -164,6 +165,20 @@ export const html: string = `
         }
       }catch(e){}
       
+      
+      // Rotate right button: request host to rotate camera by +45 degrees
+      try{
+        var rotateRight = document.getElementById('rotateRightBtn');
+        if(rotateRight){
+          rotateRight.addEventListener('click', function(){
+            try{
+              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
+                window.parent.postMessage({ action: 'rotateBy', payload: { delta: 45 } }, '*');
+              }
+            }catch(e){}
+          });
+        }
+      }catch(e){}
       
 
       
@@ -325,6 +340,48 @@ export const onMessage = async (msg: any): Promise<void> => {
       try { target.roll = 0; } catch (e) { target.roll = 0; }
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
       try{ postToUI({ type: 'topDownResult', payload: { success: true, lat: target.lat, lng: target.lng } }); }catch(e){}
+    } catch (e) {}
+  }
+
+  // Rotate camera to the next 45° increment (0,45,90,...)
+  if (msg.action === 'rotateBy') {
+    try {
+      const stepDeg = msg.payload && typeof msg.payload.delta === 'number' ? msg.payload.delta : 45;
+      const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+      if (!cur) {
+        try { postToUI({ type: 'rotateResult', payload: { success: false, reason: 'no_camera_position' } }); } catch (e) {}
+        return;
+      }
+      var heading = typeof cur.heading === 'number' ? cur.heading : 0;
+      // Convert heading to degrees
+      var headingDeg = 0;
+      try {
+        if (Math.abs(heading) > 2 * Math.PI) {
+          headingDeg = heading; // already degrees
+        } else {
+          headingDeg = heading * 180 / Math.PI; // radians -> degrees
+        }
+      } catch (e) { headingDeg = 0; }
+
+      // normalize to [0,360)
+      try { headingDeg = ((headingDeg % 360) + 360) % 360; } catch (e) { headingDeg = headingDeg; }
+
+      // Compute next multiple of stepDeg (e.g., 45)
+      var nextDeg = 0;
+      try {
+        nextDeg = ((Math.floor(headingDeg / stepDeg) + 1) * stepDeg) % 360;
+      } catch (e) { nextDeg = (headingDeg + stepDeg) % 360; }
+
+      var newHeadingRad = nextDeg * Math.PI / 180;
+
+      const target: any = { heading: newHeadingRad };
+      if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
+      if (typeof cur.roll === 'number') target.roll = cur.roll;
+      if (typeof cur.lat === 'number') target.lat = cur.lat;
+      if (typeof cur.lng === 'number') target.lng = cur.lng;
+      if (typeof cur.height === 'number') target.height = cur.height;
+      try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.6 }); } catch (e) {}
+      try { postToUI({ type: 'rotateResult', payload: { success: true, heading: newHeadingRad, headingDeg: nextDeg } }); } catch (e) {}
     } catch (e) {}
   }
 };
