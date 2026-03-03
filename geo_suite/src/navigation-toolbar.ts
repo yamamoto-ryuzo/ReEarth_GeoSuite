@@ -353,27 +353,32 @@ export const onMessage = async (msg: any): Promise<void> => {
         return;
       }
       var heading = typeof cur.heading === 'number' ? cur.heading : 0;
-      // Convert heading to degrees
+      // derive current heading in degrees normalized to [0,360)
       var headingDeg = 0;
       try {
         if (Math.abs(heading) > 2 * Math.PI) {
-          headingDeg = heading; // already degrees
+          headingDeg = ((heading % 360) + 360) % 360;
         } else {
-          headingDeg = heading * 180 / Math.PI; // radians -> degrees
+          headingDeg = ((heading * 180 / Math.PI) % 360 + 360) % 360;
         }
       } catch (e) { headingDeg = 0; }
 
-      // normalize to [0,360)
-      try { headingDeg = ((headingDeg % 360) + 360) % 360; } catch (e) { headingDeg = headingDeg; }
+      // nearest multiple of stepDeg
+      var multiple = Math.round(headingDeg / stepDeg) * stepDeg;
+      multiple = ((multiple % 360) + 360) % 360;
 
-      // Compute next multiple of stepDeg (e.g., 45)
-      var nextDeg = 0;
-      try {
-        nextDeg = ((Math.floor(headingDeg / stepDeg) + 1) * stepDeg) % 360;
-      } catch (e) { nextDeg = (headingDeg + stepDeg) % 360; }
+      // If already exactly on a multiple (within tiny epsilon), advance to next multiple;
+      // otherwise snap to the nearest multiple.
+      var nextDeg = multiple;
+      var eps = 1e-6;
+      if (Math.abs(headingDeg - multiple) < eps) {
+        nextDeg = (multiple + stepDeg) % 360;
+      }
 
-      // invert sign so visual rotation matches "right" glyph (clockwise)
-      var newHeadingRad = -nextDeg * Math.PI / 180;
+      // compute new heading by applying the signed difference from current to nextDeg
+      var diffDeg = headingDeg - nextDeg; // signed difference
+      var curHeadingRad = (Math.abs(heading) > 2 * Math.PI) ? heading * Math.PI / 180 : heading;
+      var newHeadingRad = curHeadingRad - (diffDeg * Math.PI / 180);
 
       const target: any = { heading: newHeadingRad };
       if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
@@ -382,7 +387,7 @@ export const onMessage = async (msg: any): Promise<void> => {
       if (typeof cur.lng === 'number') target.lng = cur.lng;
       if (typeof cur.height === 'number') target.height = cur.height;
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.6 }); } catch (e) {}
-      try { postToUI({ type: 'rotateResult', payload: { success: true, heading: newHeadingRad, headingDeg: nextDeg } }); } catch (e) {}
+      try { postToUI({ type: 'rotateResult', payload: { success: true, heading: newHeadingRad, headingDeg: (newHeadingRad * 180 / Math.PI) } }); } catch (e) {}
     } catch (e) {}
   }
 };
