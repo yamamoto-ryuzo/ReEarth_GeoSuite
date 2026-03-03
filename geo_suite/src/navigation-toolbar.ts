@@ -372,7 +372,8 @@ export const onMessage = async (msg: any): Promise<void> => {
         nextDeg = ((Math.floor(headingDeg / stepDeg) + 1) * stepDeg) % 360;
       } catch (e) { nextDeg = (headingDeg + stepDeg) % 360; }
 
-      var newHeadingRad = nextDeg * Math.PI / 180;
+      // invert sign so visual rotation matches "right" glyph (clockwise)
+      var newHeadingRad = -nextDeg * Math.PI / 180;
 
       const target: any = { heading: newHeadingRad };
       if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
