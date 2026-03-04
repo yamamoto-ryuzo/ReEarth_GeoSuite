@@ -372,7 +372,8 @@ export const onMessage = async (msg: any): Promise<void> => {
       var nextDeg = multiple;
       var eps = 1e-6;
       if (Math.abs(headingDeg - multiple) < eps) {
-        nextDeg = (multiple + stepDeg) % 360;
+        // already exactly on a multiple: advance clockwise (subtract step)
+        nextDeg = (multiple - stepDeg + 360) % 360;
       }
 
       // compute new heading by applying the signed difference from current to nextDeg
