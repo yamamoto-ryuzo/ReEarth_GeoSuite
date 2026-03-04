@@ -205,6 +205,21 @@ export function postToUI(msg: any): void {
   } catch (e) {}
 }
 
+// Normalize a heading value (radians or degrees) to degrees in [0,360)
+function normalizeHeadingDeg(h: any): number {
+  try {
+    if (typeof h !== 'number' || isNaN(h)) return 0;
+    var deg = h;
+    // If value looks like radians, convert to degrees
+    if (Math.abs(h) <= 2 * Math.PI) {
+      deg = h * 180 / Math.PI;
+    }
+    // Normalize to [0,360)
+    deg = ((deg % 360) + 360) % 360;
+    return deg;
+  } catch (e) { return 0; }
+}
+
 // Compute intersection point at altitude 0 (mean sea level) from camera position and orientation.
 // Uses a local ENU approximation (meters) — accurate for moderate distances.
 function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | null {
@@ -354,32 +369,19 @@ export const onMessage = async (msg: any): Promise<void> => {
       }
       var heading = typeof cur.heading === 'number' ? cur.heading : 0;
       // derive current heading in degrees normalized to [0,360)
-      var headingDeg = 0;
-      try {
-        if (Math.abs(heading) > 2 * Math.PI) {
-          headingDeg = ((heading % 360) + 360) % 360;
-        } else {
-          headingDeg = ((heading * 180 / Math.PI) % 360 + 360) % 360;
-        }
-      } catch (e) { headingDeg = 0; }
+      var headingDeg = normalizeHeadingDeg(heading);
 
-      // nearest multiple of stepDeg
+      // Snap to `stepDeg` multiples (e.g., 45°):
+      // - If current heading is not on a multiple, snap to the nearest multiple.
+      // - If already exactly on a multiple, advance to the next multiple (clockwise +stepDeg).
       var multiple = Math.round(headingDeg / stepDeg) * stepDeg;
       multiple = ((multiple % 360) + 360) % 360;
-
-      // If already exactly on a multiple (within tiny epsilon), advance to next multiple;
-      // otherwise snap to the nearest multiple.
       var nextDeg = multiple;
       var eps = 1e-6;
       if (Math.abs(headingDeg - multiple) < eps) {
-        // already exactly on a multiple: advance clockwise (subtract step)
-        nextDeg = (multiple - stepDeg + 360) % 360;
+        nextDeg = (multiple + stepDeg) % 360;
       }
-
-      // compute new heading by applying the signed difference from current to nextDeg
-      var diffDeg = headingDeg - nextDeg; // signed difference
-      var curHeadingRad = (Math.abs(heading) > 2 * Math.PI) ? heading * Math.PI / 180 : heading;
-      var newHeadingRad = curHeadingRad - (diffDeg * Math.PI / 180);
+      var newHeadingRad = nextDeg * Math.PI / 180;
 
       const target: any = { heading: newHeadingRad };
       if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
