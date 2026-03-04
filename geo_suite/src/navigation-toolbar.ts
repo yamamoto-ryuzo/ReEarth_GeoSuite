@@ -371,18 +371,23 @@ export const onMessage = async (msg: any): Promise<void> => {
       // derive current heading in degrees normalized to [0,360)
       var headingDeg = normalizeHeadingDeg(heading);
 
-      // Snap to `stepDeg` multiples (e.g., 45°):
-      // - If current heading is not on a multiple, snap to the nearest multiple.
+      // Snap to `stepDeg` multiples (e.g., 45°) by rounding up so rotation goes right (increase degrees):
+      // - If current heading is not on a multiple, snap up to the next multiple (ceil).
       // - If already exactly on a multiple, advance to the next multiple (clockwise +stepDeg).
-      var multiple = Math.round(headingDeg / stepDeg) * stepDeg;
+      var multiple = Math.ceil(headingDeg / stepDeg) * stepDeg;
       multiple = ((multiple % 360) + 360) % 360;
       var nextDeg = multiple;
       var eps = 1e-6;
       if (Math.abs(headingDeg - multiple) < eps) {
-        // already exactly on a multiple: advance clockwise => subtract step
-        nextDeg = (multiple - stepDeg + 360) % 360;
+        // already exactly on a multiple: advance clockwise => add step
+        nextDeg = (multiple + stepDeg) % 360;
       }
       var newHeadingRad = nextDeg * Math.PI / 180;
+
+      // Log current and adjusted headings for debugging
+      try {
+        console.log('[navigation-toolbar] rotateBy: currentDeg=', headingDeg, 'targetDeg=', nextDeg, 'currentRad=', heading, 'targetRad=', newHeadingRad);
+      } catch (e) {}
 
       const target: any = { heading: newHeadingRad };
       if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
