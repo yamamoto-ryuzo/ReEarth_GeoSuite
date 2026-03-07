@@ -336,7 +336,7 @@ function getUI() {
 
   /* Panel Scroll Configuration */
   /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
-  #layers-panel, #cams-panel, #settings-panel, #search-panel {
+  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel {
     max-height: 600px;
     overflow-y: auto;
     scrollbar-width: thin;
