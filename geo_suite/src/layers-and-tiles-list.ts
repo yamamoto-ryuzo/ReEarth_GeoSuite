@@ -19,7 +19,7 @@ let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
 let _baseUrl = null; // Base URL for permalink
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
-let _inspectorLegendUrls = []; // cached legend URLs from inspector for initial UI render
+let _inspectorLegendItems = []; // cached legend items from inspector for initial UI render
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 
@@ -311,8 +311,20 @@ function getUI() {
 
   // Information panel content
   // (Info content will be loaded from configured URL and injected into #info-content)
-  // Prepare legend HTML for initial render from cached inspector legend URLs
-  const legendContentHtml = (_inspectorLegendUrls && _inspectorLegendUrls.length) ? _inspectorLegendUrls.map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('') : '';
+  // Prepare legend HTML for initial render
+  const legendContentHtml = (() => {
+      if (!_inspectorLegendItems || !_inspectorLegendItems.length) return '';
+      const grouped = {};
+      _inspectorLegendItems.forEach(item => {
+          const g = item.group || 'Default';
+          if (!grouped[g]) grouped[g] = [];
+          grouped[g].push(item.url);
+      });
+      return Object.keys(grouped).map(g => {
+          const imgs = grouped[g].map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('');
+          return (g === 'Default') ? imgs : `<div style="font-weight:bold;margin:8px 0 4px;font-size:0.9em;color:#555;">${g}</div>${imgs}`;
+      }).join('');
+  })();
   
   return `
 <style>
@@ -1071,11 +1083,20 @@ function getUI() {
                   }
                 } else if (msg.action === 'updateLegends') {
                   const container = document.getElementById('legend-content');
-                  if(container && msg.urls) {
-                    container.innerHTML = msg.urls.map(function(u){return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'}).join('');
+                  if(container && msg.items) {
+                    const grouped = {};
+                    msg.items.forEach(function(item) {
+                        const g = item.group || 'Default';
+                        if (!grouped[g]) grouped[g] = [];
+                        grouped[g].push(item.url);
+                    });
+                    container.innerHTML = Object.keys(grouped).map(function(g) {
+                        const imgs = grouped[g].map(function(u){ return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'; }).join('');
+                        return (g === 'Default') ? imgs : '<div style="font-weight:bold;margin:8px 0 4px;font-size:0.9em;color:#555;">' + g + '</div>' + imgs;
+                    }).join('');
                     const instruction = document.getElementById('legend-instruction');
                     if (instruction) {
-                      instruction.style.display = msg.urls.length > 0 ? 'none' : 'block';
+                      instruction.style.display = msg.items.length > 0 ? 'none' : 'block';
                     }
                   }
                 }
@@ -3165,10 +3186,19 @@ function processInspectorText(text) {
 
   lines.forEach(line => {
     const lowerLine = line.toLowerCase();
-      // Legend: "legend: https://..."
+      // Legend: "legend: https://..." or "legend: GroupName|https://..."
       if (lowerLine.startsWith('legend:')) {
-        const url = line.substring(7).trim();
-        if (url) legends.push(encodeNonAscii(url));
+        const content = line.substring(7).trim();
+        if (content) {
+          const parts = content.split('|');
+          let group = null;
+          let url = content;
+          if (parts.length > 1) {
+             group = parts[0].trim();
+             url = parts.slice(1).join('|').trim();
+          }
+          if (url) legends.push({ group: group, url: encodeNonAscii(url) });
+        }
         nonCamLines.push(line);
         return;
       }
@@ -3365,7 +3395,7 @@ function processInspectorText(text) {
 
   _inspectorNonCamLines = nonCamLines;
   _cameraPresets = camsFound;
-  try { _inspectorLegendUrls = (legends && legends.length) ? legends.map(u => { try { return encodeNonAscii(u); } catch(e){ return u; } }) : []; } catch(e) {}
+  try { _inspectorLegendItems = (legends && legends.length) ? legends : []; } catch(e) {}
 
   if (tiles.length > 0) {
     try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
@@ -3409,7 +3439,7 @@ function processInspectorText(text) {
       setTimeout(function() {
         try { sendLog('[processInspectorText] sending legends count:', legends ? legends.length : 0); } catch(e) {}
         try {
-          if (legends && legends.length > 0) postToUI({ action: 'updateLegends', urls: legends });
+          if (legends && legends.length > 0) postToUI({ action: 'updateLegends', items: legends });
         } catch(e) { try { sendError('[processInspectorText] updateLegends post failed', e); } catch(_) {} }
 
         try {
@@ -3422,7 +3452,7 @@ function processInspectorText(text) {
       }, 50);
     } else {
       try { sendLog('[processInspectorText] sending legends count (no timeout):', legends ? legends.length : 0); } catch(e) {}
-      try { if (legends && legends.length > 0) postToUI({ action: 'updateLegends', urls: legends }); } catch(e) {}
+      try { if (legends && legends.length > 0) postToUI({ action: 'updateLegends', items: legends }); } catch(e) {}
       try {
         if (infoUrlFound && infoUrlFound !== _lastInfoUrl) {
           try { sendLog('[processInspectorText] applying INFO url (immediate):', infoUrlFound); } catch(e) {}
