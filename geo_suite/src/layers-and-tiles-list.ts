@@ -312,18 +312,31 @@ function getUI() {
   // Information panel content
   // (Info content will be loaded from configured URL and injected into #info-content)
   // Prepare legend HTML for initial render
-  const legendContentHtml = (() => {
-      if (!_inspectorLegendItems || !_inspectorLegendItems.length) return '';
+  let legendTabsHtml = '';
+  let legendPanelsHtml = '';
+  const defaultLegendContentHtml = (() => {
       const grouped = {};
-      _inspectorLegendItems.forEach(item => {
+      const items = _inspectorLegendItems || [];
+      items.forEach(item => {
           const g = item.group || 'Default';
           if (!grouped[g]) grouped[g] = [];
           grouped[g].push(item.url);
       });
-      return Object.keys(grouped).map(g => {
+      
+      // Generate extra tabs and panels for non-default groups
+      Object.keys(grouped).forEach(g => {
+          if (g === 'Default') return;
+          const id = 'legend-panel-' + encodeURIComponent(g).replace(/%/g, '_');
+          legendTabsHtml += `<button class="tab legend-extra-tab" data-target="${id}" aria-selected="false">${g}</button>`;
           const imgs = grouped[g].map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('');
-          return (g === 'Default') ? imgs : `<div style="font-weight:bold;margin:8px 0 4px;font-size:0.9em;color:#555;">${g}</div>${imgs}`;
-      }).join('');
+          legendPanelsHtml += `<div id="${id}" class="legend-panel-extra" style="display:none;">
+            <div style="font-weight:600;margin-bottom:8px;">${g}</div>
+            <div class="legend-content">${imgs}</div>
+          </div>`;
+      });
+
+      // Return default group content
+      return (grouped['Default'] || []).map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('');
   })();
   
   return `
@@ -348,7 +361,7 @@ function getUI() {
 
   /* Panel Scroll Configuration */
   /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
-  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel {
+  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, [id^="legend-panel-"] {
     max-height: 600px;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -711,6 +724,7 @@ function getUI() {
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
     <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
+    ${legendTabsHtml}
     <button class="tab" data-target="search-panel" aria-selected="false">Search</button>
     <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
@@ -846,11 +860,12 @@ function getUI() {
 
   <div id="legend-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;">Legend</div>
-    <div id="legend-content">${legendContentHtml}</div>
+    <div id="legend-content">${defaultLegendContentHtml}</div>
     <div id="legend-instruction" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;">
       Add "legend: ImageURL" to inspector text.
     </div>
   </div>
+  ${legendPanelsHtml}
 
  
 </div>
@@ -884,39 +899,50 @@ function getUI() {
 
       // Tab switching: handle normal tabs and a minimize-action tab
       try {
-        const tabs = document.querySelectorAll('.tab-bar .tab');
-        if (tabs && tabs.length) {
-          tabs.forEach(btn => {
-            btn.addEventListener('click', function() {
-              const action = this.getAttribute('data-action');
+        const tabBar = document.querySelector('.tab-bar');
+        if (tabBar) {
+          // Use event delegation for tabs (to support dynamic tabs)
+          tabBar.addEventListener('click', function(e) {
+            const btn = e.target.closest('.tab');
+            if (!btn) return;
+            
+              const action = btn.getAttribute('data-action');
               // minimize action handled here
               if (action === 'minimize') {
                 const root = document.querySelector('.primary-background');
                 if (!root) return;
-                const pressed = this.getAttribute('aria-pressed') === 'true';
+                const pressed = btn.getAttribute('aria-pressed') === 'true';
                 if (pressed) {
                   root.classList.remove('minimized');
-                  this.setAttribute('aria-pressed', 'false');
-                  this.textContent = '—';
-                  this.title = 'Minimize';
+                  btn.setAttribute('aria-pressed', 'false');
+                  btn.textContent = '—';
+                  btn.title = 'Minimize';
                 } else {
                   root.classList.add('minimized');
-                  this.setAttribute('aria-pressed', 'true');
-                  this.textContent = '+';
-                  this.title = 'Restore';
+                  btn.setAttribute('aria-pressed', 'true');
+                  btn.textContent = '+';
+                  btn.title = 'Restore';
                 }
                 return;
               }
-              const target = this.getAttribute('data-target');
+              const target = btn.getAttribute('data-target');
               if (!target) return;
-              tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
-              this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel'].forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.style.display = (id === target) ? '' : 'none';
+              
+              // Deactivate all tabs
+              Array.from(tabBar.querySelectorAll('.tab')).forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+              // Activate clicked tab
+              btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+              
+              // Hide all panels
+              const allPanels = document.querySelectorAll('#layers-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, #share-panel, #legend-panel, [id^="legend-panel-"]');
+              allPanels.forEach(el => el.style.display = 'none');
+
+              // Show target panel
+              const el = document.getElementById(target);
+              if (el) el.style.display = '';
+
                 // Adjust iframe height when info panel is shown
-                if (id === 'info-panel' && id === target) {
+                if (target === 'info-panel') {
                   try {
                     const iframe = document.getElementById('info-content');
                     const infoPanel = document.getElementById('info-panel');
@@ -931,8 +957,6 @@ function getUI() {
                     }
                   } catch(e) {}
                 }
-              });
-            });
           });
           // Adjust tab-bar height when tabs wrap into multiple rows (max 3 rows)
           const tabBar = document.querySelector('.tab-bar');
@@ -1090,14 +1114,56 @@ function getUI() {
                         if (!grouped[g]) grouped[g] = [];
                         grouped[g].push(item.url);
                     });
-                    container.innerHTML = Object.keys(grouped).map(function(g) {
-                        const imgs = grouped[g].map(function(u){ return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'; }).join('');
-                        return (g === 'Default') ? imgs : '<div style="font-weight:bold;margin:8px 0 4px;font-size:0.9em;color:#555;">' + g + '</div>' + imgs;
-                    }).join('');
+                    
+                    // Update Default Group
+                    container.innerHTML = (grouped['Default'] || []).map(function(u){ return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'; }).join('');
                     const instruction = document.getElementById('legend-instruction');
                     if (instruction) {
                       instruction.style.display = msg.items.length > 0 ? 'none' : 'block';
                     }
+
+                    // Remove existing extra tabs and panels
+                    const tabBar = document.querySelector('.tab-bar');
+                    if (tabBar) {
+                        Array.from(tabBar.querySelectorAll('.legend-extra-tab')).forEach(function(e){ e.remove(); });
+                    }
+                    Array.from(document.querySelectorAll('.legend-panel-extra')).forEach(function(e){ e.remove(); });
+
+                    // Add extra tabs and panels
+                    Object.keys(grouped).forEach(function(g){
+                        if (g === 'Default') return;
+                        const id = 'legend-panel-' + encodeURIComponent(g).replace(/%/g, '_');
+                        // Add tab (insert before Search tab or at end)
+                        if (tabBar) {
+                            const btn = document.createElement('button');
+                            btn.className = 'tab legend-extra-tab';
+                            btn.setAttribute('data-target', id);
+                            btn.setAttribute('aria-selected', 'false');
+                            btn.textContent = g;
+                            
+                            // Insert before "Search" tab if it exists
+                            const searchTab = tabBar.querySelector('[data-target="search-panel"]');
+                            if (searchTab) {
+                                tabBar.insertBefore(btn, searchTab);
+                            } else {
+                                tabBar.appendChild(btn);
+                            }
+                        }
+                        
+                        // Add panel
+                        const p = document.createElement('div');
+                        p.id = id;
+                        p.className = 'legend-panel-extra';
+                        p.style.display = 'none';
+                        const imgs = grouped[g].map(function(u){ return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'; }).join('');
+                        p.innerHTML = '<div style="font-weight:600;margin-bottom:8px;">' + g + '</div><div class="legend-content">' + imgs + '</div>';
+                        
+                        const root = document.querySelector('.primary-background');
+                        if (root) root.appendChild(p);
+                    });
+                    
+                    // Update tab rows layout
+                    try { if(typeof updateTabRows === 'function') updateTabRows(); } catch(e){}
                   }
                 }
               } catch (e) {}
