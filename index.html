@@ -224,7 +224,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v11.3.0</span></h1>
+            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v12.0.0</span></h1>
             <p>統合プラグイン for Re:Earth Visualizer </p>
         </header>
         
@@ -244,8 +244,12 @@
                         <p>Inspector の一括設定で行単位（例: <code>xyz:</code> / <code>info:</code> / <code>cam:</code>）の設定が可能。似た構成の複数プロジェクトへの導入と設定作業が飛躍的に楽になります。</p>
                     </div>
                     <div class="feature-card">
-                        <h3>🗺️ Basemap（ベースマップ）</h3>
+                        <h3>🗺️ ベースマップ</h3>
                         <p>Inspectorの <code>base:</code> または <code>xyz:</code> 行でベースマップを一括指定できます。UI上部のドロップダウンから一つだけ選択してアクティブ化でき、ユーザーレイヤ一覧には表示されません。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔧 システムレイヤ制御</h3>
+                        <p>Re:Earth側で登録済みのシステムレイヤ（プリセットレイヤ）も、Inspectorで名前を指定して表示/非表示を初期制御できます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🗺️ レイヤー追加・管理</h3>
@@ -304,27 +308,25 @@
                     <p>
                         Inspector（歯車アイコン）の「一括設定」を開き、「設定テキスト」に以下の形式で行ごとに入力してください。
                     </p>
-                    <pre><code>xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png｜off
-xyz: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png
+                    <pre><code>layer: 地理院タイル 標準地図 | off
+xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors
-3dtiles: タイトル | https://example.com/tileset.json
-geojson: 避難所 | https://example.com/data.geojson
+3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json | off
+geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
-cam:富士山|35.139595|138.713803|h=9807.7|p=-24.72
-cam:大阪城|34.658425|135.524574|h=2533.5||p=-40.37
 legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pre>
-                    <p style="margin-top:8px; color:#444;">背景色は `background:` または `bg:` で指定します。16進表記（例: <code>#ffffff</code> / <code>#fff</code>）、RGB（例: <code>rgb(255,255,255)</code>）、CSSの色名（例: <code>white</code>）が使えます。指定するとタイルが未設定のときに地球儀とシーン背景がその色で表示されます。</p>
+                    <p style="margin-top:8px; color:#444;">設定行は順不同です。背景色は <code>background:</code> で指定します。</p>
                     <ul>
-                        <li><strong>xyz:</strong> タイル名とURLを `|` で区切って指定します。</li>
-                        <li><strong>base:</strong> ベースマップ用に1件を登録する場合に使います。`base: タイトル | URL | 帰属表示` と指定するとUI上部のベースマップ選択ドロップダウンに追加され、選択した1つだけがベースマップとして有効化されます。</li>
-                        <li><strong>3dtiles:</strong> 3D TilesのタイトルとURLを `|` で区切って指定します（例: <code>3dtiles: Plateau | https://.../tileset.json</code>）。</li>
-                        <li><strong>geojson:</strong> GeoJSONのタイトルとURLを `|` で区切って指定します（例: <code>geojson: 避難所 | https://.../data.geojson</code>）。</li>
-                        <li><strong>background / bg:</strong> 地球儀とシーンの背景色を指定します（例: <code>background: #ffffff</code>）。</li>
+                        <li><strong>layer:</strong> 既存のシステムレイヤ名を指定し、<code>|off</code> で非表示（<code>|on</code> で表示）に設定できます（例: <code>layer: 地理院タイル 標準地図 | off</code>）。</li>
+                        <li><strong>xyz:</strong> 追加レイヤ (XYZタイル) です。タイトルとURLを `|` で区切ります。末尾に `|off` を付けると非表示で追加されます。</li>
+                        <li><strong>base:</strong> ベースマップ用レイヤです。UI上部のドロップダウンに追加され、選択した1つだけが有効化されます。</li>
+                        <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
+                        <li><strong>geojson:</strong> GeoJSONレイヤです。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
-                        <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を任意の順序で追加できます。未指定のパラメータは現在のカメラ設定を維持します。Camsタブに一覧表示され、ボタンクリックでカメラが移動します。</li>
-                        <li><strong>legend:</strong> 凡例画像のURLを指定します（例: <code>legend: https://.../image.png</code>）。<code>legend:Group|URL</code> のように記述するとグループごとにタブ分けして表示されます。</li>
+                        <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
+                        <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
                     </ul>
                 </div>
                 
