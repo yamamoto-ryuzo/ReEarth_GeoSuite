@@ -22,6 +22,7 @@ let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 let _inspectorLegendItems = []; // cached legend items from inspector for initial UI render
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
+let _systemLayerSettings = []; // settings for system layers from inspector
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -3244,6 +3245,7 @@ function processInspectorText(text) {
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   // reset inspector-sourced yahooAppId each time we parse inspector text
   try { _inspectorYahooAppId = null; } catch(e) {}
+  _systemLayerSettings = [];
   const tiles = [];
 
   // Helper to extract visible flag from parts array (modifies parts in place)
@@ -3329,6 +3331,25 @@ function processInspectorText(text) {
           try { sendLog('[processInspectorText] found inspector yahooAppId'); } catch(e){}
         }
       } catch(e){}
+      nonCamLines.push(line);
+      return;
+    }
+
+    // System Layer Control: "layer: Name | on/off"
+    if (lowerLine.startsWith('layer:') || lowerLine.startsWith('preset:')) {
+      const content = line.substring(line.indexOf(':') + 1).trim();
+      if (content) {
+        const parts = content.split('|').map(p => p.trim());
+        const name = parts[0];
+        let visible = true;
+        if (parts.length > 1) {
+           const v = parts[1].toLowerCase();
+           if (v === 'off' || v === 'false' || v === 'hide' || v === 'invisible') visible = false;
+        }
+        if (name) {
+           _systemLayerSettings.push({ name: name, visible: visible });
+        }
+      }
       nonCamLines.push(line);
       return;
     }
@@ -3516,6 +3537,8 @@ function processInspectorText(text) {
     } catch(e) {}
   }
 
+  try { applySystemLayerSettings(); } catch(e) {}
+
   try { safeShowUI('processInspectorText: final render'); } catch(e){}
 
   // After UI render, send legend and info messages so iframe listeners are ready.
@@ -3625,6 +3648,22 @@ function restoreUserLayers(userRequests, force = false) {
   } catch(e) {
     // ignore errors during restore
   }
+}
+
+function applySystemLayerSettings() {
+  if (!_systemLayerSettings || !_systemLayerSettings.length) return;
+  const layers = (reearth.layers && reearth.layers.layers) || [];
+  if (!Array.isArray(layers)) return;
+
+  _systemLayerSettings.forEach(s => {
+    const matches = layers.filter(l => l && (l.title === s.name || (l.title && l.title.trim() === s.name)));
+    matches.forEach(l => {
+      // Only update if visibility is different to avoid redundant calls
+      if (!!l.visible !== s.visible) {
+        setLayerVisibility(l.id, s.visible, false);
+      }
+    });
+  });
 }
 
 // Poll for property changes (Inspector edits) and react to URL changes
