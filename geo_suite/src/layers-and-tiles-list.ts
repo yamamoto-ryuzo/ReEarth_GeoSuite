@@ -38,10 +38,20 @@ try {
 
 const generateLayerItem = (layer, isPreset, displayName) => {
   const name = (typeof displayName === 'string' && displayName.trim()) ? displayName.trim() : (layer && layer.title ? layer.title : 'Layer');
+  
+  // Check if system setting overrides visibility
+  let isChecked = layer.visible;
+  if (_systemLayerSettings && _systemLayerSettings.length > 0) {
+     const setting = _systemLayerSettings.find(s => s.name === name || (layer.title && layer.title.trim() === s.name));
+     if (setting) {
+        isChecked = setting.visible;
+     }
+  }
+
   // Check if this layer is pending hide (was added visible:true but requested OFF)
   const isPendingHide = layer && layer.id && _layersPendingHide.has(layer.id);
   // If pending hide, show as unchecked (OFF) in UI
-  const isChecked = !isPendingHide && layer.visible;
+  if (isPendingHide) isChecked = false;
   
   return `
     <li class="layer-item">
@@ -3655,15 +3665,20 @@ function applySystemLayerSettings() {
   const layers = (reearth.layers && reearth.layers.layers) || [];
   if (!Array.isArray(layers)) return;
 
+  let changed = false;
   _systemLayerSettings.forEach(s => {
     const matches = layers.filter(l => l && (l.title === s.name || (l.title && l.title.trim() === s.name)));
     matches.forEach(l => {
       // Only update if visibility is different to avoid redundant calls
       if (!!l.visible !== s.visible) {
         setLayerVisibility(l.id, s.visible, false);
+        changed = true;
       }
     });
   });
+  if (changed) {
+     try { safeShowUI('applySystemLayerSettings'); } catch(e){}
+  }
 }
 
 // Poll for property changes (Inspector edits) and react to URL changes
