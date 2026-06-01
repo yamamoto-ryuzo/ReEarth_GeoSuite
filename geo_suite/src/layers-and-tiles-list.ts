@@ -2649,21 +2649,24 @@ try {
   }
 } catch(e) {}
 
-reearth.extension.on("message", async (msg) => {
+reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
   if (msg && msg.action) {
     if (msg.action === "activateTerrain") {
       const bg = _lastInspectorBackground || "#ffffff";
+      // Re:Earth Visualizer最新版では terrain.type を明示的に指定する必要がある
+      // type: "reearth_terrain" → Cesium IONトークン不要で動作するビルトインテレイン
+      // type: "cesium"         → Cesium World Terrain（Re:EarthシーンへのCesium IONトークン設定が必要）
       reearth.viewer.overrideProperty({
-        terrain: { enabled: true },
+        terrain: { enabled: true, type: "reearth_terrain" },
         globe: { depthTestAgainstTerrain: true, baseColor: bg },
         scene: { backgroundColor: bg },
       });
     } else if (msg.action === "deactivateTerrain") {
       const bg = _lastInspectorBackground || "#ffffff";
       reearth.viewer.overrideProperty({
-        terrain: { enabled: false },
+        terrain: { enabled: false, type: "reearth_terrain" },
         globe: { depthTestAgainstTerrain: false, baseColor: bg },
         scene: { backgroundColor: bg },
       });
@@ -2756,24 +2759,28 @@ reearth.extension.on("message", async (msg) => {
     }
 
     else if (msg.action === "requestGeolocation") {
-      try {
-        await performGeolocationAndNotify();
-      } catch (e) {
-        try { sendError('[requestGeolocation] performGeolocationAndNotify failed', e); } catch(_) {}
-      }
-    } else if (msg.action === "flyMoveMarkAndNotify") {
-      try {
-        try { sendLog('[message] flyMoveMarkAndNotify received', msg && msg.lat, msg && msg.lng, 'addMarker:', msg && msg.addMarker); } catch(e){}
-        // Use flyToAndNotify directly and honor the addMarker flag from the UI
-        const res = await flyToAndNotify(msg.lat, msg.lng, { addMarker: !!(msg && msg.addMarker) });
-        try { sendLog('[message] flyMoveMarkAndNotify result', res); } catch(e){}
-        // Ensure UI receives geolocationResult for search-origin flows
+      (async () => {
         try {
-          try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: msg.lat, lng: msg.lng, layerId: res && res.layerId }); } catch(e){}
-        } catch(e) { try { sendError('[flyMoveMarkAndNotify] postToUI fallback threw', e); } catch(_){} }
-      } catch(e) {
-        try { sendError('[flyMoveMarkAndNotify] flyToAndNotify error:', e); } catch(err) {}
-      }
+          await performGeolocationAndNotify();
+        } catch (e) {
+          try { sendError('[requestGeolocation] performGeolocationAndNotify failed', e); } catch(_) {}
+        }
+      })();
+    } else if (msg.action === "flyMoveMarkAndNotify") {
+      (async () => {
+        try {
+          try { sendLog('[message] flyMoveMarkAndNotify received', msg && msg.lat, msg && msg.lng, 'addMarker:', msg && msg.addMarker); } catch(e){}
+          // Use flyToAndNotify directly and honor the addMarker flag from the UI
+          const res = await flyToAndNotify(msg.lat, msg.lng, { addMarker: !!(msg && msg.addMarker) });
+          try { sendLog('[message] flyMoveMarkAndNotify result', res); } catch(e){}
+          // Ensure UI receives geolocationResult for search-origin flows
+          try {
+            try { postToUI({ action: 'geolocationResult', success: res && res.success, lat: msg.lat, lng: msg.lng, layerId: res && res.layerId }); } catch(e){}
+          } catch(e) { try { sendError('[flyMoveMarkAndNotify] postToUI fallback threw', e); } catch(_){} }
+        } catch(e) {
+          try { sendError('[flyMoveMarkAndNotify] flyToAndNotify error:', e); } catch(err) {}
+        }
+      })();
 
     } else if (msg.action === "removeLayer") {
       if (msg.layerId) {
@@ -2857,21 +2864,23 @@ reearth.extension.on("message", async (msg) => {
             }
           } catch(e){}
           // Delegate camera preset flyTo to flyToAndNotify for consistent logging
-          try { await flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false }); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} }
+          (async () => { try { await flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false }); } catch(e) { try { sendError('[flyToAndNotify] flyToCamera failed', e); } catch(_){} } })();
         }
       } catch(e) {
         try { sendError('[flyToAndNotify] flyToCamera outer error:', e); } catch(err){}
       }
     } else if (msg.action === "flyToManual") {
-      try {
-        await flyToAndNotify(msg.lat, msg.lng, { 
-          height: msg.height, 
-          heading: msg.heading, 
-          pitch: msg.pitch, 
-          duration: 2, 
-          addMarker: false 
-        });
-      } catch(e) { try { sendError('[flyToAndNotify] flyToManual failed', e); } catch(_){} }
+      (async () => {
+        try {
+          await flyToAndNotify(msg.lat, msg.lng, { 
+            height: msg.height, 
+            heading: msg.heading, 
+            pitch: msg.pitch, 
+            duration: 2, 
+            addMarker: false 
+          });
+        } catch(e) { try { sendError('[flyToAndNotify] flyToManual failed', e); } catch(_){} }
+      })();
     } else if (msg.action === "generatePermalink") {
         try {
             // 1. Get Camera
@@ -3200,7 +3209,37 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
 tryInitFromProperty();
 
 // Default inspector text (matches reearth.yml defaultValue)
-const _defaultInspectorText = ``;
+const _defaultInspectorText = `              layer:Googleフォトリアリスティック3Dタイル|off
+              3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json|off
+              geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+              3dtiles: 東京都//千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
+              geojson: 東京都//行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+              background: #ffffff
+              info: https://re-earth-geo-suite.vercel.app/ryu.html
+              cam:東京駅|35.653108|139.761449|h=2200.6|p=-30|d=348.5
+              cam:富士山|35.188733|138.610404|h=9807.7|p=-24.72|d=28.56
+              cam:大阪城|34.683329|135.525766|h=311.2|d=356.57|p=-32.92
+              legend:https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
+              legend:凡例|https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
+              base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors
+              base: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png | 出典：国土地理院
+              base: 地理院タイル 淡色地図 | https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png| 出典：国土地理院
+              base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg| 出典：国土地理院
+              base: 地理院タイル 1987～1990年 | https://cyberjapandata.gsi.go.jp/xyz/gazo4/{z}/{x}/{y}.jpg| 出典：国土地理院
+              base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
+              base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
+              base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
+              yahooAppId: あなたのYahoo Local Search API AppID
+- id: navigation-toolbar
+  type: widget
+  name: "Navigation Toolbar"
+  description: "Compass, zoom and mode controls"
+  entry: navigation-toolbar.js
+  widgetLayout:
+    defaultLocation:
+      zone: outer
+      section: right
+      area: top`;
 
 // Also process any inspector text/config present at init
 try {
