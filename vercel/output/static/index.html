@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Re:Earth GeoSuite Plugin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: visible;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .demo-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin: 20px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .demo-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .url-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #28a745;
+        }
+        
+        .url-box h3 {
+            color: #28a745;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .url-box code {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: block;
+            margin: 8px 0;
+            font-size: 0.9em;
+            color: #333;
+            word-break: break-all;
+            border: 1px solid #ddd;
+        }
+        
+        .install-steps {
+            background: #fff8e1;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+
+        /* Ensure long notice text wraps and doesn't get clipped */
+        .install-steps p, .install-steps div, .install-steps li {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            white-space: normal;
+        }
+        
+        .install-steps ol {
+            margin-left: 20px;
+        }
+        
+        .install-steps li {
+            margin: 10px 0;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .github-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .github-link:hover {
+            text-decoration: underline;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 15px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* Modern copy button styles */
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: linear-gradient(90deg,#5b7be3,#7a4bb8);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(90,110,230,0.18);
+            transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .copy-btn:active { transform: translateY(1px) scale(.995); }
+        .copy-btn:focus { outline: 3px solid rgba(102,126,234,0.18); }
+
+        .copy-btn svg { width: 16px; height: 16px; display:block; }
+
+        .copy-msg {
+            margin-left: 8px;
+            font-size: 0.9em;
+            color: #1b9b3a;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity .18s ease, transform .18s ease;
+            white-space: nowrap;
+        }
+        .copy-msg.visible { opacity: 1; transform: translateY(0); }
+
+        .visually-hidden { position: absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v12.0.0</span></h1>
+            <p>統合プラグイン for Re:Earth Visualizer </p>
+        </header>
+        
+        <div class="content">
+            <section>
+                <h2>📋 概要</h2>
+                <p>Re:Earth 向け統合プラグイン「geo_suite」の開発基盤です。XYZ タイル管理やレイヤ一覧 UI、Terrain/Shadow トグル、HTMLによるインフォメーションなど、Visualizer プラグインとして必要な機能を提供します。</p>
+                <p>レイヤの管理はインスペクターにより行われ、複数のレイヤを管理可能です。</p>
+                <a href="https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io" class="demo-link" target="_blank">🚀 サンプルサイトを見る</a>
+            </section>
+            
+            <section>
+                <h2>✨ 主な機能</h2>
+                <div class="features">
+                    <div class="feature-card">
+                        <h3>⚙️ インスペクター一括設定</h3>
+                        <p>Inspector の一括設定で行単位（例: <code>xyz:</code> / <code>info:</code> / <code>cam:</code>）の設定が可能。似た構成の複数プロジェクトへの導入と設定作業が飛躍的に楽になります。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🗺️ ベースマップ</h3>
+                        <p>Inspectorの <code>base:</code> または <code>xyz:</code> 行でベースマップを一括指定できます。UI上部のドロップダウンから一つだけ選択してアクティブ化でき、ユーザーレイヤ一覧には表示されません。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔧 システムレイヤ制御</h3>
+                        <p>Re:Earth側で登録済みのシステムレイヤ（プリセットレイヤ）も、Inspectorで名前を指定して表示/非表示を初期制御できます。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🗺️ レイヤー追加・管理</h3>
+                        <p>XYZタイル、3D Tiles、GeoJSONをInspectorからURL指定で簡単に追加・管理できます。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📑 レイヤー一覧UI</h3>
+                        <p>読み込まれたレイヤーを視覚的に管理。表示/非表示の切り替えも直感的に操作できます。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📂 レイヤグループ化</h3>
+                        <p><code>/</code> (通常) や <code>//</code> (排他) を使ってレイヤを階層化。ラジオボタンのような排他制御も可能です。<br><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/blob/main/docs/layer-grouping-specification.md" target="_blank" style="color:#667eea;text-decoration:none;font-size:0.9em;">詳細仕様書を見る &rarr;</a></p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🖼️ 凡例表示</h3>
+                        <p>legend: 行で画像URLを指定。Legendタブに凡例画像を一覧表示できます。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔎 SEARCH（検索）</h3>
+                        <p>住所・施設名で検索して該当地点にワンクリックでFlyToできます。検索は Yahoo! ジオコーダ API（サーバー経由のプロキシ）を利用可能です。Inspector に <code>yahooAppId: YOUR_APPID</code> を設定してください。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📷 カメラプリセット / 現在位置</h3>
+                        <p>登録した位置や、現在位置へワンクリックでFlyTo。ターゲットスコープで場所を確認できます。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>ℹ️ Info表示</h3>
+                        <p>外部HTMLをInfoタブに表示。プロジェクト説明やドキュメントを埋め込めます。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>⛰️ Terrain/Shadow</h3>
+                        <p>地形表示と影表示のON/OFFをワンクリックで切り替え可能です。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🧭 ナビゲーション</h3>
+                        <p>コンパスでカメラ方位を表示・クリックで北にリセット。Visualizerと同期します。2Dはトップダウン表示に切替えをサポート。</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section>
+                <h2>🔗 プラグインのインストール</h2>
+                
+                <div class="install-steps">
+                    <h3>📥 Step 1: プラグインをインストール</h3>
+                    <ol>
+                        <li><strong>Re:Earth Visualizer</strong> を開き、画面右上の<strong>「プラグイン」</strong>アイコンをクリック</li>
+                        <li><strong>「個人インストール済み」</strong>タブを選択</li>
+                        <li>下記のリポジトリURLを入力</li>
+                        <li>インストール完了！</li>
+                    </ol>
+                </div>
+
+                <div class="install-steps">
+                    <h3>⚙️ Step 2: 設定方法</h3>
+                    <p>
+                        Inspector（歯車アイコン）の「一括設定」を開き、「設定テキスト」に以下の形式で行ごとに入力してください。
+                    </p>
+                    <pre><code>layer: 地理院タイル 標準地図 | off
+xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
+base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors
+3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json | off
+geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+background: #ffffff
+info: https://re-earth-geo-suite.vercel.app/ryu.html
+cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
+legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pre>
+                    <p style="margin-top:8px; color:#444;">設定行は順不同です。背景色は <code>background:</code> で指定します。</p>
+                    <ul>
+                        <li><strong>layer:</strong> 既存のシステムレイヤ名を指定し、<code>|off</code> で非表示（<code>|on</code> で表示）に設定できます（例: <code>layer: 地理院タイル 標準地図 | off</code>）。</li>
+                        <li><strong>xyz:</strong> 追加レイヤ (XYZタイル) です。タイトルとURLを `|` で区切ります。末尾に `|off` を付けると非表示で追加されます。</li>
+                        <li><strong>base:</strong> ベースマップ用レイヤです。UI上部のドロップダウンに追加され、選択した1つだけが有効化されます。</li>
+                        <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
+                        <li><strong>geojson:</strong> GeoJSONレイヤです。</li>
+                        <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
+                        <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
+                        <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
+                    </ul>
+                </div>
+                
+                <!-- GitHub リポジトリ URL 表示は削除されました -->
+                
+                <div class="url-box">
+                    <h3>📦 ZIPファイル（配布用）</h3>
+                    <p style="margin-top: 6px; font-size: 1em; color: #333;">安定版の配布用 ZIP はローカルの以下フォルダに配置しています。Marketplace が利用可能になり次第、Marketplace での配布も開始します。</p>
+                    <p style="margin-top: 8px; font-size: 0.95em; color: #666;"><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/releases" target="_blank">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/releases</a></p>
+                    <p style="margin-top:8px; font-size:0.9em; color:#666;">ローカルにある ZIP を Re:Earth のプラグインインポート機能から指定してインストールしてください。</p>
+                </div>
+
+                <div class="url-box">
+                    <h3>📦 ZIPファイル（開発版）</h3>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <code id="devZipUrl">https://re-earth-geo-suite.vercel.app/artifacts/geo_suite.zip</code>
+                        <button class="copy-btn" data-target="devZipUrl" aria-label="コピー">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
+                            <span class="visually-hidden">コピー</span>
+                        </button>
+                        <span class="copy-msg" id="devZipUrl-msg" aria-hidden="true"></span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        ※ こちらは Vercel による開発版 ZIP です。開発用の配布物であり、本番リリースとは別です。
+                    </p>
+                </div>
+                             
+            </section>
+
+            <section>
+                <h2>📖 使い方</h2>
+
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>👁️ レイヤーの表示/非表示切替</h3>
+                    <ol>
+                        <li>左側のプラグインUI内で、各レイヤーの横に<strong>チェックボックス</strong>があります。</li>
+                        <li>チェックボックスをON/OFFすることで、レイヤーの表示/非表示を切り替えられます。</li>
+                    </ol>
+                </div>
+
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>🧩 グループルール</h3>
+                    <p>レイヤのグループ化はインスペクター内の区切り文字で指定します。ルールは以下の通りです。</p>
+                    <ul>
+                        <li><code>/</code>：一括・折りたたみ — グループ内をまとめてON/OFF。初期表示は折りたたみ。</li>
+                        <li><code>//</code>：排他・折りたたみ — グループ内は排他（ラジオ）で、同時に1つのみON。初期表示は折りたたみ。</li>
+                        <li><code>バックスラッシュ:\</code>：一括・展開 — グループ内をまとめてON/OFF。初期表示は展開（開いた状態）。</li>
+                        <li><code>ダブルバックスラッシュ:\\</code>：排他・展開 — グループ内は排他（ラジオ）で、初期表示は展開。</li>
+                    </ul>
+                    <p style="margin-top:8px;">補足: 単一の <code>/</code> と <code>\</code> は通常グループとして同一視されますが、二重区切りの <code>//</code> と <code>\\</code> は排他グループとして区別されます。バックスラッシュ由来の区切りは展開優先となります。</p>
+                    <p>詳細はドキュメントを参照してください： <a href="docs/layer-grouping-specification.md" target="_blank">layer-grouping-specification.md</a></p>
+                </div>
+
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>Inspector での初期表示指定</h3>
+                    <p>Inspector で初期表示を指定するには、該当行のパイプ（<code>|</code>）で区切った任意の位置に <code>ON</code> / <code>OFF</code> を追記してください（大文字小文字は区別しません）。</p>
+                    <pre style="background:#f8f9fa;padding:10px;border-radius:6px;margin-top:6px;"><code>xyz: Tokyo Basemap | https://tile.example/{z}/{x}/{y}.png | OFF
+geojson: 避難所 | https://example.com/shelters.geojson | ON
+3dtiles: 建物LOD | https://example.com/tileset.json | OFF</code></pre>
+                    <p style="margin-top:6px; color:#666;">補足: 現在 <code>visible=true</code>/<code>visible=false</code> 形式は自動的にパースされません。必要であれば対応を追加できますので指示ください。</p>
+                </div>
+
+                <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:8px;">
+                    <h3>⚠️ 注意事項</h3>
+                    <div>
+                        <p style="color:#333;">プラグインはレイヤ追加時に一旦 <code>visible: true</code> で追加し、<code>OFF</code> 指定のあるレイヤは UI 側で短時間後に非表示にする仕組みです（Extension 側での遅延タイマーが利用できないための回避）。</p>
+                        <p style="color:#333;">システムレイヤはプラグインにて状態確認が制御不可であるため、基本的にはシステムレイヤ表示をONにし、制御は必ず本プラグインで行ってください。</p>
+                    </div>
+                </div>
+
+                <div class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:12px;">
+                    <h3>⚠️ Google Photorealistic 3D Tiles 利用時の注意</h3>
+                    <div>
+                        <p style="color:#333;">
+                            Google Photorealistic 3D Tiles を使用している場合、追加したユーザーレイヤ（XYZタイルなど）が表示されないことがあります。<br>
+                            これは 3D Tiles が立体物として地面の上に描画され、地表に張り付くユーザーレイヤを覆い隠してしまうためです。<br>
+                            Re:Earth のシーン設定で<strong>「地下を隠す」</strong>などの深度テスト（Depth Test）設定を変更することで表示される場合がありますが、3Dモデルの描画順序に依存します。
+                        </p>
+                    </div>
+                </div>
+
+            </section>
+
+            <section>
+                <h2>🛠️ 開発について</h2>
+                <p>本プロジェクトは <strong>Vercel</strong> を利用した開発・配信フローを採用しています。ここで公開しているサイトは <strong>開発版（Developer Preview）</strong> として自動デプロイされています。開発版はテストや動作確認を目的としており、本番向けの安定版リリースとは別扱いです。ZIP や公開URLは予告なく更新・上書きされる可能性があります。</p>
+                
+                <h3 style="margin-top: 20px; color: #667eea;">自動デプロイ</h3>
+                    <p>このリポジトリは <strong>Vercel</strong> と連携しています。`main` ブランチに push すると Vercel が自動でビルドを実行し、公開用ディレクトリ（`dist/`）をデプロイします。ビルドの概要は次の通りです：</p>
+                    <ul style="margin:8px 0 16px 20px;">
+                        <li>`npm ci` による依存のインストール（`package-lock.json` を使用）</li>
+                        <li>`npm run build`（`package.json` の `build`）で TypeScript をコンパイルして `dist/` を生成</li>
+                        <li>生成された `dist/` の中身が Vercel により公開される（`vercel.json` の `distDir`= `dist`）</li>
+                    </ul>
+                    <p>変更を反映するには通常この手順で十分です：</p>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; margin: 15px 0;"><code>git add .
+    git commit -m "update plugin"
+    git push origin main
+    # → Vercel が自動的にビルド＆デプロイします</code></pre>
+                    <p>デプロイで 404 やエラーが出る場合は Vercel のデプロイログを確認してください。特に注目する箇所：</p>
+                    <ul style="margin:8px 0 16px 20px;">
+                        <li>`npm ci`（依存の取得）</li>
+                        <li>`npm run build` / `tsc`（TypeScript のビルド）</li>
+                        <li>`dist/` の生成と静的ファイルのコピー</li>
+                    </ul>
+                    <p>必要なら私がローカルでビルドして `dist/` の中身や ZIP（`dist/artifacts/geo_suite.zip`）を作成できます。また、デプロイを即時に反映したい場合は Vercel ダッシュボードの「Redeploy」や `vercel` CLI を使って手動デプロイしてください。</p>
+            </section>
+            
+            <section>
+                <h2>📚 関連リンク</h2>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li><a href="https://eukarya.notion.site/19616e0fb165802491f4e091b5e8e754" target="_blank" class="github-link">Visualizer ユーザーマニュアル</a></li>
+                    <li><a href="https://visualizer.developer.reearth.io/ja/" target="_blank" class="github-link">開発者向けサイト</a></li>
+                    <li><a href="https://visualizer.developer.reearth.io/ja/plugin-api/viewer/" target="_blank" class="github-link">プラグインAPI リファレンス</a></li>
+                    <li><a href="https://re-earth-geo-suite.vercel.app" target="_blank" class="github-link">Production (Vercel)</a></li>
+                    <li><a href="https://vercel.com/dashboard" target="_blank" class="github-link">Vercel ダッシュボード</a></li>
+                    <li><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/blob/main/CHANGELOG.md" target="_blank" class="github-link">Changelog</a></li>
+                    <!-- GitHub リポジトリリンクは索引ページから削除 -->
+                </ul>
+            </section>
+        </div>
+        
+        <footer>
+            <p>
+                <strong>Re:Earth GeoSuite</strong> by 
+                <a href="https://github.com/yamamoto-ryuzo" target="_blank" class="github-link">yamamoto-ryuzo</a>
+            </p>
+            <p style="margin-top: 10px;">MIT License &copy; 2026</p>
+        </footer>
+    </div>
+    
+    <script>
+        // 必要なURLを設定（配布用ZIPはGitHub Releasesを指す）
+        window.addEventListener('DOMContentLoaded', function() {
+            // pluginUrl display removed from index (GitHub repo URL omitted)
+            var htmlEl = document.getElementById('htmlUrl');
+            if (htmlEl) htmlEl.textContent = window.location.origin + '/ryu.html';
+            // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
+            // 開発版 ZIP の URL を設定
+            var devZipEl = document.getElementById('devZipUrl');
+            if (devZipEl) devZipEl.textContent = window.location.origin + '/artifacts/geo_suite.zip';
+
+            // コピー機能の初期化
+            document.querySelectorAll('.copy-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const target = btn.getAttribute('data-target');
+                    copyToClipboard(target, btn);
+                });
+            });
+        });
+
+        function copyToClipboard(targetId, btn) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            const text = el.textContent.trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopyMsg(targetId, 'コピーしました');
+                }, function() {
+                    fallbackCopy(text, targetId);
+                });
+            } else {
+                fallbackCopy(text, targetId);
+            }
+        }
+
+        function fallbackCopy(text, targetId) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showCopyMsg(targetId, 'コピーしました');
+            } catch (e) {
+                showCopyMsg(targetId, 'コピーに失敗しました');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function showCopyMsg(targetId, message) {
+            const msgEl = document.getElementById(targetId + '-msg');
+            if (!msgEl) return;
+            msgEl.textContent = message;
+            msgEl.classList.add('visible');
+            // hide after delay
+            setTimeout(function() {
+                msgEl.classList.remove('visible');
+            }, 1600);
+        }
+    </script>
+    <script>
+        // Fetch and display version from reearth.yml
+        // Try root path first (for prod/dist), then plugin/ path (for local dev)
+        fetch('reearth.yml')
+            .then(response => {
+                if (response.ok) return response.text();
+                return fetch('plugin/reearth.yml').then(r => {
+                    if (r.ok) return r.text();
+                    throw new Error('reearth.yml not found');
+                });
+            })
+            .then(text => {
+                const match = text.match(/version:\s*"?([\d\.]+)"?/);
+                if (match && match[1]) {
+                    const el = document.getElementById('app-version');
+                    if (el) el.textContent = 'v' + match[1];
+                }
+            })
+            .catch(e => console.log('Version fetch failed:', e));
+    </script>
+</body>
+</html>

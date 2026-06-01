@@ -1,4 +1,10 @@
 # Changelog
+## v13.0.0
+- 修正: Re:Earth Visualizer の仕様変更に伴う地形（terrain）周りの不具合対応。
+    - 背景: Visualizer 側で `terrain` のデフォルトが `reearth_terrain` に変更されたため、従来 `terrain: { enabled: true }` のみを送っていたプラグインでは期待する Cesium/Cesium ION の地形が使われず表示や挙動が変わる、あるいはエラーになる事象を確認しました。
+    - 対策: プラグイン側から `terrain.type` を明示的に指定するように修正しました（例: Cesium ION を利用する場合は `type: "cesiumion"` を送る）。
+- バグ修正: `reearth.extension.on("message", async (msg) => { ... })` のようにハンドラが Promise を直接返す実装によるメッセージチャネルの競合（非同期応答エラー）を解消するため、同期ハンドラに戻し内部を IIFE でラップする実装に変更しました。
+
 ## v12.0.0
 - システムレイヤ制御機能の追加：
     - Inspectorの設定テキストで、Re:Earth側で登録済みのシステムレイヤ（プリセットレイヤ）の表示/非表示を初期制御できるようになりました。

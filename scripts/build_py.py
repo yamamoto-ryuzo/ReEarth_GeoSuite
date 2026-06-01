@@ -45,7 +45,31 @@ def main():
 
         # 2) TypeScript コンパイル
         print('TypeScript をコンパイルします: npx tsc -p geo_suite/tsconfig.json')
-        run(['npx', 'tsc', '-p', 'geo_suite/tsconfig.json'])
+        # npx が使えない環境もあるため、順に試す
+        npx = shutil.which('npx')
+        tsc = shutil.which('tsc')
+        if npx:
+            try:
+                run([npx, 'tsc', '-p', 'geo_suite/tsconfig.json'])
+            except SystemExit:
+                # フォールバックして次を試す
+                if tsc:
+                    run([tsc, '-p', 'geo_suite/tsconfig.json'])
+                else:
+                    # node_modules に存在する可能性
+                    alt = ROOT / 'node_modules' / '.bin' / 'tsc'
+                    if alt.exists():
+                        run([str(alt), '-p', 'geo_suite/tsconfig.json'])
+                    else:
+                        raise
+        elif tsc:
+            run([tsc, '-p', 'geo_suite/tsconfig.json'])
+        else:
+            alt = ROOT / 'node_modules' / '.bin' / 'tsc'
+            if alt.exists():
+                run([str(alt), '-p', 'geo_suite/tsconfig.json'])
+            else:
+                raise SystemExit('tsc コマンドが見つかりません。npx または tsc をインストールしてください。')
 
         # 3) dist ディレクトリを準備して geo_suite/build の成果物をコピー
         dist = ROOT / 'dist'
