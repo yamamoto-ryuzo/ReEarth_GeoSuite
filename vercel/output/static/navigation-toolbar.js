@@ -301,14 +301,125 @@ function groundPointFromCamera(cameraPos) {
     }
 }
 // Measurement state managed on extension side
-export const onMessage = async (msg) => {
-    if (!msg || !msg.action)
-        return;
-    if (msg.action === 'setHeading') {
-        try {
-            const target = { heading: msg.payload && typeof msg.payload.heading === 'number' ? msg.payload.heading : 0 };
-            const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
-            if (cur) {
+export const onMessage = (msg) => {
+    (async () => {
+        if (!msg || !msg.action)
+            return;
+        if (msg.action === 'setHeading') {
+            try {
+                const target = { heading: msg.payload && typeof msg.payload.heading === 'number' ? msg.payload.heading : 0 };
+                const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+                if (cur) {
+                    if (typeof cur.pitch === 'number')
+                        target.pitch = cur.pitch;
+                    if (typeof cur.roll === 'number')
+                        target.roll = cur.roll;
+                    if (typeof cur.lat === 'number')
+                        target.lat = cur.lat;
+                    if (typeof cur.lng === 'number')
+                        target.lng = cur.lng;
+                    if (typeof cur.height === 'number')
+                        target.height = cur.height;
+                }
+                try {
+                    if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function')
+                        reearth.camera.flyTo(target, { duration: 0.8 });
+                }
+                catch (e) { }
+            }
+            catch (e) { }
+        }
+        if (msg.action === 'requestCamera') {
+            try {
+                const cur2 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+                const h = cur2 && typeof cur2.heading === 'number' ? cur2.heading : undefined;
+                postToUI({ type: 'cameraUpdate', payload: { heading: h } });
+            }
+            catch (e) { }
+        }
+        if (msg.action === 'topDown') {
+            try {
+                const cur3 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+                const target = {};
+                if (!cur3 || typeof cur3.lat !== 'number' || typeof cur3.lng !== 'number') {
+                    try {
+                        postToUI({ type: 'topDownResult', payload: { success: false, reason: 'no_camera_position' } });
+                    }
+                    catch (e) { }
+                    return;
+                }
+                // Compute ground intersection at altitude 0 from camera orientation; fallback to camera lat/lng if not available
+                const ground = groundPointFromCamera(cur3);
+                if (ground) {
+                    target.lat = ground.lat;
+                    target.lng = ground.lng;
+                }
+                else {
+                    target.lat = cur3.lat;
+                    target.lng = cur3.lng;
+                }
+                if (typeof cur3.height === 'number')
+                    target.height = cur3.height;
+                if (typeof cur3.heading === 'number')
+                    target.heading = cur3.heading;
+                // straight top-down: pitch to -90 degrees and reset roll
+                try {
+                    target.pitch = -Math.PI / 2;
+                }
+                catch (e) {
+                    target.pitch = -1.5707963267948966;
+                }
+                try {
+                    target.roll = 0;
+                }
+                catch (e) {
+                    target.roll = 0;
+                }
+                try {
+                    if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function')
+                        reearth.camera.flyTo(target, { duration: 0.8 });
+                }
+                catch (e) { }
+                try {
+                    postToUI({ type: 'topDownResult', payload: { success: true, lat: target.lat, lng: target.lng } });
+                }
+                catch (e) { }
+            }
+            catch (e) { }
+        }
+        // Rotate camera to the next 45° increment (0,45,90,...)
+        if (msg.action === 'rotateBy') {
+            try {
+                const stepDeg = msg.payload && typeof msg.payload.delta === 'number' ? msg.payload.delta : 45;
+                const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+                if (!cur) {
+                    try {
+                        postToUI({ type: 'rotateResult', payload: { success: false, reason: 'no_camera_position' } });
+                    }
+                    catch (e) { }
+                    return;
+                }
+                var heading = typeof cur.heading === 'number' ? cur.heading : 0;
+                // derive current heading in degrees normalized to [0,360)
+                var headingDeg = normalizeHeadingDeg(heading);
+                // Snap to `stepDeg` multiples (e.g., 45°) by rounding up so rotation goes right (increase degrees):
+                // - If current heading is not on a multiple, snap up to the next multiple (ceil).
+                // - If already exactly on a multiple, advance to the next multiple (clockwise +stepDeg).
+                var multiple = Math.ceil(headingDeg / stepDeg) * stepDeg;
+                multiple = ((multiple % 360) + 360) % 360;
+                var nextDeg = multiple;
+                var eps = 1e-6;
+                if (Math.abs(headingDeg - multiple) < eps) {
+                    // already exactly on a multiple: advance clockwise => add step
+                    nextDeg = (multiple + stepDeg) % 360;
+                }
+                var newHeadingRad = nextDeg * Math.PI / 180;
+                // Log current and adjusted headings for debugging
+                try {
+                    console.log('[navigation-toolbar] rotateBy: currentDeg=', headingDeg, 'targetDeg=', nextDeg, 'currentRad=', heading, 'targetRad=', newHeadingRad);
+                }
+                catch (e) { }
+                const target = { heading: newHeadingRad };
                 if (typeof cur.pitch === 'number')
                     target.pitch = cur.pitch;
                 if (typeof cur.roll === 'number')
@@ -319,128 +430,19 @@ export const onMessage = async (msg) => {
                     target.lng = cur.lng;
                 if (typeof cur.height === 'number')
                     target.height = cur.height;
-            }
-            try {
-                if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function')
-                    reearth.camera.flyTo(target, { duration: 0.8 });
-            }
-            catch (e) { }
-        }
-        catch (e) { }
-    }
-    if (msg.action === 'requestCamera') {
-        try {
-            const cur2 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
-            const h = cur2 && typeof cur2.heading === 'number' ? cur2.heading : undefined;
-            postToUI({ type: 'cameraUpdate', payload: { heading: h } });
-        }
-        catch (e) { }
-    }
-    if (msg.action === 'topDown') {
-        try {
-            const cur3 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
-            const target = {};
-            if (!cur3 || typeof cur3.lat !== 'number' || typeof cur3.lng !== 'number') {
                 try {
-                    postToUI({ type: 'topDownResult', payload: { success: false, reason: 'no_camera_position' } });
+                    if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function')
+                        reearth.camera.flyTo(target, { duration: 0.6 });
                 }
                 catch (e) { }
-                return;
-            }
-            // Compute ground intersection at altitude 0 from camera orientation; fallback to camera lat/lng if not available
-            const ground = groundPointFromCamera(cur3);
-            if (ground) {
-                target.lat = ground.lat;
-                target.lng = ground.lng;
-            }
-            else {
-                target.lat = cur3.lat;
-                target.lng = cur3.lng;
-            }
-            if (typeof cur3.height === 'number')
-                target.height = cur3.height;
-            if (typeof cur3.heading === 'number')
-                target.heading = cur3.heading;
-            // straight top-down: pitch to -90 degrees and reset roll
-            try {
-                target.pitch = -Math.PI / 2;
-            }
-            catch (e) {
-                target.pitch = -1.5707963267948966;
-            }
-            try {
-                target.roll = 0;
-            }
-            catch (e) {
-                target.roll = 0;
-            }
-            try {
-                if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function')
-                    reearth.camera.flyTo(target, { duration: 0.8 });
-            }
-            catch (e) { }
-            try {
-                postToUI({ type: 'topDownResult', payload: { success: true, lat: target.lat, lng: target.lng } });
-            }
-            catch (e) { }
-        }
-        catch (e) { }
-    }
-    // Rotate camera to the next 45° increment (0,45,90,...)
-    if (msg.action === 'rotateBy') {
-        try {
-            const stepDeg = msg.payload && typeof msg.payload.delta === 'number' ? msg.payload.delta : 45;
-            const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
-            if (!cur) {
                 try {
-                    postToUI({ type: 'rotateResult', payload: { success: false, reason: 'no_camera_position' } });
+                    postToUI({ type: 'rotateResult', payload: { success: true, heading: newHeadingRad, headingDeg: (newHeadingRad * 180 / Math.PI) } });
                 }
                 catch (e) { }
-                return;
-            }
-            var heading = typeof cur.heading === 'number' ? cur.heading : 0;
-            // derive current heading in degrees normalized to [0,360)
-            var headingDeg = normalizeHeadingDeg(heading);
-            // Snap to `stepDeg` multiples (e.g., 45°) by rounding up so rotation goes right (increase degrees):
-            // - If current heading is not on a multiple, snap up to the next multiple (ceil).
-            // - If already exactly on a multiple, advance to the next multiple (clockwise +stepDeg).
-            var multiple = Math.ceil(headingDeg / stepDeg) * stepDeg;
-            multiple = ((multiple % 360) + 360) % 360;
-            var nextDeg = multiple;
-            var eps = 1e-6;
-            if (Math.abs(headingDeg - multiple) < eps) {
-                // already exactly on a multiple: advance clockwise => add step
-                nextDeg = (multiple + stepDeg) % 360;
-            }
-            var newHeadingRad = nextDeg * Math.PI / 180;
-            // Log current and adjusted headings for debugging
-            try {
-                console.log('[navigation-toolbar] rotateBy: currentDeg=', headingDeg, 'targetDeg=', nextDeg, 'currentRad=', heading, 'targetRad=', newHeadingRad);
-            }
-            catch (e) { }
-            const target = { heading: newHeadingRad };
-            if (typeof cur.pitch === 'number')
-                target.pitch = cur.pitch;
-            if (typeof cur.roll === 'number')
-                target.roll = cur.roll;
-            if (typeof cur.lat === 'number')
-                target.lat = cur.lat;
-            if (typeof cur.lng === 'number')
-                target.lng = cur.lng;
-            if (typeof cur.height === 'number')
-                target.height = cur.height;
-            try {
-                if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function')
-                    reearth.camera.flyTo(target, { duration: 0.6 });
-            }
-            catch (e) { }
-            try {
-                postToUI({ type: 'rotateResult', payload: { success: true, heading: newHeadingRad, headingDeg: (newHeadingRad * 180 / Math.PI) } });
             }
             catch (e) { }
         }
-        catch (e) { }
-    }
+    })();
 };
 try {
     if (typeof reearth !== 'undefined' && reearth && reearth.extension && typeof reearth.extension.on === 'function') {

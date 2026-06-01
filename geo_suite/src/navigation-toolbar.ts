@@ -305,10 +305,11 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
 // Measurement state managed on extension side
 
 
-export const onMessage = async (msg: any): Promise<void> => {
-  if (!msg || !msg.action) return;
-  
-  if (msg.action === 'setHeading') {
+export const onMessage = (msg: any): void => {
+  (async () => {
+    if (!msg || !msg.action) return;
+
+    if (msg.action === 'setHeading') {
     try {
       const target: any = { heading: msg.payload && typeof msg.payload.heading === 'number' ? msg.payload.heading : 0 };
       const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
@@ -398,7 +399,8 @@ export const onMessage = async (msg: any): Promise<void> => {
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.6 }); } catch (e) {}
       try { postToUI({ type: 'rotateResult', payload: { success: true, heading: newHeadingRad, headingDeg: (newHeadingRad * 180 / Math.PI) } }); } catch (e) {}
     } catch (e) {}
-  }
+    }
+  })();
 };
 
 try {
