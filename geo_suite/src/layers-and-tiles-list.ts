@@ -909,6 +909,17 @@ function getUI() {
 </div>
 
 <script>
+  window.openUrlInInfoPanel = function(event, url) {
+    event.preventDefault(); // 左クリック時の新しいタブ展開をキャンセル
+    const iframe = document.getElementById('info-content');
+    if (iframe && url) {
+      iframe.src = url;
+      // info タブをアクティブにする
+      const infoTabBtn = document.querySelector('button[data-target="info-panel"]');
+      if (infoTabBtn) infoTabBtn.click();
+    }
+  };
+
   // Inject inspector-provided AppID into UI (only source of AppID)
   try { window._yahooAppId = ${JSON.stringify(_inspectorYahooAppId || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
@@ -1217,7 +1228,8 @@ function getUI() {
                          // URLの場合はハイパーリンク化
                          if (escapedVal.startsWith('http://') || escapedVal.startsWith('https://')) {
                              // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
-                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;">' + escapedVal + '</a>';
+                             // 左クリック時は onclick イベントでウィジェット内の iframe (info-panel) に表示させる
+                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInInfoPanel(event, \'' + displayVal + '\')">' + escapedVal + '</a>';
                          }
                          
                          html += '<tr>' +
