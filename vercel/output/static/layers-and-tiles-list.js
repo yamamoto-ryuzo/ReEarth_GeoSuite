@@ -917,6 +917,28 @@ function getUI() {
 </div>
 
 <script>
+  window.openUrlInAttrPanel = function(event, url) {
+    event.preventDefault(); // 左クリック時の新しいタブ展開をキャンセル
+    const attrContent = document.getElementById('attr-content');
+    if (attrContent && url) {
+      const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
+      const tabBarHeight = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 50;
+      let availableHeight = screenHeight - tabBarHeight - 100;
+      availableHeight = Math.max(400, Math.min(800, availableHeight));
+
+      attrContent.innerHTML = 
+        '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
+        '<iframe src="' + url + '" style="width:100%; height:' + availableHeight + 'px; border:1px solid #ccc; background:#fff; overflow:auto;"></iframe>';
+    }
+  };
+
+  window.restoreAttrTable = function() {
+    const attrContent = document.getElementById('attr-content');
+    if (attrContent && window._currentAttrHtml) {
+      attrContent.innerHTML = window._currentAttrHtml;
+    }
+  };
+
   // Inject inspector-provided AppID into UI (only source of AppID)
   try { window._yahooAppId = ${JSON.stringify(_inspectorYahooAppId || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
@@ -1218,16 +1240,29 @@ function getUI() {
                       html += '<tbody>';
                       for (const key in msg.properties) {
                          const val = msg.properties[key];
-                         const displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+                         let displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+                         let escapedKey = String(key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                         let escapedVal = String(displayVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                         
+                         // URLの場合はハイパーリンク化
+                         if (escapedVal.startsWith('http://') || escapedVal.startsWith('https://')) {
+                             // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
+                             // 左クリック時は onclick イベントでウィジェット内の属性パネル(attr-panel)に表示させる
+                             // エスケープ処理: テンプレート文字列内でシングルクォーテーションを正しく出力するためにバックスラッシュを2重にする
+                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInAttrPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '</a>';
+                         }
+                         
                          html += '<tr>' +
-                           '<td style="border:1px solid #ddd; padding:4px; font-weight:600; word-break:break-all; width:40%;">' + String(key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
-                           '<td style="border:1px solid #ddd; padding:4px; word-break:break-all;">' + String(displayVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                           '<td style="border:1px solid #ddd; padding:4px; font-weight:600; word-break:break-all; width:40%;">' + escapedKey + '</td>' +
+                           '<td style="border:1px solid #ddd; padding:4px; word-break:break-all;">' + escapedVal + '</td>' +
                          '</tr>';
                       }
                       html += '</tbody></table>';
                       attrContent.innerHTML = html;
+                      window._currentAttrHtml = html; // 戻るボタン用にバックアップ
                     } else {
                       attrContent.innerHTML = 'No attributes available or feature deselected.';
+                      window._currentAttrHtml = attrContent.innerHTML;
                     }
                   }
                 }
@@ -2176,7 +2211,7 @@ try {
     sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null');
 }
 catch (e) { }
-reearth.ui.show(uiHTML);
+reearth.ui.show(uiHTML, { extended: true }); // added { extended: true } to prevent sandbox issues
 // Send initial terrain state to the UI so the toggle reflects current viewer settings
 try {
     const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
@@ -2277,7 +2312,7 @@ function safeShowUI(context) {
         catch (e) { }
         if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
             try {
-                reearth.ui.show(getUI());
+                reearth.ui.show(getUI(), { extended: true });
             }
             catch (e) {
                 try {
