@@ -1210,10 +1210,19 @@ function getUI() {
                       html += '<tbody>';
                       for (const key in msg.properties) {
                          const val = msg.properties[key];
-                         const displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+                         let displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+                         let escapedKey = String(key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                         let escapedVal = String(displayVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                         
+                         // URLの場合はハイパーリンク化
+                         if (escapedVal.startsWith('http://') || escapedVal.startsWith('https://')) {
+                             // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
+                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;">' + escapedVal + '</a>';
+                         }
+                         
                          html += '<tr>' +
-                           '<td style="border:1px solid #ddd; padding:4px; font-weight:600; word-break:break-all; width:40%;">' + String(key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
-                           '<td style="border:1px solid #ddd; padding:4px; word-break:break-all;">' + String(displayVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                           '<td style="border:1px solid #ddd; padding:4px; font-weight:600; word-break:break-all; width:40%;">' + escapedKey + '</td>' +
+                           '<td style="border:1px solid #ddd; padding:4px; word-break:break-all;">' + escapedVal + '</td>' +
                          '</tr>';
                       }
                       html += '</tbody></table>';
@@ -2151,7 +2160,7 @@ try {
 } catch(e) {}
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
-reearth.ui.show(uiHTML);
+reearth.ui.show(uiHTML, { extended: true }); // added { extended: true } to prevent sandbox issues
 // Send initial terrain state to the UI so the toggle reflects current viewer settings
 try {
   const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
@@ -2224,7 +2233,7 @@ function safeShowUI(context) {
     // capture stack to help identify call sites at runtime
     try { sendLog('[safeShowUI] stack:', (new Error()).stack); } catch(e){}
     if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-      try { reearth.ui.show(getUI()); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
+      try { reearth.ui.show(getUI(), { extended: true }); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
     }
   } catch (e) {
     try { sendError('[safeShowUI] unexpected', e); } catch(_){}
