@@ -1229,7 +1229,8 @@ function getUI() {
                          if (escapedVal.startsWith('http://') || escapedVal.startsWith('https://')) {
                              // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
                              // 左クリック時は onclick イベントでウィジェット内の iframe (info-panel) に表示させる
-                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInInfoPanel(event, \'' + displayVal + '\')">' + escapedVal + '</a>';
+                             // エスケープ処理: テンプレート文字列内でシングルクォーテーションを正しく出力するためにバックスラッシュを2重にする
+                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInInfoPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '</a>';
                          }
                          
                          html += '<tr>' +
