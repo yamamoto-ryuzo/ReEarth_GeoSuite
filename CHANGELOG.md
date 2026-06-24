@@ -1,4 +1,10 @@
 # Changelog
+
+## v14.0.0
+- 新機能: 属性（Attr）タブの追加
+    - Re:Earth上の地物を選択した際に、その属性情報を一覧表示する機能を追加しました。
+    - 何も選択されていない場合は「No feature selected.」と表示されます。
+
 ## v13.0.0
 - 修正: Re:Earth Visualizer の仕様変更に伴う地形（terrain）周りの不具合対応。
     - 背景: Visualizer 側で `terrain` のデフォルトが `reearth_terrain` に変更されたため、従来 `terrain: { enabled: true }` のみを送っていたプラグインでは期待する Cesium/Cesium ION の地形が使われず表示や挙動が変わる、あるいはエラーになる事象を確認しました。

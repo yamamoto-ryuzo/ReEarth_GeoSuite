@@ -384,13 +384,14 @@ function getUI() {
   .primary-background.minimized #settings-panel,
   .primary-background.minimized #info-panel,
   .primary-background.minimized #legend-panel,
-  .primary-background.minimized #share-panel { display:none !important; }
+  .primary-background.minimized #share-panel,
+  .primary-background.minimized #attr-panel { display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
   /* Panel Scroll Configuration */
   /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
-  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel {
+  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, #attr-panel {
     max-height: 600px;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -763,6 +764,7 @@ function getUI() {
     <button class="tab" data-target="info-panel" aria-selected="false">info</button>
     <button class="tab" data-target="share-panel" aria-selected="false">Share</button>
     <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
+    <button class="tab" data-target="attr-panel" aria-selected="false">Attr</button>
   </div>
 
   <div id="share-panel" style="display:none;">
@@ -899,7 +901,11 @@ function getUI() {
     </div>
   </div>
 
- 
+  <div id="attr-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;">Attributes</div>
+    <div id="attr-content" style="font-size:0.85em;color:#333;">No feature selected.</div>
+  </div>
+
 </div>
 
 <script>
@@ -958,7 +964,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel'].forEach(id => {
+              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel','attr-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -1194,6 +1200,26 @@ function getUI() {
                     const instruction = document.getElementById('legend-instruction');
                     if (instruction) {
                       instruction.style.display = msg.items.length > 0 ? 'none' : 'block';
+                    }
+                  }
+                } else if (msg.action === 'featureSelected') {
+                  const attrContent = document.getElementById('attr-content');
+                  if (attrContent) {
+                    if (msg.properties && Object.keys(msg.properties).length > 0) {
+                      let html = '<table style="width:100%; border-collapse:collapse; text-align:left; background:#fff;">';
+                      html += '<tbody>';
+                      for (const key in msg.properties) {
+                         const val = msg.properties[key];
+                         const displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+                         html += '<tr>' +
+                           '<td style="border:1px solid #ddd; padding:4px; font-weight:600; word-break:break-all; width:40%;">' + String(key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                           '<td style="border:1px solid #ddd; padding:4px; word-break:break-all;">' + String(displayVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                         '</tr>';
+                      }
+                      html += '</tbody></table>';
+                      attrContent.innerHTML = html;
+                    } else {
+                      attrContent.innerHTML = 'No attributes available or feature deselected.';
                     }
                   }
                 }
@@ -2648,6 +2674,24 @@ try {
     };
   }
 } catch(e) {}
+
+try {
+  reearth.layers.on("select", (layerId, featureId) => {
+    try {
+      if (layerId && featureId) {
+        const feature = reearth.layers.findFeatureById(layerId, featureId);
+        const props = feature && feature.properties ? feature.properties : null;
+        postToUI({ action: 'featureSelected', layerId, featureId, properties: props || {} });
+      } else {
+        postToUI({ action: 'featureSelected', layerId: null, featureId: null, properties: null });
+      }
+    } catch(e) {
+      try { sendError("[on select] Error:", e); } catch(_){}
+    }
+  });
+} catch(e) {
+  try { sendError("Failed to register layer select event", e); } catch(_){}
+}
 
 reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
