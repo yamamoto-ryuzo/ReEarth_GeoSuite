@@ -910,17 +910,10 @@ function getUI() {
 
 <script>
   window.openUrlInAttrPanel = function(event, url) {
-    event.preventDefault(); // 左クリック時の新しいタブ展開をキャンセル
-    const attrContent = document.getElementById('attr-content');
-    if (attrContent && url) {
-      const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
-      const tabBarHeight = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 50;
-      let availableHeight = screenHeight - tabBarHeight - 100;
-      availableHeight = Math.max(400, Math.min(800, availableHeight));
-
-      attrContent.innerHTML = 
-        '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
-        '<iframe src="' + url + '" style="width:100%; height:' + availableHeight + 'px; border:1px solid #ccc; background:#fff; overflow:auto;"></iframe>';
+    event.preventDefault(); // デフォルトのリンク遷移をキャンセル
+    if (url) {
+      // 親のRe:Earth(Sandbox外)にURLを開くよう依頼する
+      window.parent.postMessage({ action: 'openUrl', url: url }, '*');
     }
   };
 
