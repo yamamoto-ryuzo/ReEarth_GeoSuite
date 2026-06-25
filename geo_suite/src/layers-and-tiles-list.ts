@@ -1241,7 +1241,8 @@ function getUI() {
                              // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
                              // 左クリック時は onclick イベントでウィジェット内の属性パネル(attr-panel)に表示させる
                              // エスケープ処理: テンプレート文字列内でシングルクォーテーションを正しく出力するためにバックスラッシュを2重にする
-                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInAttrPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '</a>';
+                             let linkIcon = '&nbsp;<span title="新しいタブで開く(Sandbox回避)" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;" onclick="event.stopPropagation(); window.parent.postMessage({ action: \\\'openUrl\\\', url: \\\'' + displayVal + '\\\' }, \\\'*\\\'); return false;">&#x2197;</span>';
+                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInAttrPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '</a>' + linkIcon;
                          }
                          
                          html += '<tr>' +
@@ -2867,6 +2868,17 @@ reearth.extension.on("message", (msg) => {
           try { sendLog('[removeLayer] requested for', msg.layerId); } catch(e) {}
           removeTargetMarker(msg.layerId);
         } catch(e) { try { sendError('[removeLayer] failed to delete layer:', e); } catch(err) {} }
+      }
+    } else if (msg.action === "openUrl") {
+      try {
+        if (msg.url && reearth && reearth.viewer && typeof reearth.viewer.open === "function") {
+          reearth.viewer.open(msg.url);
+        } else if (msg.url) {
+          // fallback fallback
+          try { sendLog('[openUrl] reearth.viewer.open is not available, falling back'); } catch(e) {}
+        }
+      } catch (e) {
+        try { sendError('[openUrl] failed', e); } catch(_) {}
       }
     } else if (msg.action === 'setBasemap') {
       try {
