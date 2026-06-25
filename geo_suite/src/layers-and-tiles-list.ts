@@ -910,10 +910,17 @@ function getUI() {
 
 <script>
   window.openUrlInAttrPanel = function(event, url) {
-    event.preventDefault(); // デフォルトのリンク遷移をキャンセル
-    if (url) {
-      // 親のRe:Earth(Sandbox外)にURLを開くよう依頼する
-      window.parent.postMessage({ action: 'openUrl', url: url }, '*');
+    event.preventDefault(); // 左クリック時の新しいタブ展開をキャンセル
+    const attrContent = document.getElementById('attr-content');
+    if (attrContent && url) {
+      const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
+      const tabBarHeight = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 50;
+      let availableHeight = screenHeight - tabBarHeight - 100;
+      availableHeight = Math.max(400, Math.min(800, availableHeight));
+
+      attrContent.innerHTML = 
+        '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
+        '<iframe src="' + url + '" style="width:100%; height:' + availableHeight + 'px; border:1px solid #ccc; background:#fff; overflow:auto;"></iframe>';
     }
   };
 
@@ -1231,10 +1238,11 @@ function getUI() {
                          
                          // URLの場合はハイパーリンク化
                          if (escapedVal.startsWith('http://') || escapedVal.startsWith('https://')) {
-                             // Re:EarthのAPI(reearth.viewer.open)を呼び出して、安全に新しいタブで開かせる
-                             // 左クリック時は onclick イベントで postMessage を発火させる
+                             // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
+                             // 左クリック時は onclick イベントでウィジェット内の属性パネル(attr-panel)に表示させる
                              // エスケープ処理: テンプレート文字列内でシングルクォーテーションを正しく出力するためにバックスラッシュを2重にする
-                             escapedVal = '<a href="' + displayVal + '" title="新しいタブで開く" style="color:#0066cc; text-decoration:underline; word-break:break-all; cursor:pointer;" onclick="window.openUrlInAttrPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '&nbsp;&#x2197;</a>';
+                             let linkIcon = '&nbsp;<span title="新しいタブで開く(Sandbox回避)" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;" onclick="event.stopPropagation(); window.parent.postMessage({ action: \\\'openUrl\\\', url: \\\'' + displayVal + '\\\' }, \\\'*\\\'); return false;">&#x2197;</span>';
+                             escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInAttrPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '</a>' + linkIcon;
                          }
                          
                          html += '<tr>' +
