@@ -786,9 +786,7 @@ function getUI() {
     </div>
     
     <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
-      <div style="margin-bottom:6px;">
-        <button id="paste-import-btn" class="btn-primary p-6" style="width:100%;font-size:0.95em;">Import Link</button>
-      </div>
+      <div style="margin-bottom:6px;color:#333;">URLをペーストして下さい。</div>
       <div style="display:flex;gap:4px;">
         <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
         <button id="load-permalink-btn" class="btn-primary p-6" style="min-width:60px;font-size:0.9em;">Load</button>
@@ -1923,104 +1921,9 @@ function getUI() {
           }
 
 
-        // Permalink Import Handler (Import Link button reads clipboard, pastes and applies)
-        const importBtn = document.getElementById('paste-import-btn');
+        // Import-related UI: input and Load button (Import-from-clipboard removed)
         const importInput = document.getElementById('import-permalink-input');
         const loadBtn = document.getElementById('load-permalink-btn');
-
-        const applyPermalinkString = (val, feedbackEl) => {
-          if (!val) return false;
-          let params = null;
-          try {
-          if (val.indexOf('?') !== -1) {
-             const searchPart = val.substring(val.indexOf('?'));
-             params = new URLSearchParams(searchPart);
-          } else if (val.startsWith('http')) {
-             const urlObj = new URL(val);
-             params = urlObj.searchParams;
-          } else {
-             params = new URLSearchParams('?' + val);
-          }
-          } catch(e) { params = null; }
-
-          if (!params) return false;
-          const payload = { action: 'applyPermalinkState' };
-          if (params.has('lat')) payload.lat = parseFloat(params.get('lat'));
-          if (params.has('lng')) payload.lng = parseFloat(params.get('lng'));
-          if (params.has('height')) payload.height = parseFloat(params.get('height'));
-          if (params.has('heading')) payload.heading = parseFloat(params.get('heading'));
-          if (params.has('pitch')) payload.pitch = parseFloat(params.get('pitch'));
-          if (params.has('layers')) payload.layers = params.get('layers');
-
-          if (payload.lat !== undefined && !isNaN(payload.lat)) {
-            const ok = applyPermalinkPayload(payload, feedbackEl);
-            return !!ok;
-          }
-          return false;
-        };
-
-        // Load wrapper: parse value and apply via local payload logic. Returns true on success.
-        const loadPermalinkValue = (val, feedbackEl) => {
-          try {
-            if (!val) return false;
-            // Prefer using the existing applyPermalinkString parser
-            const ok = applyPermalinkString(val, feedbackEl);
-            if (ok && feedbackEl) {
-              try {
-                const orig = feedbackEl.textContent;
-                feedbackEl.textContent = 'Loaded!';
-                setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
-              } catch(e) {}
-            }
-            return !!ok;
-          } catch(e) { return false; }
-        };
-
-        if (importBtn && importInput) {
-          importBtn.addEventListener('click', function() {
-            const feedbackEl = importBtn;
-
-            // 1) If input already has a value, try applying it first (LOAD behavior)
-            try {
-              const currentVal = importInput.value && importInput.value.trim() ? importInput.value.trim() : '';
-              if (currentVal) {
-                // Reuse Load button behavior (which forwards to parent)
-                try { if (loadBtn) loadBtn.click(); return; } catch(e) {}
-              }
-            } catch(e) {}
-
-            // 2) Try reading from clipboard and append/apply
-            if (navigator.clipboard && navigator.clipboard.readText) {
-              navigator.clipboard.readText().then(text => {
-                const clip = text || '';
-                  if (clip) {
-                  if (importInput.value && importInput.value.trim()) {
-                    importInput.value = importInput.value + ' ' + clip;
-                  } else {
-                    importInput.value = clip;
-                  }
-                  // Reuse Load button behavior to forward to parent
-                  try { if (loadBtn) loadBtn.click(); } catch(e) { const orig = feedbackEl.textContent; feedbackEl.textContent = 'Invalid Data'; setTimeout(() => { feedbackEl.textContent = orig; }, 1500); }
-                } else {
-                  const orig = feedbackEl.textContent;
-                  feedbackEl.textContent = 'No Clipboard';
-                  setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
-                }
-              }).catch(err => {
-                const orig = feedbackEl.textContent;
-                feedbackEl.textContent = 'Paste & Retry';
-                if (importInput) importInput.focus();
-                setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
-              });
-            } else {
-              // Clipboard API not available: prompt user to paste into input
-              const orig = feedbackEl.textContent;
-              feedbackEl.textContent = 'Paste & Retry';
-              if (importInput) importInput.focus();
-              setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
-            }
-          });
-        }
 
         // Load button: apply value from input using parent postMessage (restore previous behavior)
         if (loadBtn && importInput) {
