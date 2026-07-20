@@ -791,6 +791,7 @@ function getUI() {
       </div>
       <div style="display:flex;gap:4px;">
         <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
+        <button id="load-permalink-btn" class="btn-primary p-6" style="min-width:60px;font-size:0.9em;">Load</button>
       </div>
     </div>
     </div>
@@ -1771,7 +1772,86 @@ function getUI() {
         } catch(e){}
       });
 
-      // Forward external applyPermalinkState messages to extension (with debug log)
+      // Handle external applyPermalinkState messages by applying locally (no parent forwarding)
+      const applyPermalinkPayload = (payload, feedbackEl) => {
+        try {
+          // Apply camera immediately if provided
+          if (payload.lat != null && payload.lng != null) {
+            try {
+              if (typeof reearth !== 'undefined' && reearth && reearth.camera) {
+                reearth.camera.flyTo({
+                  lat: payload.lat,
+                  lng: payload.lng,
+                  height: payload.height || 1000,
+                  heading: (payload.heading || 0) * Math.PI / 180,
+                  pitch: (payload.pitch || -30) * Math.PI / 180,
+                  roll: 0,
+                }, { duration: 0.1 });
+              }
+            } catch(e) { try { console.error('[applyPermalinkPayload] camera flyTo failed', e); } catch(err){} }
+          }
+
+          // Apply layers with retry
+          const applyLayersWithRetry = (layersStr, attempt = 1) => {
+            try {
+              const maxAttempts = 8;
+              const delayMs = 800;
+              if (!layersStr) return;
+              const ids = layersStr.split(',').map(s => s.trim()).filter(Boolean);
+              if (!ids.length) return;
+
+              const layersApiAvailable = (typeof reearth !== 'undefined' && reearth.layers && Array.isArray(reearth.layers.layers));
+              if (!layersApiAvailable || (reearth.layers.layers && reearth.layers.layers.length === 0)) {
+                if (attempt <= maxAttempts) {
+                  setTimeout(() => applyLayersWithRetry(layersStr, attempt + 1), delayMs);
+                  return;
+                } else {
+                  try { if (reearth && reearth.ui && typeof reearth.ui.postMessage === 'function') reearth.ui.postMessage({ action: 'permalinkApplied', success: false, reason: 'layers_unavailable' }); } catch(e){}
+                  return;
+                }
+              }
+
+              const layers = reearth.layers.layers || [];
+              const visibleIds = new Set(ids);
+              let applied = 0;
+              let found = 0;
+              for (let i = 0; i < layers.length; i++) {
+                const l = layers[i];
+                if (!l || !l.id) continue;
+                if (visibleIds.has(l.id)) {
+                  found++;
+                  if (!l.visible) {
+                    try { reearth.layers.show(l.id); applied++; } catch(e) {}
+                  }
+                } else {
+                  if (l.visible) {
+                    try { reearth.layers.hide(l.id); } catch(e) {}
+                  }
+                }
+              }
+
+              try { if (reearth && reearth.ui && typeof reearth.ui.postMessage === 'function') reearth.ui.postMessage({ action: 'permalinkApplied', success: true, requested: ids.length, found: found, changed: applied }); } catch(e){}
+            } catch(e) {
+              if (attempt <= 8) setTimeout(() => applyLayersWithRetry(layersStr, attempt + 1), 800);
+              else try { console.error('[applyPermalinkPayload] unexpected error applying layers', e); } catch(err){}
+            }
+          };
+
+          if (payload.layers) applyLayersWithRetry(payload.layers);
+
+          // Feedback
+          if (feedbackEl) {
+            try {
+              const orig = feedbackEl.textContent;
+              feedbackEl.textContent = 'Imported!';
+              setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
+            } catch(e){}
+          }
+          return true;
+        } catch(e) { try { console.error('[applyPermalinkPayload] error:', e); } catch(err){} }
+        return false;
+      };
+
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data ? e.data : null;
@@ -1779,9 +1859,9 @@ function getUI() {
           if (!msg || !msg.action) return;
           if (msg.action === 'applyPermalinkState') {
             try {
-              try { console.log('[UI] forwarding applyPermalinkState to parent:', msg); } catch(e){}
-              parent.postMessage(msg, '*');
-            } catch(_){ try { console.error('[UI] forward to parent failed', _); } catch(e){} }
+              try { console.log('[UI] applying applyPermalinkState locally:', msg); } catch(e){}
+              applyPermalinkPayload(msg);
+            } catch(_){ try { console.error('[UI] applyPermalinkState failed', _); } catch(e){} }
           }
         } catch (e) { try { console.error('[UI] forward listener error', e); } catch(err){} }
       });
@@ -1846,6 +1926,7 @@ function getUI() {
         // Permalink Import Handler (Import Link button reads clipboard, pastes and applies)
         const importBtn = document.getElementById('paste-import-btn');
         const importInput = document.getElementById('import-permalink-input');
+        const loadBtn = document.getElementById('load-permalink-btn');
 
         const applyPermalinkString = (val, feedbackEl) => {
           if (!val) return false;
@@ -1872,22 +1953,27 @@ function getUI() {
           if (params.has('layers')) payload.layers = params.get('layers');
 
           if (payload.lat !== undefined && !isNaN(payload.lat)) {
-            parent.postMessage(payload, '*');
-            if (importInput) importInput.value = '';
-            if (feedbackEl) {
-              const orig = feedbackEl.textContent;
-              feedbackEl.textContent = 'Imported!';
-              setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
-            }
-            return true;
+            const ok = applyPermalinkPayload(payload, feedbackEl);
+            return !!ok;
           }
           return false;
         };
 
         if (importBtn && importInput) {
           importBtn.addEventListener('click', function() {
-            // Read clipboard and append its contents to the input field (do not auto-apply)
             const feedbackEl = importBtn;
+
+            // 1) If input already has a value, try applying it first (LOAD behavior)
+            try {
+              const currentVal = importInput.value && importInput.value.trim() ? importInput.value.trim() : '';
+              if (currentVal) {
+                const ok = applyPermalinkString(currentVal, feedbackEl);
+                if (ok) return; // applied successfully
+                // otherwise fall through to try clipboard (if available)
+              }
+            } catch(e) {}
+
+            // 2) Try reading from clipboard and append/apply
             if (navigator.clipboard && navigator.clipboard.readText) {
               navigator.clipboard.readText().then(text => {
                 const clip = text || '';
@@ -1897,9 +1983,8 @@ function getUI() {
                   } else {
                     importInput.value = clip;
                   }
-                  // Try to apply immediately (move)
-                  const ok = applyPermalinkString(importInput.value, feedbackEl);
-                  if (!ok) {
+                  const ok2 = applyPermalinkString(importInput.value, feedbackEl);
+                  if (!ok2) {
                     const orig = feedbackEl.textContent;
                     feedbackEl.textContent = 'Invalid Data';
                     setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
@@ -1916,11 +2001,66 @@ function getUI() {
                 setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
               });
             } else {
-              // No clipboard API available: prompt user to paste into input
+              // Clipboard API not available: prompt user to paste into input
               const orig = feedbackEl.textContent;
               feedbackEl.textContent = 'Paste & Retry';
               if (importInput) importInput.focus();
               setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
+            }
+          });
+        }
+
+        // Load button: apply value from input using parent postMessage (restore previous behavior)
+        if (loadBtn && importInput) {
+          loadBtn.addEventListener('click', function() {
+            const val = importInput.value;
+            if (!val) return;
+            try {
+                // Attempt to parse params from input string
+                let params = null;
+                try {
+                  if (val.indexOf('?') !== -1) {
+                       const searchPart = val.substring(val.indexOf('?'));
+                       params = new URLSearchParams(searchPart);
+                  } else if (val.startsWith('http')) {
+                       const urlObj = new URL(val);
+                       params = urlObj.searchParams;
+                  } else {
+                       // assume it is just query string without ?
+                       params = new URLSearchParams('?' + val);
+                  }
+                } catch(e) { params = null; }
+
+                if (params) {
+                    const payload = { action: 'applyPermalinkState' };
+                    if (params.has('lat')) payload.lat = parseFloat(params.get('lat'));
+                    if (params.has('lng')) payload.lng = parseFloat(params.get('lng'));
+                    if (params.has('height')) payload.height = parseFloat(params.get('height'));
+                    if (params.has('heading')) payload.heading = parseFloat(params.get('heading'));
+                    if (params.has('pitch')) payload.pitch = parseFloat(params.get('pitch'));
+                    if (params.has('layers')) payload.layers = params.get('layers');
+                    
+                    if (payload.lat !== undefined && !isNaN(payload.lat)) {
+                        parent.postMessage(payload, '*');
+                        importInput.value = ''; 
+                        const originalText = loadBtn.textContent;
+                        loadBtn.textContent = 'Loaded!';
+                        setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
+                    } else {
+                        const originalText = loadBtn.textContent;
+                        loadBtn.textContent = 'Invalid Data';
+                        setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
+                    }
+                } else {
+                    const originalText = loadBtn.textContent;
+                    loadBtn.textContent = 'Parse Error';
+                    setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
+                }
+            } catch(e) {
+                try { console.error('Failed to parse permalink', e); } catch(_){}
+                const originalText = loadBtn.textContent;
+                loadBtn.textContent = 'Error';
+                setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
             }
           });
         }
@@ -1978,12 +2118,12 @@ function getUI() {
                   if (p.has('pitch')) payload.pitch = parseFloat(p.get('pitch'));
                   if (p.has('layers')) payload.layers = p.get('layers');
                   
-                  if (payload.lat !== undefined && !isNaN(payload.lat)) {
-                      parent.postMessage(payload, '*');
+                    if (payload.lat !== undefined && !isNaN(payload.lat)) {
+                      const ok = applyPermalinkPayload(payload, reloadBtn);
                       const originalText = reloadBtn.textContent;
-                      reloadBtn.textContent = 'Restored!';
+                      reloadBtn.textContent = ok ? 'Restored!' : 'No Lat/Lng';
                       setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
-                  } else {
+                    } else {
                       // alert('URL found but no valid lat/lng parameters.');
                       const originalText = reloadBtn.textContent;
                       reloadBtn.textContent = 'No Lat/Lng';
