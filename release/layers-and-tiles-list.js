@@ -1959,6 +1959,23 @@ function getUI() {
           return false;
         };
 
+        // Load wrapper: parse value and apply via local payload logic. Returns true on success.
+        const loadPermalinkValue = (val, feedbackEl) => {
+          try {
+            if (!val) return false;
+            // Prefer using the existing applyPermalinkString parser
+            const ok = applyPermalinkString(val, feedbackEl);
+            if (ok && feedbackEl) {
+              try {
+                const orig = feedbackEl.textContent;
+                feedbackEl.textContent = 'Loaded!';
+                setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
+              } catch(e) {}
+            }
+            return !!ok;
+          } catch(e) { return false; }
+        };
+
         if (importBtn && importInput) {
           importBtn.addEventListener('click', function() {
             const feedbackEl = importBtn;
@@ -1967,9 +1984,8 @@ function getUI() {
             try {
               const currentVal = importInput.value && importInput.value.trim() ? importInput.value.trim() : '';
               if (currentVal) {
-                const ok = applyPermalinkString(currentVal, feedbackEl);
-                if (ok) return; // applied successfully
-                // otherwise fall through to try clipboard (if available)
+                // Reuse Load button behavior (which forwards to parent)
+                try { if (loadBtn) loadBtn.click(); return; } catch(e) {}
               }
             } catch(e) {}
 
@@ -1977,18 +1993,14 @@ function getUI() {
             if (navigator.clipboard && navigator.clipboard.readText) {
               navigator.clipboard.readText().then(text => {
                 const clip = text || '';
-                if (clip) {
+                  if (clip) {
                   if (importInput.value && importInput.value.trim()) {
                     importInput.value = importInput.value + ' ' + clip;
                   } else {
                     importInput.value = clip;
                   }
-                  const ok2 = applyPermalinkString(importInput.value, feedbackEl);
-                  if (!ok2) {
-                    const orig = feedbackEl.textContent;
-                    feedbackEl.textContent = 'Invalid Data';
-                    setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
-                  }
+                  // Reuse Load button behavior to forward to parent
+                  try { if (loadBtn) loadBtn.click(); } catch(e) { const orig = feedbackEl.textContent; feedbackEl.textContent = 'Invalid Data'; setTimeout(() => { feedbackEl.textContent = orig; }, 1500); }
                 } else {
                   const orig = feedbackEl.textContent;
                   feedbackEl.textContent = 'No Clipboard';
@@ -2014,6 +2026,7 @@ function getUI() {
         if (loadBtn && importInput) {
           loadBtn.addEventListener('click', function() {
             const val = importInput.value;
+            try { console.log('[UI] loadBtn clicked, val=', val); } catch(e) {}
             if (!val) return;
             try {
                 // Attempt to parse params from input string
@@ -2041,15 +2054,15 @@ function getUI() {
                     if (params.has('layers')) payload.layers = params.get('layers');
                     
                     if (payload.lat !== undefined && !isNaN(payload.lat)) {
-                        parent.postMessage(payload, '*');
-                        importInput.value = ''; 
-                        const originalText = loadBtn.textContent;
-                        loadBtn.textContent = 'Loaded!';
-                        setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
+                      // Forward to parent/host to apply (restore previous behavior)
+                      try { window.parent.postMessage(payload, '*'); } catch(e) { try { console.error('[UI] parent.postMessage failed', e); } catch(_){} }
+                      const originalText = loadBtn.textContent;
+                      loadBtn.textContent = 'Loaded!';
+                      setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
                     } else {
-                        const originalText = loadBtn.textContent;
-                        loadBtn.textContent = 'Invalid Data';
-                        setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
+                      const originalText = loadBtn.textContent;
+                      loadBtn.textContent = 'Invalid Data';
+                      setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
                     }
                 } else {
                     const originalText = loadBtn.textContent;
