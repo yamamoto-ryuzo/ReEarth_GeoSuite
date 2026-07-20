@@ -775,28 +775,25 @@ function getUI() {
     <button class="tab" data-target="attr-panel" aria-selected="false">Attr</button>
   </div>
 
-  <div id="share-panel" style="display:none;">
-    <div style="font-weight:600;margin-bottom:8px;">Share / Permalink</div>
+    <div id="share-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;">Kasugai Link</div>
     <div style="margin-bottom:8px;">
-        <p style="font-size:0.85em;color:#555;margin:4px 0;">Current Camera & Layer State</p>
-        <button id="generate-permalink-btn" class="btn-primary p-8" style="width:100%;">Generate Link</button>
+      <button id="generate-permalink-btn" class="btn-primary p-8" style="width:100%;">Generate Link</button>
     </div>
     <div style="display:flex;gap:4px;">
-        <input type="text" id="permalink-output" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" readonly />
-        <button id="copy-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Copy</button>
+      <input type="text" id="permalink-output" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" readonly />
+      <button id="copy-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Copy</button>
     </div>
     
     <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
-        <p style="font-size:0.85em;color:#555;margin:4px 0;">Import Permalink</p>
-        <div style="display:flex;gap:4px;">
-            <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
-            <button id="load-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Load</button>
-        </div>
-        <div style="margin-top:6px;display:flex;gap:4px;">
-            <button id="reload-from-url-btn" class="btn-primary p-8" style="width:100%;font-size:0.85em;">Reload from Browser URL</button>
-        </div>
+      <div style="margin-bottom:6px;">
+        <button id="paste-import-btn" class="btn-primary p-6" style="width:100%;font-size:0.95em;">Import Link</button>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
+      </div>
     </div>
-  </div>
+    </div>
 
   <div id="search-panel" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1691,26 +1688,6 @@ function getUI() {
         });
       }
 
-      // Listen for camera state updates from the extension
-      
-      // UI-managed map of scheduled removal timers for temporary marker layers
-      const _uiMarkerRemovalTimers = Object.create(null);
-      function scheduleLayerRemoval(layerId, ttlMs = 8000) {
-        try {
-          if (!layerId) return;
-          // clear existing timer for this layer if present
-          if (_uiMarkerRemovalTimers[layerId]) {
-            try { clearTimeout(_uiMarkerRemovalTimers[layerId]); } catch(e) {}
-            try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
-          }
-          try { console.log('[UI] scheduleLayerRemoval', layerId, ttlMs); } catch(e) {}
-          _uiMarkerRemovalTimers[layerId] = setTimeout(() => {
-            try { parent.postMessage({ action: 'removeLayer', layerId: layerId }, '*'); } catch(e) {}
-            try { delete _uiMarkerRemovalTimers[layerId]; } catch(e) {}
-          }, ttlMs);
-        } catch(e) {}
-      }
-
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data ? e.data : null;
@@ -1782,7 +1759,10 @@ function getUI() {
                     if (msg.pitch != null) urlObj.searchParams.set('pitch', msg.pitch);
                     if (msg.layers) urlObj.searchParams.set('layers', msg.layers);
                     
-                    output.value = urlObj.toString();
+                    const urlStr = urlObj.toString();
+                    output.value = urlStr;
+                    // After writing output, call shared copy helper to ensure same behavior as Copy button
+                    try { copyPermalinkToClipboard(urlStr, document.getElementById('generate-permalink-btn')); } catch(e) {}
                 } catch(e) {
                     output.value = baseUrl + "?error=url_construction_failed";
                 }
@@ -1807,89 +1787,143 @@ function getUI() {
       });
 
       
+      // Shared copy helper: copies text if provided, otherwise copies value from 'permalink-output'.
+      const copyPermalinkToClipboard = (text, feedbackEl) => {
+        try {
+          const outputEl = document.getElementById('permalink-output');
+          const toCopy = (typeof text === 'string' && text) ? text : (outputEl && outputEl.value ? outputEl.value : '');
+          if (!toCopy) return;
+
+          const showFeedback = (el) => {
+            try {
+              if (!el) return;
+              const orig = el.textContent;
+              el.textContent = 'Copied!';
+              setTimeout(() => { el.textContent = orig; }, 1500);
+            } catch(e) {}
+          };
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(toCopy).then(() => { showFeedback(feedbackEl); }).catch(() => {
+              try {
+                if (outputEl) { outputEl.select(); document.execCommand('copy'); }
+                else {
+                  const ta = document.createElement('textarea'); ta.value = toCopy; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                }
+              } catch(e) {}
+              showFeedback(feedbackEl);
+            });
+          } else {
+            try {
+              if (outputEl) { outputEl.select(); document.execCommand('copy'); }
+              else { const ta = document.createElement('textarea'); ta.value = toCopy; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+            } catch(e) {}
+            showFeedback(feedbackEl);
+          }
+        } catch(e) {}
+      };
+
       // Permalink UI handlers
       const generateBtn = document.getElementById('generate-permalink-btn');
       const copyBtn = document.getElementById('copy-permalink-btn');
       const output = document.getElementById('permalink-output');
 
-      if (generateBtn) {
-        generateBtn.addEventListener('click', function() {
+          if (generateBtn) {
+          generateBtn.addEventListener('click', function() {
             if (output) output.value = 'Generating...';
-            // Send request to extension
+            // Send request to extension to generate fresh permalink
             parent.postMessage({ action: 'generatePermalink' }, '*');
-        });
-      }
-
-      if (copyBtn && output) {
-        copyBtn.addEventListener('click', function() {
-            output.select();
-            document.execCommand('copy');
-            const originalText = copyBtn.textContent;
-            copyBtn.textContent = 'Copied!';
-            setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
-        });
-      }
-
-      // Permalink Import Handler
-      const importBtn = document.getElementById('load-permalink-btn');
-      const importInput = document.getElementById('import-permalink-input');
-      
-      if (importBtn && importInput) {
-          importBtn.addEventListener('click', function() {
-              const val = importInput.value;
-              if (!val) return;
-              try {
-                  // Attempt to parse params from input string
-                  let params = null;
-                  try {
-                    if (val.indexOf('?') !== -1) {
-                         const searchPart = val.substring(val.indexOf('?'));
-                         params = new URLSearchParams(searchPart);
-                    } else if (val.startsWith('http')) {
-                         const urlObj = new URL(val);
-                         params = urlObj.searchParams;
-                    } else {
-                         // assume it is just query string without ?
-                         params = new URLSearchParams('?' + val);
-                    }
-                  } catch(e) {}
-
-                  if (params) {
-                      const payload = { action: 'applyPermalinkState' };
-                      if (params.has('lat')) payload.lat = parseFloat(params.get('lat'));
-                      if (params.has('lng')) payload.lng = parseFloat(params.get('lng'));
-                      if (params.has('height')) payload.height = parseFloat(params.get('height'));
-                      if (params.has('heading')) payload.heading = parseFloat(params.get('heading'));
-                      if (params.has('pitch')) payload.pitch = parseFloat(params.get('pitch'));
-                      if (params.has('layers')) payload.layers = params.get('layers');
-                      
-                      if (payload.lat !== undefined && !isNaN(payload.lat)) {
-                          parent.postMessage(payload, '*');
-                          importInput.value = ''; 
-                          const originalText = importBtn.textContent;
-                          importBtn.textContent = 'Loaded!';
-                          setTimeout(() => { importBtn.textContent = originalText; }, 2000);
-                      } else {
-                          // alert('Invalid permalink: lat/lng parameters missing');
-                          const originalText = importBtn.textContent;
-                          importBtn.textContent = 'Invalid Data';
-                          setTimeout(() => { importBtn.textContent = originalText; }, 2000);
-                      }
-                  } else {
-                      // alert('Could not parse URL parameters');
-                      const originalText = importBtn.textContent;
-                      importBtn.textContent = 'Parse Error';
-                      setTimeout(() => { importBtn.textContent = originalText; }, 2000);
-                  }
-              } catch(e) {
-                  console.error('Failed to parse permalink', e);
-                  // alert('Failed to parse URL');
-                  const originalText = importBtn.textContent;
-                  importBtn.textContent = 'Error';
-                  setTimeout(() => { importBtn.textContent = originalText; }, 2000);
-              }
           });
-      }
+          }
+
+          if (copyBtn && output) {
+            copyBtn.addEventListener('click', function() {
+              try { copyPermalinkToClipboard(null, copyBtn); } catch(e) {}
+            });
+          }
+
+
+        // Permalink Import Handler (Import Link button reads clipboard, pastes and applies)
+        const importBtn = document.getElementById('paste-import-btn');
+        const importInput = document.getElementById('import-permalink-input');
+
+        const applyPermalinkString = (val, feedbackEl) => {
+          if (!val) return false;
+          let params = null;
+          try {
+          if (val.indexOf('?') !== -1) {
+             const searchPart = val.substring(val.indexOf('?'));
+             params = new URLSearchParams(searchPart);
+          } else if (val.startsWith('http')) {
+             const urlObj = new URL(val);
+             params = urlObj.searchParams;
+          } else {
+             params = new URLSearchParams('?' + val);
+          }
+          } catch(e) { params = null; }
+
+          if (!params) return false;
+          const payload = { action: 'applyPermalinkState' };
+          if (params.has('lat')) payload.lat = parseFloat(params.get('lat'));
+          if (params.has('lng')) payload.lng = parseFloat(params.get('lng'));
+          if (params.has('height')) payload.height = parseFloat(params.get('height'));
+          if (params.has('heading')) payload.heading = parseFloat(params.get('heading'));
+          if (params.has('pitch')) payload.pitch = parseFloat(params.get('pitch'));
+          if (params.has('layers')) payload.layers = params.get('layers');
+
+          if (payload.lat !== undefined && !isNaN(payload.lat)) {
+            parent.postMessage(payload, '*');
+            if (importInput) importInput.value = '';
+            if (feedbackEl) {
+              const orig = feedbackEl.textContent;
+              feedbackEl.textContent = 'Imported!';
+              setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
+            }
+            return true;
+          }
+          return false;
+        };
+
+        if (importBtn && importInput) {
+          importBtn.addEventListener('click', function() {
+            // Read clipboard and append its contents to the input field (do not auto-apply)
+            const feedbackEl = importBtn;
+            if (navigator.clipboard && navigator.clipboard.readText) {
+              navigator.clipboard.readText().then(text => {
+                const clip = text || '';
+                if (clip) {
+                  if (importInput.value && importInput.value.trim()) {
+                    importInput.value = importInput.value + ' ' + clip;
+                  } else {
+                    importInput.value = clip;
+                  }
+                  // Try to apply immediately (move)
+                  const ok = applyPermalinkString(importInput.value, feedbackEl);
+                  if (!ok) {
+                    const orig = feedbackEl.textContent;
+                    feedbackEl.textContent = 'Invalid Data';
+                    setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
+                  }
+                } else {
+                  const orig = feedbackEl.textContent;
+                  feedbackEl.textContent = 'No Clipboard';
+                  setTimeout(() => { feedbackEl.textContent = orig; }, 1500);
+                }
+              }).catch(err => {
+                const orig = feedbackEl.textContent;
+                feedbackEl.textContent = 'Paste & Retry';
+                if (importInput) importInput.focus();
+                setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
+              });
+            } else {
+              // No clipboard API available: prompt user to paste into input
+              const orig = feedbackEl.textContent;
+              feedbackEl.textContent = 'Paste & Retry';
+              if (importInput) importInput.focus();
+              setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
+            }
+          });
+        }
       
       // Helper to parse query from string (handles ? and #)
       const parseParams = (str) => {
@@ -4191,6 +4225,7 @@ function processInspectorText(text) {
                     }
                 }
             }
+            // no parent clipboard fallback — rely on navigator.clipboard or user paste
             nonCamLines.push(line);
             return;
         }
