@@ -1,5 +1,10 @@
 # Changelog
 
+## v15.0.0
+- 新機能: Shareによる位置情報の共有
+- 新機能: Kasugaiとの連携
+    - 参考: https://yamamoto-ryuzo.github.io/kasugai/
+
 ## v14.2.0
 - バグ修正: 属性（Attr）パネル内でURLのリンクをクリックした際、Re:Earth の Sandbox 制限により外部サイトがエラーで開けない問題に対応しました。
     - Re:Earth の公式 API である `reearth.viewer.open(url)` を使用して安全に新しいタブを開くように修正しました。
