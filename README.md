@@ -8,7 +8,7 @@
 
 ## 📋 概要　
 
-Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タイル管理、レイヤ一覧 UI、Terrain/Shadow トグル、HTML インフォメーション表示などの機能を提供します。
+Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Terrain/Shadow トグル、HTML インフォメーション表示などの機能を提供します。
 
 ![プラグイン画面](/image/image-3.png)
 
