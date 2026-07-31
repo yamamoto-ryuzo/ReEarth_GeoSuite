@@ -2402,30 +2402,33 @@ function urlsEqual(a, b) {
 // Try multiple available APIs to set layer visibility, then re-render UI
 function setLayerVisibility(layerId, visible, renderUI = true) {
   if (!layerId) return false;
+  let success = false;
   try {
-    // Prefer update API first to avoid potential show() side-effects (like moving layer to top).
-    if (reearth.layers && typeof reearth.layers.update === 'function') {
+    // Prefer override API to avoid potential show() side-effects (like moving layer to top).
+    if (reearth.layers && typeof reearth.layers.override === 'function') {
       try {
-        reearth.layers.update({ id: layerId, visible: !!visible });
-        try { sendLog('[setLayerVisibility] used layers.update', layerId, visible); } catch(_){ }
-        try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
-        return true;
+        const target = (reearth.layers.findById && typeof reearth.layers.findById === 'function') ? reearth.layers.findById(layerId) : null;
+        const is3dTiles = target && target.data && target.data.type === '3dtiles';
+        const props = { visible: !!visible };
+        if (is3dTiles) props["3dtiles"] = { show: !!visible };
+        reearth.layers.override(layerId, props);
+        try { sendLog('[setLayerVisibility] used layers.override', layerId, visible, is3dTiles ? '(3dtiles)' : ''); } catch(_){ }
+        success = true;
       } catch (e) {
-        try { sendError('[setLayerVisibility] layers.update threw', e); } catch(_){ }
+        try { sendError('[setLayerVisibility] layers.override threw', e); } catch(_){ }
       }
     }
-    // Fallback: use show/hide if update is not available
-    if (reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
+    // Fallback: use show/hide if override is not available
+    if (!success && reearth.layers && typeof reearth.layers.show === 'function' && typeof reearth.layers.hide === 'function') {
       if (visible) reearth.layers.show(layerId); else reearth.layers.hide(layerId);
       try { sendLog('[setLayerVisibility] used layers.show/hide', layerId, visible); } catch(_){ }
-      try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
-      return true;
+      success = true;
     }
   } catch (e) {
     try { sendError('[setLayerVisibility] unexpected error', e); } catch(_){ }
   }
   try { if (renderUI) safeShowUI('setLayerVisibility'); } catch(_){ }
-  return false;
+  return success;
 }
 // Utility: add a temporary target marker (returns layerId or null)
 async function addTargetMarker(lat, lng) {
@@ -2564,13 +2567,13 @@ function removeTargetMarker(layerId) {
       if (!existsAfter) {
         removed = true;
       } else {
-        // Fallback: try hide (update) if available
+        // Fallback: try hide if delete is not available
         try {
-          if (reearth && reearth.layers && typeof reearth.layers.update === 'function') {
-            try { reearth.layers.update({ id: layerId, visible: false }); } catch (e) { try { sendError('[removeTargetMarker] update threw', e); } catch(_){} }
-            try { sendLog('[removeTargetMarker] fallback update visible:false called for', layerId); } catch(_){}
+          if (reearth && reearth.layers && typeof reearth.layers.hide === 'function') {
+            try { reearth.layers.hide(layerId); } catch (e) { try { sendError('[removeTargetMarker] hide threw', e); } catch(_){} }
+            try { sendLog('[removeTargetMarker] fallback hide called for', layerId); } catch(_){}
           }
-        } catch (e) { try { sendError('[removeTargetMarker] fallback update error', e); } catch(_){} }
+        } catch (e) { try { sendError('[removeTargetMarker] fallback hide error', e); } catch(_){} }
 
         // Re-check presence
         const layersFinal = listFn ? listFn() : (reearth && reearth.layers && reearth.layers.layers ? reearth.layers.layers : []);
@@ -2982,7 +2985,7 @@ reearth.extension.on("message", (msg) => {
             try {
               if (l && l.data && l.data.isBasemap && l.id) {
                 if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
-                else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: l.id, visible: false });
+                else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: false });
               }
             } catch(e) {}
           }
@@ -3007,7 +3010,7 @@ reearth.extension.on("message", (msg) => {
         if (found) {
           try {
             if (typeof reearth.layers.show === 'function') reearth.layers.show(found.id);
-            else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: found.id, visible: true });
+            else if (typeof reearth.layers.override === 'function') reearth.layers.override(found.id, { visible: true });
             try { _lastAddedBasemapUrl = found.data && found.data.url ? found.data.url : _lastAddedBasemapUrl; } catch(e){}
           } catch(e){}
         } else {
@@ -3756,10 +3759,10 @@ function processInspectorText(text) {
             if (l && l.data && l.data.isBasemap && l.id) {
               if (urlsEqual(l.data.url, _lastAddedBasemapUrl)) {
                 if (typeof reearth.layers.show === 'function') reearth.layers.show(l.id);
-                else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: l.id, visible: true });
+                else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: true });
               } else {
                 if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
-                else if (typeof reearth.layers.update === 'function') reearth.layers.update({ id: l.id, visible: false });
+                else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: false });
               }
             }
           } catch(e) {}
@@ -3835,24 +3838,24 @@ function restoreUserLayers(userRequests, force = false) {
           try {
             if (typeof reearth.layers.hide === 'function') {
               reearth.layers.hide(id);
-            } else if (typeof reearth.layers.update === 'function') {
-              reearth.layers.update({ id: id, visible: false });
+            } else if (typeof reearth.layers.override === 'function') {
+              reearth.layers.override(id, { visible: false });
             }
           } catch (e) {}
           try {
             if (typeof reearth.layers.show === 'function') {
               reearth.layers.show(id);
-            } else if (typeof reearth.layers.update === 'function') {
-              reearth.layers.update({ id: id, visible: true });
+            } else if (typeof reearth.layers.override === 'function') {
+              reearth.layers.override(id, { visible: true });
             }
           } catch (e) {}
         } else {
-          // Simply hide (or update to false)
+          // Simply hide (or override to false)
           try {
             if (typeof reearth.layers.hide === 'function') {
               reearth.layers.hide(id);
-            } else if (typeof reearth.layers.update === 'function') {
-              reearth.layers.update({ id: id, visible: false });
+            } else if (typeof reearth.layers.override === 'function') {
+              reearth.layers.override(id, { visible: false });
             }
           } catch (e) {}
         }
