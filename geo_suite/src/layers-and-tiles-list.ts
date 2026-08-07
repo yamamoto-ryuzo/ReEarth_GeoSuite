@@ -2404,10 +2404,15 @@ function setLayerVisibility(layerId, visible, renderUI = true) {
   if (!layerId) return false;
   let success = false;
   try {
+    // Ensure the layer actually exists in the runtime before attempting to change visibility.
+    // reearth.layers.add can return before the layer is fully registered, so callers may need to retry.
+    const target = (reearth.layers.findById && typeof reearth.layers.findById === 'function') ? reearth.layers.findById(layerId) : null;
+    const exists = !!target || ((reearth.layers && reearth.layers.layers) || []).some(l => l && l.id === layerId);
+    if (!exists) return false;
+
     // Prefer override API to avoid potential show() side-effects (like moving layer to top).
     if (reearth.layers && typeof reearth.layers.override === 'function') {
       try {
-        const target = (reearth.layers.findById && typeof reearth.layers.findById === 'function') ? reearth.layers.findById(layerId) : null;
         const is3dTiles = target && target.data && target.data.type === '3dtiles';
         const props = { visible: !!visible };
         if (is3dTiles) props["3dtiles"] = { show: !!visible };
@@ -3215,18 +3220,34 @@ reearth.extension.on("message", (msg) => {
       break;
     case "hide":
       try {
-        // Called from UI: suppress full UI re-render to avoid re-initialization side-effects
-        setLayerVisibility(msg.layerId, false, false);
-        _userLayerVisibility.set(msg.layerId, false);
+        // Called from UI: suppress full UI re-render to avoid re-initialization side-effects.
+        // The layer may not be registered immediately after reearth.layers.add, so retry briefly.
+        const trySetHide = (attempt) => {
+          if (attempt > 12) return;
+          if (setLayerVisibility(msg.layerId, false, false)) {
+            _userLayerVisibility.set(msg.layerId, false);
+          } else if (typeof setTimeout === 'function') {
+            setTimeout(() => trySetHide(attempt + 1), 300);
+          }
+        };
+        trySetHide(1);
       } catch (e) {
         try { sendError('[hide] error setting visibility', msg.layerId, e); } catch(_){ }
       }
       break;
     case "show":
       try {
-        // Called from UI: suppress full UI re-render to avoid re-initialization side-effects
-        setLayerVisibility(msg.layerId, true, false);
-        _userLayerVisibility.set(msg.layerId, true);
+        // Called from UI: suppress full UI re-render to avoid re-initialization side-effects.
+        // Retry in case the layer has not been registered yet.
+        const trySetShow = (attempt) => {
+          if (attempt > 12) return;
+          if (setLayerVisibility(msg.layerId, true, false)) {
+            _userLayerVisibility.set(msg.layerId, true);
+          } else if (typeof setTimeout === 'function') {
+            setTimeout(() => trySetShow(attempt + 1), 300);
+          }
+        };
+        trySetShow(1);
       } catch (e) {
         try { sendError('[show] error setting visibility', msg.layerId, e); } catch(_){ }
       }
