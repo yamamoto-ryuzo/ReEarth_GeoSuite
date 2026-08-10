@@ -1,5 +1,12 @@
 # Changelog
 
+## v15.1.0
+- 新機能: SHARE タブに「URL読込 & FlyTo」ボタンを追加
+    - `reearth.viewer.viewport.query` から現在の URL パラメータを取得し、位置情報があればカメラを移動（flyTo）できます。
+    - `lat` / `lng` / `height` / `heading` / `pitch` / `layers` に対応。
+- 新機能: 起動時に URL パラメータを自動読み取り、位置情報があれば自動で FlyTo する機能を追加
+    - プラグイン読み込み後に `reearth.viewer.viewport.query` を取得し、自動的にカメラ位置とレイヤー表示を復元します。
+
 ## v15.0.2
 - バグ修正: レイヤー初期非表示設定が反映されず表示されていた問題を修正。
     - `setLayerVisibility` でレイヤーが実際に登録されているか確認する処理を追加。

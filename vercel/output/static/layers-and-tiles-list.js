@@ -792,6 +792,11 @@ function getUI() {
         <button id="load-permalink-btn" class="btn-primary p-6" style="min-width:60px;font-size:0.9em;">Load</button>
       </div>
     </div>
+    
+    <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
+      <div style="margin-bottom:6px;color:#333;">現在のURLパラメータを読み取って移動</div>
+      <button id="flyto-viewport-url-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">URL読込 & FlyTo</button>
+    </div>
     </div>
 
   <div id="search-panel" style="display:none;">
@@ -1981,6 +1986,21 @@ function getUI() {
           });
         }
       
+      // FlyTo from current URL via reearth.viewer.viewport.query
+      const flytoViewportUrlBtn = document.getElementById('flyto-viewport-url-btn');
+      if (flytoViewportUrlBtn) {
+        flytoViewportUrlBtn.addEventListener('click', function() {
+          try {
+            const originalText = flytoViewportUrlBtn.textContent;
+            flytoViewportUrlBtn.textContent = '読込中...';
+            parent.postMessage({ action: 'flyToViewportUrlParams' }, '*');
+            setTimeout(() => { flytoViewportUrlBtn.textContent = originalText; }, 2000);
+          } catch(e) {
+            try { console.error('[UI] flyToViewportUrlParams post failed', e); } catch(_){}
+          }
+        });
+      }
+      
       // Helper to parse query from string (handles ? and #)
       const parseParams = (str) => {
         try {
@@ -2388,6 +2408,114 @@ function postToUI(msg) {
         }
     }
     catch (e) { }
+}
+// Apply a permalink state (camera flyTo + layer visibility) from a normalized object
+function applyPermalinkFromObject(state) {
+    try {
+        if (state.lat != null && state.lng != null) {
+            try {
+                reearth.camera.flyTo({
+                    lat: state.lat,
+                    lng: state.lng,
+                    height: state.height || 1000,
+                    heading: (state.heading || 0) * Math.PI / 180,
+                    pitch: (state.pitch || -30) * Math.PI / 180,
+                    roll: 0,
+                }, { duration: 0.1 });
+            }
+            catch (e) {
+                try {
+                    sendError('[applyPermalinkFromObject] camera flyTo failed', e);
+                }
+                catch (err) { }
+            }
+        }
+        const applyLayersWithRetry = (layersStr, attempt = 1) => {
+            try {
+                const maxAttempts = 8;
+                const delayMs = 800;
+                if (!layersStr)
+                    return;
+                const ids = layersStr.split(',').map(s => s.trim()).filter(Boolean);
+                if (!ids.length)
+                    return;
+                const layersApiAvailable = reearth.layers && Array.isArray(reearth.layers.layers);
+                if (!layersApiAvailable || (reearth.layers.layers && reearth.layers.layers.length === 0)) {
+                    if (attempt <= maxAttempts) {
+                        try {
+                            sendLog('[applyPermalinkFromObject] layers not ready, retry', attempt);
+                        }
+                        catch (e) { }
+                        setTimeout(() => applyLayersWithRetry(layersStr, attempt + 1), delayMs);
+                        return;
+                    }
+                    else {
+                        try {
+                            sendError('[applyPermalinkFromObject] layers unavailable after retries');
+                        }
+                        catch (e) { }
+                        try {
+                            reearth.ui.postMessage({ action: 'permalinkApplied', success: false, reason: 'layers_unavailable' });
+                        }
+                        catch (e) { }
+                        return;
+                    }
+                }
+                const layers = reearth.layers.layers || [];
+                const visibleIds = new Set(ids);
+                let applied = 0;
+                let found = 0;
+                for (let i = 0; i < layers.length; i++) {
+                    const l = layers[i];
+                    if (!l || !l.id)
+                        continue;
+                    if (visibleIds.has(l.id)) {
+                        found++;
+                        if (!l.visible) {
+                            try {
+                                reearth.layers.show(l.id);
+                                applied++;
+                            }
+                            catch (e) { }
+                        }
+                    }
+                    else {
+                        if (l.visible) {
+                            try {
+                                reearth.layers.hide(l.id);
+                            }
+                            catch (e) { }
+                        }
+                    }
+                }
+                try {
+                    sendLog('[applyPermalinkFromObject] applied layers', { requested: ids.length, found: found, changed: applied });
+                }
+                catch (e) { }
+                try {
+                    reearth.ui.postMessage({ action: 'permalinkApplied', success: true, requested: ids.length, found: found, changed: applied });
+                }
+                catch (e) { }
+            }
+            catch (e) {
+                if (attempt <= 8)
+                    setTimeout(() => applyLayersWithRetry(layersStr, attempt + 1), 800);
+                else
+                    try {
+                        sendError('[applyPermalinkFromObject] unexpected error applying layers', e);
+                    }
+                    catch (err) { }
+            }
+        };
+        if (state.layers)
+            applyLayersWithRetry(state.layers);
+    }
+    catch (e) {
+        try {
+            sendError('[applyPermalinkFromObject] error:', e);
+        }
+        catch (err) { }
+    }
 }
 // Wrapper for reearth.ui.show(getUI()) that logs caller stack for debugging
 function safeShowUI(context) {
@@ -3726,109 +3854,65 @@ reearth.extension.on("message", (msg) => {
         }
         else if (msg.action === "applyPermalinkState") {
             try {
-                // Apply camera immediately if provided
-                if (msg.lat != null && msg.lng != null) {
-                    try {
-                        reearth.camera.flyTo({
-                            lat: msg.lat,
-                            lng: msg.lng,
-                            height: msg.height || 1000,
-                            heading: (msg.heading || 0) * Math.PI / 180,
-                            pitch: (msg.pitch || -30) * Math.PI / 180,
-                            roll: 0,
-                        }, { duration: 0.1 });
-                    }
-                    catch (e) {
-                        try {
-                            sendError('[applyPermalinkState] camera flyTo failed', e);
-                        }
-                        catch (err) { }
-                    }
-                }
-                // Apply layers with retry in case layers are not yet loaded
-                const applyLayersWithRetry = (layersStr, attempt = 1) => {
-                    try {
-                        const maxAttempts = 8;
-                        const delayMs = 800;
-                        if (!layersStr)
-                            return;
-                        const ids = layersStr.split(',').map(s => s.trim()).filter(Boolean);
-                        if (!ids.length)
-                            return;
-                        const layersApiAvailable = reearth.layers && Array.isArray(reearth.layers.layers);
-                        if (!layersApiAvailable || (reearth.layers.layers && reearth.layers.layers.length === 0)) {
-                            if (attempt <= maxAttempts) {
-                                try {
-                                    sendLog('[applyPermalinkState] layers not ready, retry', attempt);
-                                }
-                                catch (e) { }
-                                setTimeout(() => applyLayersWithRetry(layersStr, attempt + 1), delayMs);
-                                return;
-                            }
-                            else {
-                                try {
-                                    sendError('[applyPermalinkState] layers unavailable after retries');
-                                }
-                                catch (e) { }
-                                try {
-                                    reearth.ui.postMessage({ action: 'permalinkApplied', success: false, reason: 'layers_unavailable' });
-                                }
-                                catch (e) { }
-                                return;
-                            }
-                        }
-                        const layers = reearth.layers.layers || [];
-                        const visibleIds = new Set(ids);
-                        let applied = 0;
-                        let found = 0;
-                        for (let i = 0; i < layers.length; i++) {
-                            const l = layers[i];
-                            if (!l || !l.id)
-                                continue;
-                            if (visibleIds.has(l.id)) {
-                                found++;
-                                if (!l.visible) {
-                                    try {
-                                        reearth.layers.show(l.id);
-                                        applied++;
-                                    }
-                                    catch (e) { }
-                                }
-                            }
-                            else {
-                                if (l.visible) {
-                                    try {
-                                        reearth.layers.hide(l.id);
-                                    }
-                                    catch (e) { }
-                                }
-                            }
-                        }
-                        try {
-                            sendLog('[applyPermalinkState] applied layers', { requested: ids.length, found: found, changed: applied });
-                        }
-                        catch (e) { }
-                        try {
-                            reearth.ui.postMessage({ action: 'permalinkApplied', success: true, requested: ids.length, found: found, changed: applied });
-                        }
-                        catch (e) { }
-                    }
-                    catch (e) {
-                        if (attempt <= 8)
-                            setTimeout(() => applyLayersWithRetry(layersStr, attempt + 1), 800);
-                        else
-                            try {
-                                sendError('[applyPermalinkState] unexpected error applying layers', e);
-                            }
-                            catch (err) { }
-                    }
-                };
-                if (msg.layers)
-                    applyLayersWithRetry(msg.layers);
+                applyPermalinkFromObject(msg);
             }
             catch (e) {
                 try {
                     sendError('[applyPermalinkState] error:', e);
+                }
+                catch (err) { }
+            }
+        }
+        else if (msg.action === "flyToViewportUrlParams") {
+            try {
+                let query = null;
+                try {
+                    query = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.query) ? reearth.viewer.viewport.query : null;
+                }
+                catch (e) { }
+                if (!query)
+                    try {
+                        query = (reearth.viewport && reearth.viewport.query) ? reearth.viewport.query : null;
+                    }
+                    catch (e) { }
+                if (query) {
+                    const state = {};
+                    if (query.lat != null)
+                        state.lat = parseFloat(query.lat);
+                    if (query.lng != null)
+                        state.lng = parseFloat(query.lng);
+                    if (query.height != null)
+                        state.height = parseFloat(query.height);
+                    if (query.heading != null)
+                        state.heading = parseFloat(query.heading);
+                    if (query.pitch != null)
+                        state.pitch = parseFloat(query.pitch);
+                    if (query.layers != null)
+                        state.layers = query.layers;
+                    if (typeof state.lat === 'number' && !isNaN(state.lat) && typeof state.lng === 'number' && !isNaN(state.lng)) {
+                        applyPermalinkFromObject(state);
+                        try {
+                            sendLog('[flyToViewportUrlParams] applied from viewport query:', query);
+                        }
+                        catch (e) { }
+                    }
+                    else {
+                        try {
+                            sendError('[flyToViewportUrlParams] invalid lat/lng in query:', query);
+                        }
+                        catch (e) { }
+                    }
+                }
+                else {
+                    try {
+                        sendError('[flyToViewportUrlParams] viewport query unavailable');
+                    }
+                    catch (e) { }
+                }
+            }
+            catch (e) {
+                try {
+                    sendError('[flyToViewportUrlParams] error:', e);
                 }
                 catch (err) { }
             }
@@ -4886,3 +4970,74 @@ function loadInfoUrl(url) {
 // Note: This logic has been moved to UI initialization (see getUI script)
 // because extension sandbox cannot access window.location.
 // However, we still need a handler for 'applyPermalinkState' (added below).
+// --- Startup URL auto-fly ---
+(function tryAutoFlyToFromUrl() {
+    try {
+        const doFly = () => {
+            try {
+                let query = null;
+                try {
+                    query = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.query) ? reearth.viewer.viewport.query : null;
+                }
+                catch (e) { }
+                if (!query)
+                    try {
+                        query = (reearth.viewport && reearth.viewport.query) ? reearth.viewport.query : null;
+                    }
+                    catch (e) { }
+                if (query) {
+                    const state = {};
+                    if (query.lat != null)
+                        state.lat = parseFloat(query.lat);
+                    if (query.lng != null)
+                        state.lng = parseFloat(query.lng);
+                    if (query.height != null)
+                        state.height = parseFloat(query.height);
+                    if (query.heading != null)
+                        state.heading = parseFloat(query.heading);
+                    if (query.pitch != null)
+                        state.pitch = parseFloat(query.pitch);
+                    if (query.layers != null)
+                        state.layers = query.layers;
+                    if (typeof state.lat === 'number' && !isNaN(state.lat) && typeof state.lng === 'number' && !isNaN(state.lng)) {
+                        applyPermalinkFromObject(state);
+                        try {
+                            sendLog('[tryAutoFlyToFromUrl] auto flyTo from viewport query:', query);
+                        }
+                        catch (e) { }
+                    }
+                    else {
+                        try {
+                            sendLog('[tryAutoFlyToFromUrl] no lat/lng in viewport query:', query);
+                        }
+                        catch (e) { }
+                    }
+                }
+                else {
+                    try {
+                        sendLog('[tryAutoFlyToFromUrl] viewport query unavailable');
+                    }
+                    catch (e) { }
+                }
+            }
+            catch (e) {
+                try {
+                    sendError('[tryAutoFlyToFromUrl] error:', e);
+                }
+                catch (err) { }
+            }
+        };
+        if (typeof setTimeout === 'function') {
+            setTimeout(doFly, 500);
+        }
+        else {
+            doFly();
+        }
+    }
+    catch (e) {
+        try {
+            sendError('[tryAutoFlyToFromUrl] outer error:', e);
+        }
+        catch (err) { }
+    }
+})();
