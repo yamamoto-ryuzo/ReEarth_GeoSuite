@@ -1,5 +1,11 @@
 # Changelog
 
+## v15.1.1
+- 新機能: SHARE タブに「現在位置から FlyTo」ボタンを追加
+    - 端末の現在位置を取得し、カメラをその位置へ FlyTo します（既存の `requestGeolocation` フローを利用）。
+- 機能強化: 手動 URL 読込（SHARE タブの「URL読込 & FlyTo」）で `?` パラメータと `#` ハッシュパラメータの両方に対応
+    - UI 側で `?` / `#` の両方を解析し、メインプラグイン側の `reearth.viewer.viewport.query` とマージして適用します。
+
 ## v15.1.0
 - 新機能: SHARE タブに「URL読込 & FlyTo」ボタンを追加
     - `reearth.viewer.viewport.query` から現在の URL パラメータを取得し、位置情報があればカメラを移動（flyTo）できます。

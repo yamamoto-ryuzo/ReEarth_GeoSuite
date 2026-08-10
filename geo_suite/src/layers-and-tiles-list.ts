@@ -789,6 +789,11 @@ function getUI() {
       <div style="margin-bottom:6px;color:#333;">現在のURLパラメータを読み取って移動</div>
       <button id="flyto-viewport-url-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">URL読込 & FlyTo</button>
     </div>
+    
+    <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
+      <div style="margin-bottom:6px;color:#333;">現在位置から移動</div>
+      <button id="flyto-current-location-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">現在位置から FlyTo</button>
+    </div>
     </div>
 
   <div id="search-panel" style="display:none;">
@@ -1985,10 +1990,27 @@ function getUI() {
           try {
             const originalText = flytoViewportUrlBtn.textContent;
             flytoViewportUrlBtn.textContent = '読込中...';
-            parent.postMessage({ action: 'flyToViewportUrlParams' }, '*');
+            const p = tryReadParams();
+            const query = p ? Object.fromEntries(p) : null;
+            parent.postMessage({ action: 'flyToViewportUrlParams', query: query }, '*');
             setTimeout(() => { flytoViewportUrlBtn.textContent = originalText; }, 2000);
           } catch(e) {
             try { console.error('[UI] flyToViewportUrlParams post failed', e); } catch(_){}
+          }
+        });
+      }
+      
+      // FlyTo from current geolocation
+      const flytoCurrentLocationBtn = document.getElementById('flyto-current-location-btn');
+      if (flytoCurrentLocationBtn) {
+        flytoCurrentLocationBtn.addEventListener('click', function() {
+          try {
+            const originalText = flytoCurrentLocationBtn.textContent;
+            flytoCurrentLocationBtn.textContent = '取得中...';
+            parent.postMessage({ action: 'requestGeolocation' }, '*');
+            setTimeout(() => { flytoCurrentLocationBtn.textContent = originalText; }, 2000);
+          } catch(e) {
+            try { console.error('[UI] flyToCurrentLocation post failed', e); } catch(_){}
           }
         });
       }
@@ -3239,7 +3261,11 @@ reearth.extension.on("message", (msg) => {
           try { query = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.query) ? reearth.viewer.viewport.query : null; } catch(e){}
           if (!query) try { query = (reearth.viewport && reearth.viewport.query) ? reearth.viewport.query : null; } catch(e){}
 
-          if (query) {
+          // Merge UI-provided query (for # hash params, etc.) with official viewport query
+          const uiQuery = (msg && typeof msg.query === 'object' && msg.query !== null) ? msg.query : null;
+          query = Object.assign({}, uiQuery || {}, query || {});
+
+          if (Object.keys(query).length > 0) {
             const state = {};
             if (query.lat != null) state.lat = parseFloat(query.lat);
             if (query.lng != null) state.lng = parseFloat(query.lng);
@@ -3250,7 +3276,7 @@ reearth.extension.on("message", (msg) => {
 
             if (typeof state.lat === 'number' && !isNaN(state.lat) && typeof state.lng === 'number' && !isNaN(state.lng)) {
               applyPermalinkFromObject(state);
-              try { sendLog('[flyToViewportUrlParams] applied from viewport query:', query); } catch(e){}
+              try { sendLog('[flyToViewportUrlParams] applied from merged query:', query); } catch(e){}
             } else {
               try { sendError('[flyToViewportUrlParams] invalid lat/lng in query:', query); } catch(e){}
             }
