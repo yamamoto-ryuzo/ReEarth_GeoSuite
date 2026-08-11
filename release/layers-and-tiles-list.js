@@ -3765,12 +3765,8 @@ reearth.extension.on("message", (msg) => {
                         cur = reearth.camera || null;
                     }
                     catch (e) { }
-                // 2. Get Layers Visibility
-                const layers = (reearth.layers && reearth.layers.layers) || [];
-                const visibleLayers = layers.filter(l => l.visible).map(l => l.id).join(',');
                 const payload = {
                     action: 'permalinkGenerated',
-                    layers: visibleLayers,
                     queryOnly: true // Generate only the query string (reearth.viewer.viewport.query handles ? params)
                 };
                 if (cur) {

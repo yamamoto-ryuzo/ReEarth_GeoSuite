@@ -1,5 +1,10 @@
 # Changelog
 
+## v15.1.4
+- 変更: SHARE タブの「Generate Link」でレイヤー ID リストを生成しないように変更
+    - レイヤー ID はセッション専用のため、クエリ文字列に含めても他ページで再現できません。
+    - 生成される文字列は `lat` / `lng` / `height` / `heading` / `pitch` のみ（必要に応じて）となります。
+
 ## v15.1.3
 - 変更: SHARE タブの「Generate Link」は `?` 以降のクエリ文字列のみを生成するように変更
     - `reearth.viewer.viewport.query` は `?` 以降のみに対応するため、生成的に URL 全体ではなく `?lat=...&lng=...` 形式の文字列を出力します。
