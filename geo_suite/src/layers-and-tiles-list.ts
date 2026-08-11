@@ -1990,9 +1990,7 @@ function getUI() {
           try {
             const originalText = flytoViewportUrlBtn.textContent;
             flytoViewportUrlBtn.textContent = '読込中...';
-            const p = tryReadParams();
-            const query = p ? Object.fromEntries(p) : null;
-            parent.postMessage({ action: 'flyToViewportUrlParams', query: query }, '*');
+            parent.postMessage({ action: 'flyToViewportUrlParams' }, '*');
             setTimeout(() => { flytoViewportUrlBtn.textContent = originalText; }, 2000);
           } catch(e) {
             try { console.error('[UI] flyToViewportUrlParams post failed', e); } catch(_){}

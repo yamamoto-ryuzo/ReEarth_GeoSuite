@@ -1,5 +1,12 @@
 # Changelog
 
+## v15.1.2
+- 修正: ハッシュ（`#`）パラメータの自動取得を廃止
+    - Re:Earth Visualizer の UI iframe は `allow-same-origin` なしのサンドボックスのため、親ページの URL ハッシュにアクセスできません。
+    - `reearth.viewer.viewport.query` は `?`（search）パラメータのみを提供し、`#` は取得できないことを確認しました。
+    - 自動 URL 読込・SHARE タブの「URL読込 & FlyTo」は `?` パラメータのみに対応します。
+- 補足: SHARE タブの URL ペースト入力＆Load は、貼り付けられた文字列から `?` と `#` の両方を解析可能です（手入力 URL の場合）。
+
 ## v15.1.1
 - 新機能: SHARE タブに「現在位置から FlyTo」ボタンを追加
     - 端末の現在位置を取得し、カメラをその位置へ FlyTo します（既存の `requestGeolocation` フローを利用）。
