@@ -1729,43 +1729,21 @@ function getUI() {
             
             const output = document.getElementById('permalink-output');
             if (output) {
-                // Construct URL in UI context
-                let baseUrl = msg.baseUrl; // Use base URL passed from extension if available
-                
-                if (!baseUrl) {
-                    try {
-                        // Try to get parent URL
-                        if (document.referrer && document.referrer.startsWith('http')) {
-                            baseUrl = document.referrer;
-                        } else {
-                            // If window.location.href is available and http (not about:srcdoc), use it
-                            if (window.location.href && window.location.href.startsWith('http')) {
-                                baseUrl = window.location.href;
-                            } else {
-                                // Fallback for srcdoc/sandbox
-                                baseUrl = "https://reearth.io/";
-                            }
-                        }
-                    } catch(e) {
-                         baseUrl = "https://reearth.io/";
-                    }
-                }
-                
                 try {
-                    const urlObj = new URL(baseUrl);
-                    if (msg.lat != null) urlObj.searchParams.set('lat', msg.lat);
-                    if (msg.lng != null) urlObj.searchParams.set('lng', msg.lng);
-                    if (msg.height != null) urlObj.searchParams.set('height', msg.height);
-                    if (msg.heading != null) urlObj.searchParams.set('heading', msg.heading);
-                    if (msg.pitch != null) urlObj.searchParams.set('pitch', msg.pitch);
-                    if (msg.layers) urlObj.searchParams.set('layers', msg.layers);
+                    const sp = new URLSearchParams();
+                    if (msg.lat != null) sp.set('lat', String(msg.lat));
+                    if (msg.lng != null) sp.set('lng', String(msg.lng));
+                    if (msg.height != null) sp.set('height', String(msg.height));
+                    if (msg.heading != null) sp.set('heading', String(msg.heading));
+                    if (msg.pitch != null) sp.set('pitch', String(msg.pitch));
+                    if (msg.layers) sp.set('layers', String(msg.layers));
                     
-                    const urlStr = urlObj.toString();
+                    const urlStr = '?' + sp.toString();
                     output.value = urlStr;
                     // After writing output, call shared copy helper to ensure same behavior as Copy button
                     try { copyPermalinkToClipboard(urlStr, document.getElementById('generate-permalink-btn')); } catch(e) {}
                 } catch(e) {
-                    output.value = baseUrl + "?error=url_construction_failed";
+                    output.value = '?error=url_construction_failed';
                 }
             }
           }
@@ -3197,7 +3175,7 @@ reearth.extension.on("message", (msg) => {
             const payload = {
                 action: 'permalinkGenerated',
                 layers: visibleLayers,
-                baseUrl: _baseUrl // Pass configured base URL if available
+                queryOnly: true // Generate only the query string (reearth.viewer.viewport.query handles ? params)
             };
 
             if (cur) {
