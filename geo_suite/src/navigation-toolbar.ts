@@ -321,6 +321,7 @@ export const onMessage = (msg: any): void => {
         if (typeof cur.height === 'number') target.height = cur.height;
       }
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
+      try { postToUI({ type: 'cameraUpdate', payload: { heading: target.heading } }); } catch (e) {}
     } catch (e) {}
   }
   if (msg.action === 'requestCamera') {
@@ -380,17 +381,20 @@ export const onMessage = (msg: any): void => {
       }
       const deltaRad = (nextMultiple - headingDeg) * Math.PI / 180;
 
+      // New heading in radians, kept unwrapped so the UI needle doesn't jump at 0°/360°.
+      const newHeadingRad = heading + deltaRad;
+
       // Prefer the dedicated relative-rotation API.
       if (reearth && reearth.camera && typeof reearth.camera.rotateRight === 'function') {
         try {
           reearth.camera.rotateRight(deltaRad);
+          try { postToUI({ type: 'cameraUpdate', payload: { heading: newHeadingRad } }); } catch (e) {}
           try { postToUI({ type: 'rotateResult', payload: { success: true, method: 'rotateRight', headingDeg: nextMultiple } }); } catch (e) {}
           return;
         } catch (e) {}
       }
 
-      // Fallback: flyTo the same position with the new heading, keeping values unwrapped.
-      const newHeadingRad = heading + deltaRad;
+      // Fallback: flyTo the same position with the new heading.
       const target: any = { heading: newHeadingRad };
       if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
       if (typeof cur.roll === 'number') target.roll = cur.roll;
@@ -398,6 +402,7 @@ export const onMessage = (msg: any): void => {
       if (typeof cur.lng === 'number') target.lng = cur.lng;
       if (typeof cur.height === 'number') target.height = cur.height;
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.6 }); } catch (e) {}
+      try { postToUI({ type: 'cameraUpdate', payload: { heading: newHeadingRad } }); } catch (e) {}
       try { postToUI({ type: 'rotateResult', payload: { success: true, method: 'flyTo', heading: newHeadingRad, headingDeg: nextMultiple } }); } catch (e) {}
     } catch (e) {}
     }
