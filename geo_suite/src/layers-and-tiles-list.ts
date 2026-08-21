@@ -23,7 +23,7 @@ let _inspectorLegendItems = []; // cached legend items from inspector for initia
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _systemLayerSettings = []; // settings for system layers from inspector
-let _inspectorAttrUrlOpen = 'panel'; // attribute panel URL click mode: 'panel' | 'split' | 'newtab'
+let _inspectorAttrUrlOpen = 'panel'; // attribute panel URL click mode: 'panel' | 'newtab'
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -930,19 +930,6 @@ function getUI() {
     const tabBarHeight = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 50;
     let availableHeight = screenHeight - tabBarHeight - 100;
     availableHeight = Math.max(400, Math.min(800, availableHeight));
-
-    if (mode === 'split') {
-      const tableHtml = window._currentAttrHtml || '<div style="padding:8px;color:#666;">No attributes</div>';
-      attrContent.innerHTML =
-        '<div style="display:flex; gap:8px; align-items:stretch; width:100%;">' +
-          '<div style="flex:1 1 50%; min-width:0; overflow:auto; border:1px solid #ddd; border-radius:4px;">' + tableHtml + '</div>' +
-          '<div style="flex:1 1 50%; min-width:0;">' +
-            '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' +
-            '<iframe src="' + url + '" style="width:100%; height:' + (availableHeight - 40) + 'px; border:1px solid #ccc; background:#fff;"></iframe>' +
-          '</div>' +
-        '</div>';
-      return;
-    }
 
     attrContent.innerHTML = 
       '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
@@ -3674,8 +3661,8 @@ function processInspectorText(text) {
     if (/^attrurlopen\s*:/i.test(lowerLine)) {
       try {
         const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
-        if (val === 'split' || val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
-          _inspectorAttrUrlOpen = (val === 'split') ? 'split' : 'newtab';
+        if (val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
+          _inspectorAttrUrlOpen = 'newtab';
         } else if (val === 'panel' || val === 'iframe' || val === 'inline') {
           _inspectorAttrUrlOpen = 'panel';
         }
@@ -3958,8 +3945,8 @@ function parseAttrUrlOpen(text) {
     if (/^attrurlopen\s*:/i.test(line)) {
       try {
         const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
-        if (val === 'split' || val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
-          mode = (val === 'split') ? 'split' : 'newtab';
+        if (val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
+          mode = 'newtab';
         } else if (val === 'panel' || val === 'iframe' || val === 'inline') {
           mode = 'panel';
         }
