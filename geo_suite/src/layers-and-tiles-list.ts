@@ -800,14 +800,14 @@ function getUI() {
   <div id="search-panel" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Search</div>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
       <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
         <option value="gsi">地理院</option>
         <option value="yahoo">Yahoo</option>
       </select>
-      <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;" />
-      <button id="search-btn" class="btn-primary p-8">Search</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+      <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
+      <button id="search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;">Search</button>
     </div>
     <div id="search-results" style="max-height:320px;overflow:auto;">
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
