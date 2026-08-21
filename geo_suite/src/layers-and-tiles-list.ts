@@ -799,16 +799,20 @@ function getUI() {
 
   <div id="search-panel" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <div style="font-weight:600;">Search (Yahoo)</div>
+      <div style="font-weight:600;">Search</div>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+      <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
+        <option value="gsi">地理院</option>
+        <option value="yahoo">Yahoo</option>
+      </select>
       <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;" />
       <button id="search-btn" class="btn-primary p-8">Search</button>
     </div>
     <div id="search-results" style="max-height:320px;overflow:auto;">
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
     </div>
-    <div style="font-size:0.9em;color:#a33;margin-top:8px;">注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。</div>
+    <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;">注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。</div>
   </div>
 
   <div id="layers-panel">
@@ -2089,11 +2093,36 @@ function getUI() {
           });
       }
 
-      // --- Search (Yahoo API) handlers ---
+      // --- Search (Yahoo/GSI API) handlers ---
       try {
         const searchInput = document.getElementById('search-query');
         const searchBtn = document.getElementById('search-btn');
+        const searchProvider = document.getElementById('search-provider');
+        const searchYahooWarning = document.getElementById('search-yahoo-warning');
         const resultsList = document.getElementById('search-results-list');
+
+        // Select provider based on Yahoo API availability
+        try {
+          if (searchProvider) {
+            const hasYahoo = !!(window._yahooAppId);
+            const yahooOpt = searchProvider.querySelector('option[value="yahoo"]');
+            if (hasYahoo) {
+              searchProvider.value = 'yahoo';
+              if (yahooOpt) yahooOpt.disabled = false;
+            } else {
+              searchProvider.value = 'gsi';
+              if (yahooOpt) yahooOpt.disabled = true;
+            }
+            if (searchYahooWarning) {
+              searchYahooWarning.style.display = (searchProvider.value === 'yahoo') ? '' : 'none';
+            }
+            searchProvider.addEventListener('change', () => {
+              if (searchYahooWarning) {
+                searchYahooWarning.style.display = (searchProvider.value === 'yahoo') ? '' : 'none';
+              }
+            });
+          }
+        } catch (e) { console.error('search provider init failed', e); }
 
         const renderSearchResults = (items) => {
           if (!resultsList) return;
@@ -2169,6 +2198,33 @@ function getUI() {
 
         const performSearch = async (q) => {
           if (!q || !q.trim()) { renderSearchResults([]); return; }
+          const provider = searchProvider ? String(searchProvider.value || 'gsi') : 'gsi';
+
+          if (provider === 'gsi') {
+            try {
+              resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
+              const url = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=' + encodeURIComponent(q.trim());
+              const res = await fetch(url, { method: 'GET' });
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              const data = await res.json();
+              const source = Array.isArray(data) ? data : ((data && (data.features || data.Feature || data.results)) || []);
+              const items = source.map(f => {
+                const props = f.properties || f.Property || f.property || {};
+                const title = f.name || f.Name || props.title || props.Title || props.name || props.Name || '';
+                const address = props.address || props.Address || props.title || props.Title || '';
+                const geom = f.geometry || f.Geometry || {};
+                const coords = geom.coordinates || geom.Coordinates || null;
+                const coordStr = Array.isArray(coords) ? coords.join(',') : (typeof coords === 'string' ? coords : '');
+                return { name: title, address: address, geometry: f.geometry || f.Geometry, coordinates: coordStr };
+              });
+              renderSearchResults(items);
+            } catch (e) {
+              try { console.error('GSI search failed', e); } catch(_) {}
+              if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">検索に失敗しました。ネットワーク（CORS）を確認してください。</li>';
+            }
+            return;
+          }
+
           // Check whether server has a configured YAHOO_APPID; if so, prefer server-side key and
           // do not send inspector AppID from the client. If not, fall back to inspector-provided AppID.
           let serverHasAppId = false;
