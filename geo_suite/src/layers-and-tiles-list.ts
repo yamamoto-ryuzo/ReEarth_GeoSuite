@@ -3587,12 +3587,8 @@ reearth.extension.on("message", (msg) => {
         }
       } else if (msg.action === 'getVectorFeatureIndex') {
         try {
-          requestVectorFeatureIndex();
+          buildVectorFeatureIndexFromLayers();
         } catch (e) { try { sendError('[getVectorFeatureIndex] error:', e); } catch(_) {} }
-      } else if (msg.action === 'vectorFeatureData') {
-        try {
-          buildVectorFeatureIndexFromData(msg.layers || {});
-        } catch (e) { try { sendError('[vectorFeatureData] error:', e); } catch(_) {} }
       } else if (msg.action === 'vectorFeatureFly') {
         try {
           flyToVectorFeature(msg.layerId, msg.attrName, msg.value);
@@ -4595,6 +4591,94 @@ function requestVectorFeatureIndex() {
     try { sendLog('[requestVectorFeatureIndex] requested', sources.length, 'sources'); } catch (e) {}
   } catch (e) {
     try { sendError('[requestVectorFeatureIndex] error:', e); } catch (_) {}
+  }
+}
+
+// Build the vector feature index directly from Re:Earth's computed layers.
+// This uses reearth.layers.layers[i].computed?.features, avoiding the need
+// to fetch data.url / data.value from the UI iframe.
+function buildVectorFeatureIndexFromLayers() {
+  try {
+    const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
+    const layerInfo = {};
+    const allAttrSet = new Set();
+    const allValuesByAttr = {};
+    const allFeatureByAttr = {};
+    const layerOptions = [];
+
+    layersAll.forEach((l) => {
+      try {
+        if (!l || !l.computed) return;
+        const features = (l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null);
+        if (!features || !features.length) return;
+        const title = (l.title || (l.layer && l.layer.title) || l.id || 'Layer');
+        const id = l.id || String(layerOptions.length);
+        const attrSet = new Set();
+        const valuesByAttr = {};
+        const featureByAttr = {};
+
+        features.forEach((f) => {
+          try {
+            const props = (f && f.properties) || {};
+            const geom = (f && f.geometry) || null;
+            const centroid = getGeometryCentroid(geom);
+            if (centroid.lat == null || centroid.lng == null || isNaN(centroid.lat) || isNaN(centroid.lng)) return;
+            Object.keys(props).forEach((key) => {
+              try {
+                const raw = props[key];
+                if (raw == null) return;
+                const val = String(raw);
+                attrSet.add(key);
+                if (!valuesByAttr[key]) valuesByAttr[key] = new Set();
+                if (!featureByAttr[key]) featureByAttr[key] = {};
+                if (!valuesByAttr[key].has(val)) {
+                  valuesByAttr[key].add(val);
+                  featureByAttr[key][val] = { lat: centroid.lat, lng: centroid.lng };
+                }
+                allAttrSet.add(key);
+                if (!allValuesByAttr[key]) allValuesByAttr[key] = new Set();
+                if (!allFeatureByAttr[key]) allFeatureByAttr[key] = {};
+                if (!allValuesByAttr[key].has(val)) {
+                  allValuesByAttr[key].add(val);
+                  allFeatureByAttr[key][val] = { lat: centroid.lat, lng: centroid.lng };
+                }
+              } catch (e) {}
+            });
+          } catch (e) {}
+        });
+
+        const sortedAttributes = Array.from(attrSet).sort();
+        const sortedValuesByAttr = {};
+        sortedAttributes.forEach((k) => { sortedValuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort(); });
+
+        layerInfo[id] = { title: title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr };
+        layerOptions.push({ id: id, title: title });
+      } catch (e) {
+        try { sendError('[buildVectorFeatureIndexFromLayers] failed for', l && l.id, e); } catch (_) {}
+      }
+    });
+
+    const allAttributes = Array.from(allAttrSet).sort();
+    const allSortedValuesByAttr = {};
+    allAttributes.forEach((k) => { allSortedValuesByAttr[k] = Array.from(allValuesByAttr[k] || new Set()).sort(); });
+
+    _vectorFeatureIndex = {
+      layers: layerInfo,
+      all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, featureByAttr: allFeatureByAttr },
+      layerOptions: layerOptions
+    };
+
+    const uiLayers = {};
+    Object.keys(layerInfo).forEach((id) => {
+      const l = layerInfo[id];
+      uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr };
+    });
+
+    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr }, layers: uiLayers, layerOptions: layerOptions });
+    try { sendLog('[buildVectorFeatureIndexFromLayers] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
+  } catch (e) {
+    try { sendError('[buildVectorFeatureIndexFromLayers] error:', e); } catch (_) {}
+    _vectorFeatureIndex = null;
   }
 }
 
