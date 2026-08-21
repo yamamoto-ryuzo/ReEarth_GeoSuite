@@ -3497,7 +3497,8 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
 tryInitFromProperty();
 
 // Default inspector text (matches reearth.yml defaultValue)
-const _defaultInspectorText = `              layer:Googleフォトリアリスティック3Dタイル|off
+const _defaultInspectorText = `              attrUrlOpen: newtab
+              layer:Googleフォトリアリスティック3Dタイル|off
               3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json|off
               geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
               3dtiles: 東京都//千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
@@ -3517,17 +3518,7 @@ const _defaultInspectorText = `              layer:Googleフォトリアリス�
               base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
               base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
               base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
-              yahooAppId: あなたのYahoo Local Search API AppID
-- id: navigation-toolbar
-  type: widget
-  name: "Navigation Toolbar"
-  description: "Compass, zoom and mode controls"
-  entry: navigation-toolbar.js
-  widgetLayout:
-    defaultLocation:
-      zone: outer
-      section: right
-      area: top`;
+              yahooAppId: あなたのYahoo Local Search API AppID`;
 
 // Also process any inspector text/config present at init
 try {
@@ -3679,7 +3670,7 @@ function processInspectorText(text) {
       return;
     }
 
-    // Attribute panel URL click mode: "attrUrlOpen: panel|split|newtab"
+    // Attribute panel URL click mode: "attrUrlOpen: panel|newtab"
     if (/^attrurlopen\s*:/i.test(lowerLine)) {
       try {
         const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();

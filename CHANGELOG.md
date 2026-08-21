@@ -2,11 +2,11 @@
 
 ## v15.2.0
 - 新機能: 属性（Attr）パネルのURLクリック動作をインスペクター設定で切り替え可能にしました。
-    - `attrUrlOpen: panel|split|newtab` を設定テキストに記述できます。
+    - `attrUrlOpen: panel|newtab` を設定テキストに記述できます。
     - `panel`: 属性パネル内の iframe 表示（従来通り）。
-    - `split`: 属性テーブルと URL を左右に並べた分割表示。
-    - `newtab`: `window.parent` へ `openUrl` postMessage を送信し、`reearth.viewer.open(url)` で新しいタブ/ウィンドウに開きます。
+    - `newtab`: `window.parent` へ `openUrl` postMessage を送信し、`reearth.viewer.open(url)` で新しいタブ/ウィンドウに開きます（既定）。
     - 旧 `openUrlInNewTab: true` も `newtab` として利用できます（互換性のため）。
+    - 既定値は `attrUrlOpen: newtab` です。
 
 ## v15.1.4
 - 変更: SHARE タブの「Generate Link」でレイヤー ID リストを生成しないように変更
