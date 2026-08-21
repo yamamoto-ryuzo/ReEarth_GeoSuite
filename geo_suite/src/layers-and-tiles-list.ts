@@ -23,7 +23,7 @@ let _inspectorLegendItems = []; // cached legend items from inspector for initia
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _systemLayerSettings = []; // settings for system layers from inspector
-let _inspectorAttrUrlOpen = 'panel'; // attribute panel URL click mode: 'panel' | 'newtab'
+let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -919,7 +919,7 @@ function getUI() {
   window.openUrlInAttrPanel = function(event, url) {
     event.preventDefault(); // デフォルトのリンク遷移をキャンセル
     try { console.log('[openUrlInAttrPanel] _attrUrlOpen:', window._attrUrlOpen, 'url:', url); } catch(e) {}
-    const mode = (window._attrUrlOpen || 'panel').toLowerCase();
+    const mode = (window._attrUrlOpen || 'newtab').toLowerCase();
     if (mode === 'newtab') {
       if (window.parent && url) window.parent.postMessage({ action: 'openUrl', url: url }, '*');
       return;
@@ -1238,7 +1238,7 @@ function getUI() {
                   }
                 } else if (msg.action === 'featureSelected') {
                   try { console.log('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
-                  window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'panel');
+                  window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'newtab');
                   const attrContent = document.getElementById('attr-content');
                   if (attrContent) {
                     if (msg.properties && Object.keys(msg.properties).length > 0) {
@@ -1274,7 +1274,7 @@ function getUI() {
                   }
                 } else if (msg.action === 'attrUrlOpen') {
                   try { console.log('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
-                  window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'panel');
+                  window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'newtab');
                 }
               } catch (e) {}
             });
@@ -3565,7 +3565,7 @@ function processInspectorText(text) {
   // reset inspector-sourced yahooAppId each time we parse inspector text
   try { _inspectorYahooAppId = null; } catch(e) {}
   _systemLayerSettings = [];
-  _inspectorAttrUrlOpen = 'panel';
+  _inspectorAttrUrlOpen = 'newtab';
   const tiles = [];
 
   // Helper to extract visible flag from parts array (modifies parts in place)
@@ -3936,7 +3936,7 @@ function processInspectorText(text) {
 }
 
 function parseAttrUrlOpen(text) {
-  let mode = 'panel';
+  let mode = 'newtab';
   if (!text || typeof text !== 'string') return mode;
   const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
