@@ -819,7 +819,7 @@ function getUI() {
     <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">住所検索</div>
       <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
-        <option value="gsi">地理院</option>
+        <option value="gsi" selected>地理院</option>
         <option value="yahoo">Yahoo</option>
       </select>
     </div>
