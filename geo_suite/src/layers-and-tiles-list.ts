@@ -2924,10 +2924,14 @@ try {
 try {
   reearth.layers.on("select", (layerId, featureId) => {
     try {
+      try {
+        const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+        const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+        console.log('[main select] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen, 'prop text:', text ? text.substring(0, 200) : null);
+      } catch(e) {}
       if (layerId && featureId) {
         const feature = reearth.layers.findFeatureById(layerId, featureId);
         const props = feature && feature.properties ? feature.properties : null;
-        try { console.log('[main select] attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e) {}
         postToUI({ action: 'featureSelected', layerId, featureId, properties: props || {}, attrUrlOpen: _inspectorAttrUrlOpen });
       } else {
         postToUI({ action: 'featureSelected', layerId: null, featureId: null, properties: null, attrUrlOpen: _inspectorAttrUrlOpen });
