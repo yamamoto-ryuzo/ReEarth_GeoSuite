@@ -1,5 +1,13 @@
 # Changelog
 
+## v15.3.0
+- 変更: `attrUrlOpen` の既定値を `newtab` にしました。
+    - 未指定の場合は `newtab` として動作します。
+    - `attrUrlOpen: panel` と明示すれば属性パネル内の iframe 表示に戻ります。
+- 変更: `attrUrlOpen` から `split` モードを削除しました。
+    - `attrUrlOpen: panel|newtab` の 2 値のみサポートします。
+    - 先頭に書いた `attrUrlOpen` の値が優先されます。
+
 ## v15.2.0
 - 新機能: 属性（Attr）パネルのURLクリック動作をインスペクター設定で切り替え可能にしました。
     - `attrUrlOpen: panel|newtab` を設定テキストに記述できます。
