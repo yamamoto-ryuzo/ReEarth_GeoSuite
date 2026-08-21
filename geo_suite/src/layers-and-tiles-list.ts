@@ -918,6 +918,7 @@ function getUI() {
 <script>
   window.openUrlInAttrPanel = function(event, url) {
     event.preventDefault(); // デフォルトのリンク遷移をキャンセル
+    try { console.log('[openUrlInAttrPanel] _attrUrlOpen:', window._attrUrlOpen, 'url:', url); } catch(e) {}
     const mode = (window._attrUrlOpen || 'panel').toLowerCase();
     if (mode === 'newtab') {
       if (window.parent && url) window.parent.postMessage({ action: 'openUrl', url: url }, '*');
@@ -1249,6 +1250,7 @@ function getUI() {
                     }
                   }
                 } else if (msg.action === 'featureSelected') {
+                  try { console.log('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'panel');
                   const attrContent = document.getElementById('attr-content');
                   if (attrContent) {
@@ -2922,6 +2924,7 @@ try {
       if (layerId && featureId) {
         const feature = reearth.layers.findFeatureById(layerId, featureId);
         const props = feature && feature.properties ? feature.properties : null;
+        try { console.log('[main select] attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e) {}
         postToUI({ action: 'featureSelected', layerId, featureId, properties: props || {}, attrUrlOpen: _inspectorAttrUrlOpen });
       } else {
         postToUI({ action: 'featureSelected', layerId: null, featureId: null, properties: null, attrUrlOpen: _inspectorAttrUrlOpen });
@@ -3672,6 +3675,7 @@ function processInspectorText(text) {
           _inspectorAttrUrlOpen = 'panel';
         }
         try { sendLog('[processInspectorText] found attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+        try { console.log('[processInspectorText] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e){}
       nonCamLines.push(line);
       return;
