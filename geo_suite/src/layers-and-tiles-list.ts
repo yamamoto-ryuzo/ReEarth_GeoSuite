@@ -4525,7 +4525,7 @@ function requestVectorFeatureIndex() {
         const typeRaw = String(l.data.type || l.type || '').toLowerCase();
         const url = l.data.url ? String(l.data.url).toLowerCase() : '';
         const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
-        const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.endsWith('.json') || url.includes('.geojson?') || url.includes('.json?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
+        const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.includes('.geojson?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
         if (isCsv || isGeojson) {
           sources.push({ id: l.id, title: l.title || l.id || '', type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null, value: l.data.value });
         }
