@@ -4461,9 +4461,13 @@ async function buildVectorFeatureIndex() {
     const vectorSources = [];
     layersAll.forEach((l) => {
       try {
-        const dtype = (l && l.data && l.data.type) ? String(l.data.type).toLowerCase() : '';
-        if (dtype && (dtype === 'geojson' || dtype === 'csv') && l.data.url) {
-          vectorSources.push({ url: l.data.url, title: l.title || l.id || '', id: l.id, type: dtype });
+        if (!l || !l.data || !l.data.url) return;
+        const typeRaw = String(l.data.type || l.type || '').toLowerCase();
+        const url = String(l.data.url).toLowerCase();
+        const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
+        const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.endsWith('.json') || url.includes('.geojson?') || url.includes('.json?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
+        if (isCsv || isGeojson) {
+          vectorSources.push({ url: l.data.url, title: l.title || l.id || '', id: l.id, type: isCsv ? 'csv' : 'geojson' });
         }
       } catch (e) {}
     });
