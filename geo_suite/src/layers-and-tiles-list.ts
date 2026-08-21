@@ -1285,6 +1285,9 @@ function getUI() {
                       window._currentAttrHtml = attrContent.innerHTML;
                     }
                   }
+                } else if (msg.action === 'attrUrlOpen') {
+                  try { console.log('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
+                  window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'panel');
                 }
               } catch (e) {}
             });
@@ -3916,6 +3919,11 @@ function processInspectorText(text) {
             _lastInfoUrl = infoUrlFound;
             postToUI({ action: 'loadInfoUrl', url: infoUrlFound });
           }
+
+          try {
+            postToUI({ action: 'attrUrlOpen', mode: _inspectorAttrUrlOpen });
+            try { console.log('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+          } catch(e) {}
         } catch(e) { try { sendError('[processInspectorText] loadInfoUrl post failed', e); } catch(_) {} }
       }, 50);
     } else {
@@ -3927,6 +3935,11 @@ function processInspectorText(text) {
           _lastInfoUrl = infoUrlFound;
           postToUI({ action: 'loadInfoUrl', url: infoUrlFound });
         }
+      } catch(e) {}
+
+      try {
+        postToUI({ action: 'attrUrlOpen', mode: _inspectorAttrUrlOpen });
+        try { console.log('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e) {}
     }
   } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
