@@ -1272,6 +1272,20 @@ function getUI() {
                       window._currentAttrHtml = attrContent.innerHTML;
                     }
                   }
+                  // 属性タブを自動で開く
+                  if (attrContent && msg.layerId && msg.featureId) {
+                    try {
+                      const attrTab = document.querySelector('.tab[data-target="attr-panel"]');
+                      if (attrTab) {
+                        document.querySelectorAll('.tab-bar .tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+                        attrTab.classList.add('active'); attrTab.setAttribute('aria-selected','true');
+                      }
+                      ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel','attr-panel'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.style.display = (id === 'attr-panel') ? '' : 'none';
+                      });
+                    } catch(e) {}
+                  }
                 } else if (msg.action === 'attrUrlOpen') {
                   try { console.log('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'newtab');
