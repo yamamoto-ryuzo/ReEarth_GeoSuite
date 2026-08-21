@@ -4360,14 +4360,64 @@ function getGeometryCentroid(geometry) {
   return { lat: null, lng: null };
 }
 
+function parseCsv(text) {
+  const rows = [];
+  const lines = (text || '').split(/\r\n|\r|\n/).filter(l => l.trim());
+  if (!lines.length) return { headers: [], rows: [] };
+  const parseLine = (line) => {
+    const parts = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (c === ',' && !inQuotes) {
+        parts.push(cur.trim());
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    parts.push(cur.trim());
+    return parts;
+  };
+  const headers = parseLine(lines[0]);
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseLine(lines[i]);
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = (values[idx] !== undefined) ? values[idx] : ''; });
+    rows.push(row);
+  }
+  return { headers, rows };
+}
+
+function csvRowsToFeatures(rows, headers) {
+  const latRe = /^(lat|latitude|y|緯度)$/i;
+  const lngRe = /^(lng|lon|longitude|x|経度)$/i;
+  const latIdx = headers.findIndex(h => latRe.test(String(h).trim()));
+  const lngIdx = headers.findIndex(h => lngRe.test(String(h).trim()));
+  if (latIdx < 0 || lngIdx < 0) return [];
+  return rows.map((r) => {
+    try {
+      const lat = parseFloat(String(r[headers[latIdx]]).replace(/"/g, '').trim());
+      const lng = parseFloat(String(r[headers[lngIdx]]).replace(/"/g, '').trim());
+      if (isNaN(lat) || isNaN(lng)) return null;
+      return { type: 'Feature', properties: r, geometry: { type: 'Point', coordinates: [lng, lat] } };
+    } catch (e) { return null; }
+  }).filter(Boolean);
+}
+
 async function buildVectorFeatureIndex() {
   try {
     const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
     const vectorUrls = [];
     layersAll.forEach((l) => {
       try {
-        if (l && l.data && (l.data.type === 'geojson') && l.data.url) {
-          vectorUrls.push({ url: l.data.url, title: l.title || l.id || '', id: l.id });
+        const dtype = (l && l.data && l.data.type) ? String(l.data.type).toLowerCase() : '';
+        if (dtype && (dtype === 'geojson' || dtype === 'csv') && l.data.url) {
+          vectorUrls.push({ url: l.data.url, title: l.title || l.id || '', id: l.id, type: dtype });
         }
       } catch (e) {}
     });
@@ -4381,8 +4431,15 @@ async function buildVectorFeatureIndex() {
       try {
         const res = await fetch(vl.url, { method: 'GET' });
         if (!res || !res.ok) continue;
-        const data = await res.json();
-        const features = Array.isArray(data) ? data : ((data && (data.features || data.Feature)) || []);
+        const raw = await res.text();
+        let features = [];
+        if (vl.type === 'csv') {
+          const { headers, rows } = parseCsv(raw);
+          features = csvRowsToFeatures(rows, headers);
+        } else {
+          const data = JSON.parse(raw);
+          features = Array.isArray(data) ? data : ((data && (data.features || data.Feature)) || []);
+        }
         features.forEach((f) => {
           try {
             const props = f.properties || f.Property || {};
