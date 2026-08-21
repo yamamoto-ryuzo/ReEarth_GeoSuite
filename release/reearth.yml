@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "15.1.4"
+version: "15.2.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -24,6 +24,7 @@ extensions:
               title: "設定テキスト"
               description: |
                 https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
+                属性パネルのURLクリック動作は attrUrlOpen: panel|split|newtab で設定できます（openUrlInNewTab: true も newtab として有効です）。
               type: string
               ui: multiline
               defaultValue: |
@@ -48,6 +49,7 @@ extensions:
                 base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
                 base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
                 yahooAppId: あなたのYahoo Local Search API AppID
+                attrUrlOpen: panel
   - id: navigation-toolbar
     type: widget
     name: "Navigation Toolbar"

@@ -23,6 +23,7 @@ let _inspectorLegendItems = []; // cached legend items from inspector for initia
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _systemLayerSettings = []; // settings for system layers from inspector
+let _inspectorAttrUrlOpen = 'panel'; // attribute panel URL click mode: 'panel' | 'split' | 'newtab'
 // Ensure globe and scene background are white before any tiles are applied
 try {
     if (typeof reearth !== "undefined" && reearth.viewer && reearth.viewer.overrideProperty) {
@@ -925,17 +926,34 @@ function getUI() {
 <script>
   window.openUrlInAttrPanel = function(event, url) {
     event.preventDefault(); // デフォルトのリンク遷移をキャンセル
-    const attrContent = document.getElementById('attr-content');
-    if (attrContent && url) {
-      const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
-      const tabBarHeight = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 50;
-      let availableHeight = screenHeight - tabBarHeight - 100;
-      availableHeight = Math.max(400, Math.min(800, availableHeight));
-
-      attrContent.innerHTML = 
-        '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
-        '<iframe src="' + url + '" style="width:100%; height:' + availableHeight + 'px; border:1px solid #ccc; background:#fff; overflow:auto;"></iframe>';
+    const mode = (window._attrUrlOpen || 'panel').toLowerCase();
+    if (mode === 'newtab') {
+      if (window.parent && url) window.parent.postMessage({ action: 'openUrl', url: url }, '*');
+      return;
     }
+    const attrContent = document.getElementById('attr-content');
+    if (!attrContent || !url) return;
+    const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
+    const tabBarHeight = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 50;
+    let availableHeight = screenHeight - tabBarHeight - 100;
+    availableHeight = Math.max(400, Math.min(800, availableHeight));
+
+    if (mode === 'split') {
+      const tableHtml = window._currentAttrHtml || '<div style="padding:8px;color:#666;">No attributes</div>';
+      attrContent.innerHTML =
+        '<div style="display:flex; gap:8px; align-items:stretch; width:100%;">' +
+          '<div style="flex:1 1 50%; min-width:0; overflow:auto; border:1px solid #ddd; border-radius:4px;">' + tableHtml + '</div>' +
+          '<div style="flex:1 1 50%; min-width:0;">' +
+            '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' +
+            '<iframe src="' + url + '" style="width:100%; height:' + (availableHeight - 40) + 'px; border:1px solid #ccc; background:#fff;"></iframe>' +
+          '</div>' +
+        '</div>';
+      return;
+    }
+
+    attrContent.innerHTML = 
+      '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
+      '<iframe src="' + url + '" style="width:100%; height:' + availableHeight + 'px; border:1px solid #ccc; background:#fff; overflow:auto;"></iframe>';
   };
 
   window.restoreAttrTable = function() {
@@ -1239,6 +1257,7 @@ function getUI() {
                     }
                   }
                 } else if (msg.action === 'featureSelected') {
+                  window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'panel');
                   const attrContent = document.getElementById('attr-content');
                   if (attrContent) {
                     if (msg.properties && Object.keys(msg.properties).length > 0) {
@@ -3293,10 +3312,10 @@ try {
             if (layerId && featureId) {
                 const feature = reearth.layers.findFeatureById(layerId, featureId);
                 const props = feature && feature.properties ? feature.properties : null;
-                postToUI({ action: 'featureSelected', layerId, featureId, properties: props || {} });
+                postToUI({ action: 'featureSelected', layerId, featureId, properties: props || {}, attrUrlOpen: _inspectorAttrUrlOpen });
             }
             else {
-                postToUI({ action: 'featureSelected', layerId: null, featureId: null, properties: null });
+                postToUI({ action: 'featureSelected', layerId: null, featureId: null, properties: null, attrUrlOpen: _inspectorAttrUrlOpen });
             }
         }
         catch (e) {
@@ -4316,6 +4335,7 @@ function processInspectorText(text) {
     }
     catch (e) { }
     _systemLayerSettings = [];
+    _inspectorAttrUrlOpen = 'panel';
     const tiles = [];
     // Helper to extract visible flag from parts array (modifies parts in place)
     const extractVisible = (parts) => {
@@ -4411,6 +4431,41 @@ function processInspectorText(text) {
                     }
                     catch (e) { }
                 }
+            }
+            catch (e) { }
+            nonCamLines.push(line);
+            return;
+        }
+        // Attribute panel URL click mode: "attrUrlOpen: panel|split|newtab"
+        if (/^attrurlopen\s*:/i.test(lowerLine)) {
+            try {
+                const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+                if (val === 'split' || val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
+                    _inspectorAttrUrlOpen = (val === 'split') ? 'split' : 'newtab';
+                }
+                else if (val === 'panel' || val === 'iframe' || val === 'inline') {
+                    _inspectorAttrUrlOpen = 'panel';
+                }
+                try {
+                    sendLog('[processInspectorText] found attrUrlOpen:', _inspectorAttrUrlOpen);
+                }
+                catch (e) { }
+            }
+            catch (e) { }
+            nonCamLines.push(line);
+            return;
+        }
+        // Legacy alias: "openUrlInNewTab: true" is treated as 'newtab' mode
+        if (/^openurlinnewtab\s*:/i.test(lowerLine)) {
+            try {
+                const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+                if (val === 'true' || val === '1' || val === 'yes' || val === 'on' || val === 'newtab' || val === 'openurl') {
+                    _inspectorAttrUrlOpen = 'newtab';
+                }
+                try {
+                    sendLog('[processInspectorText] found openUrlInNewTab (legacy):', _inspectorAttrUrlOpen);
+                }
+                catch (e) { }
             }
             catch (e) { }
             nonCamLines.push(line);
