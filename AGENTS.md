@@ -1,8 +1,9 @@
 # リポジトリ運用ルール
 
 ## ソースファイル
-- プラグインの本体は `geo_suite/src/layers-and-tiles-list.ts` です。
-- ナビゲーションツールバーは `geo_suite/src/navigation-toolbar.ts` です。
+- このリポジトリには **2 つの Re:Earth プラグイン**が含まれています。
+  - `geo_suite/src/layers-and-tiles-list.ts` — レイヤー / タイル管理・属性パネル・位置情報共有（メイン）
+  - `geo_suite/src/navigation-toolbar.ts` — ナビゲーションツールバー
 
 ## ビルド
 - `npx tsc -p geo_suite/tsconfig.json` で `geo_suite/build/` にコンパイルされます。
