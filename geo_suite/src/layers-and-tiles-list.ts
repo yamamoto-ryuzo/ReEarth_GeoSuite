@@ -4406,7 +4406,7 @@ function getGeometryCentroid(geometry) {
   return { lat: null, lng: null };
 }
 
-function parseCsv(text) {
+function parseCsv(text, noHeader) {
   const rows = [];
   const lines = (text || '').split(/\r\n|\r|\n/).filter(l => l.trim());
   if (!lines.length) return { headers: [], rows: [] };
@@ -4429,8 +4429,14 @@ function parseCsv(text) {
     parts.push(cur.trim());
     return parts;
   };
-  const headers = parseLine(lines[0]);
-  for (let i = 1; i < lines.length; i++) {
+  const first = parseLine(lines[0]);
+  let headers = first;
+  let start = 1;
+  if (noHeader) {
+    headers = first.map((_, i) => String(i));
+    start = 0;
+  }
+  for (let i = start; i < lines.length; i++) {
     const values = parseLine(lines[i]);
     const row = {};
     headers.forEach((h, idx) => { row[h] = (values[idx] !== undefined) ? values[idx] : ''; });
@@ -4439,16 +4445,41 @@ function parseCsv(text) {
   return { headers, rows };
 }
 
-function csvRowsToFeatures(rows, headers) {
-  const latRe = /^(lat|latitude|y|緯度)$/i;
-  const lngRe = /^(lng|lon|longitude|x|経度)$/i;
-  const latIdx = headers.findIndex(h => latRe.test(String(h).trim()));
-  const lngIdx = headers.findIndex(h => lngRe.test(String(h).trim()));
-  if (latIdx < 0 || lngIdx < 0) return [];
+function resolveCsvColumnIndex(spec, headers) {
+  if (spec == null) return -1;
+  if (typeof spec === 'number') return Math.max(0, Math.floor(spec));
+  const s = String(spec).trim();
+  const n = parseInt(s, 10);
+  if (!isNaN(n) && String(n) === s) return n;
+  const idx = (headers || []).findIndex(h => String(h).trim() === s);
+  return idx;
+}
+
+function csvRowsToFeatures(rows, headers, csvConfig) {
+  const latSpec = csvConfig && csvConfig.latColumn;
+  const lngSpec = csvConfig && csvConfig.lngColumn;
+  const latIdx = (latSpec != null) ? resolveCsvColumnIndex(latSpec, headers) : -1;
+  const lngIdx = (lngSpec != null) ? resolveCsvColumnIndex(lngSpec, headers) : -1;
+  if (latIdx < 0 || lngIdx < 0) {
+    const latRe = /^(lat|latitude|y|緯度)$/i;
+    const lngRe = /^(lng|lon|longitude|x|経度)$/i;
+    const fallbackLat = headers.findIndex(h => latRe.test(String(h).trim()));
+    const fallbackLng = headers.findIndex(h => lngRe.test(String(h).trim()));
+    if (fallbackLat < 0 || fallbackLng < 0) return [];
+    return rows.map((r) => {
+      try {
+        const lat = parseFloat(String(r[headers[fallbackLat]]).replace(/"/g, '').trim());
+        const lng = parseFloat(String(r[headers[fallbackLng]]).replace(/"/g, '').trim());
+        if (isNaN(lat) || isNaN(lng)) return null;
+        return { type: 'Feature', properties: r, geometry: { type: 'Point', coordinates: [lng, lat] } };
+      } catch (e) { return null; }
+    }).filter(Boolean);
+  }
   return rows.map((r) => {
     try {
-      const lat = parseFloat(String(r[headers[latIdx]]).replace(/"/g, '').trim());
-      const lng = parseFloat(String(r[headers[lngIdx]]).replace(/"/g, '').trim());
+      const vals = Object.values(r);
+      const lat = parseFloat(String(vals[latIdx]).replace(/"/g, '').trim());
+      const lng = parseFloat(String(vals[lngIdx]).replace(/"/g, '').trim());
       if (isNaN(lat) || isNaN(lng)) return null;
       return { type: 'Feature', properties: r, geometry: { type: 'Point', coordinates: [lng, lat] } };
     } catch (e) { return null; }
@@ -4461,13 +4492,13 @@ async function buildVectorFeatureIndex() {
     const vectorSources = [];
     layersAll.forEach((l) => {
       try {
-        if (!l || !l.data || !l.data.url) return;
+        if (!l || !l.data || (!l.data.url && l.data.value === undefined)) return;
         const typeRaw = String(l.data.type || l.type || '').toLowerCase();
-        const url = String(l.data.url).toLowerCase();
+        const url = l.data.url ? String(l.data.url).toLowerCase() : '';
         const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
         const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.endsWith('.json') || url.includes('.geojson?') || url.includes('.json?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
         if (isCsv || isGeojson) {
-          vectorSources.push({ url: l.data.url, title: l.title || l.id || '', id: l.id, type: isCsv ? 'csv' : 'geojson' });
+          vectorSources.push({ url: l.data.url || null, value: l.data.value, title: l.title || l.id || '', id: l.id, type: isCsv ? 'csv' : 'geojson', csv: l.data.csv || null });
         }
       } catch (e) {}
     });
@@ -4480,16 +4511,51 @@ async function buildVectorFeatureIndex() {
 
     for (const vl of vectorSources) {
       try {
-        const res = await fetch(vl.url, { method: 'GET' });
-        if (!res || !res.ok) continue;
-        const raw = await res.text();
+        let rawText = null;
+        let dataObject = null;
+        if (vl.value !== undefined) {
+          if (typeof vl.value === 'string') {
+            rawText = vl.value;
+          } else if (typeof vl.value === 'object' && vl.value !== null) {
+            dataObject = vl.value;
+          }
+        }
+        if (rawText === null && dataObject === null && vl.url) {
+          const res = await fetch(vl.url, { method: 'GET' });
+          if (!res || !res.ok) {
+            try { sendLog('[buildVectorFeatureIndex] fetch failed for', vl.url, res && res.status); } catch(e){}
+            continue;
+          }
+          rawText = await res.text();
+        }
+
         let features = [];
         if (vl.type === 'csv') {
-          const { headers, rows } = parseCsv(raw);
-          features = csvRowsToFeatures(rows, headers);
-        } else {
-          const data = JSON.parse(raw);
+          if (dataObject && Array.isArray(dataObject)) {
+            // Re:Earth may expose parsed CSV rows as an array of arrays or objects
+            const headers = (dataObject[0] && Array.isArray(dataObject[0])) ? dataObject[0].map((_, i) => String(i)) : ((vl.csv && vl.csv.noHeader) ? Object.keys(dataObject[0] || {}).map((_, i) => String(i)) : Object.keys(dataObject[0] || {}));
+            const rows = dataObject.map((r) => {
+              if (Array.isArray(r)) {
+                const row = {};
+                headers.forEach((h, i) => { row[h] = (r[i] !== undefined) ? r[i] : ''; });
+                return row;
+              }
+              return r || {};
+            });
+            features = csvRowsToFeatures(rows, headers, vl.csv);
+          } else if (dataObject && typeof dataObject === 'object') {
+            const maybeFeatures = dataObject.features || dataObject.Feature || dataObject;
+            features = Array.isArray(maybeFeatures) ? maybeFeatures : [];
+          } else if (typeof rawText === 'string') {
+            const noHeader = !!(vl.csv && vl.csv.noHeader);
+            const { headers, rows } = parseCsv(rawText, noHeader);
+            features = csvRowsToFeatures(rows, headers, vl.csv);
+          }
+        } else if (rawText !== null) {
+          const data = JSON.parse(rawText);
           features = Array.isArray(data) ? data : ((data && (data.features || data.Feature)) || []);
+        } else if (dataObject) {
+          features = Array.isArray(dataObject) ? dataObject : ((dataObject && (dataObject.features || dataObject.Feature)) || []);
         }
 
         const attrSet = new Set();
