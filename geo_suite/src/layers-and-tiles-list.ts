@@ -3568,8 +3568,12 @@ function rebuildInspectorText() {
 
 // Parse and apply settings from text
 function processInspectorText(text) {
-  if (!text || typeof text !== 'string') return;
+  if (!text || typeof text !== 'string') {
+    console.log('[processInspectorText] no text or invalid type:', text);
+    return;
+  }
   // reset parsed base tiles to avoid duplicates when called repeatedly
+  console.log('[processInspectorText] called, text:', text.substring(0, 300));
   try { _parsedBaseTiles = []; } catch(e) {}
   // Handle various newline formats
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
@@ -3943,6 +3947,7 @@ function processInspectorText(text) {
       } catch(e) {}
     }
   } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
+  try { console.log('[processInspectorText] final _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e) {}
 }
 
 function restoreUserLayers(userRequests, force = false) {
@@ -4060,7 +4065,7 @@ function applySystemLayerSettings() {
       
       if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
          _lastInspectorLayersJson = text; // use text as cache key
-         try { sendLog('[poll] inspector text changed, length:', text.length); } catch(e){}
+         console.log('[poll] inspector text changed, length:', text.length, 'text:', text.substring(0, 300));
          processInspectorText(text);
       }
 
