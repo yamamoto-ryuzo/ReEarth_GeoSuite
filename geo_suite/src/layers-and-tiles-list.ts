@@ -2163,7 +2163,8 @@ function getUI() {
         // Select provider based on Yahoo API availability
         try {
           if (searchProvider) {
-            const hasYahoo = !!(window._yahooAppId);
+            const rawId = String(window._yahooAppId || '').trim().replace(/^"+|"+$/g, '');
+            const hasYahoo = rawId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawId);
             const yahooOpt = searchProvider.querySelector('option[value="yahoo"]');
             if (hasYahoo) {
               searchProvider.value = 'yahoo';
@@ -2295,7 +2296,8 @@ function getUI() {
             }
           } catch (e) { /* ignore, assume no server-side key */ }
 
-          const inspectorAppId = (window && window._yahooAppId) ? window._yahooAppId : null;
+          const rawAppId = String((window && window._yahooAppId) ? window._yahooAppId : '').trim().replace(/^"+|"+$/g, '');
+          const inspectorAppId = (rawAppId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawAppId)) ? rawAppId : null;
           if (!serverHasAppId && !inspectorAppId) {
             resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">yahooAppId: あなたのYahoo AppID</div></li>';
             return;
