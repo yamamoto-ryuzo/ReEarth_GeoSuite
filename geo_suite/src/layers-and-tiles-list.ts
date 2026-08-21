@@ -801,9 +801,13 @@ function getUI() {
   <div id="search-panel" style="display:none;">
     <div id="vector-search" style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd;">
       <div style="font-weight:600;margin-bottom:6px;">ベクトル検索</div>
-      <div id="vector-layers" style="font-size:0.85em;color:#333;margin-bottom:6px;">対象レイヤー: -</div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
-        <select id="vector-attr" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
+        <select id="vector-layer" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
+          <option value="__all__">全選択</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+        <select id="vector-attr" disabled style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
           <option value="">属性を選択</option>
         </select>
       </div>
@@ -1310,34 +1314,40 @@ function getUI() {
                   }
                 } else if (msg.action === 'vectorFeatureIndex') {
                   try {
+                    const layerSelect = document.getElementById('vector-layer');
                     const attrSelect = document.getElementById('vector-attr');
-                    const statusEl = document.getElementById('vector-search-status');
-                    const layersEl = document.getElementById('vector-layers');
-                    const layerTitles = msg.layerTitles || [];
-                    if (layersEl) {
-                      if (layerTitles.length) {
-                        layersEl.textContent = '対象レイヤー: ' + layerTitles.map(t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(' / ');
-                      } else {
-                        layersEl.textContent = '対象レイヤー: -';
-                      }
-                    }
-                    const valuesByAttr = msg.valuesByAttr || {};
-                    const attributes = msg.attributes || [];
-                    if (attrSelect && attributes.length) {
-                      attrSelect.innerHTML = '<option value="">属性を選択</option>' + attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
-                      attrSelect.dataset.valuesByAttr = JSON.stringify(valuesByAttr);
-                      if (statusEl) statusEl.textContent = attributes.length + ' 属性を読み込みました';
-                    } else if (attrSelect) {
-                      attrSelect.innerHTML = '<option value="">属性を選択</option>';
-                      if (statusEl) statusEl.textContent = '属性付きベクトルがありません';
-                    }
                     const valueSelect = document.getElementById('vector-value');
+                    const flyBtn = document.getElementById('vector-fly-btn');
+                    const statusEl = document.getElementById('vector-search-status');
+
+                    window._vectorSearchData = { all: (msg.all || {}), layers: (msg.layers || {}), layerOptions: (msg.layerOptions || []) };
+
+                    if (layerSelect) {
+                      let html = '<option value="__all__">全選択</option>';
+                      const opts = window._vectorSearchData.layerOptions || [];
+                      opts.forEach((o) => {
+                        html += '<option value="' + String(o.id).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(o.title || o.id).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>';
+                      });
+                      layerSelect.innerHTML = html;
+                      layerSelect.disabled = (opts.length === 0);
+                    }
+
+                    if (attrSelect) {
+                      attrSelect.innerHTML = '<option value="">属性を選択</option>';
+                      attrSelect.disabled = true;
+                    }
                     if (valueSelect) {
                       valueSelect.innerHTML = '<option value="">値を選択</option>';
                       valueSelect.disabled = true;
                     }
-                    const flyBtn = document.getElementById('vector-fly-btn');
                     if (flyBtn) flyBtn.disabled = true;
+
+                    const all = window._vectorSearchData.all || {};
+                    if (all.attributes && all.attributes.length) {
+                      if (statusEl) statusEl.textContent = all.attributes.length + ' 属性を読み込みました';
+                    } else if (statusEl) {
+                      statusEl.textContent = '属性付きベクトルがありません';
+                    }
                   } catch (e) { console.error('[vectorFeatureIndex] UI error', e); }
                 } else if (msg.action === 'attrUrlOpen') {
                   try { console.log('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
@@ -2326,20 +2336,53 @@ function getUI() {
 
       // --- Vector feature search UI handlers ---
       try {
+        const vectorLayer = document.getElementById('vector-layer');
         const vectorAttr = document.getElementById('vector-attr');
         const vectorValue = document.getElementById('vector-value');
         const vectorFlyBtn = document.getElementById('vector-fly-btn');
         const vectorRefreshBtn = document.getElementById('vector-refresh-btn');
         const vectorStatus = document.getElementById('vector-search-status');
 
+        function getCurrentVectorSource() {
+          try {
+            if (!window._vectorSearchData) return null;
+            const layerId = (vectorLayer && vectorLayer.value) ? vectorLayer.value : '__all__';
+            if (layerId === '__all__') return window._vectorSearchData.all || null;
+            return (window._vectorSearchData.layers && window._vectorSearchData.layers[layerId]) || null;
+          } catch (e) { return null; }
+        }
+
+        if (vectorLayer) {
+          vectorLayer.addEventListener('change', () => {
+            try {
+              const source = getCurrentVectorSource();
+              if (vectorAttr) {
+                if (source && source.attributes && source.attributes.length) {
+                  vectorAttr.innerHTML = '<option value="">属性を選択</option>' + source.attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                  vectorAttr.disabled = false;
+                } else {
+                  vectorAttr.innerHTML = '<option value="">属性を選択</option>';
+                  vectorAttr.disabled = true;
+                }
+                vectorAttr.value = '';
+              }
+              if (vectorValue) {
+                vectorValue.innerHTML = '<option value="">値を選択</option>';
+                vectorValue.disabled = true;
+              }
+              if (vectorFlyBtn) vectorFlyBtn.disabled = true;
+            } catch (e) { console.error('vector layer change error', e); }
+          });
+        }
+
         if (vectorAttr) {
           vectorAttr.addEventListener('change', () => {
             try {
-              const valuesByAttr = vectorAttr.dataset.valuesByAttr ? JSON.parse(vectorAttr.dataset.valuesByAttr) : {};
+              const source = getCurrentVectorSource();
               const attr = vectorAttr.value;
               if (vectorValue) {
-                if (attr && Array.isArray(valuesByAttr[attr])) {
-                  vectorValue.innerHTML = '<option value="">値を選択</option>' + valuesByAttr[attr].map(v => '<option value="' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                if (source && source.valuesByAttr && attr && Array.isArray(source.valuesByAttr[attr])) {
+                  vectorValue.innerHTML = '<option value="">値を選択</option>' + source.valuesByAttr[attr].map(v => '<option value="' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
                   vectorValue.disabled = false;
                 } else {
                   vectorValue.innerHTML = '<option value="">値を選択</option>';
@@ -2361,8 +2404,9 @@ function getUI() {
         if (vectorFlyBtn) {
           vectorFlyBtn.addEventListener('click', () => {
             try {
-              if (!vectorAttr || !vectorValue || !vectorAttr.value || !vectorValue.value) return;
-              parent.postMessage({ action: 'vectorFeatureFly', attrName: vectorAttr.value, value: vectorValue.value }, '*');
+              if (!vectorLayer || !vectorAttr || !vectorValue || !vectorAttr.value || !vectorValue.value) return;
+              const layerId = (vectorLayer && vectorLayer.value) ? vectorLayer.value : '__all__';
+              parent.postMessage({ action: 'vectorFeatureFly', layerId: layerId, attrName: vectorAttr.value, value: vectorValue.value }, '*');
             } catch (e) { console.error('vector fly error', e); }
           });
         }
@@ -3460,7 +3504,7 @@ reearth.extension.on("message", (msg) => {
         })();
       } else if (msg.action === 'vectorFeatureFly') {
         try {
-          flyToVectorFeature(msg.attrName, msg.value);
+          flyToVectorFeature(msg.layerId, msg.attrName, msg.value);
         } catch (e) { try { sendError('[vectorFeatureFly] error:', e); } catch(_) {} }
       }
     return;
@@ -4412,22 +4456,23 @@ function csvRowsToFeatures(rows, headers) {
 async function buildVectorFeatureIndex() {
   try {
     const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
-    const vectorUrls = [];
+    const vectorSources = [];
     layersAll.forEach((l) => {
       try {
         const dtype = (l && l.data && l.data.type) ? String(l.data.type).toLowerCase() : '';
         if (dtype && (dtype === 'geojson' || dtype === 'csv') && l.data.url) {
-          vectorUrls.push({ url: l.data.url, title: l.title || l.id || '', id: l.id, type: dtype });
+          vectorSources.push({ url: l.data.url, title: l.title || l.id || '', id: l.id, type: dtype });
         }
       } catch (e) {}
     });
 
-    const attrSet = new Set();
-    const valuesByAttr = {};
-    const featureByAttr = {};
-    const layerTitles = vectorUrls.map(vl => vl.title).filter(Boolean);
+    const layerInfo = {};
+    const allAttrSet = new Set();
+    const allValuesByAttr = {};
+    const allFeatureByAttr = {};
+    const layerOptions = [];
 
-    for (const vl of vectorUrls) {
+    for (const vl of vectorSources) {
       try {
         const res = await fetch(vl.url, { method: 'GET' });
         if (!res || !res.ok) continue;
@@ -4440,6 +4485,11 @@ async function buildVectorFeatureIndex() {
           const data = JSON.parse(raw);
           features = Array.isArray(data) ? data : ((data && (data.features || data.Feature)) || []);
         }
+
+        const attrSet = new Set();
+        const valuesByAttr = {};
+        const featureByAttr = {};
+
         features.forEach((f) => {
           try {
             const props = f.properties || f.Property || {};
@@ -4456,43 +4506,69 @@ async function buildVectorFeatureIndex() {
                 if (!featureByAttr[key]) featureByAttr[key] = {};
                 if (!valuesByAttr[key].has(val)) {
                   valuesByAttr[key].add(val);
-                  featureByAttr[key][val] = { lat: centroid.lat, lng: centroid.lng, layerId: vl.id };
+                  featureByAttr[key][val] = { lat: centroid.lat, lng: centroid.lng };
+                }
+                allAttrSet.add(key);
+                if (!allValuesByAttr[key]) allValuesByAttr[key] = new Set();
+                if (!allFeatureByAttr[key]) allFeatureByAttr[key] = {};
+                if (!allValuesByAttr[key].has(val)) {
+                  allValuesByAttr[key].add(val);
+                  allFeatureByAttr[key][val] = { lat: centroid.lat, lng: centroid.lng };
                 }
               } catch (e) {}
             });
           } catch (e) {}
         });
+
+        const sortedAttributes = Array.from(attrSet).sort();
+        const sortedValuesByAttr = {};
+        sortedAttributes.forEach((k) => { sortedValuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort(); });
+
+        layerInfo[vl.id] = { title: vl.title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr };
+        layerOptions.push({ id: vl.id, title: vl.title });
       } catch (e) {
         try { sendError('[buildVectorFeatureIndex] failed for', vl.url, e); } catch (_) {}
       }
     }
 
+    const allAttributes = Array.from(allAttrSet).sort();
+    const allSortedValuesByAttr = {};
+    allAttributes.forEach((k) => { allSortedValuesByAttr[k] = Array.from(allValuesByAttr[k] || new Set()).sort(); });
+
     _vectorFeatureIndex = {
-      attributes: Array.from(attrSet).sort(),
-      valuesByAttr: {},
-      featureByAttr: featureByAttr
+      layers: layerInfo,
+      all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, featureByAttr: allFeatureByAttr },
+      layerOptions: layerOptions
     };
-    _vectorFeatureIndex.attributes.forEach((k) => {
-      _vectorFeatureIndex.valuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort();
+
+    const uiLayers = {};
+    Object.keys(layerInfo).forEach((id) => {
+      const l = layerInfo[id];
+      uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr };
     });
 
-    postToUI({ action: 'vectorFeatureIndex', attributes: _vectorFeatureIndex.attributes, valuesByAttr: _vectorFeatureIndex.valuesByAttr, layerTitles: layerTitles });
-    try { sendLog('[buildVectorFeatureIndex] built index with', _vectorFeatureIndex.attributes.length, 'attributes'); } catch (e) {}
+    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr }, layers: uiLayers, layerOptions: layerOptions });
+    try { sendLog('[buildVectorFeatureIndex] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
   } catch (e) {
     try { sendError('[buildVectorFeatureIndex] error:', e); } catch (_) {}
     _vectorFeatureIndex = null;
   }
 }
 
-function flyToVectorFeature(attrName, value) {
+function flyToVectorFeature(layerId, attrName, value) {
   try {
     if (!_vectorFeatureIndex || !attrName || value == null) {
-      try { sendError('[flyToVectorFeature] no index or missing attr/value'); } catch (_) {}
+      try { sendError('[flyToVectorFeature] no index or missing params'); } catch (_) {}
       return;
     }
-    const entry = _vectorFeatureIndex.featureByAttr[attrName] && _vectorFeatureIndex.featureByAttr[attrName][String(value)];
-    if (!entry || entry.lat == null || entry.lng == null) {
-      try { sendError('[flyToVectorFeature] not found for', attrName, value); } catch (_) {}
+    const source = (layerId === '__all__' || !layerId) ? _vectorFeatureIndex.all : (_vectorFeatureIndex.layers[layerId] || null);
+    if (!source || !source.featureByAttr[attrName] || !source.featureByAttr[attrName][String(value)]) {
+      try { sendError('[flyToVectorFeature] not found for', layerId, attrName, value); } catch (_) {}
+      return;
+    }
+    const entry = source.featureByAttr[attrName][String(value)];
+    if (entry.lat == null || entry.lng == null) {
+      try { sendError('[flyToVectorFeature] no coordinates'); } catch (_) {}
       return;
     }
     flyToAndNotify(entry.lat, entry.lng, { addMarker: false });
