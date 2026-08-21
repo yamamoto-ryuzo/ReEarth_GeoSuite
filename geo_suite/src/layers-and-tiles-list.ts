@@ -2927,6 +2927,9 @@ try {
       try {
         const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
         const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+        if (text && typeof text === 'string') {
+          _inspectorAttrUrlOpen = parseAttrUrlOpen(text);
+        }
         console.log('[main select] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen, 'prop text:', text ? text.substring(0, 200) : null);
       } catch(e) {}
       if (layerId && featureId) {
@@ -3952,6 +3955,34 @@ function processInspectorText(text) {
     }
   } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
   try { console.log('[processInspectorText] final _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e) {}
+}
+
+function parseAttrUrlOpen(text) {
+  let mode = 'panel';
+  if (!text || typeof text !== 'string') return mode;
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (/^attrurlopen\s*:/i.test(line)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+        if (val === 'split' || val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
+          mode = (val === 'split') ? 'split' : 'newtab';
+        } else if (val === 'panel' || val === 'iframe' || val === 'inline') {
+          mode = 'panel';
+        }
+      } catch(e) {}
+    } else if (/^openurlinnewtab\s*:/i.test(line)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+        if (val === 'true' || val === '1' || val === 'yes' || val === 'on' || val === 'newtab' || val === 'openurl') {
+          mode = 'newtab';
+        }
+      } catch(e) {}
+    }
+  }
+  return mode;
 }
 
 function restoreUserLayers(userRequests, force = false) {
