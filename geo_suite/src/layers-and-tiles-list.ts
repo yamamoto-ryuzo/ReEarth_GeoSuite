@@ -1312,6 +1312,33 @@ function getUI() {
                       });
                     } catch(e) {}
                   }
+                } else if (msg.action === 'requestVectorFeatureData') {
+                  try {
+                    const sources = msg.sources || [];
+                    const results = {};
+                    const fetches = [];
+                    sources.forEach(function(s) {
+                      try {
+                        if (s.value !== undefined) {
+                          if (typeof s.value === 'string') {
+                            results[s.id] = { title: s.title, type: s.type, csv: s.csv, raw: s.value };
+                          } else if (typeof s.value === 'object' && s.value !== null) {
+                            results[s.id] = { title: s.title, type: s.type, csv: s.csv, value: s.value };
+                          }
+                        } else if (s.url) {
+                          fetches.push(new Promise(function(resolve) {
+                            fetch(s.url, { method: 'GET' })
+                              .then(function(res) { if (!res || !res.ok) throw new Error('status ' + (res && res.status)); return res.text(); })
+                              .then(function(text) { results[s.id] = { title: s.title, type: s.type, csv: s.csv, raw: text }; resolve(); })
+                              .catch(function(err) { console.error('[requestVectorFeatureData] fetch failed', s.url, err); resolve(); });
+                          }));
+                        }
+                      } catch (e2) { console.error('[requestVectorFeatureData] source error', e2); }
+                    });
+                    Promise.all(fetches).then(function() {
+                      if (window.parent) window.parent.postMessage({ action: 'vectorFeatureData', layers: results }, '*');
+                    });
+                  } catch (e) { console.error('[requestVectorFeatureData] UI error', e); }
                 } else if (msg.action === 'vectorFeatureIndex') {
                   try {
                     const layerSelect = document.getElementById('vector-layer');
@@ -2164,7 +2191,7 @@ function getUI() {
         try {
           if (searchProvider) {
             const rawId = String(window._yahooAppId || '').trim().replace(/^"+|"+$/g, '');
-            const hasYahoo = rawId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawId);
+            const hasYahoo = rawId.length > 0 && !/^(YOUR_APP_ID|undefined|null|あなたのYahoo AppID)$/i.test(rawId);
             const yahooOpt = searchProvider.querySelector('option[value="yahoo"]');
             if (hasYahoo) {
               searchProvider.value = 'yahoo';
@@ -2297,7 +2324,7 @@ function getUI() {
           } catch (e) { /* ignore, assume no server-side key */ }
 
           const rawAppId = String((window && window._yahooAppId) ? window._yahooAppId : '').trim().replace(/^"+|"+$/g, '');
-          const inspectorAppId = (rawAppId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawAppId)) ? rawAppId : null;
+          const inspectorAppId = (rawAppId.length > 0 && !/^(YOUR_APP_ID|undefined|null|あなたのYahoo AppID)$/i.test(rawAppId)) ? rawAppId : null;
           if (!serverHasAppId && !inspectorAppId) {
             resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">yahooAppId: あなたのYahoo AppID</div></li>';
             return;
@@ -3499,11 +3526,13 @@ reearth.extension.on("message", (msg) => {
           try { sendError('[flyToViewportUrlParams] error:', e); } catch(err){}
         }
       } else if (msg.action === 'getVectorFeatureIndex') {
-        (async () => {
-          try {
-            await buildVectorFeatureIndex();
-          } catch (e) { try { sendError('[getVectorFeatureIndex] error:', e); } catch(_) {} }
-        })();
+        try {
+          requestVectorFeatureIndex();
+        } catch (e) { try { sendError('[getVectorFeatureIndex] error:', e); } catch(_) {} }
+      } else if (msg.action === 'vectorFeatureData') {
+        try {
+          buildVectorFeatureIndexFromData(msg.layers || {});
+        } catch (e) { try { sendError('[vectorFeatureData] error:', e); } catch(_) {} }
       } else if (msg.action === 'vectorFeatureFly') {
         try {
           flyToVectorFeature(msg.layerId, msg.attrName, msg.value);
@@ -4486,10 +4515,10 @@ function csvRowsToFeatures(rows, headers, csvConfig) {
   }).filter(Boolean);
 }
 
-async function buildVectorFeatureIndex() {
+function requestVectorFeatureIndex() {
   try {
     const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
-    const vectorSources = [];
+    const sources = [];
     layersAll.forEach((l) => {
       try {
         if (!l || !l.data || (!l.data.url && l.data.value === undefined)) return;
@@ -4498,18 +4527,29 @@ async function buildVectorFeatureIndex() {
         const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
         const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.endsWith('.json') || url.includes('.geojson?') || url.includes('.json?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
         if (isCsv || isGeojson) {
-          vectorSources.push({ url: l.data.url || null, value: l.data.value, title: l.title || l.id || '', id: l.id, type: isCsv ? 'csv' : 'geojson', csv: l.data.csv || null });
+          sources.push({ id: l.id, title: l.title || l.id || '', type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null, value: l.data.value });
         }
       } catch (e) {}
     });
+    postToUI({ action: 'requestVectorFeatureData', sources: sources });
+    try { sendLog('[requestVectorFeatureIndex] requested', sources.length, 'sources'); } catch (e) {}
+  } catch (e) {
+    try { sendError('[requestVectorFeatureIndex] error:', e); } catch (_) {}
+  }
+}
 
+function buildVectorFeatureIndexFromData(layersData) {
+  try {
+    const vectorSources = layersData || {};
     const layerInfo = {};
     const allAttrSet = new Set();
     const allValuesByAttr = {};
     const allFeatureByAttr = {};
     const layerOptions = [];
 
-    for (const vl of vectorSources) {
+    Object.keys(vectorSources).forEach((id) => {
+      const source = vectorSources[id];
+      const vl = { id: id, title: source.title, type: source.type, csv: source.csv, raw: source.raw, value: source.value };
       try {
         let rawText = null;
         let dataObject = null;
@@ -4520,13 +4560,10 @@ async function buildVectorFeatureIndex() {
             dataObject = vl.value;
           }
         }
-        if (rawText === null && dataObject === null && vl.url) {
-          const res = await fetch(vl.url, { method: 'GET' });
-          if (!res || !res.ok) {
-            try { sendLog('[buildVectorFeatureIndex] fetch failed for', vl.url, res && res.status); } catch(e){}
-            continue;
-          }
-          rawText = await res.text();
+        if (rawText === null && dataObject === null && typeof vl.raw === 'string') {
+          rawText = vl.raw;
+        } else if (rawText === null && dataObject === null) {
+          return;
         }
 
         let features = [];
@@ -4599,9 +4636,9 @@ async function buildVectorFeatureIndex() {
         layerInfo[vl.id] = { title: vl.title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr };
         layerOptions.push({ id: vl.id, title: vl.title });
       } catch (e) {
-        try { sendError('[buildVectorFeatureIndex] failed for', vl.url, e); } catch (_) {}
+        try { sendError('[buildVectorFeatureIndex] failed for', id, e); } catch (_) {}
       }
-    }
+    });
 
     const allAttributes = Array.from(allAttrSet).sort();
     const allSortedValuesByAttr = {};
