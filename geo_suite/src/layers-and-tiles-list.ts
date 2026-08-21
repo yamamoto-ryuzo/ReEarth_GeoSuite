@@ -801,6 +801,7 @@ function getUI() {
   <div id="search-panel" style="display:none;">
     <div id="vector-search" style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd;">
       <div style="font-weight:600;margin-bottom:6px;">ベクトル検索</div>
+      <div id="vector-layers" style="font-size:0.85em;color:#333;margin-bottom:6px;">対象レイヤー: -</div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
         <select id="vector-attr" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
           <option value="">属性を選択</option>
@@ -1311,6 +1312,15 @@ function getUI() {
                   try {
                     const attrSelect = document.getElementById('vector-attr');
                     const statusEl = document.getElementById('vector-search-status');
+                    const layersEl = document.getElementById('vector-layers');
+                    const layerTitles = msg.layerTitles || [];
+                    if (layersEl) {
+                      if (layerTitles.length) {
+                        layersEl.textContent = '対象レイヤー: ' + layerTitles.map(t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(' / ');
+                      } else {
+                        layersEl.textContent = '対象レイヤー: -';
+                      }
+                    }
                     const valuesByAttr = msg.valuesByAttr || {};
                     const attributes = msg.attributes || [];
                     if (attrSelect && attributes.length) {
@@ -4365,6 +4375,7 @@ async function buildVectorFeatureIndex() {
     const attrSet = new Set();
     const valuesByAttr = {};
     const featureByAttr = {};
+    const layerTitles = vectorUrls.map(vl => vl.title).filter(Boolean);
 
     for (const vl of vectorUrls) {
       try {
@@ -4408,7 +4419,7 @@ async function buildVectorFeatureIndex() {
       _vectorFeatureIndex.valuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort();
     });
 
-    postToUI({ action: 'vectorFeatureIndex', attributes: _vectorFeatureIndex.attributes, valuesByAttr: _vectorFeatureIndex.valuesByAttr });
+    postToUI({ action: 'vectorFeatureIndex', attributes: _vectorFeatureIndex.attributes, valuesByAttr: _vectorFeatureIndex.valuesByAttr, layerTitles: layerTitles });
     try { sendLog('[buildVectorFeatureIndex] built index with', _vectorFeatureIndex.attributes.length, 'attributes'); } catch (e) {}
   } catch (e) {
     try { sendError('[buildVectorFeatureIndex] error:', e); } catch (_) {}
