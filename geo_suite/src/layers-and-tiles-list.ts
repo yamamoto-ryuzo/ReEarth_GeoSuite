@@ -808,7 +808,7 @@ function getUI() {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
         <select id="vector-attr" disabled style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
-          <option value="">属性を選択</option>
+          <option value="__all__">全選択</option>
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
@@ -817,7 +817,12 @@ function getUI() {
         </select>
         <button id="vector-fly-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;" disabled>Fly</button>
       </div>
-      <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">ベクトルデータを更新</button>
+      <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+        <input id="vector-search-text" type="text" placeholder="文字で検索" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
+        <button id="vector-text-search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;">検索</button>
+      </div>
+      <ul id="vector-search-results" style="list-style:none;padding:0;margin:0;max-height:160px;overflow:auto;font-size:0.85em;"></ul>
+      <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;">ベクトルデータを更新</button>
       <div id="vector-search-status" style="font-size:0.85em;color:#666;margin-top:4px;"></div>
     </div>
     <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
@@ -1359,15 +1364,9 @@ function getUI() {
                       layerSelect.disabled = (opts.length === 0);
                     }
 
-                    if (attrSelect) {
-                      attrSelect.innerHTML = '<option value="">属性を選択</option>';
-                      attrSelect.disabled = true;
+                    if (layerSelect && !layerSelect.disabled) {
+                      try { layerSelect.dispatchEvent(new Event('change')); } catch (e) {}
                     }
-                    if (valueSelect) {
-                      valueSelect.innerHTML = '<option value="">値を選択</option>';
-                      valueSelect.disabled = true;
-                    }
-                    if (flyBtn) flyBtn.disabled = true;
 
                     const all = window._vectorSearchData.all || {};
                     if (all.attributes && all.attributes.length) {
@@ -2370,7 +2369,68 @@ function getUI() {
         const vectorValue = document.getElementById('vector-value');
         const vectorFlyBtn = document.getElementById('vector-fly-btn');
         const vectorRefreshBtn = document.getElementById('vector-refresh-btn');
+        const vectorSearchText = document.getElementById('vector-search-text');
+        const vectorTextSearchBtn = document.getElementById('vector-text-search-btn');
+        const vectorSearchResults = document.getElementById('vector-search-results');
         const vectorStatus = document.getElementById('vector-search-status');
+
+        function performVectorTextSearch() {
+          try {
+            if (!vectorSearchResults || !window._vectorSearchData) return;
+            const q = (vectorSearchText && vectorSearchText.value) ? String(vectorSearchText.value).trim() : '';
+            if (!q) { vectorSearchResults.innerHTML = ''; return; }
+            const data = window._vectorSearchData;
+            const res = [];
+            const query = q.toLowerCase();
+            const targetLayerId = (vectorLayer && vectorLayer.value) ? vectorLayer.value : '__all__';
+            const targetAttr = (vectorAttr && vectorAttr.value) ? vectorAttr.value : '__all__';
+            const layerIds = (targetLayerId === '__all__') ? ['__all__'] : [targetLayerId];
+            layerIds.forEach((layerId) => {
+              try {
+                const source = (layerId === '__all__') ? data.all : (data.layers && data.layers[layerId]);
+                if (!source) return;
+                const attrList = (targetAttr === '__all__') ? (source.attributes || []) : [targetAttr];
+                attrList.forEach((attr) => {
+                  if (!attr || attr === '__all__') return;
+                  const values = (source.valuesByAttr && Array.isArray(source.valuesByAttr[attr])) ? source.valuesByAttr[attr] : [];
+                  values.forEach((val) => {
+                    const haystack = (String(val) + ' ' + String(attr)).toLowerCase();
+                    if (haystack.includes(query)) {
+                      const layerTitle = (layerId === '__all__') ? '全選択' : ((data.layers && data.layers[layerId] && data.layers[layerId].title) || layerId);
+                      res.push({ layerId: (layerId === '__all__') ? '__all__' : layerId, layerTitle: layerTitle, attr: attr, value: val });
+                    }
+                  });
+                });
+              } catch (e) {}
+            });
+            if (!res.length) {
+              vectorSearchResults.innerHTML = '<li style="padding:4px;color:#666;">該当なし</li>';
+              return;
+            }
+            vectorSearchResults.innerHTML = res.slice(0, 50).map((r, i) => '<li class="vector-search-result" data-idx="' + i + '" style="padding:4px;border-bottom:1px solid #eee;cursor:pointer;">' + String(r.layerTitle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + ' / ' + String(r.attr).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + ' / ' + String(r.value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</li>').join('');
+            vectorSearchResults._resultData = res;
+          } catch (e) { console.error('vector text search error', e); }
+        }
+
+        if (vectorSearchResults) {
+          vectorSearchResults.addEventListener('click', (ev) => {
+            try {
+              const li = ev.target.closest && ev.target.closest('li[data-idx]');
+              if (!li || !vectorSearchResults._resultData) return;
+              const r = vectorSearchResults._resultData[Number(li.getAttribute('data-idx'))];
+              if (!r) return;
+              parent.postMessage({ action: 'vectorFeatureFly', layerId: r.layerId, attrName: r.attr, value: r.value }, '*');
+            } catch (e) { console.error('vector result click error', e); }
+          });
+        }
+
+        if (vectorTextSearchBtn) {
+          vectorTextSearchBtn.addEventListener('click', performVectorTextSearch);
+        }
+
+        if (vectorSearchText) {
+          vectorSearchText.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') performVectorTextSearch(); });
+        }
 
         function getCurrentVectorSource() {
           try {
@@ -2387,13 +2447,13 @@ function getUI() {
               const source = getCurrentVectorSource();
               if (vectorAttr) {
                 if (source && source.attributes && source.attributes.length) {
-                  vectorAttr.innerHTML = '<option value="">属性を選択</option>' + source.attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                  vectorAttr.innerHTML = '<option value="__all__">全選択</option>' + source.attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
                   vectorAttr.disabled = false;
                 } else {
-                  vectorAttr.innerHTML = '<option value="">属性を選択</option>';
+                  vectorAttr.innerHTML = '<option value="__all__">全選択</option>';
                   vectorAttr.disabled = true;
                 }
-                vectorAttr.value = '';
+                vectorAttr.value = '__all__';
               }
               if (vectorValue) {
                 vectorValue.innerHTML = '<option value="">値を選択</option>';
@@ -2410,7 +2470,7 @@ function getUI() {
               const source = getCurrentVectorSource();
               const attr = vectorAttr.value;
               if (vectorValue) {
-                if (source && source.valuesByAttr && attr && Array.isArray(source.valuesByAttr[attr])) {
+                if (source && source.valuesByAttr && attr && attr !== '__all__' && Array.isArray(source.valuesByAttr[attr])) {
                   vectorValue.innerHTML = '<option value="">値を選択</option>' + source.valuesByAttr[attr].map(v => '<option value="' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
                   vectorValue.disabled = false;
                 } else {
