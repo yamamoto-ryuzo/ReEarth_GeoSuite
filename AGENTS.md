@@ -7,22 +7,18 @@
 ## ビルド
 - `npx tsc -p geo_suite/tsconfig.json` で `geo_suite/build/` にコンパイルされます。
 - `npm run build` は bash スクリプトのため Windows PowerShell ではそのまま実行できません。
-- Windows では手動で `npx tsc` 後、`geo_suite/build/` から必要な成果物を `vercel/output/static/` にコピーしてください。
+- 本番では Vercel 上で `npm run build` が実行されるため、Windows ではローカル確認用に `npx tsc` まで実行するのが基本です。
 
 ## デプロイ
 - 本サイトは **Vercel** でデプロイされます。
-- `vercel/output/static/` 配下のファイルは配布用静的ファイルとしてリポジトリで管理されています。
-- `index.html`（ルート）がサイトのソースであり、`vercel/output/static/index.html` へ反映させる必要があります。
+- `main` ブランチに push すると Vercel が自動で `npm run build` を実行し、成果物を `/vercel/output/static` に生成してデプロイします。
+- リポジトリに `vercel/output/` をコミットする必要はありません。
+- サイトのソースはルートの `index.html` と `ryu.html` です。
 
 ## 配布資産
-- 配布用 ZIP は `geo_suite/build/` の JS と `plugin/reearth.yml` から生成します。
-- リリース用一時ディレクトリ `release/` は `.gitignore` で除外されています。
-- ソース変更時に合わせて更新が必要な成果物:
-  - `vercel/output/static/layers-and-tiles-list.js`
-  - `vercel/output/static/navigation-toolbar.js`
-  - `vercel/output/static/reearth.yml`
-  - `vercel/output/static/index.html`
-  - `vercel/output/static/geo_suite.zip`
+- 配布用 ZIP（`geo_suite.zip`）は Vercel ビルド時に生成されます。
+- `release/` および `vercel/output/` は `.gitignore` で除外されています。
+- GitHub Release 用の ZIP は `npm run build` 実行後に `dist/artifacts/geo_suite.zip` として生成されます。
 
 ## バージョン管理
 - バージョンは `package.json` と `plugin/reearth.yml` の両方に記述します。

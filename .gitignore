@@ -13,6 +13,7 @@ __pycache__/
 dist/
 build/
 release/
+vercel/output/
 artifacts/
 *.log
 
