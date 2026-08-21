@@ -798,7 +798,7 @@ function getUI() {
     </div>
 
   <div id="search-panel" style="display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
       <div style="font-weight:600;">Search</div>
       <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
         <option value="gsi">地理院</option>
