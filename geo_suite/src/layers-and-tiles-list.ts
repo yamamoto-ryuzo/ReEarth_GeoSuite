@@ -24,6 +24,7 @@ let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
+let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -813,6 +814,22 @@ function getUI() {
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
     </div>
     <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;">注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。</div>
+    <div id="vector-search" style="margin-top:12px;padding-top:8px;border-top:1px solid #ddd;">
+      <div style="font-weight:600;margin-bottom:6px;">ベクトル検索</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+        <select id="vector-attr" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
+          <option value="">属性を選択</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+        <select id="vector-value" disabled style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
+          <option value="">値を選択</option>
+        </select>
+        <button id="vector-fly-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;" disabled>Fly</button>
+      </div>
+      <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">ベクトルデータを更新</button>
+      <div id="vector-search-status" style="font-size:0.85em;color:#666;margin-top:4px;"></div>
+    </div>
   </div>
 
   <div id="layers-panel">
@@ -1290,6 +1307,28 @@ function getUI() {
                       });
                     } catch(e) {}
                   }
+                } else if (msg.action === 'vectorFeatureIndex') {
+                  try {
+                    const attrSelect = document.getElementById('vector-attr');
+                    const statusEl = document.getElementById('vector-search-status');
+                    const valuesByAttr = msg.valuesByAttr || {};
+                    const attributes = msg.attributes || [];
+                    if (attrSelect && attributes.length) {
+                      attrSelect.innerHTML = '<option value="">属性を選択</option>' + attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                      attrSelect.dataset.valuesByAttr = JSON.stringify(valuesByAttr);
+                      if (statusEl) statusEl.textContent = attributes.length + ' 属性を読み込みました';
+                    } else if (attrSelect) {
+                      attrSelect.innerHTML = '<option value="">属性を選択</option>';
+                      if (statusEl) statusEl.textContent = '属性付きベクトルがありません';
+                    }
+                    const valueSelect = document.getElementById('vector-value');
+                    if (valueSelect) {
+                      valueSelect.innerHTML = '<option value="">値を選択</option>';
+                      valueSelect.disabled = true;
+                    }
+                    const flyBtn = document.getElementById('vector-fly-btn');
+                    if (flyBtn) flyBtn.disabled = true;
+                  } catch (e) { console.error('[vectorFeatureIndex] UI error', e); }
                 } else if (msg.action === 'attrUrlOpen') {
                   try { console.log('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'newtab');
@@ -2274,6 +2313,63 @@ function getUI() {
           searchInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); performSearch(String(searchInput.value || '')); } });
         }
       } catch (e) { console.error('search init failed', e); }
+
+      // --- Vector feature search UI handlers ---
+      try {
+        const vectorAttr = document.getElementById('vector-attr');
+        const vectorValue = document.getElementById('vector-value');
+        const vectorFlyBtn = document.getElementById('vector-fly-btn');
+        const vectorRefreshBtn = document.getElementById('vector-refresh-btn');
+        const vectorStatus = document.getElementById('vector-search-status');
+
+        if (vectorAttr) {
+          vectorAttr.addEventListener('change', () => {
+            try {
+              const valuesByAttr = vectorAttr.dataset.valuesByAttr ? JSON.parse(vectorAttr.dataset.valuesByAttr) : {};
+              const attr = vectorAttr.value;
+              if (vectorValue) {
+                if (attr && Array.isArray(valuesByAttr[attr])) {
+                  vectorValue.innerHTML = '<option value="">値を選択</option>' + valuesByAttr[attr].map(v => '<option value="' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                  vectorValue.disabled = false;
+                } else {
+                  vectorValue.innerHTML = '<option value="">値を選択</option>';
+                  vectorValue.disabled = true;
+                }
+                vectorValue.value = '';
+                if (vectorFlyBtn) vectorFlyBtn.disabled = true;
+              }
+            } catch (e) { console.error('vector attr change error', e); }
+          });
+        }
+
+        if (vectorValue) {
+          vectorValue.addEventListener('change', () => {
+            if (vectorFlyBtn) vectorFlyBtn.disabled = !vectorValue.value;
+          });
+        }
+
+        if (vectorFlyBtn) {
+          vectorFlyBtn.addEventListener('click', () => {
+            try {
+              if (!vectorAttr || !vectorValue || !vectorAttr.value || !vectorValue.value) return;
+              parent.postMessage({ action: 'vectorFeatureFly', attrName: vectorAttr.value, value: vectorValue.value }, '*');
+            } catch (e) { console.error('vector fly error', e); }
+          });
+        }
+
+        if (vectorRefreshBtn) {
+          vectorRefreshBtn.addEventListener('click', () => {
+            try {
+              if (vectorStatus) vectorStatus.textContent = '読み込み中...';
+              parent.postMessage({ action: 'getVectorFeatureIndex' }, '*');
+            } catch (e) { console.error('vector refresh error', e); }
+          });
+        }
+
+        try {
+          parent.postMessage({ action: 'getVectorFeatureIndex' }, '*');
+        } catch (e) {}
+      } catch (e) { console.error('vector search init failed', e); }
 
   });
 
@@ -3346,6 +3442,16 @@ reearth.extension.on("message", (msg) => {
         } catch(e) {
           try { sendError('[flyToViewportUrlParams] error:', e); } catch(err){}
         }
+      } else if (msg.action === 'getVectorFeatureIndex') {
+        (async () => {
+          try {
+            await buildVectorFeatureIndex();
+          } catch (e) { try { sendError('[getVectorFeatureIndex] error:', e); } catch(_) {} }
+        })();
+      } else if (msg.action === 'vectorFeatureFly') {
+        try {
+          flyToVectorFeature(msg.attrName, msg.value);
+        } catch (e) { try { sendError('[vectorFeatureFly] error:', e); } catch(_) {} }
       }
     return;
   }
@@ -4213,6 +4319,119 @@ function loadInfoUrl(url) {
 // Note: This logic has been moved to UI initialization (see getUI script)
 // because extension sandbox cannot access window.location.
 // However, we still need a handler for 'applyPermalinkState' (added below).
+
+// --- Vector feature search helpers ---
+function getGeometryCentroid(geometry) {
+  try {
+    if (!geometry || !geometry.type) return { lat: null, lng: null };
+    const type = geometry.type;
+    const coords = geometry.coordinates;
+    if (type === 'Point' && Array.isArray(coords) && coords.length >= 2) {
+      return { lng: Number(coords[0]), lat: Number(coords[1]) };
+    }
+    if (Array.isArray(coords)) {
+      let count = 0;
+      let sumLng = 0;
+      let sumLat = 0;
+      const collect = (c) => {
+        if (!Array.isArray(c)) return;
+        if (c.length >= 2 && typeof c[0] === 'number' && typeof c[1] === 'number') {
+          sumLng += Number(c[0]);
+          sumLat += Number(c[1]);
+          count++;
+        } else {
+          c.forEach(collect);
+        }
+      };
+      coords.forEach(collect);
+      if (count > 0) return { lng: sumLng / count, lat: sumLat / count };
+    }
+  } catch (e) {}
+  return { lat: null, lng: null };
+}
+
+async function buildVectorFeatureIndex() {
+  try {
+    const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
+    const vectorUrls = [];
+    layersAll.forEach((l) => {
+      try {
+        if (l && l.data && (l.data.type === 'geojson') && l.data.url) {
+          vectorUrls.push({ url: l.data.url, title: l.title || l.id || '', id: l.id });
+        }
+      } catch (e) {}
+    });
+
+    const attrSet = new Set();
+    const valuesByAttr = {};
+    const featureByAttr = {};
+
+    for (const vl of vectorUrls) {
+      try {
+        const res = await fetch(vl.url, { method: 'GET' });
+        if (!res || !res.ok) continue;
+        const data = await res.json();
+        const features = Array.isArray(data) ? data : ((data && (data.features || data.Feature)) || []);
+        features.forEach((f) => {
+          try {
+            const props = f.properties || f.Property || {};
+            const geom = f.geometry || f.Geometry;
+            const centroid = getGeometryCentroid(geom);
+            if (centroid.lat == null || centroid.lng == null || isNaN(centroid.lat) || isNaN(centroid.lng)) return;
+            Object.keys(props).forEach((key) => {
+              try {
+                const raw = props[key];
+                if (raw == null) return;
+                const val = String(raw);
+                attrSet.add(key);
+                if (!valuesByAttr[key]) valuesByAttr[key] = new Set();
+                if (!featureByAttr[key]) featureByAttr[key] = {};
+                if (!valuesByAttr[key].has(val)) {
+                  valuesByAttr[key].add(val);
+                  featureByAttr[key][val] = { lat: centroid.lat, lng: centroid.lng, layerId: vl.id };
+                }
+              } catch (e) {}
+            });
+          } catch (e) {}
+        });
+      } catch (e) {
+        try { sendError('[buildVectorFeatureIndex] failed for', vl.url, e); } catch (_) {}
+      }
+    }
+
+    _vectorFeatureIndex = {
+      attributes: Array.from(attrSet).sort(),
+      valuesByAttr: {},
+      featureByAttr: featureByAttr
+    };
+    _vectorFeatureIndex.attributes.forEach((k) => {
+      _vectorFeatureIndex.valuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort();
+    });
+
+    postToUI({ action: 'vectorFeatureIndex', attributes: _vectorFeatureIndex.attributes, valuesByAttr: _vectorFeatureIndex.valuesByAttr });
+    try { sendLog('[buildVectorFeatureIndex] built index with', _vectorFeatureIndex.attributes.length, 'attributes'); } catch (e) {}
+  } catch (e) {
+    try { sendError('[buildVectorFeatureIndex] error:', e); } catch (_) {}
+    _vectorFeatureIndex = null;
+  }
+}
+
+function flyToVectorFeature(attrName, value) {
+  try {
+    if (!_vectorFeatureIndex || !attrName || value == null) {
+      try { sendError('[flyToVectorFeature] no index or missing attr/value'); } catch (_) {}
+      return;
+    }
+    const entry = _vectorFeatureIndex.featureByAttr[attrName] && _vectorFeatureIndex.featureByAttr[attrName][String(value)];
+    if (!entry || entry.lat == null || entry.lng == null) {
+      try { sendError('[flyToVectorFeature] not found for', attrName, value); } catch (_) {}
+      return;
+    }
+    flyToAndNotify(entry.lat, entry.lng, { addMarker: false });
+  } catch (e) {
+    try { sendError('[flyToVectorFeature] error:', e); } catch (_) {}
+  }
+}
 
 // --- Startup URL auto-fly ---
 (function tryAutoFlyToFromUrl() {
