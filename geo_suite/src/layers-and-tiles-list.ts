@@ -799,22 +799,7 @@ function getUI() {
     </div>
 
   <div id="search-panel" style="display:none;">
-    <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
-      <div style="font-weight:600;">Search</div>
-      <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
-        <option value="gsi">地理院</option>
-        <option value="yahoo">Yahoo</option>
-      </select>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
-      <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
-      <button id="search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;">Search</button>
-    </div>
-    <div id="search-results" style="max-height:320px;overflow:auto;">
-      <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
-    </div>
-    <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;">注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。</div>
-    <div id="vector-search" style="margin-top:12px;padding-top:8px;border-top:1px solid #ddd;">
+    <div id="vector-search" style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd;">
       <div style="font-weight:600;margin-bottom:6px;">ベクトル検索</div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
         <select id="vector-attr" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
@@ -830,6 +815,21 @@ function getUI() {
       <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">ベクトルデータを更新</button>
       <div id="vector-search-status" style="font-size:0.85em;color:#666;margin-top:4px;"></div>
     </div>
+    <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
+      <div style="font-weight:600;">住所検索</div>
+      <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
+        <option value="gsi">地理院</option>
+        <option value="yahoo">Yahoo</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+      <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
+      <button id="search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;">Search</button>
+    </div>
+    <div id="search-results" style="max-height:320px;overflow:auto;">
+      <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
+    </div>
+    <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;">注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。</div>
   </div>
 
   <div id="layers-panel">
