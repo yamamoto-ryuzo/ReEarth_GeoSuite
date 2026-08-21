@@ -3961,12 +3961,15 @@ function parseAttrUrlOpen(text) {
   let mode = 'panel';
   if (!text || typeof text !== 'string') return mode;
   const lines = text.split(/\r?\n/);
+  console.log('[parseAttrUrlOpen] input lines:', lines.length, 'first:', text.substring(0, 60));
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
+    console.log('[parseAttrUrlOpen] line', i, 'raw:', JSON.stringify(line));
     if (/^attrurlopen\s*:/i.test(line)) {
       try {
         const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+        console.log('[parseAttrUrlOpen] attrUrlOpen match, val:', JSON.stringify(val));
         if (val === 'split' || val === 'newtab' || val === 'tab' || val === 'openurl' || val === 'new' || val === 'external') {
           mode = (val === 'split') ? 'split' : 'newtab';
         } else if (val === 'panel' || val === 'iframe' || val === 'inline') {
@@ -3982,6 +3985,7 @@ function parseAttrUrlOpen(text) {
       } catch(e) {}
     }
   }
+  console.log('[parseAttrUrlOpen] result:', mode);
   return mode;
 }
 
