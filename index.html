@@ -325,7 +325,8 @@
                     </p>
                     <pre><code>layer: 地理院タイル 標準地図 | off
 xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
-base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors
+base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg | 出典：国土地理院 | max=18
+base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors | max=19
 3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json | off
 geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
 background: #ffffff
@@ -337,6 +338,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>layer:</strong> 既存のシステムレイヤ名を指定し、<code>|off</code> で非表示（<code>|on</code> で表示）に設定できます（例: <code>layer: 地理院タイル 標準地図 | off</code>）。</li>
                         <li><strong>xyz:</strong> 追加レイヤ (XYZタイル) です。タイトルとURLを `|` で区切ります。末尾に `|off` を付けると非表示で追加されます。</li>
                         <li><strong>base:</strong> ベースマップ用レイヤです。UI上部のドロップダウンに追加され、選択した1つだけが有効化されます。</li>
+                        <li><strong>max=</strong>/<strong>min=</strong>/<strong>zoom=</strong>: XYZ タイルのズームレベル制限を指定します。例: <code>max=18</code>、<code>zoom=2-18</code>。地理院タイルや OpenStreetMap には既知の最大ズームを自動で適用します。</li>
                         <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
                         <li><strong>geojson:</strong> GeoJSONレイヤです。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>

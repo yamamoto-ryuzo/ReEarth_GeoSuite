@@ -3754,7 +3754,19 @@ function tryInitFromProperty() {
   }
 }
 
-function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
+// Known maximum zoom levels for well-known tile providers.
+// Without maximumLevel, Cesium keeps requesting tiles beyond the provider's
+// max zoom and floods the console with "Failed to obtain image tile" errors.
+function defaultMaxLevelForUrl(url) {
+  try {
+    if (/cyberjapandata\.gsi\.go\.jp\/xyz\/(gazo[1-4]|ort_old10|ort_riku10)\//.test(url)) return 17;
+    if (/cyberjapandata\.gsi\.go\.jp\/xyz\//.test(url)) return 18;
+    if (/tile\.openstreetmap\.org\//.test(url)) return 19;
+  } catch (e) {}
+  return null;
+}
+
+function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
   let titleToUse = title;
@@ -3785,6 +3797,19 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
   // Only add tiles property for XYZ layers
   if (type === "tiles") {
     layer.tiles = {};
+    // Limit tile request levels via the raster appearance so Cesium stops
+    // requesting tiles beyond the provider's max zoom (avoids
+    // "Failed to obtain image tile" console errors at high zoom levels).
+    const raster = {};
+    const minL = (zoom && typeof zoom.min === 'number' && !isNaN(zoom.min)) ? zoom.min : null;
+    let maxL = (zoom && typeof zoom.max === 'number' && !isNaN(zoom.max)) ? zoom.max : null;
+    if (maxL === null) maxL = defaultMaxLevelForUrl(encodedUrl);
+    if (minL !== null) raster.minimumLevel = minL;
+    if (maxL !== null) raster.maximumLevel = maxL;
+    if (minL !== null || maxL !== null) {
+      layer.raster = raster;
+      try { sendLog('[addXyzLayer] raster levels min:', minL, 'max:', maxL); } catch(e){}
+    }
   }
 
   // Mark as basemap when requested
@@ -3940,6 +3965,30 @@ function processInspectorText(text) {
       }
     }
     return v;
+  };
+
+  // Helper to extract zoom level options from parts array (modifies parts in place).
+  // Supported tokens: "max=18" / "maxlevel=18" / "min=2" / "minlevel=2" / "zoom=2-18" / "z=2-18"
+  const extractZoom = (parts) => {
+    const z = { min: null, max: null };
+    if (!Array.isArray(parts)) return z;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      let m = p.match(/^(min|max)(?:level)?\s*=\s*(\d{1,2})$/i);
+      if (m) {
+        if (m[1].toLowerCase() === 'min') z.min = parseInt(m[2], 10);
+        else z.max = parseInt(m[2], 10);
+        parts.splice(i, 1); i--;
+        continue;
+      }
+      m = p.match(/^z(?:oom)?\s*=\s*(?:(\d{1,2})\s*-\s*)?(\d{1,2})$/i);
+      if (m) {
+        if (m[1] !== undefined) z.min = parseInt(m[1], 10);
+        z.max = parseInt(m[2], 10);
+        parts.splice(i, 1); i--;
+      }
+    }
+    return z;
   };
 
   let infoUrlFound = null;
@@ -4171,10 +4220,12 @@ function processInspectorText(text) {
     let title = null;
     let attribution = null;
     let visible = true;
+    let zoom = { min: null, max: null };
 
     if (tileStr.indexOf('|') !== -1) {
       const parts = tileStr.split('|').map(p => p.trim());
       visible = extractVisible(parts);
+      zoom = extractZoom(parts);
       // Handle optional 3rd part as attribution
       if (parts.length >= 3) {
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; attribution = parts[2]; }
@@ -4198,8 +4249,8 @@ function processInspectorText(text) {
         }
       }
 
-      tiles.push({ url, title, type: 'tiles', isBase: isBase, visible });
-      if (isBase) _parsedBaseTiles.push({ url, title, attribution });
+      tiles.push({ url, title, type: 'tiles', isBase: isBase, visible, minLevel: zoom.min, maxLevel: zoom.max });
+      if (isBase) _parsedBaseTiles.push({ url, title, attribution, minLevel: zoom.min, maxLevel: zoom.max });
     }
     nonCamLines.push(line);
   });
@@ -4471,6 +4522,7 @@ function addXyzLayersFromArray(items) {
     const type = it.type || "tiles";
     const isBase = !!it.isBase;
     const visible = (it.visible !== undefined) ? it.visible : true;
+    const zoom = { min: it.minLevel ?? null, max: it.maxLevel ?? null };
     if (!u) continue;
     if (!/^https?:\/\//.test(u)) continue;
     const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
@@ -4479,7 +4531,7 @@ function addXyzLayersFromArray(items) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
       continue;
     }
-    addXyzLayer(u, t, type, isBase, visible);
+    addXyzLayer(u, t, type, isBase, visible, zoom);
   }
 }
 
