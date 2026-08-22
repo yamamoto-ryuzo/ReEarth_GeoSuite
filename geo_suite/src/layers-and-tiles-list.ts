@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Debug logging flag: set to true to enable verbose console logging (extension + UI)
+const DEBUG_LOG = false;
 // Track layer IDs added by this plugin
 const _pluginAddedLayerIds = new Set();
 // Track layers that need to be hidden shortly after creation (workaround for initial load issues)
@@ -947,9 +949,12 @@ function getUI() {
 </div>
 
 <script>
+  // Debug logging flag injected from the extension side (see DEBUG_LOG at top of file)
+  window._DEBUG_LOG = ${DEBUG_LOG};
+  function uiLog() { if (!window._DEBUG_LOG) return; try { console.log.apply(console, arguments); } catch(e) {} }
   window.openUrlInAttrPanel = function(event, url) {
     event.preventDefault(); // デフォルトのリンク遷移をキャンセル
-    try { console.log('[openUrlInAttrPanel] _attrUrlOpen:', window._attrUrlOpen, 'url:', url); } catch(e) {}
+    try { uiLog('[openUrlInAttrPanel] _attrUrlOpen:', window._attrUrlOpen, 'url:', url); } catch(e) {}
     const mode = (window._attrUrlOpen || 'newtab').toLowerCase();
     if (mode === 'newtab') {
       if (window.parent && url) window.parent.postMessage({ action: 'openUrl', url: url }, '*');
@@ -1268,7 +1273,7 @@ function getUI() {
                     }
                   }
                 } else if (msg.action === 'featureSelected') {
-                  try { console.log('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
+                  try { uiLog('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'newtab');
                   const attrContent = document.getElementById('attr-content');
                   if (attrContent) {
@@ -1376,7 +1381,7 @@ function getUI() {
                     }
                   } catch (e) { console.error('[vectorFeatureIndex] UI error', e); }
                 } else if (msg.action === 'attrUrlOpen') {
-                  try { console.log('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
+                  try { uiLog('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'newtab');
                 }
               } catch (e) {}
@@ -1403,7 +1408,7 @@ function getUI() {
                     if (timeStatus) timeStatus.textContent = 'Sent (current set)';
                   }
                 try {
-                  console.log('[UI] posting setTime message', msg);
+                  uiLog('[UI] posting setTime message', msg);
                   if (window.parent) {
                     window.parent.postMessage(msg, "*");
                   }
@@ -1806,7 +1811,7 @@ function getUI() {
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data ? e.data : null;
-          try { console.log('[UI] window.message received:', msg); } catch(e){}
+          try { uiLog('[UI] window.message received:', msg); } catch(e){}
           if (!msg) return;
           if (msg.action === 'updateCameraFields') {
             const c = msg.camera;
@@ -1820,7 +1825,7 @@ function getUI() {
           } else if (msg.action === 'geolocationResult') {
             try {
               const btn = document.getElementById('cam-flyto-current');
-              try { console.log('[UI] geolocationResult received:', msg); } catch(e) {}
+              try { uiLog('[UI] geolocationResult received:', msg); } catch(e) {}
               if (msg.success) {
                 if (btn) btn.textContent = 'Fly to Current Location';
                 try {
@@ -1947,11 +1952,11 @@ function getUI() {
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data ? e.data : null;
-          try { console.log('[UI] forward listener got message:', msg); } catch(e){}
+          try { uiLog('[UI] forward listener got message:', msg); } catch(e){}
           if (!msg || !msg.action) return;
           if (msg.action === 'applyPermalinkState') {
             try {
-              try { console.log('[UI] applying applyPermalinkState locally:', msg); } catch(e){}
+              try { uiLog('[UI] applying applyPermalinkState locally:', msg); } catch(e){}
               applyPermalinkPayload(msg);
             } catch(_){ try { console.error('[UI] applyPermalinkState failed', _); } catch(e){} }
           }
@@ -2023,7 +2028,7 @@ function getUI() {
         if (loadBtn && importInput) {
           loadBtn.addEventListener('click', function() {
             const val = importInput.value;
-            try { console.log('[UI] loadBtn clicked, val=', val); } catch(e) {}
+            try { uiLog('[UI] loadBtn clicked, val=', val); } catch(e) {}
             if (!val) return;
             try {
                 // Attempt to parse params from input string
@@ -2601,18 +2606,9 @@ function getUI() {
 }
 
 // Initial render
-// Ensure we process inspector property before first UI render so dropdown and layers reflect inspector
-try { if (typeof tryInitFromProperty === 'function') tryInitFromProperty(); } catch(e) {}
-// Also process full inspector text (multiline) if provided in widget/block property so getUI() reflects it
-try {
-  const propInit = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
-  const textInit = (propInit.settings && propInit.settings.inspectorText) || propInit.inspectorText;
-  // If inspector property exists (even empty string), prefer it. Only fall back to _defaultInspectorText when property is undefined.
-  const textToProcess = (typeof textInit === 'string') ? textInit : _defaultInspectorText;
-  if (textToProcess && textToProcess.trim()) {
-    try { processInspectorText(textToProcess); } catch(e) { try { sendError('[init] processInspectorText failed', e); } catch(_){} }
-  }
-} catch(e) {}
+// NOTE: inspector property/text processing happens once later in the file
+// (tryInitFromProperty() and the processInspectorText init block), which
+// re-renders the UI via safeShowUI when layers are applied.
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
 reearth.ui.show(uiHTML, { extended: true }); // added { extended: true } to prevent sandbox issues
@@ -2646,6 +2642,7 @@ try {
 
 // Helper: forward logs from extension to the UI log panel
 function sendLog(...args) {
+  if (!DEBUG_LOG) return;
   try {
     console.log.apply(console, args);
   } catch (e) {}
@@ -3226,7 +3223,7 @@ try {
         if (text && typeof text === 'string') {
           _inspectorAttrUrlOpen = parseAttrUrlOpen(text);
         }
-        console.log('[main select] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen, 'prop text:', text ? text.substring(0, 200) : null);
+        sendLog('[main select] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen, 'prop text:', text ? text.substring(0, 200) : null);
       } catch(e) {}
       if (layerId && featureId) {
         const feature = reearth.layers.findFeatureById(layerId, featureId);
@@ -3765,7 +3762,7 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
   if (type === 'geojson') {
     layer.marker = { pointColor: "#3388ff", pointSize: 10 };
     layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true };
-    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp" };
+    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", height: 0 };
   }
 
   try {
@@ -3875,11 +3872,11 @@ function rebuildInspectorText() {
 // Parse and apply settings from text
 function processInspectorText(text) {
   if (!text || typeof text !== 'string') {
-    console.log('[processInspectorText] no text or invalid type:', text);
+    sendLog('[processInspectorText] no text or invalid type:', text);
     return;
   }
   // reset parsed base tiles to avoid duplicates when called repeatedly
-  console.log('[processInspectorText] called, text:', text.substring(0, 300));
+  sendLog('[processInspectorText] called, text:', text.substring(0, 300));
   try { _parsedBaseTiles = []; } catch(e) {}
   // Handle various newline formats
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
@@ -3988,7 +3985,7 @@ function processInspectorText(text) {
           _inspectorAttrUrlOpen = 'panel';
         }
         try { sendLog('[processInspectorText] found attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
-        try { console.log('[processInspectorText] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+        try { sendLog('[processInspectorText] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e){}
       nonCamLines.push(line);
       return;
@@ -4232,7 +4229,7 @@ function processInspectorText(text) {
 
           try {
             postToUI({ action: 'attrUrlOpen', mode: _inspectorAttrUrlOpen });
-            try { console.log('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+            try { sendLog('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
           } catch(e) {}
         } catch(e) { try { sendError('[processInspectorText] loadInfoUrl post failed', e); } catch(_) {} }
       }, 50);
@@ -4249,11 +4246,11 @@ function processInspectorText(text) {
 
       try {
         postToUI({ action: 'attrUrlOpen', mode: _inspectorAttrUrlOpen });
-        try { console.log('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+        try { sendLog('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e) {}
     }
   } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
-  try { console.log('[processInspectorText] final _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e) {}
+  try { sendLog('[processInspectorText] final _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e) {}
 }
 
 function parseAttrUrlOpen(text) {
@@ -4401,7 +4398,7 @@ function applySystemLayerSettings() {
       
       if (text && typeof text === 'string' && text !== _lastInspectorLayersJson) {
          _lastInspectorLayersJson = text; // use text as cache key
-         console.log('[poll] inspector text changed, length:', text.length, 'text:', text.substring(0, 300));
+         sendLog('[poll] inspector text changed, length:', text.length, 'text:', text.substring(0, 300));
          processInspectorText(text);
       }
 

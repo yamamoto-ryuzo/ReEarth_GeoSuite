@@ -1,5 +1,10 @@
 # Changelog
 
+## v16.0.1
+- 修正: 起動時の初期化処理が二重に実行されていた問題を解消しました（`tryInitFromProperty` の重複呼び出しと TDZ で無効化されていた初期化ブロックを削除）。
+- 修正: GeoJSON のデフォルト polygon スタイルに `height: 0` を追加し、Cesium の `heightReference must also have a defined height` 警告を解消しました。
+- 改善: デバッグログを `DEBUG_LOG` フラグ（既定: false）でゲートし、本番でのコンソールログ出力を抑制しました。デバッグ時はソース先頭の `DEBUG_LOG` を `true` にしてください（UI 側ログにも反映されます）。
+
 ## v16.0.0
 - 新機能: ベクトル検索に文字列検索を追加しました。
     - レイヤー・属性を「全選択」にして文字列で検索できます。
