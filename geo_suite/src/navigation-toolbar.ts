@@ -363,7 +363,7 @@ export const onMessage = (msg: any): void => {
     } catch (e) {}
   }
 
-  // Rotate camera clockwise to the next `stepDeg` multiple (0,45,90,...)
+  // Rotate camera counterclockwise to the previous `stepDeg` multiple (...,90,45,0,315,...)
   if (msg.action === 'rotateBy') {
     try {
       const stepDeg = msg.payload && typeof msg.payload.delta === 'number' ? msg.payload.delta : 45;
@@ -375,15 +375,15 @@ export const onMessage = (msg: any): void => {
       const heading = typeof cur.heading === 'number' ? cur.heading : 0;
       const headingDeg = normalizeHeadingDeg(heading);
 
-      // Advance the target multiple sequence (0,45,90,...) deterministically.
+      // Step back through the target multiple sequence deterministically.
       // If the camera heading has diverged from the last target (user dragged the map),
       // re-derive the sequence from the actual heading; otherwise continue from the last target.
       let baseDeg = headingDeg;
       if (_lastRotateTargetDeg !== null && Math.abs(headingDeg - _lastRotateTargetDeg) < 1) {
         baseDeg = _lastRotateTargetDeg;
       }
-      let nextDeg = Math.ceil(baseDeg / stepDeg) * stepDeg;
-      if (nextDeg - baseDeg < 1e-6) nextDeg += stepDeg;
+      let nextDeg = Math.floor(baseDeg / stepDeg) * stepDeg;
+      if (baseDeg - nextDeg < 1e-6) nextDeg -= stepDeg;
       const nextDegNorm = ((nextDeg % 360) + 360) % 360;
       _lastRotateTargetDeg = nextDegNorm;
       const newHeadingRad = nextDegNorm * Math.PI / 180;
