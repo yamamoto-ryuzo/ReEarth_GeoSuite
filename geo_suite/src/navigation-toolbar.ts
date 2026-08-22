@@ -304,6 +304,9 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
 
 // Measurement state managed on extension side
 
+// Last rotate-button target heading in degrees (0,45,90,...), or null before first use
+let _lastRotateTargetDeg: number | null = null;
+
 
 export const onMessage = (msg: any): void => {
   (async () => {
@@ -371,42 +374,30 @@ export const onMessage = (msg: any): void => {
       }
       const heading = typeof cur.heading === 'number' ? cur.heading : 0;
       const headingDeg = normalizeHeadingDeg(heading);
-      const headingRad = headingDeg * Math.PI / 180;
 
-      // Next multiple in degrees; keep it unwrapped (e.g., 360, 405) so rotation is always clockwise,
-      // even when crossing the 0°/360° boundary.
-      let nextMultiple = Math.ceil(headingDeg / stepDeg) * stepDeg;
-      const eps = 1e-6;
-      if (Math.abs(headingDeg - nextMultiple) < eps) {
-        nextMultiple += stepDeg;
+      // Advance the target multiple sequence (0,45,90,...) deterministically.
+      // If the camera heading has diverged from the last target (user dragged the map),
+      // re-derive the sequence from the actual heading; otherwise continue from the last target.
+      let baseDeg = headingDeg;
+      if (_lastRotateTargetDeg !== null && Math.abs(headingDeg - _lastRotateTargetDeg) < 1) {
+        baseDeg = _lastRotateTargetDeg;
       }
-      const deltaRad = (nextMultiple - headingDeg) * Math.PI / 180;
+      let nextDeg = Math.ceil(baseDeg / stepDeg) * stepDeg;
+      if (nextDeg - baseDeg < 1e-6) nextDeg += stepDeg;
+      const nextDegNorm = ((nextDeg % 360) + 360) % 360;
+      _lastRotateTargetDeg = nextDegNorm;
+      const newHeadingRad = nextDegNorm * Math.PI / 180;
 
-      // New heading in radians, kept unwrapped so the UI needle doesn't jump at 0°/360°.
-      // Use headingRad (degrees converted to radians) rather than the raw `heading` value,
-      // because `cur.heading` may be reported in degrees by some engine versions.
-      const newHeadingRad = headingRad + deltaRad;
-
-      // Prefer the dedicated relative-rotation API.
-      if (reearth && reearth.camera && typeof reearth.camera.rotateRight === 'function') {
-        try {
-          reearth.camera.rotateRight(deltaRad);
-          try { postToUI({ type: 'cameraUpdate', payload: { heading: newHeadingRad } }); } catch (e) {}
-          try { postToUI({ type: 'rotateResult', payload: { success: true, method: 'rotateRight', headingDeg: nextMultiple } }); } catch (e) {}
-          return;
-        } catch (e) {}
-      }
-
-      // Fallback: flyTo the same position with the new heading.
+      // Set an absolute heading via flyTo so each press reliably lands on 0/45/90/...
       const target: any = { heading: newHeadingRad };
       if (typeof cur.pitch === 'number') target.pitch = cur.pitch;
       if (typeof cur.roll === 'number') target.roll = cur.roll;
       if (typeof cur.lat === 'number') target.lat = cur.lat;
       if (typeof cur.lng === 'number') target.lng = cur.lng;
       if (typeof cur.height === 'number') target.height = cur.height;
-      try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.6 }); } catch (e) {}
+      try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.5 }); } catch (e) {}
       try { postToUI({ type: 'cameraUpdate', payload: { heading: newHeadingRad } }); } catch (e) {}
-      try { postToUI({ type: 'rotateResult', payload: { success: true, method: 'flyTo', heading: newHeadingRad, headingDeg: nextMultiple } }); } catch (e) {}
+      try { postToUI({ type: 'rotateResult', payload: { success: true, method: 'flyTo', heading: newHeadingRad, headingDeg: nextDegNorm } }); } catch (e) {}
     } catch (e) {}
     }
   })();
