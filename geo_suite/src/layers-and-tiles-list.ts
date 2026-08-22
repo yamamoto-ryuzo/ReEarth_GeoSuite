@@ -1813,6 +1813,19 @@ function getUI() {
           const msg = e && e.data ? e.data : null;
           try { uiLog('[UI] window.message received:', msg); } catch(e){}
           if (!msg) return;
+          if (msg.action === 'startTimer') {
+            // Timer delegation from the extension (QuickJS has no setTimeout)
+            const timerId = msg.id;
+            const timerMs = (typeof msg.ms === 'number' && msg.ms >= 0) ? msg.ms : 0;
+            try {
+              setTimeout(function() {
+                try { window.parent.postMessage({ action: 'timerDone', id: timerId }, '*'); } catch(e) {}
+              }, timerMs);
+            } catch(e) {
+              try { window.parent.postMessage({ action: 'timerDone', id: timerId }, '*'); } catch(e2) {}
+            }
+            return;
+          }
           if (msg.action === 'updateCameraFields') {
             const c = msg.camera;
             if (!c) return;
@@ -3048,6 +3061,25 @@ async function getCurrentLocation() {
 
 // Helper: fly camera to coordinates, optionally add marker and notify UI
 // opts: { height, headingRad, pitchRad, duration, addMarker, postSearchFlyMarker }
+// QuickJS runtime has no setTimeout: delegate waits to the UI iframe.
+// The UI runs setTimeout and replies with { action: 'timerDone', id } which
+// resolves the pending promise (see 'timerDone' in the extension message handler).
+let _waitSeq = 0;
+const _pendingWaits = Object.create(null);
+function waitViaUiTimer(ms) {
+  return new Promise((resolve) => {
+    if (typeof setTimeout === 'function') { setTimeout(resolve, ms); return; }
+    const id = 'wait-' + (++_waitSeq) + '-' + Date.now();
+    _pendingWaits[id] = resolve;
+    try {
+      postToUI({ action: 'startTimer', id: id, ms: ms });
+    } catch (e) {
+      delete _pendingWaits[id];
+      resolve();
+    }
+  });
+}
+
 async function flyToAndNotify(lat, lng, opts) {
   // Use opts if provided, otherwise fallback to defaults (height=1000, pitch=-90deg)
   const duration = (opts && typeof opts.duration === 'number') ? opts.duration : 2;
@@ -3089,12 +3121,8 @@ async function flyToAndNotify(lat, lng, opts) {
     try {
       const waitMs = Math.round(duration * 1000) + 300;
       try { sendLog('[flyToAndNotify] waiting', waitMs, 'ms before addTargetMarker'); } catch(e){}
-      if (typeof setTimeout === 'function') {
-        await new Promise(res => setTimeout(res, waitMs));
-        try { sendLog('[flyToAndNotify] wait complete'); } catch(e){}
-      } else {
-        try { sendError('[flyToAndNotify] setTimeout not available in this runtime; skipping wait'); } catch(e){}
-      }
+      await waitViaUiTimer(waitMs);
+      try { sendLog('[flyToAndNotify] wait complete'); } catch(e){}
     } catch(e) {
       try { sendError('[flyToAndNotify] wait threw', e); } catch(_){}
     }
@@ -3244,6 +3272,15 @@ reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
   if (msg && msg.action) {
+    // Resolve pending waits delegated to the UI timer (see waitViaUiTimer)
+    if (msg.action === "timerDone" && msg.id) {
+      const resolveWait = _pendingWaits[msg.id];
+      if (resolveWait) {
+        delete _pendingWaits[msg.id];
+        try { resolveWait(); } catch(e) {}
+      }
+      return;
+    }
     if (msg.action === "activateTerrain") {
       const bg = _lastInspectorBackground || "#ffffff";
       // Re:Earth Visualizer最新版では terrain.type を明示的に指定する必要がある
@@ -3762,7 +3799,7 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true) {
   if (type === 'geojson') {
     layer.marker = { pointColor: "#3388ff", pointSize: 10 };
     layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true };
-    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", height: 0 };
+    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp" };
   }
 
   try {

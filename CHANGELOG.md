@@ -1,5 +1,9 @@
 # Changelog
 
+## v16.0.2
+- 修正: v16.0.1 で GeoJSON polygon に追加した `height: 0` を取り消しました。高さを定義するとテレインへのドレープ（GroundPrimitive 化）が無効になるためです。Cesium の `heightReference must also have a defined height` 警告は再び出ますが、ドレープ動作は意図通りのため無害です。
+- 修正: `flyToAndNotify` の待機処理を UI iframe への委譲方式（`startTimer` / `timerDone` メッセージ）に変更しました。QuickJS ランタイムに `setTimeout` が無いため待機がスキップされていた問題を解消し、カメラ飛行完了後にマーカーが追加されるようになります。
+
 ## v16.0.1
 - 修正: 起動時の初期化処理が二重に実行されていた問題を解消しました（`tryInitFromProperty` の重複呼び出しと TDZ で無効化されていた初期化ブロックを削除）。
 - 修正: GeoJSON のデフォルト polygon スタイルに `height: 0` を追加し、Cesium の `heightReference must also have a defined height` 警告を解消しました。
