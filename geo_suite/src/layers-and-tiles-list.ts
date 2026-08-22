@@ -3589,6 +3589,10 @@ reearth.extension.on("message", (msg) => {
         try {
           buildVectorFeatureIndexFromLayers();
         } catch (e) { try { sendError('[getVectorFeatureIndex] error:', e); } catch(_) {} }
+      } else if (msg.action === 'vectorFeatureData') {
+        try {
+          buildVectorFeatureIndexFromData(msg.layers || {});
+        } catch (e) { try { sendError('[vectorFeatureData] error:', e); } catch(_) {} }
       } else if (msg.action === 'vectorFeatureFly') {
         try {
           flyToVectorFeature(msg.layerId, msg.attrName, msg.value);
@@ -4605,14 +4609,27 @@ function buildVectorFeatureIndexFromLayers() {
     const allValuesByAttr = {};
     const allFeatureByAttr = {};
     const layerOptions = [];
+    const missingSources = [];
 
     layersAll.forEach((l) => {
       try {
-        if (!l || !l.computed) return;
-        const features = (l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null);
-        if (!features || !features.length) return;
+        if (!l || !l.data) return;
+        const typeRaw = String(l.data.type || '').toLowerCase();
+        const url = l.data.url ? String(l.data.url).toLowerCase() : '';
+        const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
+        const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.includes('.geojson?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
+        if (!isCsv && !isGeojson) return;
+
         const title = (l.title || (l.layer && l.layer.title) || l.id || 'Layer');
         const id = l.id || String(layerOptions.length);
+
+        const features = (l.computed && l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed && l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null);
+        if (!features || !features.length) {
+          // computed features not ready yet: request raw data from the UI iframe as a fallback
+          missingSources.push({ id: id, title: title, type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null, value: l.data.value });
+          return;
+        }
+
         const attrSet = new Set();
         const valuesByAttr = {};
         const featureByAttr = {};
@@ -4676,6 +4693,11 @@ function buildVectorFeatureIndexFromLayers() {
 
     postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr }, layers: uiLayers, layerOptions: layerOptions });
     try { sendLog('[buildVectorFeatureIndexFromLayers] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
+
+    if (missingSources.length) {
+      postToUI({ action: 'requestVectorFeatureData', sources: missingSources });
+      try { sendLog('[buildVectorFeatureIndexFromLayers] requested raw fallback for', missingSources.length, 'sources'); } catch (e) {}
+    }
   } catch (e) {
     try { sendError('[buildVectorFeatureIndexFromLayers] error:', e); } catch (_) {}
     _vectorFeatureIndex = null;
@@ -4685,11 +4707,21 @@ function buildVectorFeatureIndexFromLayers() {
 function buildVectorFeatureIndexFromData(layersData) {
   try {
     const vectorSources = layersData || {};
-    const layerInfo = {};
-    const allAttrSet = new Set();
+    const existing = _vectorFeatureIndex || null;
+    const layerInfo = (existing && existing.layers) ? Object.assign({}, existing.layers) : {};
+    const allAttrSet = new Set((existing && existing.all && existing.all.attributes) ? existing.all.attributes : []);
     const allValuesByAttr = {};
     const allFeatureByAttr = {};
-    const layerOptions = [];
+    const layerOptions = (existing && existing.layerOptions) ? existing.layerOptions.slice() : [];
+
+    if (existing && existing.all) {
+      if (existing.all.valuesByAttr) {
+        Object.keys(existing.all.valuesByAttr).forEach((k) => { allValuesByAttr[k] = new Set(existing.all.valuesByAttr[k] || []); });
+      }
+      if (existing.all.featureByAttr) {
+        Object.keys(existing.all.featureByAttr).forEach((k) => { allFeatureByAttr[k] = Object.assign({}, existing.all.featureByAttr[k] || {}); });
+      }
+    }
 
     Object.keys(vectorSources).forEach((id) => {
       const source = vectorSources[id];
@@ -4777,8 +4809,10 @@ function buildVectorFeatureIndexFromData(layersData) {
         const sortedValuesByAttr = {};
         sortedAttributes.forEach((k) => { sortedValuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort(); });
 
+        if (!layerInfo[vl.id]) {
+          layerOptions.push({ id: vl.id, title: vl.title });
+        }
         layerInfo[vl.id] = { title: vl.title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr };
-        layerOptions.push({ id: vl.id, title: vl.title });
       } catch (e) {
         try { sendError('[buildVectorFeatureIndex] failed for', id, e); } catch (_) {}
       }
