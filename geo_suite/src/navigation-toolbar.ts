@@ -419,6 +419,49 @@ try {
   }
 } catch (e) {}
 
+// Lightweight real-time compass updates: throttle by time and heading delta (no setTimeout/tick)
+try {
+  const getTime = () => (typeof Date !== 'undefined' && Date.now) ? Date.now() : 0;
+  const HEADING_EPS = 0.05;
+
+  // Update while the camera is moving, but at most once per 300ms and only when heading visibly changed
+  if (typeof reearth !== 'undefined' && reearth && reearth.camera && typeof reearth.camera.on === 'function') {
+    let lastPost = 0;
+    let lastHeading: number | null = null;
+    reearth.camera.on('move', (camera: any) => {
+      try {
+        const h = (camera && typeof camera.heading === 'number') ? camera.heading : null;
+        if (h === null) return;
+        const now = getTime();
+        if (now - lastPost < 300) return;
+        if (lastHeading !== null && Math.abs(h - lastHeading) < HEADING_EPS) return;
+        lastPost = now;
+        lastHeading = h;
+        postToUI({ type: 'cameraUpdate', payload: { heading: h } });
+      } catch (e) {}
+    });
+  }
+
+  // Update at the end of a drag/click on the viewer, throttled to 50ms
+  if (typeof reearth !== 'undefined' && reearth && reearth.viewer && typeof reearth.viewer.on === 'function') {
+    let lastPost = 0;
+    let lastHeading: number | null = null;
+    reearth.viewer.on('mouseUp', () => {
+      try {
+        const cur = (reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+        const h = (cur && typeof cur.heading === 'number') ? cur.heading : null;
+        if (h === null) return;
+        const now = getTime();
+        if (now - lastPost < 50) return;
+        if (lastHeading !== null && Math.abs(h - lastHeading) < HEADING_EPS) return;
+        lastPost = now;
+        lastHeading = h;
+        postToUI({ type: 'cameraUpdate', payload: { heading: h } });
+      } catch (e) {}
+    });
+  }
+} catch (e) {}
+
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
     reearth.ui.show(html, { width: 80, height: 120, visible: true, position: 'top-right' });
