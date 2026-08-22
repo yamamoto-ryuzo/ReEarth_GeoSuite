@@ -371,6 +371,7 @@ export const onMessage = (msg: any): void => {
       }
       const heading = typeof cur.heading === 'number' ? cur.heading : 0;
       const headingDeg = normalizeHeadingDeg(heading);
+      const headingRad = headingDeg * Math.PI / 180;
 
       // Next multiple in degrees; keep it unwrapped (e.g., 360, 405) so rotation is always clockwise,
       // even when crossing the 0°/360° boundary.
@@ -382,7 +383,9 @@ export const onMessage = (msg: any): void => {
       const deltaRad = (nextMultiple - headingDeg) * Math.PI / 180;
 
       // New heading in radians, kept unwrapped so the UI needle doesn't jump at 0°/360°.
-      const newHeadingRad = heading + deltaRad;
+      // Use headingRad (degrees converted to radians) rather than the raw `heading` value,
+      // because `cur.heading` may be reported in degrees by some engine versions.
+      const newHeadingRad = headingRad + deltaRad;
 
       // Prefer the dedicated relative-rotation API.
       if (reearth && reearth.camera && typeof reearth.camera.rotateRight === 'function') {
