@@ -756,6 +756,29 @@ function getUI() {
   /* prevent long labels or external CSS forcing block layout */
   .terrain-row .text-md, .toggle { display:inline-flex; align-items:center; }
 
+  /* Vector attribute table widget */
+  .vector-attr-widget { display: none; position: fixed; left: 0; bottom: 0; width: 100%; height: 40%; min-width: 240px; max-width: 100vw; min-height: 120px; max-height: 90vh; z-index: 100; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
+  .vector-attr-widget.visible { display: block; }
+  .vector-attr-widget-inner { width: 100%; height: 100%; display: flex; flex-direction: column; background: #fff; border-radius: 8px 8px 0 0; overflow: hidden; position: relative; }
+  .vector-attr-widget-resizer { position: absolute; top: -4px; left: 0; right: 0; height: 8px; cursor: ns-resize; z-index: 10; }
+  .vector-attr-widget-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #e4ecef; background: #f6f9fb; }
+  .vector-attr-widget-title { font-weight: 700; font-size: 14px; }
+  .vector-attr-widget-close { min-width: 28px; min-height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #52636d; cursor: pointer; font-size: 20px; line-height: 1; }
+  .vector-attr-widget-filter { display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e4ecef; }
+  #vector-attr-widget-layer { flex: 0 0 140px; min-width: 100px; min-height: 30px; padding: 5px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; background: #fff; }
+  #vector-attr-widget-search { flex: 1; min-width: 0; min-height: 30px; padding: 5px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; }
+  .vector-attr-widget-table-wrap { flex: 1; overflow: auto; }
+  .vector-attr-widget-table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; white-space: nowrap; }
+  .vector-attr-widget-thead th { position: sticky; top: 0; padding: 7px 12px; text-align: left; border-bottom: 1px solid #e4ecef; background: #f6f9fb; color: #52636d; font-weight: 700; font-size: 11px; cursor: pointer; user-select: none; white-space: nowrap; }
+  .vector-attr-widget-thead th:hover { background: #eef5f7; }
+  .vector-attr-widget-thead th.sorted { background: #e7f3f0; color: #31564f; }
+  .sort-marker { margin-left: 4px; font-size: 10px; }
+  #vector-attr-widget-list tr { border-bottom: 1px solid #e4ecef; }
+  #vector-attr-widget-list tr:hover { background: #f6f9fb; }
+  #vector-attr-widget-list td { padding: 6px 12px; vertical-align: top; }
+  .vector-attr-widget-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  .vector-attr-widget-footer { padding: 7px 12px; border-top: 1px solid #e4ecef; color: #71818d; font-size: 11px; text-align: right; }
+
 </style>
 
 <div class="primary-background p-16 rounded-sm">
@@ -825,6 +848,7 @@ function getUI() {
       </div>
       <ul id="vector-search-results" style="list-style:none;padding:0;margin:0;max-height:160px;overflow:auto;font-size:0.85em;"></ul>
       <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;">ベクトルデータを更新</button>
+      <button id="vector-attr-list-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;">属性・値一覧</button>
       <div id="vector-search-status" style="font-size:0.85em;color:#666;margin-top:4px;"></div>
     </div>
     <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
@@ -948,10 +972,34 @@ function getUI() {
 
 </div>
 
+<div id="vector-attr-widget" class="vector-attr-widget">
+  <div class="vector-attr-widget-inner">
+    <div class="vector-attr-widget-resizer" title="上下にドラッグして高さを変更"></div>
+    <div class="vector-attr-widget-header">
+      <span class="vector-attr-widget-title">属性・値一覧</span>
+      <button class="vector-attr-widget-close" type="button" aria-label="閉じる">×</button>
+    </div>
+    <div class="vector-attr-widget-filter">
+      <select id="vector-attr-widget-layer" class="vector-attr-widget-layer" title="レイヤを選択"></select>
+      <input id="vector-attr-widget-search" type="text" placeholder="属性または値で検索" />
+    </div>
+    <div class="vector-attr-widget-table-wrap">
+      <table class="vector-attr-widget-table">
+        <thead id="vector-attr-widget-head" class="vector-attr-widget-thead"></thead>
+        <tbody id="vector-attr-widget-list"></tbody>
+      </table>
+    </div>
+    <div class="vector-attr-widget-footer">
+      <span id="vector-attr-widget-count"></span>
+    </div>
+  </div>
+</div>
+
 <script>
   // Debug logging flag injected from the extension side (see DEBUG_LOG at top of file)
   window._DEBUG_LOG = ${DEBUG_LOG};
   function uiLog() { if (!window._DEBUG_LOG) return; try { console.log.apply(console, arguments); } catch(e) {} }
+  function escapeHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   window.openUrlInAttrPanel = function(event, url) {
     event.preventDefault(); // デフォルトのリンク遷移をキャンセル
     try { uiLog('[openUrlInAttrPanel] _attrUrlOpen:', window._attrUrlOpen, 'url:', url); } catch(e) {}
@@ -2605,6 +2653,206 @@ function getUI() {
     }, 500);
   } catch(e) { console.error(e); }
 
+  // --- Vector attribute table widget ---
+  (function initVectorAttrWidget() {
+    try {
+      const vectorAttrListBtn = document.getElementById('vector-attr-list-btn');
+      const attrVectorAttrListBtn = document.getElementById('attr-vector-attr-list-btn');
+      const vectorAttrWidget = document.getElementById('vector-attr-widget');
+      const vectorAttrWidgetClose = document.querySelector('.vector-attr-widget-close');
+      const vectorAttrWidgetResizer = document.querySelector('.vector-attr-widget-resizer');
+      const vectorAttrWidgetSearch = document.getElementById('vector-attr-widget-search');
+      const vectorAttrWidgetLayerSelect = document.getElementById('vector-attr-widget-layer');
+      const vectorAttrWidgetHead = document.getElementById('vector-attr-widget-head');
+      const vectorAttrWidgetList = document.getElementById('vector-attr-widget-list');
+      const vectorAttrWidgetCount = document.getElementById('vector-attr-widget-count');
+      const vectorAttrWidgetTitle = document.querySelector('.vector-attr-widget-title');
+      let vectorAttrWidgetRows = [];
+      let vectorAttrWidgetAttributes = [];
+      let vectorAttrWidgetSort = { column: -1, order: 1 };
+
+      function getCurrentVectorSource() {
+        try {
+          if (!window._vectorSearchData) return null;
+          const layerId = (vectorAttrWidgetLayerSelect && vectorAttrWidgetLayerSelect.value) ? vectorAttrWidgetLayerSelect.value : '';
+          if (!layerId || layerId === '__all__') return window._vectorSearchData.all || null;
+          return (window._vectorSearchData.layers && window._vectorSearchData.layers[layerId]) || null;
+        } catch (e) { return null; }
+      }
+
+      function buildVectorAttrWidgetRows() {
+        vectorAttrWidgetRows = [];
+        vectorAttrWidgetAttributes = [];
+        vectorAttrWidgetSort = { column: -1, order: 1 };
+        const source = getCurrentVectorSource();
+        if (!source || !source.rows || !source.rows.length) return;
+        vectorAttrWidgetAttributes = (source.attributes || []).slice();
+        const maxRows = 1000;
+        vectorAttrWidgetRows = source.rows.slice(0, maxRows);
+      }
+
+      function renderVectorAttrWidget(filter) {
+        try {
+          if (!vectorAttrWidgetList || !vectorAttrWidgetCount || !vectorAttrWidgetTitle) return;
+          const query = String(filter || '').toLowerCase().trim();
+          let matched = query ? vectorAttrWidgetRows.filter(function(row) { return row.values.some(function(val) { return String(val).toLowerCase().includes(query); }); }) : vectorAttrWidgetRows.slice();
+          if (vectorAttrWidgetSort.column >= 0 && vectorAttrWidgetSort.column < vectorAttrWidgetAttributes.length) {
+            const col = vectorAttrWidgetSort.column;
+            const order = vectorAttrWidgetSort.order;
+            matched.sort(function(a, b) {
+              const left = a.values[col] || '';
+              const right = b.values[col] || '';
+              const cmp = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });
+              return cmp * order;
+            });
+          }
+          const displayRows = matched.slice(0, 1000);
+          const layerId = (vectorAttrWidgetLayerSelect && vectorAttrWidgetLayerSelect.value) ? vectorAttrWidgetLayerSelect.value : '';
+          const layerTitle = (!layerId || layerId === '__all__') ? '全選択' : ((window._vectorSearchData && window._vectorSearchData.layers && window._vectorSearchData.layers[layerId] && window._vectorSearchData.layers[layerId].title) || layerId);
+          vectorAttrWidgetTitle.textContent = '属性・値一覧' + (layerTitle ? ' — ' + layerTitle : '');
+          if (!vectorAttrWidgetAttributes.length) {
+            if (vectorAttrWidgetHead) vectorAttrWidgetHead.innerHTML = '';
+            vectorAttrWidgetList.innerHTML = '<tr><td style="padding:12px 14px;color:#71818d;">レイヤを選択してください</td></tr>';
+            vectorAttrWidgetCount.textContent = '0 件 / 0 属性';
+            return;
+          }
+          if (vectorAttrWidgetHead) {
+            vectorAttrWidgetHead.innerHTML = '<tr>' + vectorAttrWidgetAttributes.map(function(attr, idx) {
+              const active = vectorAttrWidgetSort.column === idx;
+              const marker = active ? (vectorAttrWidgetSort.order > 0 ? ' ▲' : ' ▼') : '';
+              return '<th data-idx="' + idx + '" title="クリックで並び替え"' + (active ? ' class="sorted"' : '') + '>' + escapeHtml(attr) + '<span class="sort-marker">' + marker + '</span></th>';
+            }).join('') + '</tr>';
+          }
+          if (!displayRows.length) {
+            vectorAttrWidgetList.innerHTML = '<tr><td colspan="' + vectorAttrWidgetAttributes.length + '" style="padding:12px 14px;color:#71818d;">該当する地物がありません</td></tr>';
+            vectorAttrWidgetCount.textContent = (query ? '0' : String(vectorAttrWidgetRows.length)) + ' 件 / ' + vectorAttrWidgetAttributes.length + ' 属性';
+            return;
+          }
+          vectorAttrWidgetList.innerHTML = displayRows.map(function(row) {
+            const flyable = Number.isFinite(row.lat) && Number.isFinite(row.lng);
+            const dataAttrs = flyable ? 'data-lat="' + row.lat + '" data-lng="' + row.lng + '"' : '';
+            const style = flyable ? 'style="cursor:pointer;"' : '';
+            return '<tr class="vector-attr-widget-row" ' + dataAttrs + ' ' + style + ' title="' + (flyable ? 'クリックで移動' : '') + '">' +
+              row.values.map(function(val) { return '<td class="vector-attr-widget-cell" title="' + escapeHtml(val) + '">' + escapeHtml(val) + '</td>'; }).join('') +
+              '</tr>';
+          }).join('');
+          const suffix = (matched.length > displayRows.length) ? ' （表示上限 ' + displayRows.length + ' 件）' : '';
+          vectorAttrWidgetCount.textContent = String(matched.length) + ' 件 / ' + vectorAttrWidgetAttributes.length + ' 属性' + suffix;
+        } catch (e) { console.error('vector attr widget render error', e); }
+      }
+
+      function updateVectorAttrWidgetLayerOptions(layerId) {
+        if (!vectorAttrWidgetLayerSelect) return;
+        const opts = (window._vectorSearchData && window._vectorSearchData.layerOptions) || [];
+        let html = '<option value="__all__">全選択</option>';
+        for (const o of opts) {
+          html += '<option value="' + escapeHtml(o.id) + '">' + escapeHtml(o.title || o.id) + '</option>';
+        }
+        vectorAttrWidgetLayerSelect.innerHTML = html;
+        const hasLayer = layerId && layerId !== '__all__' && opts.some(function(o) { return o.id === layerId; });
+        vectorAttrWidgetLayerSelect.value = hasLayer ? layerId : '__all__';
+      }
+
+      function openVectorAttrWidget(layerId) {
+        if (!vectorAttrWidget) return;
+        updateVectorAttrWidgetLayerOptions(layerId || '__all__');
+        buildVectorAttrWidgetRows();
+        renderVectorAttrWidget(vectorAttrWidgetSearch ? vectorAttrWidgetSearch.value : '');
+        vectorAttrWidget.classList.add('visible');
+        if (vectorAttrWidgetSearch) vectorAttrWidgetSearch.focus();
+      }
+
+      function closeVectorAttrWidget() {
+        if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
+      }
+
+      if (vectorAttrListBtn) vectorAttrListBtn.addEventListener('click', function() { openVectorAttrWidget((window._vectorLayerValue && window._vectorLayerValue !== '__all__') ? window._vectorLayerValue : null); });
+      if (attrVectorAttrListBtn) attrVectorAttrListBtn.addEventListener('click', function() { openVectorAttrWidget(null); });
+      if (vectorAttrWidgetClose) vectorAttrWidgetClose.addEventListener('click', closeVectorAttrWidget);
+      if (vectorAttrWidgetSearch) {
+        vectorAttrWidgetSearch.addEventListener('input', function() { renderVectorAttrWidget(vectorAttrWidgetSearch.value); });
+        vectorAttrWidgetSearch.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') renderVectorAttrWidget(vectorAttrWidgetSearch.value); });
+      }
+      if (vectorAttrWidgetLayerSelect) {
+        vectorAttrWidgetLayerSelect.addEventListener('change', function() {
+          try { vectorAttrWidgetSort = { column: -1, order: 1 }; openVectorAttrWidget(vectorAttrWidgetLayerSelect.value); } catch (e) { console.error('vector attr layer change error', e); }
+        });
+      }
+      if (vectorAttrWidgetList) {
+        vectorAttrWidgetList.addEventListener('click', function(ev) {
+          try {
+            const tr = ev.target.closest('tr');
+            if (!tr) return;
+            const lat = Number(tr.getAttribute('data-lat'));
+            const lng = Number(tr.getAttribute('data-lng'));
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              if (window.parent) window.parent.postMessage({ action: 'flyToLatLng', lat: lat, lng: lng }, '*');
+            }
+          } catch (e) { console.error('vector attr row click error', e); }
+        });
+      }
+      if (vectorAttrWidgetHead) {
+        vectorAttrWidgetHead.addEventListener('click', function(ev) {
+          try {
+            const th = ev.target.closest('th');
+            if (!th || !th.hasAttribute('data-idx')) return;
+            const idx = Number(th.getAttribute('data-idx'));
+            if (vectorAttrWidgetSort.column === idx) {
+              vectorAttrWidgetSort.order *= -1;
+            } else {
+              vectorAttrWidgetSort = { column: idx, order: 1 };
+            }
+            renderVectorAttrWidget(vectorAttrWidgetSearch ? vectorAttrWidgetSearch.value : '');
+          } catch (e) { console.error('vector attr head click error', e); }
+        });
+      }
+      if (vectorAttrWidgetResizer && vectorAttrWidget) {
+        let startY = 0;
+        let startHeight = 0;
+        let isResizing = false;
+
+        function onMouseMove(ev) {
+          if (!isResizing) return;
+          ev.preventDefault();
+          const delta = startY - ev.clientY;
+          const nextHeight = startHeight + delta;
+          const maxHeight = Math.min(window.innerHeight * 0.9, 1200);
+          const clamped = Math.max(120, Math.min(maxHeight, nextHeight));
+          vectorAttrWidget.style.height = clamped + 'px';
+        }
+
+        function onMouseUp() {
+          isResizing = false;
+          document.body.style.cursor = '';
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+          if (window.getSelection) window.getSelection().removeAllRanges();
+        }
+
+        vectorAttrWidgetResizer.addEventListener('mousedown', function(ev) {
+          ev.preventDefault();
+          isResizing = true;
+          startY = ev.clientY;
+          startHeight = vectorAttrWidget.clientHeight;
+          document.body.style.cursor = 'ns-resize';
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        });
+      }
+
+      // Track selected vector search layer to open table with same layer
+      const vectorLayer = document.getElementById('vector-layer');
+      if (vectorLayer) {
+        vectorLayer.addEventListener('change', function() { window._vectorLayerValue = vectorLayer.value; });
+        window._vectorLayerValue = vectorLayer.value;
+      }
+
+      // Expose open/close on window for other UI handlers
+      window.openVectorAttrWidget = openVectorAttrWidget;
+      window.closeVectorAttrWidget = closeVectorAttrWidget;
+    } catch (e) { console.error('init vector attr widget error', e); }
+  })();
+
 </script>
 `;
   } catch (e) {
@@ -3631,6 +3879,12 @@ reearth.extension.on("message", (msg) => {
         try {
           flyToVectorFeature(msg.layerId, msg.attrName, msg.value);
         } catch (e) { try { sendError('[vectorFeatureFly] error:', e); } catch(_) {} }
+      } else if (msg.action === 'flyToLatLng') {
+        try {
+          if (typeof msg.lat === 'number' && typeof msg.lng === 'number') {
+            flyToAndNotify(msg.lat, msg.lng, { addMarker: false });
+          }
+        } catch (e) { try { sendError('[flyToLatLng] error:', e); } catch(_) {} }
       }
     return;
   }
@@ -4696,6 +4950,8 @@ function buildVectorFeatureIndexFromLayers() {
     const allFeatureByAttr = {};
     const layerOptions = [];
     const missingSources = [];
+    const MAX_TABLE_ROWS = 1000;
+    const rawRowsByLayer = {};
 
     layersAll.forEach((l) => {
       try {
@@ -4719,6 +4975,7 @@ function buildVectorFeatureIndexFromLayers() {
         const attrSet = new Set();
         const valuesByAttr = {};
         const featureByAttr = {};
+        const rawRows = [];
 
         features.forEach((f) => {
           try {
@@ -4726,6 +4983,9 @@ function buildVectorFeatureIndexFromLayers() {
             const geom = (f && f.geometry) || null;
             const centroid = getGeometryCentroid(geom);
             if (centroid.lat == null || centroid.lng == null || isNaN(centroid.lat) || isNaN(centroid.lng)) return;
+            if (rawRows.length < MAX_TABLE_ROWS) {
+              rawRows.push({ props, lat: centroid.lat, lng: centroid.lng });
+            }
             Object.keys(props).forEach((key) => {
               try {
                 const raw = props[key];
@@ -4754,7 +5014,14 @@ function buildVectorFeatureIndexFromLayers() {
         const sortedValuesByAttr = {};
         sortedAttributes.forEach((k) => { sortedValuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort(); });
 
-        layerInfo[id] = { title: title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr };
+        const rows = rawRows.map((r) => ({
+          values: sortedAttributes.map((k) => (r.props[k] === undefined || r.props[k] === null) ? '' : String(r.props[k])),
+          lat: r.lat,
+          lng: r.lng
+        }));
+        rawRowsByLayer[id] = rawRows;
+
+        layerInfo[id] = { title: title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr, rows: rows };
         layerOptions.push({ id: id, title: title });
       } catch (e) {
         try { sendError('[buildVectorFeatureIndexFromLayers] failed for', l && l.id, e); } catch (_) {}
@@ -4765,19 +5032,34 @@ function buildVectorFeatureIndexFromLayers() {
     const allSortedValuesByAttr = {};
     allAttributes.forEach((k) => { allSortedValuesByAttr[k] = Array.from(allValuesByAttr[k] || new Set()).sort(); });
 
+    const allRawRows = [];
+    Object.keys(rawRowsByLayer).forEach((layerId) => {
+      if (allRawRows.length >= MAX_TABLE_ROWS) return;
+      for (const r of rawRowsByLayer[layerId]) {
+        allRawRows.push(r);
+        if (allRawRows.length >= MAX_TABLE_ROWS) break;
+      }
+    });
+
+    const allRows = allRawRows.map((r) => ({
+      values: allAttributes.map((k) => (r.props[k] === undefined || r.props[k] === null) ? '' : String(r.props[k])),
+      lat: r.lat,
+      lng: r.lng
+    }));
+
     _vectorFeatureIndex = {
       layers: layerInfo,
-      all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, featureByAttr: allFeatureByAttr },
+      all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, featureByAttr: allFeatureByAttr, rows: allRows },
       layerOptions: layerOptions
     };
 
     const uiLayers = {};
     Object.keys(layerInfo).forEach((id) => {
       const l = layerInfo[id];
-      uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr };
+      uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr, rows: l.rows };
     });
 
-    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr }, layers: uiLayers, layerOptions: layerOptions });
+    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, rows: allRows }, layers: uiLayers, layerOptions: layerOptions });
     try { sendLog('[buildVectorFeatureIndexFromLayers] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
 
     if (missingSources.length) {
@@ -4799,6 +5081,7 @@ function buildVectorFeatureIndexFromData(layersData) {
     const allValuesByAttr = {};
     const allFeatureByAttr = {};
     const layerOptions = (existing && existing.layerOptions) ? existing.layerOptions.slice() : [];
+    const MAX_TABLE_ROWS = 1000;
 
     if (existing && existing.all) {
       if (existing.all.valuesByAttr) {
@@ -4860,6 +5143,7 @@ function buildVectorFeatureIndexFromData(layersData) {
         const attrSet = new Set();
         const valuesByAttr = {};
         const featureByAttr = {};
+        const rawRows = [];
 
         features.forEach((f) => {
           try {
@@ -4867,6 +5151,9 @@ function buildVectorFeatureIndexFromData(layersData) {
             const geom = f.geometry || f.Geometry;
             const centroid = getGeometryCentroid(geom);
             if (centroid.lat == null || centroid.lng == null || isNaN(centroid.lat) || isNaN(centroid.lng)) return;
+            if (rawRows.length < MAX_TABLE_ROWS) {
+              rawRows.push({ props, lat: centroid.lat, lng: centroid.lng });
+            }
             Object.keys(props).forEach((key) => {
               try {
                 const raw = props[key];
@@ -4895,10 +5182,16 @@ function buildVectorFeatureIndexFromData(layersData) {
         const sortedValuesByAttr = {};
         sortedAttributes.forEach((k) => { sortedValuesByAttr[k] = Array.from(valuesByAttr[k] || new Set()).sort(); });
 
+        const rows = rawRows.map((r) => ({
+          values: sortedAttributes.map((k) => (r.props[k] === undefined || r.props[k] === null) ? '' : String(r.props[k])),
+          lat: r.lat,
+          lng: r.lng
+        }));
+
         if (!layerInfo[vl.id]) {
           layerOptions.push({ id: vl.id, title: vl.title });
         }
-        layerInfo[vl.id] = { title: vl.title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr };
+        layerInfo[vl.id] = { title: vl.title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr, rows: rows };
       } catch (e) {
         try { sendError('[buildVectorFeatureIndex] failed for', id, e); } catch (_) {}
       }
@@ -4908,19 +5201,38 @@ function buildVectorFeatureIndexFromData(layersData) {
     const allSortedValuesByAttr = {};
     allAttributes.forEach((k) => { allSortedValuesByAttr[k] = Array.from(allValuesByAttr[k] || new Set()).sort(); });
 
+    const allRows = [];
+    Object.keys(layerInfo).forEach((id) => {
+      if (allRows.length >= MAX_TABLE_ROWS) return;
+      const l = layerInfo[id];
+      const layerAttrs = l.attributes || [];
+      if (!l.rows || !l.rows.length) return;
+      for (const r of l.rows) {
+        allRows.push({
+          values: allAttributes.map((a) => {
+            const idx = layerAttrs.indexOf(a);
+            return idx >= 0 ? r.values[idx] : '';
+          }),
+          lat: r.lat,
+          lng: r.lng
+        });
+        if (allRows.length >= MAX_TABLE_ROWS) break;
+      }
+    });
+
     _vectorFeatureIndex = {
       layers: layerInfo,
-      all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, featureByAttr: allFeatureByAttr },
+      all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, featureByAttr: allFeatureByAttr, rows: allRows },
       layerOptions: layerOptions
     };
 
     const uiLayers = {};
     Object.keys(layerInfo).forEach((id) => {
       const l = layerInfo[id];
-      uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr };
+      uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr, rows: l.rows };
     });
 
-    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr }, layers: uiLayers, layerOptions: layerOptions });
+    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, rows: allRows }, layers: uiLayers, layerOptions: layerOptions });
     try { sendLog('[buildVectorFeatureIndex] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
   } catch (e) {
     try { sendError('[buildVectorFeatureIndex] error:', e); } catch (_) {}
