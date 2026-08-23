@@ -757,7 +757,7 @@ function getUI() {
   .terrain-row .text-md, .toggle { display:inline-flex; align-items:center; }
 
   /* Vector attribute table widget */
-  .vector-attr-widget { display: none; position: fixed; left: 0; bottom: 0; width: 100%; height: 40%; min-width: 240px; max-width: 100vw; min-height: 120px; max-height: 90vh; z-index: 100; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
+  .vector-attr-widget { display: none; position: fixed; left: 0; bottom: 0; width: 100%; height: 100%; min-width: 240px; max-width: 100vw; min-height: 120px; max-height: 100%; z-index: 100; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
   .vector-attr-widget.visible { display: block; }
   .vector-attr-widget-inner { width: 100%; height: 100%; display: flex; flex-direction: column; background: #fff; border-radius: 8px 8px 0 0; overflow: hidden; position: relative; }
   .vector-attr-widget-resizer { position: absolute; top: -4px; left: 0; right: 0; height: 8px; cursor: ns-resize; z-index: 10; }
@@ -3894,13 +3894,13 @@ reearth.extension.on("message", (msg) => {
       } else if (msg.action === 'expandAttributePanel') {
         try {
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize('200%', undefined, false);
+            reearth.ui.resize('200%', '100%', false);
           }
         } catch (e) { try { sendError('[expandAttributePanel] resize error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
         try {
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize('100%', undefined, false);
+            reearth.ui.resize('100%', '100%', false);
           }
         } catch (e) { try { sendError('[restoreAttributePanel] resize error:', e); } catch(_) {} }
       }
