@@ -3900,7 +3900,7 @@ reearth.extension.on("message", (msg) => {
       } else if (msg.action === 'restoreAttributePanel') {
         try {
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize(undefined, undefined, true);
+            reearth.ui.resize('100%', undefined, false);
           }
         } catch (e) { try { sendError('[restoreAttributePanel] resize error:', e); } catch(_) {} }
       }
