@@ -2760,10 +2760,16 @@ function getUI() {
         renderVectorAttrWidget(vectorAttrWidgetSearch ? vectorAttrWidgetSearch.value : '');
         vectorAttrWidget.classList.add('visible');
         if (vectorAttrWidgetSearch) vectorAttrWidgetSearch.focus();
+        try {
+          if (window.parent) window.parent.postMessage({ action: 'expandAttributePanel' }, '*');
+        } catch (e) {}
       }
 
       function closeVectorAttrWidget() {
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
+        try {
+          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
+        } catch (e) {}
       }
 
       if (vectorAttrListBtn) vectorAttrListBtn.addEventListener('click', function() { openVectorAttrWidget((window._vectorLayerValue && window._vectorLayerValue !== '__all__') ? window._vectorLayerValue : null); });
@@ -3885,6 +3891,18 @@ reearth.extension.on("message", (msg) => {
             flyToAndNotify(msg.lat, msg.lng, { addMarker: false });
           }
         } catch (e) { try { sendError('[flyToLatLng] error:', e); } catch(_) {} }
+      } else if (msg.action === 'expandAttributePanel') {
+        try {
+          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+            reearth.ui.resize('200%', undefined, false);
+          }
+        } catch (e) { try { sendError('[expandAttributePanel] resize error:', e); } catch(_) {} }
+      } else if (msg.action === 'restoreAttributePanel') {
+        try {
+          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+            reearth.ui.resize(undefined, undefined, true);
+          }
+        } catch (e) { try { sendError('[restoreAttributePanel] resize error:', e); } catch(_) {} }
       }
     return;
   }
