@@ -2872,7 +2872,10 @@ const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
 
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
-reearth.ui.show(uiHTML, { extended: true, width: ATTR_PANEL_BASE_WIDTH }); // added { extended: true } to prevent sandbox issues
+reearth.ui.show(uiHTML, { extended: true }); // added { extended: true } to prevent sandbox issues
+// Fix the panel width via resize (the ui.show width option is ignored for
+// extended widgets); height is left undefined so it stays auto-resized.
+try { reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false); } catch (e) { try { sendError('[render] initial resize failed', e); } catch(_){} }
 // Send initial terrain state to the UI so the toggle reflects current viewer settings
 try {
   const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
@@ -3016,7 +3019,9 @@ function safeShowUI(context) {
     // capture stack to help identify call sites at runtime
     try { sendLog('[safeShowUI] stack:', (new Error()).stack); } catch(e){}
     if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-      try { reearth.ui.show(getUI(), { extended: true, width: ATTR_PANEL_BASE_WIDTH }); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
+      try { reearth.ui.show(getUI(), { extended: true }); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
+      // Re-apply the fixed panel width after re-render (show resets the iframe).
+      try { if (typeof reearth.ui.resize === 'function') reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false); } catch(e) { try { sendError('[safeShowUI] resize failed', e); } catch(_){} }
     }
   } catch (e) {
     try { sendError('[safeShowUI] unexpected', e); } catch(_){}
