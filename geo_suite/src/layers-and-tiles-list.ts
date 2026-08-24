@@ -3892,14 +3892,23 @@ reearth.extension.on("message", (msg) => {
           try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
           if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
           const panelHeight = Math.round(vpHeight / 3);
-          // Size is controlled entirely on the UI side via body width/height so the
-          // iframe's content-based auto-resize follows it; reearth.ui.resize is NOT
-          // used because it conflicts with auto-resize and produces varying sizes.
+          // Height follows the content-based auto-resize (the UI fixes body height).
+          // Width does NOT follow body width, so it must be set via resize as well;
+          // body width is also set to the same 600px so both mechanisms agree.
           if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight, width: ATTR_PANEL_EXPANDED_WIDTH }); } catch (e) {} }
+          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, undefined, false);
+          }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
-        // Nothing to do on the extension side: the UI clears the fixed body
-        // width/height and the iframe auto-resizes back to its content size.
+        try {
+          // The UI clears the fixed body width/height (height returns to content
+          // size via auto-resize); width must be restored via resize to the fixed
+          // base width of the layers panel.
+          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+            reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false);
+          }
+        } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
       }
     return;
   }
