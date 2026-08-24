@@ -374,6 +374,9 @@ function getUI() {
   
   return `
 <style>
+  /* Base panel width: always returns to this value when the attribute table is closed */
+  body { width: ${ATTR_PANEL_BASE_WIDTH}px; }
+
   /* Tabs + styling */
   .tab-bar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; padding-bottom:4px; flex-wrap:wrap; }
   .tab{ padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.12); border:1px solid rgba(0,0,0,0.05); cursor:pointer; flex:0 0 auto; white-space:nowrap; }
