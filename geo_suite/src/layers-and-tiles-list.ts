@@ -760,12 +760,12 @@ function getUI() {
   .vector-attr-widget { display: none; position: fixed; left: 0; bottom: 0; width: 100%; height: 100%; min-width: 240px; max-width: 100vw; min-height: 120px; max-height: 100%; z-index: 100; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
   .vector-attr-widget.visible { display: block; }
   .vector-attr-widget-inner { width: 100%; height: 100%; display: flex; flex-direction: column; background: #fff; border-radius: 8px 8px 0 0; overflow: hidden; position: relative; }
-  .vector-attr-widget-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #e4ecef; background: #f6f9fb; }
+  .vector-attr-widget-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px; border-bottom: 1px solid #e4ecef; background: #f6f9fb; }
   .vector-attr-widget-title { font-weight: 700; font-size: 14px; }
   .vector-attr-widget-close { min-width: 28px; min-height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #52636d; cursor: pointer; font-size: 20px; line-height: 1; }
-  .vector-attr-widget-filter { display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e4ecef; }
-  #vector-attr-widget-layer { flex: 0 0 140px; min-width: 100px; min-height: 30px; padding: 5px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; background: #fff; }
-  #vector-attr-widget-search { flex: 1; min-width: 0; min-height: 30px; padding: 5px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; }
+  .vector-attr-widget-filter { display: flex; gap: 8px; padding: 4px 12px; border-bottom: 1px solid #e4ecef; }
+  #vector-attr-widget-layer { flex: 0 0 140px; min-width: 100px; min-height: 24px; padding: 2px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; background: #fff; }
+  #vector-attr-widget-search { flex: 1; min-width: 0; min-height: 24px; padding: 2px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; }
   .vector-attr-widget-table-wrap { flex: 1; overflow: auto; }
   .vector-attr-widget-table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; white-space: nowrap; }
   .vector-attr-widget-thead th { position: sticky; top: 0; padding: 7px 12px; text-align: left; border-bottom: 1px solid #e4ecef; background: #f6f9fb; color: #52636d; font-weight: 700; font-size: 11px; cursor: pointer; user-select: none; white-space: nowrap; }
