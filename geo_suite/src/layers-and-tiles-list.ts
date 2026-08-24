@@ -3884,7 +3884,9 @@ reearth.extension.on("message", (msg) => {
       } else if (msg.action === 'restoreAttributePanel') {
         try {
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize('100%', '100%', false);
+            // Pass undefined to restore content-based auto-resize
+            // (a fixed px height was set when the attr table was opened).
+            reearth.ui.resize(undefined, undefined, false);
           }
         } catch (e) { try { sendError('[restoreAttributePanel] resize error:', e); } catch(_) {} }
       }
