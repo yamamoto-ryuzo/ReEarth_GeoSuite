@@ -966,6 +966,7 @@ function getUI() {
 
   <div id="attr-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;">Attributes</div>
+    <button id="attr-vector-attr-list-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-bottom:8px;" type="button">属性・値一覧</button>
     <div id="attr-content" style="font-size:0.85em;color:#333;">No feature selected.</div>
   </div>
 
@@ -1321,6 +1322,7 @@ function getUI() {
                 } else if (msg.action === 'featureSelected') {
                   try { uiLog('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'newtab');
+                  window._attrLayerValue = (typeof msg.layerId === 'string' && msg.layerId) ? msg.layerId : null;
                   const attrContent = document.getElementById('attr-content');
                   if (attrContent) {
                     if (msg.properties && Object.keys(msg.properties).length > 0) {
@@ -2770,7 +2772,7 @@ function getUI() {
       }
 
       if (vectorAttrListBtn) vectorAttrListBtn.addEventListener('click', function() { openVectorAttrWidget((window._vectorLayerValue && window._vectorLayerValue !== '__all__') ? window._vectorLayerValue : null); });
-      if (attrVectorAttrListBtn) attrVectorAttrListBtn.addEventListener('click', function() { openVectorAttrWidget(null); });
+      if (attrVectorAttrListBtn) attrVectorAttrListBtn.addEventListener('click', function() { openVectorAttrWidget(window._attrLayerValue || null); });
       if (vectorAttrWidgetClose) vectorAttrWidgetClose.addEventListener('click', closeVectorAttrWidget);
       if (vectorAttrWidgetSearch) {
         vectorAttrWidgetSearch.addEventListener('input', function() { renderVectorAttrWidget(vectorAttrWidgetSearch.value); });
