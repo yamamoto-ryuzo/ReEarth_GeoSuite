@@ -1320,12 +1320,15 @@ function getUI() {
                     }
                   }
                 } else if (msg.action === 'attrPanelHeight') {
-                  // Fix the document height to exactly 1/3 of the parent viewport so the
-                  // iframe's content-based auto-resize makes the widget exactly that tall.
+                  // Fix the document size (height: 1/3 of parent viewport, width: 600px)
+                  // so the iframe's content-based auto-resize matches it exactly.
                   try {
                     if (typeof msg.height === 'number' && msg.height > 0) {
                       document.body.style.height = msg.height + 'px';
                       document.body.style.overflow = 'hidden';
+                    }
+                    if (typeof msg.width === 'number' && msg.width > 0) {
+                      document.body.style.width = msg.width + 'px';
                     }
                   } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
@@ -2782,6 +2785,7 @@ function getUI() {
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
         try {
           document.body.style.height = '';
+          document.body.style.width = '';
           document.body.style.overflow = '';
         } catch (e) {}
         try {
@@ -3888,21 +3892,14 @@ reearth.extension.on("message", (msg) => {
           try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
           if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
           const panelHeight = Math.round(vpHeight / 3);
-          if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {} }
-          // Width: fixed px values (the widget area width is fixed at ~300px);
-          // absolute values never compound on repeated calls. Height stays auto-resized.
-          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, undefined, false);
-          }
+          // Size is controlled entirely on the UI side via body width/height so the
+          // iframe's content-based auto-resize follows it; reearth.ui.resize is NOT
+          // used because it conflicts with auto-resize and produces varying sizes.
+          if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight, width: ATTR_PANEL_EXPANDED_WIDTH }); } catch (e) {} }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
-        try {
-          // Restore the fixed base width; height goes back to content size
-          // via auto-resize once the UI clears the fixed body height.
-          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false);
-          }
-        } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
+        // Nothing to do on the extension side: the UI clears the fixed body
+        // width/height and the iframe auto-resizes back to its content size.
       }
     return;
   }
