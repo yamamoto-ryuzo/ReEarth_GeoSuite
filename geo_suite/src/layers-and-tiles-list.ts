@@ -1320,15 +1320,12 @@ function getUI() {
                     }
                   }
                 } else if (msg.action === 'attrPanelHeight') {
-                  // Reserve the requested height (and doubled width) in the document so
-                  // the iframe's content-based auto-resize grows to fit the attr table.
+                  // Fix the document height to exactly 1/3 of the parent viewport so the
+                  // iframe's content-based auto-resize makes the widget exactly that tall.
                   try {
                     if (typeof msg.height === 'number' && msg.height > 0) {
-                      document.body.style.minHeight = msg.height + 'px';
-                    }
-                    if (!window._attrPanelBaseWidth) window._attrPanelBaseWidth = window.innerWidth;
-                    if (window._attrPanelBaseWidth > 0) {
-                      document.body.style.minWidth = (window._attrPanelBaseWidth * 2) + 'px';
+                      document.body.style.height = msg.height + 'px';
+                      document.body.style.overflow = 'hidden';
                     }
                   } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
@@ -2779,9 +2776,8 @@ function getUI() {
       function closeVectorAttrWidget() {
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
         try {
-          document.body.style.minHeight = '';
-          document.body.style.minWidth = '';
-          window._attrPanelBaseWidth = 0;
+          document.body.style.height = '';
+          document.body.style.overflow = '';
         } catch (e) {}
         try {
           if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
@@ -3875,20 +3871,27 @@ reearth.extension.on("message", (msg) => {
         } catch (e) { try { sendError('[flyToLatLng] error:', e); } catch(_) {} }
       } else if (msg.action === 'expandAttributePanel') {
         try {
-          // Do NOT call reearth.ui.resize here: the iframe auto-resizes based on
-          // its content size, and manual resize conflicts with it (the size cannot
-          // be restored reliably). Instead, send the desired height (1/3 of the
-          // parent viewport) to the UI, which reserves it via body min-height so
-          // the auto-resize grows/shrinks the iframe naturally.
+          // Height: fixed to 1/3 of the parent viewport. Sent to the UI, which sets
+          // body height so the iframe's content-based auto-resize matches it exactly.
+          // (Manual height via reearth.ui.resize conflicts with auto-resize.)
           let vpHeight = 0;
           try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
           if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
-          const panelHeight = Math.max(240, Math.round((vpHeight || 960) / 3));
-          try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {}
+          const panelHeight = Math.round(vpHeight / 3);
+          if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {} }
+          // Width: double it (height stays auto-resized because it is undefined).
+          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+            reearth.ui.resize('200%', undefined, false);
+          }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
-        // Nothing to do on the extension side: the UI clears body min-width/min-height
-        // and the iframe auto-resizes back to its content size.
+        try {
+          // Restore width; height goes back to content size via auto-resize
+          // once the UI clears the fixed body height.
+          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+            reearth.ui.resize('100%', undefined, false);
+          }
+        } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
       }
     return;
   }
