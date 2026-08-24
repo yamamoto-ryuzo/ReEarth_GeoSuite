@@ -1319,6 +1319,14 @@ function getUI() {
                       instruction.style.display = msg.items.length > 0 ? 'none' : 'block';
                     }
                   }
+                } else if (msg.action === 'attrPanelHeight') {
+                  // Reserve the requested height in the document so the iframe's
+                  // content-based auto-resize does not shrink the widget back.
+                  try {
+                    if (typeof msg.height === 'number' && msg.height > 0) {
+                      document.body.style.minHeight = msg.height + 'px';
+                    }
+                  } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
                   try { uiLog('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'newtab');
@@ -2766,6 +2774,7 @@ function getUI() {
 
       function closeVectorAttrWidget() {
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
+        try { document.body.style.minHeight = ''; } catch (e) {}
         try {
           if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
         } catch (e) {}
@@ -3866,6 +3875,10 @@ reearth.extension.on("message", (msg) => {
             if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
             const panelHeight = Math.max(240, Math.round((vpHeight || 960) / 3));
             reearth.ui.resize('200%', panelHeight, false);
+            // The iframe auto-resizes to its content size, which would shrink it back
+            // (the widget is position:fixed and adds no content height), so tell the UI
+            // to reserve this height in the document body as well.
+            try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {}
           }
         } catch (e) { try { sendError('[expandAttributePanel] resize error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
