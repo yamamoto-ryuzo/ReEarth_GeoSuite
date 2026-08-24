@@ -2770,12 +2770,10 @@ function getUI() {
         vectorAttrWidget.classList.add('visible');
         if (vectorAttrWidgetSearch) vectorAttrWidgetSearch.focus();
         // Send expand only on the first open (layer-select changes re-run this
-        // function while already open); remember the original width in px so it
-        // can be restored deterministically on close.
+        // function while already open).
         if (!wasVisible) {
           try {
-            window._attrPanelPrevWidth = window.innerWidth;
-            if (window.parent) window.parent.postMessage({ action: 'expandAttributePanel', width: window._attrPanelPrevWidth }, '*');
+            if (window.parent) window.parent.postMessage({ action: 'expandAttributePanel' }, '*');
           } catch (e) {}
         }
       }
@@ -2787,7 +2785,7 @@ function getUI() {
           document.body.style.overflow = '';
         } catch (e) {}
         try {
-          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel', width: window._attrPanelPrevWidth || null }, '*');
+          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
         } catch (e) {}
       }
 
@@ -3507,6 +3505,11 @@ try {
   try { sendError("Failed to register layer select event", e); } catch(_){}
 }
 
+// Attribute table panel widths (px). The widget area width is fixed,
+// so use absolute values to avoid compounding on repeated resize calls.
+const ATTR_PANEL_BASE_WIDTH = 300;
+const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
+
 reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
@@ -3886,20 +3889,18 @@ reearth.extension.on("message", (msg) => {
           if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
           const panelHeight = Math.round(vpHeight / 3);
           if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {} }
-          // Width: double the original width in px (deterministic, unlike '200%'
-          // which can compound on repeated calls). Height stays auto-resized.
+          // Width: fixed px values (the widget area width is fixed at ~300px);
+          // absolute values never compound on repeated calls. Height stays auto-resized.
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            const baseWidth = (typeof msg.width === 'number' && msg.width > 0) ? msg.width : 0;
-            reearth.ui.resize(baseWidth ? Math.round(baseWidth * 2) : '200%', undefined, false);
+            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, undefined, false);
           }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
         try {
-          // Restore the original width in px; height goes back to content size
+          // Restore the fixed base width; height goes back to content size
           // via auto-resize once the UI clears the fixed body height.
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            const prevWidth = (typeof msg.width === 'number' && msg.width > 0) ? msg.width : 0;
-            reearth.ui.resize(prevWidth ? prevWidth : '100%', undefined, false);
+            reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false);
           }
         } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
       }
