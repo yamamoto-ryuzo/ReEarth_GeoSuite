@@ -1320,11 +1320,15 @@ function getUI() {
                     }
                   }
                 } else if (msg.action === 'attrPanelHeight') {
-                  // Reserve the requested height in the document so the iframe's
-                  // content-based auto-resize does not shrink the widget back.
+                  // Reserve the requested height (and doubled width) in the document so
+                  // the iframe's content-based auto-resize grows to fit the attr table.
                   try {
                     if (typeof msg.height === 'number' && msg.height > 0) {
                       document.body.style.minHeight = msg.height + 'px';
+                    }
+                    if (!window._attrPanelBaseWidth) window._attrPanelBaseWidth = window.innerWidth;
+                    if (window._attrPanelBaseWidth > 0) {
+                      document.body.style.minWidth = (window._attrPanelBaseWidth * 2) + 'px';
                     }
                   } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
@@ -2774,7 +2778,11 @@ function getUI() {
 
       function closeVectorAttrWidget() {
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
-        try { document.body.style.minHeight = ''; } catch (e) {}
+        try {
+          document.body.style.minHeight = '';
+          document.body.style.minWidth = '';
+          window._attrPanelBaseWidth = 0;
+        } catch (e) {}
         try {
           if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
         } catch (e) {}
@@ -3867,28 +3875,20 @@ reearth.extension.on("message", (msg) => {
         } catch (e) { try { sendError('[flyToLatLng] error:', e); } catch(_) {} }
       } else if (msg.action === 'expandAttributePanel') {
         try {
-          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            // Fix panel height to 1/3 of the parent viewport (in px) so it never collapses;
-            // content beyond that scrolls inside the widget.
-            let vpHeight = 0;
-            try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
-            if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
-            const panelHeight = Math.max(240, Math.round((vpHeight || 960) / 3));
-            reearth.ui.resize('200%', panelHeight, false);
-            // The iframe auto-resizes to its content size, which would shrink it back
-            // (the widget is position:fixed and adds no content height), so tell the UI
-            // to reserve this height in the document body as well.
-            try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {}
-          }
-        } catch (e) { try { sendError('[expandAttributePanel] resize error:', e); } catch(_) {} }
+          // Do NOT call reearth.ui.resize here: the iframe auto-resizes based on
+          // its content size, and manual resize conflicts with it (the size cannot
+          // be restored reliably). Instead, send the desired height (1/3 of the
+          // parent viewport) to the UI, which reserves it via body min-height so
+          // the auto-resize grows/shrinks the iframe naturally.
+          let vpHeight = 0;
+          try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
+          if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
+          const panelHeight = Math.max(240, Math.round((vpHeight || 960) / 3));
+          try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {}
+        } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
-        try {
-          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            // Pass undefined to restore content-based auto-resize
-            // (a fixed px height was set when the attr table was opened).
-            reearth.ui.resize(undefined, undefined, false);
-          }
-        } catch (e) { try { sendError('[restoreAttributePanel] resize error:', e); } catch(_) {} }
+        // Nothing to do on the extension side: the UI clears body min-width/min-height
+        // and the iframe auto-resizes back to its content size.
       }
     return;
   }
