@@ -763,10 +763,14 @@ function getUI() {
   .vector-attr-widget-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px; border-bottom: 1px solid #e4ecef; background: #f6f9fb; }
   .vector-attr-widget-title { font-weight: 700; font-size: 14px; }
   .vector-attr-widget-close { min-width: 28px; min-height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #52636d; cursor: pointer; font-size: 20px; line-height: 1; }
-  .vector-attr-widget-filter { display: flex; gap: 8px; padding: 4px 12px; border-bottom: 1px solid #e4ecef; }
+  .vector-attr-widget-filter { display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-bottom: 1px solid #e4ecef; }
+  .vector-attr-widget-count { flex: 0 0 auto; white-space: nowrap; color: #71818d; font-size: 11px; }
   #vector-attr-widget-layer { flex: 0 0 140px; min-width: 100px; min-height: 24px; padding: 2px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; background: #fff; }
   #vector-attr-widget-search { flex: 1; min-width: 0; min-height: 24px; padding: 2px 7px; border: 1px solid #cbd9de; border-radius: 4px; font-size: 13px; }
-  .vector-attr-widget-table-wrap { flex: 1; overflow: auto; }
+  .vector-attr-widget-table-wrap { flex: 1; overflow: auto; scrollbar-width: auto; }
+  .vector-attr-widget-table-wrap::-webkit-scrollbar { width: 9px; height: 9px; }
+  .vector-attr-widget-table-wrap::-webkit-scrollbar-thumb { background: #b6c6cd; border-radius: 4.5px; }
+  .vector-attr-widget-table-wrap::-webkit-scrollbar-track { background: #eef3f5; }
   .vector-attr-widget-table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; white-space: nowrap; }
   .vector-attr-widget-thead th { position: sticky; top: 0; padding: 7px 12px; text-align: left; border-bottom: 1px solid #e4ecef; background: #f6f9fb; color: #52636d; font-weight: 700; font-size: 11px; cursor: pointer; user-select: none; white-space: nowrap; }
   .vector-attr-widget-thead th:hover { background: #eef5f7; }
@@ -776,7 +780,6 @@ function getUI() {
   #vector-attr-widget-list tr:hover { background: #f6f9fb; }
   #vector-attr-widget-list td { padding: 6px 12px; vertical-align: top; }
   .vector-attr-widget-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
-  .vector-attr-widget-footer { padding: 7px 12px; border-top: 1px solid #e4ecef; color: #71818d; font-size: 11px; text-align: right; }
 
 </style>
 
@@ -981,15 +984,13 @@ function getUI() {
     <div class="vector-attr-widget-filter">
       <select id="vector-attr-widget-layer" class="vector-attr-widget-layer" title="レイヤを選択"></select>
       <input id="vector-attr-widget-search" type="text" placeholder="属性または値で検索" />
+      <span id="vector-attr-widget-count" class="vector-attr-widget-count"></span>
     </div>
     <div class="vector-attr-widget-table-wrap">
       <table class="vector-attr-widget-table">
         <thead id="vector-attr-widget-head" class="vector-attr-widget-thead"></thead>
         <tbody id="vector-attr-widget-list"></tbody>
       </table>
-    </div>
-    <div class="vector-attr-widget-footer">
-      <span id="vector-attr-widget-count"></span>
     </div>
   </div>
 </div>
@@ -2863,9 +2864,15 @@ function getUI() {
 // NOTE: inspector property/text processing happens once later in the file
 // (tryInitFromProperty() and the processInspectorText init block), which
 // re-renders the UI via safeShowUI when layers are applied.
+// Panel widths (px). The layers panel width is always fixed at 300px;
+// the attribute table expands it to exactly double. Absolute values keep
+// the width deterministic (no auto width, no compounding percentages).
+const ATTR_PANEL_BASE_WIDTH = 300;
+const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
+
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
-reearth.ui.show(uiHTML, { extended: true }); // added { extended: true } to prevent sandbox issues
+reearth.ui.show(uiHTML, { extended: true, width: ATTR_PANEL_BASE_WIDTH }); // added { extended: true } to prevent sandbox issues
 // Send initial terrain state to the UI so the toggle reflects current viewer settings
 try {
   const viewerProp = (reearth.viewer && reearth.viewer.property) ? reearth.viewer.property : (reearth.viewer && typeof reearth.viewer.getViewerProperty === 'function' ? reearth.viewer.getViewerProperty() : null);
@@ -3009,7 +3016,7 @@ function safeShowUI(context) {
     // capture stack to help identify call sites at runtime
     try { sendLog('[safeShowUI] stack:', (new Error()).stack); } catch(e){}
     if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-      try { reearth.ui.show(getUI(), { extended: true }); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
+      try { reearth.ui.show(getUI(), { extended: true, width: ATTR_PANEL_BASE_WIDTH }); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
     }
   } catch (e) {
     try { sendError('[safeShowUI] unexpected', e); } catch(_){}
@@ -3508,11 +3515,6 @@ try {
 } catch(e) {
   try { sendError("Failed to register layer select event", e); } catch(_){}
 }
-
-// Attribute table panel widths (px). The widget area width is fixed,
-// so use absolute values to avoid compounding on repeated resize calls.
-const ATTR_PANEL_BASE_WIDTH = 300;
-const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
 
 reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
