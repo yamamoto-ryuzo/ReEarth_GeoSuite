@@ -760,7 +760,6 @@ function getUI() {
   .vector-attr-widget { display: none; position: fixed; left: 0; bottom: 0; width: 100%; height: 100%; min-width: 240px; max-width: 100vw; min-height: 120px; max-height: 100%; z-index: 100; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
   .vector-attr-widget.visible { display: block; }
   .vector-attr-widget-inner { width: 100%; height: 100%; display: flex; flex-direction: column; background: #fff; border-radius: 8px 8px 0 0; overflow: hidden; position: relative; }
-  .vector-attr-widget-resizer { position: absolute; top: -4px; left: 0; right: 0; height: 8px; cursor: ns-resize; z-index: 10; }
   .vector-attr-widget-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #e4ecef; background: #f6f9fb; }
   .vector-attr-widget-title { font-weight: 700; font-size: 14px; }
   .vector-attr-widget-close { min-width: 28px; min-height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #52636d; cursor: pointer; font-size: 20px; line-height: 1; }
@@ -974,7 +973,6 @@ function getUI() {
 
 <div id="vector-attr-widget" class="vector-attr-widget">
   <div class="vector-attr-widget-inner">
-    <div class="vector-attr-widget-resizer" title="上下にドラッグして高さを変更"></div>
     <div class="vector-attr-widget-header">
       <span class="vector-attr-widget-title">属性・値一覧</span>
       <button class="vector-attr-widget-close" type="button" aria-label="閉じる">×</button>
@@ -2660,7 +2658,6 @@ function getUI() {
       const attrVectorAttrListBtn = document.getElementById('attr-vector-attr-list-btn');
       const vectorAttrWidget = document.getElementById('vector-attr-widget');
       const vectorAttrWidgetClose = document.querySelector('.vector-attr-widget-close');
-      const vectorAttrWidgetResizer = document.querySelector('.vector-attr-widget-resizer');
       const vectorAttrWidgetSearch = document.getElementById('vector-attr-widget-search');
       const vectorAttrWidgetLayerSelect = document.getElementById('vector-attr-widget-layer');
       const vectorAttrWidgetHead = document.getElementById('vector-attr-widget-head');
@@ -2812,40 +2809,6 @@ function getUI() {
           } catch (e) { console.error('vector attr head click error', e); }
         });
       }
-      if (vectorAttrWidgetResizer && vectorAttrWidget) {
-        let startY = 0;
-        let startHeight = 0;
-        let isResizing = false;
-
-        function onMouseMove(ev) {
-          if (!isResizing) return;
-          ev.preventDefault();
-          const delta = startY - ev.clientY;
-          const nextHeight = startHeight + delta;
-          const maxHeight = Math.min(window.innerHeight * 0.9, 1200);
-          const clamped = Math.max(120, Math.min(maxHeight, nextHeight));
-          vectorAttrWidget.style.height = clamped + 'px';
-        }
-
-        function onMouseUp() {
-          isResizing = false;
-          document.body.style.cursor = '';
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('mouseup', onMouseUp);
-          if (window.getSelection) window.getSelection().removeAllRanges();
-        }
-
-        vectorAttrWidgetResizer.addEventListener('mousedown', function(ev) {
-          ev.preventDefault();
-          isResizing = true;
-          startY = ev.clientY;
-          startHeight = vectorAttrWidget.clientHeight;
-          document.body.style.cursor = 'ns-resize';
-          window.addEventListener('mousemove', onMouseMove);
-          window.addEventListener('mouseup', onMouseUp);
-        });
-      }
-
       // Track selected vector search layer to open table with same layer
       const vectorLayer = document.getElementById('vector-layer');
       if (vectorLayer) {
@@ -3894,7 +3857,13 @@ reearth.extension.on("message", (msg) => {
       } else if (msg.action === 'expandAttributePanel') {
         try {
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize('200%', '100%', false);
+            // Fix panel height to 1/3 of the parent viewport (in px) so it never collapses;
+            // content beyond that scrolls inside the widget.
+            let vpHeight = 0;
+            try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
+            if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
+            const panelHeight = Math.max(240, Math.round((vpHeight || 960) / 3));
+            reearth.ui.resize('200%', panelHeight, false);
           }
         } catch (e) { try { sendError('[expandAttributePanel] resize error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
