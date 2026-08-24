@@ -2763,14 +2763,21 @@ function getUI() {
 
       function openVectorAttrWidget(layerId) {
         if (!vectorAttrWidget) return;
+        const wasVisible = vectorAttrWidget.classList.contains('visible');
         updateVectorAttrWidgetLayerOptions(layerId || '__all__');
         buildVectorAttrWidgetRows();
         renderVectorAttrWidget(vectorAttrWidgetSearch ? vectorAttrWidgetSearch.value : '');
         vectorAttrWidget.classList.add('visible');
         if (vectorAttrWidgetSearch) vectorAttrWidgetSearch.focus();
-        try {
-          if (window.parent) window.parent.postMessage({ action: 'expandAttributePanel' }, '*');
-        } catch (e) {}
+        // Send expand only on the first open (layer-select changes re-run this
+        // function while already open); remember the original width in px so it
+        // can be restored deterministically on close.
+        if (!wasVisible) {
+          try {
+            window._attrPanelPrevWidth = window.innerWidth;
+            if (window.parent) window.parent.postMessage({ action: 'expandAttributePanel', width: window._attrPanelPrevWidth }, '*');
+          } catch (e) {}
+        }
       }
 
       function closeVectorAttrWidget() {
@@ -2780,7 +2787,7 @@ function getUI() {
           document.body.style.overflow = '';
         } catch (e) {}
         try {
-          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
+          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel', width: window._attrPanelPrevWidth || null }, '*');
         } catch (e) {}
       }
 
@@ -3879,17 +3886,20 @@ reearth.extension.on("message", (msg) => {
           if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
           const panelHeight = Math.round(vpHeight / 3);
           if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight }); } catch (e) {} }
-          // Width: double it (height stays auto-resized because it is undefined).
+          // Width: double the original width in px (deterministic, unlike '200%'
+          // which can compound on repeated calls). Height stays auto-resized.
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize('200%', undefined, false);
+            const baseWidth = (typeof msg.width === 'number' && msg.width > 0) ? msg.width : 0;
+            reearth.ui.resize(baseWidth ? Math.round(baseWidth * 2) : '200%', undefined, false);
           }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
         try {
-          // Restore width; height goes back to content size via auto-resize
-          // once the UI clears the fixed body height.
+          // Restore the original width in px; height goes back to content size
+          // via auto-resize once the UI clears the fixed body height.
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize('100%', undefined, false);
+            const prevWidth = (typeof msg.width === 'number' && msg.width > 0) ? msg.width : 0;
+            reearth.ui.resize(prevWidth ? prevWidth : '100%', undefined, false);
           }
         } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
       }
