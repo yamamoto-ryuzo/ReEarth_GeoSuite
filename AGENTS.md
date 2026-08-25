@@ -8,7 +8,8 @@
 ## ビルド
 - `npx tsc -p geo_suite/tsconfig.json` で `geo_suite/build/` にコンパイルされます。
 - `npm run build` は bash スクリプトのため Windows PowerShell ではそのまま実行できません。
-- 本番では Vercel 上で `npm run build` が実行されるため、Windows ではローカル確認用に `npx tsc` まで実行するのが基本です。
+- 本番では Vercel 上で `npm run build` が実行されるため、ローカルでは `npx tsc` や `npm run build` を実行しないでください。最終的なビルドは Vercel に任せます。
+- 万が一ビルドを実行した場合、必ず `geo_suite/build/` や `vercel/output/` などの不要な成果物を削除してからコミットしてください。
 
 ## デプロイ
 - 本サイトは **Vercel** でデプロイされます。

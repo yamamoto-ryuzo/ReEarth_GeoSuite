@@ -2748,7 +2748,7 @@ function getUI() {
             const dataAttrs = flyable ? 'data-lat="' + row.lat + '" data-lng="' + row.lng + '"' : '';
             const style = flyable ? 'style="cursor:pointer;"' : '';
             return '<tr class="vector-attr-widget-row" ' + dataAttrs + ' ' + style + ' title="' + (flyable ? 'クリックで移動' : '') + '">' +
-              row.values.map(function(val) { return '<td class="vector-attr-widget-cell" title="' + escapeHtml(val) + '">' + escapeHtml(val) + '</td>'; }).join('') +
+              row.values.map(function(val) { var displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val); var escapedVal = escapeHtml(displayVal); if (escapedVal.indexOf('http://') === 0 || escapedVal.indexOf('https://') === 0) { return '<td class="vector-attr-widget-cell" title="' + escapedVal + '"><a href="' + displayVal + '" target="_top" rel="noopener noreferrer" class="attr-url-link" style="color:#0066cc; text-decoration:underline; word-break:break-all;">' + escapedVal + '</a>&nbsp;<span class="attr-url-open" data-url="' + displayVal + '" title="新しいタブで開く(Sandbox回避)" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;">&#x2197;</span></td>'; } return '<td class="vector-attr-widget-cell" title="' + escapedVal + '">' + escapedVal + '</td>'; }).join('') +
               '</tr>';
           }).join('');
           const suffix = (matched.length > displayRows.length) ? ' （表示上限 ' + displayRows.length + ' 件）' : '';
@@ -2812,6 +2812,10 @@ function getUI() {
       if (vectorAttrWidgetList) {
         vectorAttrWidgetList.addEventListener('click', function(ev) {
           try {
+            const urlA = ev.target.closest('a.attr-url-link');
+            if (urlA) { try { ev.preventDefault(); ev.stopPropagation(); if (window.openUrlInAttrPanel) window.openUrlInAttrPanel(ev, urlA.getAttribute('href')); } catch(e2) {} return; }
+            const openSpan = ev.target.closest('span.attr-url-open');
+            if (openSpan) { try { ev.stopPropagation(); if (window.parent) window.parent.postMessage({ action: 'openUrl', url: openSpan.getAttribute('data-url') }, '*'); } catch(e2) {} return; }
             const tr = ev.target.closest('tr');
             if (!tr) return;
             const lat = Number(tr.getAttribute('data-lat'));
