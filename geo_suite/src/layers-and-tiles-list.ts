@@ -1933,8 +1933,23 @@ function getUI() {
                     if (msg.heading != null) sp.set('heading', String(msg.heading));
                     if (msg.pitch != null) sp.set('pitch', String(msg.pitch));
                     if (msg.layers) sp.set('layers', String(msg.layers));
-                    
-                    const urlStr = '?' + sp.toString();
+
+                    const resolveBase = () => {
+                        let href = msg.baseUrl || '';
+                        if (!href) {
+                            try { if (window.parent !== window) href = window.parent.location.href; } catch(e){}
+                        }
+                        if (!href && document.referrer) href = document.referrer;
+                        if (!href) {
+                            try { href = window.location.href; } catch(e){}
+                        }
+                        if (!href) return '';
+                        const b = href.split(/[?#]/)[0];
+                        return /^https?:\/\//i.test(b) ? b : '';
+                    };
+                    const base = resolveBase();
+                    const query = sp.toString();
+                    const urlStr = (base ? base + '?' : '?') + query;
                     output.value = urlStr;
                     // After writing output, call shared copy helper to ensure same behavior as Copy button
                     try { copyPermalinkToClipboard(urlStr, document.getElementById('generate-permalink-btn')); } catch(e) {}
@@ -3792,6 +3807,7 @@ reearth.extension.on("message", (msg) => {
             
             const payload = {
                 action: 'permalinkGenerated',
+                baseUrl: _baseUrl || null,
                 queryOnly: true // Generate only the query string (reearth.viewer.viewport.query handles ? params)
             };
 
