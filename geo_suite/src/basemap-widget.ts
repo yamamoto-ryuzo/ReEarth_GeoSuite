@@ -384,13 +384,7 @@ try {
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-    reearth.ui.show(html, { extended: true });
-  }
-} catch (e) {}
-
-try {
-  if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-    reearth.ui.resize(300, undefined, false);
+    reearth.ui.show(html, { width: 300, visible: true });
   }
 } catch (e) {}
 
