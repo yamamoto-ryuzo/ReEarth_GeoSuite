@@ -246,11 +246,14 @@ function applyBaseList(items: any[]): void {
 const html: string = `
   <style>
     html, body { margin: 0; padding: 0; width: 300px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .basemap-wrap { background-color: rgba(255, 255, 255, 0.3); padding: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 291px; margin-left: 9px; box-sizing: border-box; }
-    .basemap-select { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; box-sizing: border-box; }
-    .basemap-attribution { font-size: 0.7em; color: #333; margin-top: 4px; min-height: 1.2em; overflow-wrap: break-word; word-break: break-word; }
+    .basemap-wrap { background-color: rgba(255, 255, 255, 0.3); padding: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 291px; margin-left: 9px; box-sizing: border-box; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .basemap-select { flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; box-sizing: border-box; }
+    .basemap-globe { flex: 0 0 auto; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 1.1em; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; user-select: none; }
+    .basemap-globe:hover { background: #f0f4fb; }
+    .basemap-attribution { font-size: 0.7em; color: #333; margin-top: 4px; min-height: 1.2em; overflow-wrap: break-word; word-break: break-word; flex-basis: 100%; }
   </style>
   <div class="basemap-wrap">
+    <div id="basemap-globe" class="basemap-globe" title="Google Earth で現在の表示を開く" role="button" aria-label="Google Earth で現在の表示を開く">🌐</div>
     <select id="basemap-select" class="basemap-select">
       <option value="">(なし)</option>
     </select>
@@ -260,6 +263,7 @@ const html: string = `
     (function(){
       const select = document.getElementById('basemap-select');
       const attrEl = document.getElementById('basemap-attribution');
+      const globeBtn = document.getElementById('basemap-globe');
 
       function updateAttribution() {
         try {
@@ -304,6 +308,14 @@ const html: string = `
         });
       }
 
+      if (globeBtn) {
+        globeBtn.addEventListener('click', function() {
+          if (window.parent) {
+            window.parent.postMessage({ action: 'openGoogleEarth' }, '*');
+          }
+        });
+      }
+
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data;
@@ -318,6 +330,33 @@ const html: string = `
     })();
   </script>
 `;
+
+function openGoogleEarthInNewWindow(): void {
+  try {
+    const pos = (reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+    if (!pos || typeof pos.lat !== 'number' || typeof pos.lng !== 'number') {
+      sendLog('[openGoogleEarth] no camera position');
+      return;
+    }
+    const lat = pos.lat;
+    const lng = pos.lng;
+    const height = (typeof pos.height === 'number' && !isNaN(pos.height)) ? pos.height : 1000;
+    const headingRad = (typeof pos.heading === 'number' && !isNaN(pos.heading)) ? pos.heading : 0;
+    const pitchRad = (typeof pos.pitch === 'number' && !isNaN(pos.pitch)) ? pos.pitch : -Math.PI / 2;
+    const headingDeg = ((headingRad * 180 / Math.PI) % 360 + 360) % 360;
+    let tiltDeg = (pitchRad + Math.PI / 2) * 180 / Math.PI;
+    if (tiltDeg < 0) tiltDeg = 0;
+    if (tiltDeg > 90) tiltDeg = 90;
+    const url = `https://earth.google.com/web/@${lat.toFixed(6)},${lng.toFixed(6)},0a,${Math.max(0, height).toFixed(2)}d,35y,${headingDeg.toFixed(1)}h,${tiltDeg.toFixed(1)}t,0r`;
+    if (reearth && reearth.viewer && typeof reearth.viewer.open === 'function') {
+      reearth.viewer.open(url);
+    } else {
+      sendLog('[openGoogleEarth] reearth.viewer.open is not available');
+    }
+  } catch (e) {
+    sendError('[openGoogleEarth] error:', e);
+  }
+}
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.extension && typeof reearth.extension.on === 'function') {
@@ -336,6 +375,8 @@ try {
               sendBasemapsToUI();
             }
           } catch (e) { sendError('[selectBasemap] error:', e); }
+        } else if (msg.action === 'openGoogleEarth') {
+          try { openGoogleEarthInNewWindow(); } catch (e) { sendError('[openGoogleEarth] error:', e); }
         }
       } catch (e) {}
     });
