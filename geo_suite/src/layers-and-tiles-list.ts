@@ -271,49 +271,8 @@ function getUI() {
 
   const combinedLayerItems = renderNode(buildTree(presetLayers.concat(userLayers)));
 
-  // Basemap dropdown (show parsed base: entries if present)
-  let basemapSelectHtml = '';
-  try {
-    if (_parsedBaseTiles && _parsedBaseTiles.length) {
-      // determine currently active basemap url (visible layer flagged as basemap)
-      const layersAll = (reearth.layers && reearth.layers.layers) || [];
-      // Prefer last-added basemap URL (reliable), otherwise fall back to visible basemap layer
-      let currentBasemapUrl = _lastAddedBasemapUrl || '';
-      if (!currentBasemapUrl) {
-        for (let i = 0; i < layersAll.length; i++) {
-          const l = layersAll[i];
-          if (l && l.data && l.data.isBasemap && l.visible) { currentBasemapUrl = l.data.url || ''; break; }
-        }
-      }
-
-      // Build a deduplicated list of base entries using the same encoding used when creating layers
-      const seen = new Set();
-      const uniq = [];
-      _parsedBaseTiles.forEach(b => {
-        try {
-          const encoded = encodeNonAscii((b && b.url) ? b.url : '');
-          if (!encoded) return;
-          if (seen.has(encoded)) return;
-          seen.add(encoded);
-          uniq.push({ url: b.url, encodedUrl: encoded, title: b.title, attribution: b.attribution });
-        } catch (e) {}
-      });
-
-      basemapSelectHtml = `<div style="margin-bottom:8px;">
-        <select id="basemap-select" style="width:100%;border:1px solid #ccc;border-radius:4px;padding:6px;background:#fff;">
-          <option value="">(None)</option>
-          ${uniq.map(b => {
-            const titleAttr = (b.title||'').replace(/"/g,'&quot;');
-            const attributionAttr = encodeURIComponent(b.attribution||'');
-            const display = (b.title||b.url);
-              const selected = urlsEqual(b.encodedUrl, currentBasemapUrl) || urlsEqual(decodeURIComponent(currentBasemapUrl || ''), b.url || '') ? 'selected' : '';
-            return `<option value="${b.encodedUrl}" data-title="${titleAttr}" data-attribution="${attributionAttr}" ${selected}>${display}</option>`;
-          }).join('')}
-        </select>
-        <div id="basemap-attribution" style="font-size:0.7em;color:#000000;margin-top:2px;min-height:1em;padding-left:2px;overflow-wrap:break-word;"></div>
-      </div>`;
-    }
-  } catch(e) { basemapSelectHtml = ''; }
+  // Basemap selection is now provided by the dedicated basemap widget
+  const basemapSelectHtml = '';
 
   // Generate camera preset buttons
   const camButtons = _cameraPresets.map((cam, i) => `
@@ -1820,51 +1779,6 @@ function getUI() {
       }
 
       // Camera Refresh button: request current camera from extension
-            // Basemap select handler: forward selection to extension
-            try {
-              const basel = document.getElementById('basemap-select');
-              
-              // Helper to update attribution display
-              const updateAttr = () => {
-                const sel = document.getElementById('basemap-select');
-                const attrEl = document.getElementById('basemap-attribution');
-                if (sel && attrEl) {
-                  const opt = sel.options[sel.selectedIndex];
-                  let attr = (opt && opt.dataset.attribution) ? opt.dataset.attribution : '';
-                  try { attr = decodeURIComponent(attr); } catch(e){}
-                  
-                  // Ensure we have a string
-                  if (!attr) attr = '';
-
-                  // Remove any HTML tags to disable links (requested behavior)
-                  // This keeps the text content (e.g. "OpenStreetMap contributors") but removes the clickable link.
-                  const tempDiv = document.createElement('div');
-                  tempDiv.innerHTML = attr;
-                  attr = tempDiv.textContent || tempDiv.innerText || '';
-
-                  attrEl.innerHTML = attr;
-                  attrEl.style.pointerEvents = 'none'; // Ensure no interaction even if something remains
-                }
-              };
-
-              if (basel) {
-                // Initialize attribution on load
-                updateAttr();
-
-                basel.addEventListener('change', function() {
-                  const sel = this;
-                  const url = sel.value || null;
-                  const title = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.title : null;
-                  
-                  updateAttr();
-                  
-                  parent.postMessage({ action: 'setBasemap', url: url, title: title }, '*');
-                  
-                  // Trigger layer refresh/reset when basemap changes
-                  try { refreshUserLayers(); } catch(e){}
-                });
-              }
-            } catch(e) {}
       const refreshBtn = document.getElementById('cam-refresh');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
@@ -3703,55 +3617,6 @@ reearth.extension.on("message", (msg) => {
       } catch (e) {
         try { sendError('[openUrl] failed', e); } catch(_) {}
       }
-    } else if (msg.action === 'setBasemap') {
-      try {
-        const url = msg.url || null;
-        const title = msg.title || null;
-        // Hide all existing basemap layers
-        try {
-          const layersAll = (reearth.layers && reearth.layers.layers) || [];
-          for (let i = 0; i < layersAll.length; i++) {
-            const l = layersAll[i];
-            try {
-              if (l && l.data && l.data.isBasemap && l.id) {
-                if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
-                else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: false });
-              }
-            } catch(e) {}
-          }
-        } catch(e) {}
-
-        if (!url) {
-          // none selected
-          try { _lastAddedBasemapUrl = null; } catch(e){}
-          try { reearth.ui.postMessage({ action: 'basemapChanged', url: null }); } catch(e){}
-          return;
-        }
-
-        // Try to find existing basemap layer with same URL
-        const existing = (reearth.layers && reearth.layers.layers) || [];
-        let found = null;
-        for (let i = 0; i < existing.length; i++) {
-          const l = existing[i];
-          try {
-            if (l && l.data && l.data.isBasemap && l.data.url && urlsEqual(l.data.url, url)) { found = l; break; }
-          } catch(e){}
-        }
-        if (found) {
-          try {
-            if (typeof reearth.layers.show === 'function') reearth.layers.show(found.id);
-            else if (typeof reearth.layers.override === 'function') reearth.layers.override(found.id, { visible: true });
-            try { _lastAddedBasemapUrl = found.data && found.data.url ? found.data.url : _lastAddedBasemapUrl; } catch(e){}
-          } catch(e){}
-        } else {
-          // add new basemap layer
-          try { addXyzLayer(url, title || null, 'tiles', true); } catch(e){}
-        }
-        try { _lastAddedBasemapUrl = encodeNonAscii(url); } catch(e){}
-        try { reearth.ui.postMessage({ action: 'basemapChanged', url: url }); } catch(e){}
-      } catch(e) {
-        try { sendError('[setBasemap] error:', e); } catch(_){ }
-      }
     } else if (msg.action === "flyToCamera") {
       try {
         const idx = msg.camIndex;
@@ -4074,7 +3939,7 @@ function defaultMaxLevelForUrl(url) {
   return null;
 }
 
-function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null) {
+function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null, attribution = null) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
   let titleToUse = title;
@@ -4125,6 +3990,7 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
     try { sendLog('[addXyzLayer] marking as basemap'); } catch(e){}
     if (!layer.data) layer.data = { type: type, url: encodedUrl };
     layer.data.isBasemap = true;
+    if (attribution) layer.data.attribution = attribution;
     if (layer.tiles) layer.tiles.isBasemap = true;
   }
 
@@ -4557,7 +4423,7 @@ function processInspectorText(text) {
         }
       }
 
-      tiles.push({ url, title, type: 'tiles', isBase: isBase, visible, minLevel: zoom.min, maxLevel: zoom.max });
+      tiles.push({ url, title, type: 'tiles', isBase: isBase, visible, minLevel: zoom.min, maxLevel: zoom.max, attribution });
       if (isBase) _parsedBaseTiles.push({ url, title, attribution, minLevel: zoom.min, maxLevel: zoom.max });
     }
     nonCamLines.push(line);
@@ -4839,7 +4705,7 @@ function addXyzLayersFromArray(items) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
       continue;
     }
-    addXyzLayer(u, t, type, isBase, visible, zoom);
+    addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution);
   }
 }
 

@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "17.0.1"
+version: "17.1.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Terrain/Shadow トグル、Info 表示機能を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -60,3 +60,13 @@ extensions:
         zone: outer
         section: right
         area: top
+  - id: basemap-widget
+    type: widget
+    name: "Basemap Selector"
+    description: "Select a basemap and view attribution"
+    entry: basemap-widget.js
+    widgetLayout:
+      defaultLocation:
+        zone: outer
+        section: left
+        area: bottom
