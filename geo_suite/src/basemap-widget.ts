@@ -384,7 +384,7 @@ try {
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-    reearth.ui.show(html, { width: 300, visible: true });
+    reearth.ui.show(html, { extended: true });
   }
 } catch (e) {}
 
