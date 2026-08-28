@@ -243,7 +243,7 @@ function applyBaseList(items: any[]): void {
   }
 }
 
-export const html: string = `
+const html: string = `
   <style>
     html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     .basemap-wrap { background: rgba(255,255,255,0.85); border-radius: 8px; padding: 8px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 240px; box-sizing: border-box; }
