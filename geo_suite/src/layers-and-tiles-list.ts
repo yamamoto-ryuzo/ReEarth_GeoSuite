@@ -580,6 +580,8 @@ function getUI() {
   /* Make primary background semi-transparent */
   .primary-background {
     background-color: rgba(255, 255, 255, 0.3);
+    padding: 10px;
+    box-sizing: border-box;
   }
 
   /* Info panel expands to use available height */
