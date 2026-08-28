@@ -252,7 +252,7 @@ const html: string = `
   </style>
   <div class="basemap-wrap">
     <select id="basemap-select" class="basemap-select">
-      <option value="">(None)</option>
+      <option value="">(なし)</option>
     </select>
     <div id="basemap-attribution" class="basemap-attribution"></div>
   </div>
@@ -384,7 +384,13 @@ try {
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-    reearth.ui.show(html, { width: 240, visible: true });
+    reearth.ui.show(html, { extended: true });
+  }
+} catch (e) {}
+
+try {
+  if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+    reearth.ui.resize(240, undefined, false);
   }
 } catch (e) {}
 
