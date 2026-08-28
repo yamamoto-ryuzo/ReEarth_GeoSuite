@@ -265,6 +265,16 @@ const html: string = `
       const attrEl = document.getElementById('basemap-attribution');
       const globeBtn = document.getElementById('basemap-globe');
 
+      function postToParent(data) {
+        try {
+          if (window.parent && data) window.parent.postMessage(data, '*');
+        } catch(e) {}
+      }
+
+      function requestBaseListFromUI() {
+        postToParent({ action: 'requestBaseList' });
+      }
+
       function updateAttribution() {
         try {
           const opt = select && select.options[select.selectedIndex];
@@ -308,8 +318,8 @@ const html: string = `
         });
         select.addEventListener('focus', function() {
           // ドロップダウンが空（(なし) だけ）の場合、レイヤーパネルに再読み込みを依頼
-          if (select.options.length <= 1 && window.parent) {
-            window.parent.postMessage({ action: 'requestBaseList' }, '*');
+          if (select.options.length <= 1) {
+            requestBaseListFromUI();
           }
         });
       }
@@ -332,7 +342,21 @@ const html: string = `
         } catch(e) {}
       });
 
-      if (window.parent) window.parent.postMessage({ action: 'requestBasemaps' }, '*');
+      requestBaseListFromUI();
+      try {
+        if (typeof setTimeout === 'function') {
+          setTimeout(function() {
+            if (select && select.options.length <= 1) {
+              requestBaseListFromUI();
+            }
+          }, 3000);
+          setTimeout(function() {
+            if (select && select.options.length <= 1) {
+              requestBaseListFromUI();
+            }
+          }, 10000);
+        }
+      } catch(e) {}
     })();
   </script>
 `;
@@ -437,10 +461,4 @@ try {
   }
 } catch (e) {}
 
-try {
-  requestBaseList();
-  if (typeof setTimeout === 'function') {
-    setTimeout(() => { if (!_parsedBaseTiles.length) requestBaseList(); }, 3000);
-    setTimeout(() => { if (!_parsedBaseTiles.length) requestBaseList(); }, 10000);
-  }
-} catch (e) {}
+
