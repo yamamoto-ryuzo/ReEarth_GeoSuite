@@ -147,7 +147,7 @@ function sendBasemapsToUI(): void {
 }
 
 function showBasemapByUrl(url: string | null): void {
-  if (!url) return;
+  if (url === null || url === undefined) return;
   _lastSelectedBasemapUrl = url;
   try {
     const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
@@ -159,7 +159,7 @@ function showBasemapByUrl(url: string | null): void {
     });
     arr.forEach((l: any) => {
       if (!l || !l.data || !l.data.isBasemap || !l.id) return;
-      const isMatch = (l.id === targetId);
+      const isMatch = (url !== '' && l.id === targetId);
       try {
         if (isMatch) {
           if (typeof reearth.layers.show === 'function') reearth.layers.show(l.id);
@@ -247,7 +247,7 @@ const html: string = `
   <style>
     html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     .basemap-wrap { background-color: rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 240px; box-sizing: border-box; }
-    .basemap-select { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; }
+    .basemap-select { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; box-sizing: border-box; }
     .basemap-attribution { font-size: 0.7em; color: #333; margin-top: 4px; min-height: 1.2em; overflow-wrap: break-word; word-break: break-word; }
   </style>
   <div class="basemap-wrap">
@@ -276,21 +276,21 @@ const html: string = `
       function renderOptions(items, selectedUrl) {
         if (!select) return;
         select.innerHTML = '';
-        if (!items || items.length === 0) {
-          const opt = document.createElement('option');
-          opt.value = ''; opt.textContent = '(No basemaps)';
-          select.appendChild(opt);
-        } else {
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '';
+        noneOpt.textContent = '(なし)';
+        select.appendChild(noneOpt);
+        if (items && items.length > 0) {
           items.forEach(function(b) {
             const opt = document.createElement('option');
             opt.value = b.url || '';
             opt.textContent = b.title || b.url || '';
             opt.setAttribute('data-attribution', encodeURIComponent(b.attribution || ''));
-            if (selectedUrl && b.url && String(selectedUrl) === String(b.url)) {
-              opt.selected = true;
-            }
             select.appendChild(opt);
           });
+        }
+        if (select) {
+          select.value = (selectedUrl !== undefined && selectedUrl !== null) ? String(selectedUrl) : '';
         }
         updateAttribution();
       }
@@ -298,9 +298,8 @@ const html: string = `
       if (select) {
         select.addEventListener('change', function() {
           updateAttribution();
-          const url = select.value;
-          if (url && window.parent) {
-            window.parent.postMessage({ action: 'selectBasemap', url: url }, '*');
+          if (window.parent) {
+            window.parent.postMessage({ action: 'selectBasemap', url: select.value }, '*');
           }
         });
       }
@@ -329,7 +328,7 @@ try {
           sendBasemapsToUI();
         } else if (msg.action === 'selectBasemap') {
           try {
-            showBasemapByUrl(msg.url || null);
+            showBasemapByUrl(typeof msg.url === 'string' ? msg.url : null);
             // Re-sync UI after a short delay
             if (typeof setTimeout === 'function') {
               setTimeout(() => { sendBasemapsToUI(); }, 150);
@@ -385,13 +384,7 @@ try {
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
-    reearth.ui.show(html, { extended: true });
-  }
-} catch (e) {}
-
-try {
-  if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-    reearth.ui.resize(240, undefined, false);
+    reearth.ui.show(html, { width: 240, visible: true });
   }
 } catch (e) {}
 
