@@ -14,7 +14,6 @@ export const html: string = `
     .cap{position:absolute;left:50%;top:34px;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:linear-gradient(#fff,#f0f4fb);box-shadow:0 2px 4px rgba(2,8,23,0.25)}
     .gloss{position:absolute;inset:0;border-radius:50%;pointer-events:none;background:radial-gradient(60% 40% at 30% 25%, rgba(255,255,255,0.5), rgba(255,255,255,0.06) 40%, transparent 60%)}
     /* status removed */
-    button#syncBtn{margin-top:8px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer}
   </style>
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px 6px 6px;width:80px;box-sizing:border-box;margin:0 auto;">
     <div style="position:relative;display:flex;align-items:center;justify-content:center">
@@ -28,7 +27,6 @@ export const html: string = `
         <div id="nlabel" class="nlabel">N</div>
       </div>
     </div>
-    <button id="syncBtn">Sync</button>
     <button id="topDownBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">2D</button>
     
     <button id="rotateRightBtn" style="margin-top:6px;font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(rgba(255,255,255,0.5), rgba(245,247,251,0.5));cursor:pointer">↻</button>
@@ -87,7 +85,6 @@ export const html: string = `
           function minimizeUI(){
             try{
               var wrap = document.getElementById('needleWrap'); if(wrap) wrap.style.display = 'none';
-              var syncBtn = document.getElementById('syncBtn'); if(syncBtn) syncBtn.style.display = 'none';
               comp.style.width = '28px'; comp.style.height = '28px';
               var n = document.getElementById('nlabel'); if(n){ n.style.fontSize = '16px'; n.style.top = '50%'; }
             }catch(e){}
@@ -95,7 +92,6 @@ export const html: string = `
           function restoreUI(){
             try{
               var wrap = document.getElementById('needleWrap'); if(wrap) wrap.style.display = '';
-              var syncBtn = document.getElementById('syncBtn'); if(syncBtn) syncBtn.style.display = '';
               comp.style.width = '64px'; comp.style.height = '64px';
               var n = document.getElementById('nlabel'); if(n){ n.style.fontSize = '21px'; n.style.top = '25%'; }
             }catch(e){}
@@ -128,20 +124,6 @@ export const html: string = `
           compassEl.appendChild(gloss);
         }
       } catch (e) {}
-
-      // Sync button: request host to send current camera state
-      try{
-        var sync = document.getElementById('syncBtn');
-        if(sync){
-          sync.addEventListener('click', function(){
-            try{
-              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
-                window.parent.postMessage({ action: 'requestCamera' }, '*');
-              }
-            }catch(e){}
-          });
-        }
-      }catch(e){}
 
       // 2D (top-down) button: request host to move camera to straight top-down
       try{
@@ -326,15 +308,6 @@ export const onMessage = (msg: any): void => {
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
       try { postToUI({ type: 'cameraUpdate', payload: { heading: target.heading } }); } catch (e) {}
     } catch (e) {}
-  }
-  if (msg.action === 'requestCamera') {
-    try{
-      const cur2 = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
-      const h = cur2 && typeof cur2.heading === 'number' ? cur2.heading : undefined;
-      postToUI({ type: 'cameraUpdate', payload: { heading: h } });
-
-      
-    }catch(e){}
   }
   if (msg.action === 'topDown') {
     try {
