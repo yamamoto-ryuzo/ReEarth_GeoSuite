@@ -440,7 +440,7 @@ try {
 try {
   requestBaseList();
   if (typeof setTimeout === 'function') {
-    setTimeout(() => { requestBaseList(); }, 500);
-    setTimeout(() => { requestBaseList(); }, 1500);
+    setTimeout(() => { if (!_parsedBaseTiles.length) requestBaseList(); }, 3000);
+    setTimeout(() => { if (!_parsedBaseTiles.length) requestBaseList(); }, 10000);
   }
 } catch (e) {}
