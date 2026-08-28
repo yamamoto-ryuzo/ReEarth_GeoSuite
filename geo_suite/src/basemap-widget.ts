@@ -202,7 +202,7 @@ function addBasemapLayer(url: string, title: string, attribution: string, minLev
     const layer: any = {
       type: 'simple',
       title: title || `Basemap: ${url}`,
-      visible: false,
+      visible: true,
       data: { type: 'tiles', url: encodedUrl, isBasemap: true, attribution: attribution || '' },
       tiles: { isBasemap: true }
     };
