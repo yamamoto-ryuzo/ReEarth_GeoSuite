@@ -245,8 +245,8 @@ function applyBaseList(items: any[]): void {
 
 const html: string = `
   <style>
-    html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .basemap-wrap { background-color: rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 300px; box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 300px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .basemap-wrap { background-color: rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 100%; box-sizing: border-box; }
     .basemap-select { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; box-sizing: border-box; }
     .basemap-attribution { font-size: 0.7em; color: #333; margin-top: 4px; min-height: 1.2em; overflow-wrap: break-word; word-break: break-word; }
   </style>
