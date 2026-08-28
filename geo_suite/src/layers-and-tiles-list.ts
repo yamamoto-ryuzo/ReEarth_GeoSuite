@@ -745,7 +745,7 @@ function getUI() {
 
 </style>
 
-<div class="primary-background p-16 rounded-sm">
+<div class="primary-background rounded-sm">
     <div class="tab-bar" role="tablist">
     <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
     <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
