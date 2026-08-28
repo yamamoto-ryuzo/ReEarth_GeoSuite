@@ -389,6 +389,12 @@ try {
 } catch (e) {}
 
 try {
+  if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
+    reearth.ui.resize(300, undefined, false);
+  }
+} catch (e) {}
+
+try {
   requestBaseList();
   if (typeof setTimeout === 'function') {
     setTimeout(() => { requestBaseList(); }, 500);
