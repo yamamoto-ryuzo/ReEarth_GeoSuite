@@ -306,6 +306,12 @@ const html: string = `
             window.parent.postMessage({ action: 'selectBasemap', url: select.value }, '*');
           }
         });
+        select.addEventListener('focus', function() {
+          // ドロップダウンが空（(なし) だけ）の場合、レイヤーパネルに再読み込みを依頼
+          if (select.options.length <= 1 && window.parent) {
+            window.parent.postMessage({ action: 'requestBaseList' }, '*');
+          }
+        });
       }
 
       if (globeBtn) {
@@ -393,6 +399,8 @@ try {
           } catch (e) { sendError('[selectBasemap] error:', e); }
         } else if (msg.action === 'openGoogleEarth') {
           try { openGoogleEarthInNewWindow(); } catch (e) { sendError('[openGoogleEarth] error:', e); }
+        } else if (msg.action === 'requestBaseList') {
+          try { requestBaseList(); } catch (e) { sendError('[requestBaseList] error:', e); }
         }
       } catch (e) {}
     });
@@ -422,22 +430,6 @@ try {
     });
   }
 } catch (e) {}
-
-// Poll for basemap layer changes so the selector stays in sync
-(function startPolling() {
-  const poll = function() {
-    try { sendBasemapsToUI(); } catch (e) {}
-  };
-  try {
-    if (typeof setInterval === 'function') {
-      setInterval(poll, 1000);
-    } else if (typeof setTimeout === 'function') {
-      (function loop() { poll(); setTimeout(loop, 1000); })();
-    } else {
-      poll();
-    }
-  } catch (e) {}
-})();
 
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {

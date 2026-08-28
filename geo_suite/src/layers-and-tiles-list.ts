@@ -3934,10 +3934,24 @@ try {
     reearth.extension.on('extensionMessage', (msg) => {
       try {
         const data = (msg && msg.data !== undefined) ? msg.data : msg;
-        if (data && data.action === 'requestBaseList' && _parsedBaseTiles && _parsedBaseTiles.length) {
+        if (data && data.action === 'requestBaseList') {
           const targetId = msg.sender || null;
           if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
-            reearth.extension.postMessage(targetId, { action: 'baseList', items: _parsedBaseTiles });
+            // If _parsedBaseTiles is empty, re-parse only base: lines from the inspector text
+            // before responding so the basemap selector can recover from load order races.
+            let baseEntries = _parsedBaseTiles || [];
+            if (!baseEntries.length) {
+              try {
+                const fresh = extractBaseTilesFromText(getInspectorTextForBaseParse());
+                if (fresh && fresh.length) {
+                  _parsedBaseTiles = fresh;
+                  baseEntries = fresh;
+                }
+              } catch (e) { sendError('[requestBaseList] re-parse failed:', e); }
+            }
+            if (baseEntries && baseEntries.length) {
+              reearth.extension.postMessage(targetId, { action: 'baseList', items: baseEntries });
+            }
           }
         }
       } catch (e) {}
@@ -4142,6 +4156,70 @@ function postBaseListToBasemapWidget(baseEntries) {
       reearth.extension.postMessage(_basemapWidgetId, { action: 'baseList', items: baseEntries });
     }
   } catch (e) {}
+}
+
+// Parse only base: lines from text, without side effects, for dynamic re-requests.
+function extractBaseTilesFromText(text) {
+  if (!text || typeof text !== 'string') return [];
+  const baseEntries = [];
+  try {
+    const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
+    lines.forEach(line => {
+      const lowerLine = line.toLowerCase();
+      if (!lowerLine.startsWith('base:')) return;
+      const tileStr = line.substring(5).trim();
+      let url = null;
+      let title = null;
+      let attribution = null;
+      let visible = true;
+      let zoom = { min: null, max: null };
+      if (tileStr.indexOf('|') !== -1) {
+        const parts = tileStr.split('|').map(p => p.trim());
+        for (let i = 0; i < parts.length; i++) {
+          const p = parts[i].toLowerCase();
+          if (p === 'off') { visible = false; parts.splice(i, 1); i--; }
+          else if (p === 'on') { visible = true; parts.splice(i, 1); i--; }
+        }
+        for (let i = 0; i < parts.length; i++) {
+          const p = parts[i];
+          let m = p.match(/^(min|max)(?:level)?\s*=\s*(\d{1,2})$/i);
+          if (m) {
+            if (m[1].toLowerCase() === 'min') zoom.min = parseInt(m[2], 10);
+            else zoom.max = parseInt(m[2], 10);
+            parts.splice(i, 1); i--;
+            continue;
+          }
+          m = p.match(/^z(?:oom)?\s*=\s*(?:(\d{1,2})\s*-\s*)?(\d{1,2})$/i);
+          if (m) {
+            if (m[1] !== undefined) zoom.min = parseInt(m[1], 10);
+            zoom.max = parseInt(m[2], 10);
+            parts.splice(i, 1); i--;
+          }
+        }
+        if (parts.length >= 3) {
+          if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; attribution = parts[2]; }
+          else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; attribution = parts[2]; }
+        } else {
+          if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
+          else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        }
+      } else {
+        if (tileStr.startsWith('http')) url = tileStr;
+      }
+      if (url) {
+        baseEntries.push({ url, title, attribution, visible, minLevel: zoom.min, maxLevel: zoom.max });
+      }
+    });
+  } catch (e) { sendError('[extractBaseTilesFromText] error:', e); }
+  return baseEntries;
+}
+
+function getInspectorTextForBaseParse() {
+  try {
+    const prop = (reearth && reearth.extension && reearth.extension.widget && reearth.extension.widget.property) || (reearth && reearth.extension && reearth.extension.block && reearth.extension.block.property) || {};
+    const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+    return (typeof text === 'string') ? text : _defaultInspectorText;
+  } catch (e) { return _defaultInspectorText; }
 }
 
 // Parse and apply settings from text
