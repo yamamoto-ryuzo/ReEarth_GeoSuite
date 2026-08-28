@@ -3927,6 +3927,22 @@ function tryInitFromProperty() {
   }
 }
 
+try {
+  if (reearth && reearth.extension && typeof reearth.extension.on === 'function') {
+    reearth.extension.on('extensionMessage', (msg) => {
+      try {
+        const data = (msg && msg.data !== undefined) ? msg.data : msg;
+        if (data && data.action === 'requestBaseList' && _parsedBaseTiles && _parsedBaseTiles.length) {
+          const targetId = msg.sender || null;
+          if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+            reearth.extension.postMessage(targetId, { action: 'baseList', items: _parsedBaseTiles });
+          }
+        }
+      } catch (e) {}
+    });
+  }
+} catch (e) {}
+
 // Known maximum zoom levels for well-known tile providers.
 // Without maximumLevel, Cesium keeps requesting tiles beyond the provider's
 // max zoom and floods the console with "Failed to obtain image tile" errors.
@@ -4103,6 +4119,27 @@ function rebuildInspectorText() {
   } catch(e) {
     try { sendError('[rebuildInspectorText] error:', e); } catch(_){}
   }
+}
+
+function findBasemapWidgetId() {
+  try {
+    const list = (reearth && reearth.extension && reearth.extension.list) || [];
+    const target = list.find((ex) => ex && ex.extensionId === 'basemap-widget');
+    return target ? target.id : null;
+  } catch (e) { return null; }
+}
+
+let _basemapWidgetId = null;
+
+function postBaseListToBasemapWidget(baseEntries) {
+  if (!baseEntries || !baseEntries.length) return;
+  try {
+    _basemapWidgetId = findBasemapWidgetId();
+    if (!_basemapWidgetId) return;
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(_basemapWidgetId, { action: 'baseList', items: baseEntries });
+    }
+  } catch (e) {}
 }
 
 // Parse and apply settings from text
@@ -4438,35 +4475,10 @@ function processInspectorText(text) {
   if (tiles.length > 0) {
     try { sendLog('[processInspectorText] applying tiles:', tiles.length); } catch(e){}
     addXyzLayersFromArray(tiles);
-    // If no basemap has been selected via other means (permalink / UI),
-    // prefer the first declared `base:` entry in inspector text as initial selection.
-    try {
-      if ((!_lastAddedBasemapUrl || _lastAddedBasemapUrl === '') && _parsedBaseTiles && _parsedBaseTiles.length) {
-        try { _lastAddedBasemapUrl = encodeNonAscii(_parsedBaseTiles[0].url); } catch(e) {}
-      }
-    } catch(e) {}
-    // If we chose an initial basemap URL, ensure only that basemap is visible
-    try {
-      if (_lastAddedBasemapUrl) {
-        const layersAll = (reearth.layers && reearth.layers.layers) || [];
-        for (let i = 0; i < layersAll.length; i++) {
-          const l = layersAll[i];
-          try {
-            if (l && l.data && l.data.isBasemap && l.id) {
-              if (urlsEqual(l.data.url, _lastAddedBasemapUrl)) {
-                if (typeof reearth.layers.show === 'function') reearth.layers.show(l.id);
-                else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: true });
-              } else {
-                if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
-                else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: false });
-              }
-            }
-          } catch(e) {}
-        }
-        try { safeShowUI('processInspectorText: initial basemap apply'); } catch(e) {}
-      }
-    } catch(e) {}
   }
+
+  // Notify the basemap widget about available base entries
+  try { postBaseListToBasemapWidget(_parsedBaseTiles); } catch(e) {}
 
   try { applySystemLayerSettings(); } catch(e) {}
 
@@ -4695,6 +4707,7 @@ function addXyzLayersFromArray(items) {
     const t = (it.title || it.inspectorTitle || null);
     const type = it.type || "tiles";
     const isBase = !!it.isBase;
+    if (isBase) continue; // basemap layers are handled by the basemap widget
     const visible = (it.visible !== undefined) ? it.visible : true;
     const zoom = { min: it.minLevel ?? null, max: it.maxLevel ?? null };
     if (!u) continue;

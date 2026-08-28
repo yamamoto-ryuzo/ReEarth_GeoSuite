@@ -67,6 +67,31 @@ function normalizeLayers(raw: any): any[] {
   return [];
 }
 
+function findLayerPanelWidgetId(): string | null {
+  try {
+    const list = (reearth && reearth.extension && reearth.extension.list) || [];
+    const target = list.find((ex: any) => ex && ex.extensionId === 'layers-and-tiles-list');
+    return target ? target.id : null;
+  } catch (e) { return null; }
+}
+
+function postToLayerPanel(msg: any): void {
+  const targetId = _layerPanelId || findLayerPanelWidgetId();
+  if (!targetId) return;
+  try {
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(targetId, msg);
+    }
+  } catch (e) {}
+}
+
+function requestBaseList(): void {
+  try {
+    _layerPanelId = findLayerPanelWidgetId();
+    if (_layerPanelId) postToLayerPanel({ action: 'requestBaseList' });
+  } catch (e) {}
+}
+
 interface BasemapInfo {
   id: string;
   url: string;
@@ -76,6 +101,9 @@ interface BasemapInfo {
 }
 
 let _lastBasemapsHash = '';
+let _parsedBaseTiles: any[] = [];
+let _lastSelectedBasemapUrl = '';
+let _layerPanelId: string | null = null;
 
 function getBasemapLayers(): BasemapInfo[] {
   const result: BasemapInfo[] = [];
@@ -100,13 +128,19 @@ function getBasemapLayers(): BasemapInfo[] {
 
 function sendBasemapsToUI(): void {
   try {
-    const basemaps = getBasemapLayers();
-    const hash = JSON.stringify(basemaps);
+    const basemapLayers = getBasemapLayers();
+    const items = _parsedBaseTiles.map((b: any) => ({
+      url: b.encodedUrl || encodeNonAscii(b.url),
+      title: b.title,
+      attribution: b.attribution
+    }));
+    const hash = JSON.stringify(items) + JSON.stringify(basemapLayers.map((b) => b.visible));
     if (hash === _lastBasemapsHash) return;
     _lastBasemapsHash = hash;
-    const visible = basemaps.find((b) => b.visible);
-    const selectedUrl = visible ? visible.url : (basemaps[0] ? basemaps[0].url : '');
-    postToUI({ action: 'basemaps', items: basemaps, selectedUrl: selectedUrl });
+    const visible = basemapLayers.find((b) => b.visible);
+    let selectedUrl = visible ? visible.url : _lastSelectedBasemapUrl;
+    if (!selectedUrl && items[0]) selectedUrl = items[0].url;
+    postToUI({ action: 'basemaps', items: items, selectedUrl: selectedUrl });
   } catch (e) {
     sendError('[sendBasemapsToUI] error:', e);
   }
@@ -114,6 +148,7 @@ function sendBasemapsToUI(): void {
 
 function showBasemapByUrl(url: string | null): void {
   if (!url) return;
+  _lastSelectedBasemapUrl = url;
   try {
     const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
     const arr = normalizeLayers(all);
@@ -137,6 +172,74 @@ function showBasemapByUrl(url: string | null): void {
     });
   } catch (e) {
     sendError('[showBasemapByUrl] error:', e);
+  }
+}
+
+function defaultMaxLevelForUrl(url: string): number | null {
+  try {
+    if (/cyberjapandata\.gsi\.go\.jp\/xyz\/(gazo[1-4]|ort_old10|ort_riku10)\//.test(url)) return 17;
+    if (/cyberjapandata\.gsi\.go\.jp\/xyz\//.test(url)) return 18;
+    if (/tile\.openstreetmap\.org\//.test(url)) return 19;
+  } catch (e) {}
+  return null;
+}
+
+function addBasemapLayer(url: string, title: string, attribution: string, minLevel?: number | null, maxLevel?: number | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const encodedUrl = encodeNonAscii(url);
+    const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
+    const arr = normalizeLayers(all);
+    const dup = arr.find((l: any) => l && l.data && l.data.isBasemap && urlsEqual(l.data.url, encodedUrl));
+    if (dup) return dup.id || null;
+
+    const raster: any = {};
+    if (typeof minLevel === 'number' && !isNaN(minLevel)) raster.minimumLevel = minLevel;
+    let maxL = (typeof maxLevel === 'number' && !isNaN(maxLevel)) ? maxLevel : null;
+    if (maxL === null) maxL = defaultMaxLevelForUrl(encodedUrl);
+    if (typeof maxL === 'number' && !isNaN(maxL)) raster.maximumLevel = maxL;
+
+    const layer: any = {
+      type: 'simple',
+      title: title || `Basemap: ${url}`,
+      visible: false,
+      data: { type: 'tiles', url: encodedUrl, isBasemap: true, attribution: attribution || '' },
+      tiles: { isBasemap: true }
+    };
+    if (Object.keys(raster).length > 0) layer.raster = raster;
+
+    const newId = reearth.layers.add(layer);
+    return newId || null;
+  } catch (e) {
+    sendError('[addBasemapLayer] error:', e);
+    return null;
+  }
+}
+
+function applyBaseList(items: any[]): void {
+  if (!Array.isArray(items)) return;
+  try {
+    _parsedBaseTiles = items.map((b: any) => {
+      const url = (b && b.url) ? String(b.url) : '';
+      const title = (b && b.title) ? String(b.title) : '';
+      const attribution = (b && b.attribution) ? String(b.attribution) : '';
+      const encodedUrl = encodeNonAscii(url);
+      return { url, encodedUrl, title, attribution, minLevel: (b && typeof b.minLevel === 'number') ? b.minLevel : null, maxLevel: (b && typeof b.maxLevel === 'number') ? b.maxLevel : null };
+    }).filter((b: any) => b.url);
+    if (!_parsedBaseTiles.length) return;
+
+    _parsedBaseTiles.forEach((b: any) => {
+      addBasemapLayer(b.url, b.title, b.attribution, b.minLevel, b.maxLevel);
+    });
+
+    if (!_lastSelectedBasemapUrl && _parsedBaseTiles[0]) {
+      _lastSelectedBasemapUrl = _parsedBaseTiles[0].encodedUrl;
+    }
+    showBasemapByUrl(_lastSelectedBasemapUrl);
+    _lastBasemapsHash = '';
+    sendBasemapsToUI();
+  } catch (e) {
+    sendError('[applyBaseList] error:', e);
   }
 }
 
@@ -240,6 +343,30 @@ try {
   }
 } catch (e) {}
 
+try {
+  if (typeof reearth !== 'undefined' && reearth && reearth.extension && typeof reearth.extension.on === 'function') {
+    reearth.extension.on('extensionMessage', (msg: any) => {
+      try {
+        const data = (msg && msg.data !== undefined) ? msg.data : msg;
+        if (!data || !data.action) return;
+        if (data.action === 'baseList') {
+          applyBaseList(data.items);
+        } else if (data.action === 'requestBaseList') {
+          // If asked by layer panel (unexpected direction), respond with current list
+          _layerPanelId = msg.sender || _layerPanelId;
+          if (_parsedBaseTiles.length) {
+            try {
+              if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function' && _layerPanelId) {
+                reearth.extension.postMessage(_layerPanelId, { action: 'baseList', items: _parsedBaseTiles });
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    });
+  }
+} catch (e) {}
+
 // Poll for basemap layer changes so the selector stays in sync
 (function startPolling() {
   const poll = function() {
@@ -259,5 +386,13 @@ try {
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.ui && typeof reearth.ui.show === 'function') {
     reearth.ui.show(html, { width: 240, height: 80, visible: true, position: 'bottom-left' });
+  }
+} catch (e) {}
+
+try {
+  requestBaseList();
+  if (typeof setTimeout === 'function') {
+    setTimeout(() => { requestBaseList(); }, 500);
+    setTimeout(() => { requestBaseList(); }, 1500);
   }
 } catch (e) {}
