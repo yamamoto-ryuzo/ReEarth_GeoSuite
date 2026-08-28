@@ -338,16 +338,32 @@ function openGoogleEarthInNewWindow(): void {
       sendLog('[openGoogleEarth] no camera position');
       return;
     }
-    const lat = pos.lat;
-    const lng = pos.lng;
-    const height = (typeof pos.height === 'number' && !isNaN(pos.height)) ? pos.height : 1000;
+    const cameraLat = pos.lat;
+    const cameraLng = pos.lng;
+    const height = (typeof pos.height === 'number' && !isNaN(pos.height)) ? Math.max(0, pos.height) : 1000;
     const headingRad = (typeof pos.heading === 'number' && !isNaN(pos.heading)) ? pos.heading : 0;
     const pitchRad = (typeof pos.pitch === 'number' && !isNaN(pos.pitch)) ? pos.pitch : -Math.PI / 2;
+
+    // Convert Cesium/Re:Earth pitch to Google Earth tilt (nadir -PI/2 -> 0, horizon 0 -> 90)
+    const tiltRad = Math.max(0, Math.min(Math.PI / 2, pitchRad + Math.PI / 2));
+    const tiltDeg = tiltRad * 180 / Math.PI;
     const headingDeg = ((headingRad * 180 / Math.PI) % 360 + 360) % 360;
-    let tiltDeg = (pitchRad + Math.PI / 2) * 180 / Math.PI;
-    if (tiltDeg < 0) tiltDeg = 0;
-    if (tiltDeg > 90) tiltDeg = 90;
-    const url = `https://earth.google.com/web/@${lat.toFixed(6)},${lng.toFixed(6)},0a,${Math.max(0, height).toFixed(2)}d,35y,${headingDeg.toFixed(1)}h,${tiltDeg.toFixed(1)}t,0r`;
+
+    // Compute the ground target point that the camera is looking at, using the same
+    // back-calculation logic as KASUGAI Canvas's flyToFeature.
+    const metersPerDegLat = 111320;
+    const metersPerDegLng = 111320 * Math.cos(cameraLat * Math.PI / 180);
+    let targetLat = cameraLat;
+    let targetLng = cameraLng;
+    let distance = height;
+    if (tiltRad > 0.01) {
+      const horizontalDistance = height * Math.tan(tiltRad);
+      targetLat = cameraLat + (horizontalDistance * Math.cos(headingRad)) / metersPerDegLat;
+      targetLng = cameraLng + (horizontalDistance * Math.sin(headingRad)) / (metersPerDegLng || 1);
+      distance = height / Math.cos(tiltRad);
+    }
+
+    const url = `https://earth.google.com/web/@${targetLat.toFixed(6)},${targetLng.toFixed(6)},0a,${distance.toFixed(2)}d,35y,${headingDeg.toFixed(1)}h,${tiltDeg.toFixed(1)}t,0r`;
     if (reearth && reearth.viewer && typeof reearth.viewer.open === 'function') {
       reearth.viewer.open(url);
     } else {
