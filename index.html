@@ -224,7 +224,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v16.0.0</span></h1>
+            <h1>🌍 Re:Earth GeoSuite <span id="app-version" style="font-size:0.4em;vertical-align:middle;opacity:0.8;font-weight:400;">v18.1.0</span></h1>
             <p>統合プラグイン for Re:Earth Visualizer </p>
         </header>
         
@@ -299,6 +299,10 @@
                         <p>Basemap Selector の 🌐 アイコンをクリックすると、現在の視点（位置・高度・方位・傾き）を Google Earth 形式に変換し、新しいウィンドウで同じ角度から開きます。</p>
                     </div>
                     <div class="feature-card">
+                        <h3>🗺️ GeoJSON 3D ドレープ制御</h3>
+                        <p>GeoJSONレイヤーが 3D タイルに張り付くか、地面/Terrain に張り付くかをインスペクター行または Settings タブのトグルで切り替え可能です。</p>
+                    </div>
+                    <div class="feature-card">
                         <h3>⛰️ Terrain/Shadow</h3>
                         <p>地形表示と影表示のON/OFFをワンクリックで切り替え可能です。</p>
                     </div>
@@ -336,7 +340,7 @@ xyz: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png
 base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg | 出典：国土地理院 | max=18
 base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors | max=19
 3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json | off
-geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson | on | terrain
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
@@ -348,7 +352,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>base:</strong> ベースマップ用レイヤです。UI上部のドロップダウンに追加され、選択した1つだけが有効化されます。</li>
                         <li><strong>max=</strong>/<strong>min=</strong>/<strong>zoom=</strong>: XYZ タイルのズームレベル制限を指定します。例: <code>max=18</code>、<code>zoom=2-18</code>。地理院タイルや OpenStreetMap には既知の最大ズームを自動で適用します。</li>
                         <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
-                        <li><strong>geojson:</strong> GeoJSONレイヤです。</li>
+                        <li><strong>geojson:</strong> GeoJSONレイヤです。末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、3D タイルへのドレープ方法を指定できます（既定は Settings タブのトグル準拠）。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
@@ -429,7 +433,7 @@ geojson: 避難所 | https://example.com/shelters.geojson | ON
                         <p style="color:#333;">
                             Google Photorealistic 3D Tiles を使用している場合、追加したユーザーレイヤ（XYZタイルなど）が表示されないことがあります。<br>
                             これは 3D Tiles が立体物として地面の上に描画され、地表に張り付くユーザーレイヤを覆い隠してしまうためです。<br>
-                            Re:Earth のシーン設定で<strong>「地下を隠す」</strong>などの深度テスト（Depth Test）設定を変更することで表示される場合がありますが、3Dモデルの描画順序に依存します。
+                            GeoJSON レイヤーについては、<strong>Settings タブの「GeoJSON 3D Drape」トグル</strong>を OFF にするか、インスペクター行に <code>| terrain</code> を指定することで、3D タイルではなく地面/Terrain にドレープさせることができます。
                         </p>
                     </div>
                 </div>
