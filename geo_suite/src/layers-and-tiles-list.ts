@@ -4033,6 +4033,12 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
     layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp" };
   }
 
+  // Test: explicitly disable 3D Tiles collision to verify draping behavior
+  if (type === '3dtiles') {
+    layer["3dtiles"] = { enableCollision: false };
+    try { sendLog('[addXyzLayer] 3dtiles enableCollision set to false'); } catch(e){}
+  }
+
   try {
     sendLog("[addXyzLayer] received url:", url);
     sendLog("[addXyzLayer] encoded url:", encodedUrl);
