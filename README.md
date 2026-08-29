@@ -8,13 +8,19 @@
 
 ## 📋 概要　
 
-Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タイル管理、レイヤ一覧 UI、属性・値一覧、位置情報共有（Share）、URL パラメータによるカメラ自動移動（起動時・手動）、Terrain/Shadow トグル、HTML インフォメーション表示、Google Earth 連携などの機能を提供します。
+Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タイル管理、レイヤ一覧 UI、属性・値一覧、位置情報共有（Share）、URL パラメータによるカメラ自動移動（起動時・手動）、Terrain/Shadow トグル、HTML インフォメーション表示、Google Earth 連携、**GeoJSON 3D ドレープ制御**などの機能を提供します。
 
 ![プラグイン画面](/image/image-3.png)
 
 ## 🚀 使い方　
 
 **使い方は [プロジェクトサイト](https://re-earth-geo-suite.vercel.app/) をご覧ください。**
+
+### v18.1.0 追加機能: GeoJSON 3D ドレープ制御
+- インスペクター: `geojson: タイトル | URL | 表示 | classification`（`terrain` / `3dtiles` / `both`）
+- Settings タブ: `GeoJSON 3D Drape` トグルで全 GeoJSON レイヤーを一括切り替え
+  - OFF → 地面/Terrain にドレープ（3D 建物に貼り付かない）
+  - ON → 3D タイルにドレープ
 
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順

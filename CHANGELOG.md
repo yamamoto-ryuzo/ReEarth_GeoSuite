@@ -1,5 +1,13 @@
 # Changelog
 
+## v18.1.0
+- 新機能: GeoJSON レイヤーの 3D ドレープをインスペクター / Settings タブで制御できるようになりました。
+    - `geojson:` 行に `terrain` / `3dtiles` / `both` を指定できます。
+      - 例: `geojson: 東京都/行政区域 | https://... | on | terrain`
+      - 例: `geojson: 東京都/行政区域 | https://... | on | 3dtiles`
+    - Settings タブの `GeoJSON 3D Drape` トグルで、全 GeoJSON レイヤーの classificationType を一括切り替えできます。
+    - OFF（terrain）で 3D 建物にドレープせず、ON（3dtiles）で 3D 建物にドレープします。
+
 ## v18.0.0
 - 新機能: Basemap Selector に 🌐 アイコンを追加し、Google Earth で現在の視点を新しいウィンドウで開く機能を追加しました。
     - クリックするとカメラ位置・方位・傾きを Google Earth 形式に変換して `https://earth.google.com/web/` を開きます。
