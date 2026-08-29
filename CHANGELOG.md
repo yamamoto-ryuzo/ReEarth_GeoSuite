@@ -1,5 +1,9 @@
 # Changelog
 
+## v18.1.1
+- 修正: SHARE タブの「Generate Link」から URL 取得ロジックを削除し、常に `?lat=...&lng=...` 形式のクエリ文字列のみを出力するようにしました。
+- `baseurl: https://...` 設定と `_baseUrl` 変数を削除しました。
+
 ## v18.1.0
 - 新機能: GeoJSON レイヤーの 3D ドレープをインスペクター / Settings タブで制御できるようになりました。
     - `geojson:` 行に `terrain` / `3dtiles` / `both` を指定できます。
