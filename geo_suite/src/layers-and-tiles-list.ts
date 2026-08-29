@@ -28,6 +28,10 @@ let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
 
+// GeoJSON 3D draping state. false => classificationType "terrain" (do not drape on 3D tiles)
+let _geojsonDrape3dTiles = false;
+let _pluginAddedGeojsonLayerIds = []; // track GeoJSON layer ids for runtime classification updates
+
 // Ensure globe and scene background are white before any tiles are applied
 try {
   if (typeof reearth !== "undefined" && reearth.viewer && reearth.viewer.overrideProperty) {
@@ -904,6 +908,15 @@ function getUI() {
       </label>
     </div>
 
+    <!-- GeoJSON 3D drape toggle -->
+    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+      <div class="text-md" id="geojson-drape-status">GeoJSON 3D Drape: OFF</div>
+      <label class="toggle" id="geojson-drape-toggle" aria-label="GeoJSON 3D drape toggle">
+        <input type="checkbox" id="toggleGeojsonDrapeSwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+
     <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
     <div id="time-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
       <div style="display:flex;gap:8px;align-items:center;">
@@ -1182,6 +1195,20 @@ function getUI() {
               });
             }
 
+            // GeoJSON 3D Drape toggle
+            const toggleGeojsonDrape = document.getElementById('toggleGeojsonDrapeSwitch');
+            const geojsonDrapeStatus = document.getElementById('geojson-drape-status');
+
+            if (toggleGeojsonDrape && geojsonDrapeStatus) {
+              toggleGeojsonDrape.addEventListener('change', function() {
+                const checked = !!this.checked;
+                geojsonDrapeStatus.textContent = checked ? 'GeoJSON 3D Drape: ON' : 'GeoJSON 3D Drape: OFF';
+                if (window.parent) {
+                  window.parent.postMessage({ action: "setGeojsonDrape", enabled: checked }, "*");
+                }
+              });
+            }
+
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
               try {
@@ -1222,6 +1249,10 @@ function getUI() {
                   const on = !!msg.enabled;
                   if (toggleDepth) toggleDepth.checked = on;
                   if (depthStatus) depthStatus.textContent = on ? 'Depth Test: ON' : 'Depth Test: OFF';
+                } else if (msg.action === 'geojsonDrapeState') {
+                  const on = !!msg.enabled;
+                  if (toggleGeojsonDrape) toggleGeojsonDrape.checked = on;
+                  if (geojsonDrapeStatus) geojsonDrapeStatus.textContent = on ? 'GeoJSON 3D Drape: ON' : 'GeoJSON 3D Drape: OFF';
                 } else if (msg.action === 'cameraState') {
                   // message from extension to initialize/sync camera info
                   const cam = msg.camera || null;
@@ -3507,6 +3538,11 @@ reearth.extension.on("message", (msg) => {
       reearth.viewer.overrideProperty({
         globe: { depthTestAgainstTerrain: msg.enabled, baseColor: bg },
       });
+    } else if (msg.action === "setGeojsonDrape") {
+      const enabled = !!msg.enabled;
+      _geojsonDrape3dTiles = enabled;
+      try { sendLog('[setGeojsonDrape] updated:', enabled); } catch(e){}
+      applyGeojsonDrapeToAll();
     } else if (msg.action === "requestCamera") {
       // UIからのカメラ情報リクエスト：現在のカメラ位置を取得してUIに返す
       try {
@@ -3971,7 +4007,16 @@ function defaultMaxLevelForUrl(url) {
   return null;
 }
 
-function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null, attribution = null) {
+function normalizeClassification(value) {
+  if (!value || typeof value !== 'string') return null;
+  const v = value.trim().toLowerCase();
+  if (v === '3dtiles' || v === '3d' || v === '3d-tiles' || v === '3d_tiles') return '3dtiles';
+  if (v === 'both') return 'both';
+  if (v === 'terrain' || v === 'ground' || v === 'off' || v === 'false') return 'terrain';
+  return null;
+}
+
+function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null, attribution = null, classification = null) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
   let titleToUse = title;
@@ -4030,9 +4075,10 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
   // classificationType: "terrain" prevents GeoJSON from draping onto 3D Tiles;
   // it clamps only to terrain / ellipsoid.
   if (type === 'geojson') {
+    const geoClass = normalizeClassification(classification) || (_geojsonDrape3dTiles ? "3dtiles" : "terrain");
     layer.marker = { pointColor: "#3388ff", pointSize: 10 };
-    layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true, classificationType: "terrain" };
-    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", classificationType: "terrain" };
+    layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true, classificationType: geoClass };
+    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", classificationType: geoClass };
   }
 
   try {
@@ -4043,6 +4089,9 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
     // Track this layer as plugin-added
     if (newId) {
       _pluginAddedLayerIds.add(newId);
+      if (type === 'geojson' && _pluginAddedGeojsonLayerIds.indexOf(newId) === -1) {
+        _pluginAddedGeojsonLayerIds.push(newId);
+      }
       
       // If requested OFF, do NOT hide immediately in Extension side (avoid setTimeout issues).
       // Instead, mark it as pending hide. The UI side will pick this up and send a 'hide' message
@@ -4239,6 +4288,7 @@ function processInspectorText(text) {
   try { _inspectorYahooAppId = null; } catch(e) {}
   _systemLayerSettings = [];
   _inspectorAttrUrlOpen = 'newtab';
+  _pluginAddedGeojsonLayerIds = [];
   const tiles = [];
 
   // Helper to extract visible flag from parts array (modifies parts in place)
@@ -4482,20 +4532,24 @@ function processInspectorText(text) {
     }
 
     // GeoJSON
+    // Syntax: geojson: title | url | on/off | classification
+    // classification: terrain | 3dtiles | both  (default follows global _geojsonDrape3dTiles)
     if (lowerLine.startsWith('geojson:')) {
       const geoStr = line.substring(8).trim();
       let url = null;
       let title = null;
       let visible = true;
+      let classification = null;
       if (geoStr.indexOf('|') !== -1) {
         const parts = geoStr.split('|').map(p => p.trim());
         visible = extractVisible(parts);
         if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
         else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        if (parts.length > 3 && parts[3]) classification = normalizeClassification(parts[3]);
       } else {
         if (geoStr.startsWith('http')) url = geoStr;
       }
-      if (url) tiles.push({ url, title, type: 'geojson', visible });
+      if (url) tiles.push({ url, title, type: 'geojson', visible, classification });
       nonCamLines.push(line);
       return;
     }
@@ -4587,6 +4641,9 @@ function processInspectorText(text) {
             postToUI({ action: 'attrUrlOpen', mode: _inspectorAttrUrlOpen });
             try { sendLog('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
           } catch(e) {}
+          try {
+            postToUI({ action: 'geojsonDrapeState', enabled: _geojsonDrape3dTiles });
+          } catch(e) {}
         } catch(e) { try { sendError('[processInspectorText] loadInfoUrl post failed', e); } catch(_) {} }
       }, 50);
     } else {
@@ -4603,6 +4660,9 @@ function processInspectorText(text) {
       try {
         postToUI({ action: 'attrUrlOpen', mode: _inspectorAttrUrlOpen });
         try { sendLog('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+      } catch(e) {}
+      try {
+        postToUI({ action: 'geojsonDrapeState', enabled: _geojsonDrape3dTiles });
       } catch(e) {}
     }
   } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
@@ -4737,6 +4797,23 @@ function applySystemLayerSettings() {
   }
 }
 
+// Apply the current GeoJSON 3D drape setting to all plugin-added GeoJSON layers.
+function applyGeojsonDrapeToAll() {
+  if (!_pluginAddedGeojsonLayerIds || !_pluginAddedGeojsonLayerIds.length) return;
+  const classification = _geojsonDrape3dTiles ? '3dtiles' : 'terrain';
+  _pluginAddedGeojsonLayerIds.forEach(id => {
+    try {
+      reearth.layers.override(id, {
+        polyline: { strokeColor: '#3388ff', strokeWidth: 2, clampToGround: true, classificationType: classification },
+        polygon: { fillColor: '#3388ff44', strokeColor: '#3388ff', strokeWidth: 2, heightReference: 'clamp', classificationType: classification }
+      });
+      try { sendLog('[applyGeojsonDrapeToAll] updated', id, classification); } catch(e){}
+    } catch (e) {
+      try { sendError('[applyGeojsonDrapeToAll] failed for', id, e); } catch(err){}
+    }
+  });
+}
+
 // Poll for property changes (Inspector edits) and react to URL changes
 // Use a resilient polling mechanism that works even if setInterval is not available (e.g. in some sandbox envs)
 (function startPolling() {
@@ -4800,7 +4877,7 @@ function addXyzLayersFromArray(items) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
       continue;
     }
-    addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution);
+    addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution, it.classification);
   }
 }
 
