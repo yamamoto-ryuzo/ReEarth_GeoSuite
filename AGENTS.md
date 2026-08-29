@@ -26,8 +26,7 @@
 - バージョンは `package.json` と `plugin/reearth.yml` の両方に記述します。
 - `CHANGELOG.md` にもリリース内容を記載します。
 
-## SHARE タブ・URL 取得の制限
-- Re:Earth Visualizer の UI iframe は `allow-same-origin` なしのサンドボックスのため、`window.parent.location.href` / `document.referrer` / `window.location.href` から親ページの URL 本体（`https://...` 部分）を取得することはできません。
+## SHARE タブ・URL 出力の仕様
+- Re:Earth Visualizer の UI iframe は `allow-same-origin` なしのサンドボックスのため、親ページの URL 本体（`https://...` 部分）を取得できません。
+- SHARE タブの「Generate Link」は完全な URL を生成せず、常に `?lat=...&lng=...` 形式のクエリ文字列のみを出力します。
 - `reearth.viewer.viewport` API は `query`（`?` 以降のパラメータ）のみを提供し、URL 全体は提供しません。
-- したがって、SHARE タブの「Generate Link」などで完全な URL を生成するには、ユーザーが Inspector に `baseurl: https://...` を設定する必要があります。
-- `baseurl` が未設定の場合は、`?lat=...&lng=...` 形式のクエリ文字列のみを出力します。

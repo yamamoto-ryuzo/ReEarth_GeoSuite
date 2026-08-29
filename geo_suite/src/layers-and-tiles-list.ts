@@ -19,7 +19,6 @@ let _lastInfoUrl = null;
 let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
-let _baseUrl = null; // Base URL for permalink
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 let _inspectorLegendItems = []; // cached legend items from inspector for initial UI render
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
@@ -1881,22 +1880,8 @@ function getUI() {
                     if (msg.pitch != null) sp.set('pitch', String(msg.pitch));
                     if (msg.layers) sp.set('layers', String(msg.layers));
 
-                    const resolveBase = () => {
-                        let href = msg.baseUrl || '';
-                        if (!href) {
-                            try { if (window.parent !== window) href = window.parent.location.href; } catch(e){}
-                        }
-                        if (!href && document.referrer) href = document.referrer;
-                        if (!href) {
-                            try { href = window.location.href; } catch(e){}
-                        }
-                        if (!href) return '';
-                        const b = href.split(/[?#]/)[0];
-                        return /^https?:\/\//i.test(b) ? b : '';
-                    };
-                    const base = resolveBase();
                     const query = sp.toString();
-                    const urlStr = (base ? base + '?' : '?') + query;
+                    const urlStr = '?' + query;
                     output.value = urlStr;
                     // After writing output, call shared copy helper to ensure same behavior as Copy button
                     try { copyPermalinkToClipboard(urlStr, document.getElementById('generate-permalink-btn')); } catch(e) {}
@@ -3709,9 +3694,7 @@ reearth.extension.on("message", (msg) => {
             if (!cur) try { cur = reearth.camera || null; } catch(e){}
             
             const payload = {
-                action: 'permalinkGenerated',
-                baseUrl: _baseUrl || null,
-                queryOnly: true // Generate only the query string (reearth.viewer.viewport.query handles ? params)
+                action: 'permalinkGenerated'
             };
 
             if (cur) {
@@ -4447,17 +4430,6 @@ function processInspectorText(text) {
         if (name) {
            _systemLayerSettings.push({ name: name, visible: visible });
         }
-      }
-      nonCamLines.push(line);
-      return;
-    }
-
-    // Base URL for permalink: "baseurl: https://..."
-    if (lowerLine.startsWith('baseurl:')) {
-      const url = line.substring(8).trim();
-      if (url && /^https?:\/\//.test(url)) {
-          _baseUrl = url;
-          try { sendLog('[processInspectorText] found Base URL:', url); } catch(e){}
       }
       nonCamLines.push(line);
       return;
