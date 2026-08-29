@@ -4027,16 +4027,12 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
   }
 
   // Add default styles for GeoJSON to ensure visibility
+  // classificationType: "terrain" prevents GeoJSON from draping onto 3D Tiles;
+  // it clamps only to terrain / ellipsoid.
   if (type === 'geojson') {
     layer.marker = { pointColor: "#3388ff", pointSize: 10 };
-    layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true };
-    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp" };
-  }
-
-  // Test: explicitly disable 3D Tiles collision to verify draping behavior
-  if (type === '3dtiles') {
-    layer["3dtiles"] = { enableCollision: false };
-    try { sendLog('[addXyzLayer] 3dtiles enableCollision set to false'); } catch(e){}
+    layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true, classificationType: "terrain" };
+    layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", classificationType: "terrain" };
   }
 
   try {
