@@ -5,8 +5,8 @@
     - `geojson:` 行に `terrain` / `3dtiles` / `both` を指定できます。
       - 例: `geojson: 東京都/行政区域 | https://... | on | terrain`
       - 例: `geojson: 東京都/行政区域 | https://... | on | 3dtiles`
-    - Settings タブの `GeoJSON 3D Drape` トグルで、全 GeoJSON レイヤーの classificationType を一括切り替えできます。
-    - OFF（terrain）で 3D 建物にドレープせず、ON（3dtiles）で 3D 建物にドレープします。
+    - Settings タブの `GeoJSON 3D Drape` ドロップダウンで、全 GeoJSON レイヤーの classificationType を一括切り替えできます。
+    - `terrain`（地面/Terrain のみ）、`3dtiles`（3D タイル）、`both`（両方）から選択できます。
 
 ## v18.0.0
 - 新機能: Basemap Selector に 🌐 アイコンを追加し、Google Earth で現在の視点を新しいウィンドウで開く機能を追加しました。

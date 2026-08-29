@@ -300,7 +300,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>🗺️ GeoJSON 3D ドレープ制御</h3>
-                        <p>GeoJSONレイヤーが 3D タイルに張り付くか、地面/Terrain に張り付くかをインスペクター行または Settings タブのトグルで切り替え可能です。</p>
+                        <p>GeoJSONレイヤーが 3D タイルに張り付くか、地面/Terrain に張り付くかをインスペクター行または Settings タブのドロップダウンで切り替え可能です。</p>
                     </div>
                     <div class="feature-card">
                         <h3>⛰️ Terrain/Shadow</h3>
@@ -352,7 +352,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>base:</strong> ベースマップ用レイヤです。UI上部のドロップダウンに追加され、選択した1つだけが有効化されます。</li>
                         <li><strong>max=</strong>/<strong>min=</strong>/<strong>zoom=</strong>: XYZ タイルのズームレベル制限を指定します。例: <code>max=18</code>、<code>zoom=2-18</code>。地理院タイルや OpenStreetMap には既知の最大ズームを自動で適用します。</li>
                         <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
-                        <li><strong>geojson:</strong> GeoJSONレイヤです。末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、3D タイルへのドレープ方法を指定できます（既定は Settings タブのトグル準拠）。</li>
+                        <li><strong>geojson:</strong> GeoJSONレイヤです。末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、3D タイルへのドレープ方法を指定できます（既定は Settings タブのドロップダウン準拠）。</li>
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
@@ -419,6 +419,15 @@ geojson: 避難所 | https://example.com/shelters.geojson | ON
                     <p style="margin-top:6px; color:#666;">補足: 現在 <code>visible=true</code>/<code>visible=false</code> 形式は自動的にパースされません。必要であれば対応を追加できますので指示ください。</p>
                 </div>
 
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>GeoJSON 3D ドレープ 設定例</h3>
+                    <p><code>geojson:</code> 行の末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、そのレイヤーだけ 3D タイルへのドレープ方法を指定できます。</p>
+                    <pre style="background:#f8f9fa;padding:10px;border-radius:6px;margin-top:6px;"><code>geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | 3dtiles
+geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | terrain
+geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | both</code></pre>
+                    <p style="margin-top:6px; color:#666;">省略時は Settings タブの「GeoJSON 3D ドレープ」選択が適用されます。</p>
+                </div>
+
                 <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:8px;">
                     <h3>⚠️ 注意事項</h3>
                     <div>
@@ -433,7 +442,7 @@ geojson: 避難所 | https://example.com/shelters.geojson | ON
                         <p style="color:#333;">
                             Google Photorealistic 3D Tiles を使用している場合、追加したユーザーレイヤ（XYZタイルなど）が表示されないことがあります。<br>
                             これは 3D Tiles が立体物として地面の上に描画され、地表に張り付くユーザーレイヤを覆い隠してしまうためです。<br>
-                            GeoJSON レイヤーについては、<strong>Settings タブの「GeoJSON 3D Drape」トグル</strong>を OFF にするか、インスペクター行に <code>| terrain</code> を指定することで、3D タイルではなく地面/Terrain にドレープさせることができます。
+                            GeoJSON レイヤーについては、<strong>Settings タブの「GeoJSON 3D Drape」ドロップダウン</strong>で <code>terrain</code> を選ぶか、インスペクター行に <code>| terrain</code> を指定することで、3D タイルではなく地面/Terrain にドレープさせることができます。
                         </p>
                     </div>
                 </div>

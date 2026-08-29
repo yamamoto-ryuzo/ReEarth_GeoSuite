@@ -28,8 +28,8 @@ let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
 
-// GeoJSON 3D draping state. false => classificationType "terrain" (do not drape on 3D tiles)
-let _geojsonDrape3dTiles = false;
+// GeoJSON 3D draping global default. One of: "terrain" | "3dtiles" | "both"
+let _geojsonClassification = 'terrain';
 let _pluginAddedGeojsonLayerIds = []; // track GeoJSON layer ids for runtime classification updates
 
 // Ensure globe and scene background are white before any tiles are applied
@@ -908,13 +908,14 @@ function getUI() {
       </label>
     </div>
 
-    <!-- GeoJSON 3D drape toggle -->
+    <!-- GeoJSON 3D drape dropdown -->
     <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
-      <div class="text-md" id="geojson-drape-status">GeoJSON 3D Drape: OFF</div>
-      <label class="toggle" id="geojson-drape-toggle" aria-label="GeoJSON 3D drape toggle">
-        <input type="checkbox" id="toggleGeojsonDrapeSwitch">
-        <span class="slider"></span>
-      </label>
+      <div class="text-md" id="geojson-drape-status">GeoJSON 3D Drape</div>
+      <select id="geojson-drape-select" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.9em;min-width:80px;">
+        <option value="terrain">terrain</option>
+        <option value="3dtiles">3dtiles</option>
+        <option value="both">both</option>
+      </select>
     </div>
 
     <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
@@ -1195,16 +1196,15 @@ function getUI() {
               });
             }
 
-            // GeoJSON 3D Drape toggle
-            const toggleGeojsonDrape = document.getElementById('toggleGeojsonDrapeSwitch');
+            // GeoJSON 3D Drape dropdown
+            const geojsonDrapeSelect = document.getElementById('geojson-drape-select');
             const geojsonDrapeStatus = document.getElementById('geojson-drape-status');
 
-            if (toggleGeojsonDrape && geojsonDrapeStatus) {
-              toggleGeojsonDrape.addEventListener('change', function() {
-                const checked = !!this.checked;
-                geojsonDrapeStatus.textContent = checked ? 'GeoJSON 3D Drape: ON' : 'GeoJSON 3D Drape: OFF';
+            if (geojsonDrapeSelect && geojsonDrapeStatus) {
+              geojsonDrapeSelect.addEventListener('change', function() {
+                const value = this.value || 'terrain';
                 if (window.parent) {
-                  window.parent.postMessage({ action: "setGeojsonDrape", enabled: checked }, "*");
+                  window.parent.postMessage({ action: "setGeojsonClassification", classification: value }, "*");
                 }
               });
             }
@@ -1250,9 +1250,9 @@ function getUI() {
                   if (toggleDepth) toggleDepth.checked = on;
                   if (depthStatus) depthStatus.textContent = on ? 'Depth Test: ON' : 'Depth Test: OFF';
                 } else if (msg.action === 'geojsonDrapeState') {
-                  const on = !!msg.enabled;
-                  if (toggleGeojsonDrape) toggleGeojsonDrape.checked = on;
-                  if (geojsonDrapeStatus) geojsonDrapeStatus.textContent = on ? 'GeoJSON 3D Drape: ON' : 'GeoJSON 3D Drape: OFF';
+                  const value = msg.classification || 'terrain';
+                  if (geojsonDrapeSelect) geojsonDrapeSelect.value = value;
+                  if (geojsonDrapeStatus) geojsonDrapeStatus.textContent = 'GeoJSON 3D Drape: ' + value;
                 } else if (msg.action === 'cameraState') {
                   // message from extension to initialize/sync camera info
                   const cam = msg.camera || null;
@@ -3538,10 +3538,10 @@ reearth.extension.on("message", (msg) => {
       reearth.viewer.overrideProperty({
         globe: { depthTestAgainstTerrain: msg.enabled, baseColor: bg },
       });
-    } else if (msg.action === "setGeojsonDrape") {
-      const enabled = !!msg.enabled;
-      _geojsonDrape3dTiles = enabled;
-      try { sendLog('[setGeojsonDrape] updated:', enabled); } catch(e){}
+    } else if (msg.action === "setGeojsonClassification") {
+      const next = normalizeClassification(msg.classification) || 'terrain';
+      _geojsonClassification = next;
+      try { sendLog('[setGeojsonClassification] updated:', next); } catch(e){}
       applyGeojsonDrapeToAll();
     } else if (msg.action === "requestCamera") {
       // UIからのカメラ情報リクエスト：現在のカメラ位置を取得してUIに返す
@@ -4075,7 +4075,7 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
   // classificationType: "terrain" prevents GeoJSON from draping onto 3D Tiles;
   // it clamps only to terrain / ellipsoid.
   if (type === 'geojson') {
-    const geoClass = normalizeClassification(classification) || (_geojsonDrape3dTiles ? "3dtiles" : "terrain");
+    const geoClass = normalizeClassification(classification) || _geojsonClassification;
     layer.marker = { pointColor: "#3388ff", pointSize: 10 };
     layer.polyline = { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true, classificationType: geoClass };
     layer.polygon = { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", classificationType: geoClass };
@@ -4533,7 +4533,7 @@ function processInspectorText(text) {
 
     // GeoJSON
     // Syntax: geojson: title | url | on/off | classification
-    // classification: terrain | 3dtiles | both  (default follows global _geojsonDrape3dTiles)
+    // classification: terrain | 3dtiles | both  (default follows global _geojsonClassification)
     if (lowerLine.startsWith('geojson:')) {
       const geoStr = line.substring(8).trim();
       let url = null;
@@ -4642,7 +4642,7 @@ function processInspectorText(text) {
             try { sendLog('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
           } catch(e) {}
           try {
-            postToUI({ action: 'geojsonDrapeState', enabled: _geojsonDrape3dTiles });
+            postToUI({ action: 'geojsonDrapeState', classification: _geojsonClassification });
           } catch(e) {}
         } catch(e) { try { sendError('[processInspectorText] loadInfoUrl post failed', e); } catch(_) {} }
       }, 50);
@@ -4662,7 +4662,7 @@ function processInspectorText(text) {
         try { sendLog('[processInspectorText] sent attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e) {}
       try {
-        postToUI({ action: 'geojsonDrapeState', enabled: _geojsonDrape3dTiles });
+        postToUI({ action: 'geojsonDrapeState', classification: _geojsonClassification });
       } catch(e) {}
     }
   } catch(e) { try { sendError('[processInspectorText] deferred post error', e); } catch(_) {} }
@@ -4800,7 +4800,7 @@ function applySystemLayerSettings() {
 // Apply the current GeoJSON 3D drape setting to all plugin-added GeoJSON layers.
 function applyGeojsonDrapeToAll() {
   if (!_pluginAddedGeojsonLayerIds || !_pluginAddedGeojsonLayerIds.length) return;
-  const classification = _geojsonDrape3dTiles ? '3dtiles' : 'terrain';
+  const classification = _geojsonClassification;
   _pluginAddedGeojsonLayerIds.forEach(id => {
     try {
       reearth.layers.override(id, {

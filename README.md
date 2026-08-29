@@ -18,9 +18,15 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 ### v18.1.0 追加機能: GeoJSON 3D ドレープ制御
 - インスペクター: `geojson: タイトル | URL | 表示 | classification`（`terrain` / `3dtiles` / `both`）
-- Settings タブ: `GeoJSON 3D Drape` トグルで全 GeoJSON レイヤーを一括切り替え
-  - OFF → 地面/Terrain にドレープ（3D 建物に貼り付かない）
-  - ON → 3D タイルにドレープ
+  ```
+  geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | 3dtiles
+  geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | terrain
+  geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | both
+  ```
+- Settings タブ: `GeoJSON 3D Drape` ドロップダウンで全 GeoJSON レイヤーを一括切り替え
+  - `terrain` → 地面/Terrain にドレープ（3D 建物に貼り付かない）
+  - `3dtiles` → 3D タイルにドレープ
+  - `both` → Terrain と 3D タイルの両方にドレープ
 
 プロジェクトサイトには以下の情報が掲載されています：
 - 詳細なインストール手順
