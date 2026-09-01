@@ -228,6 +228,10 @@ function applyBaseList(items: any[]): void {
     }).filter((b: any) => b.url);
     if (!_parsedBaseTiles.length) return;
 
+    // Basemap layers are normally added by the layer panel BEFORE overlay tile
+    // layers so they render below them (Cesium draws imagery in add order).
+    // addBasemapLayer() dedupes by URL, so this only adds layers as a fallback
+    // when the panel has not added them yet.
     _parsedBaseTiles.forEach((b: any) => {
       addBasemapLayer(b.url, b.title, b.attribution, b.minLevel, b.maxLevel);
     });
