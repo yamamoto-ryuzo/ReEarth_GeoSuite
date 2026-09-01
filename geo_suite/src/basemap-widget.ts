@@ -92,84 +92,73 @@ function requestBaseList(): void {
   } catch (e) {}
 }
 
-interface BasemapInfo {
-  id: string;
-  url: string;
-  title: string;
-  attribution: string;
-  visible: boolean;
-}
-
 let _lastBasemapsHash = '';
 let _parsedBaseTiles: any[] = [];
-let _lastSelectedBasemapUrl = '';
+// null = no selection yet (auto-select first base entry); '' = user selected "(なし)"
+let _lastSelectedBasemapUrl: string | null = null;
 let _layerPanelId: string | null = null;
 
-function getBasemapLayers(): BasemapInfo[] {
-  const result: BasemapInfo[] = [];
-  try {
-    const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
-    const arr = normalizeLayers(all);
-    arr.forEach((l: any) => {
-      if (!l || !l.data || !l.data.isBasemap) return;
-      result.push({
-        id: l.id || '',
-        url: l.data.url || '',
-        title: l.title || '',
-        attribution: (l.data && l.data.attribution) || '',
-        visible: !!l.visible
-      });
-    });
-  } catch (e) {
-    sendError('[getBasemapLayers] error:', e);
-  }
-  return result;
-}
+const BASEMAP_TILE_ID = 'geo-suite-basemap';
 
 function sendBasemapsToUI(): void {
   try {
-    const basemapLayers = getBasemapLayers();
     const items = _parsedBaseTiles.map((b: any) => ({
       url: b.encodedUrl || encodeNonAscii(b.url),
       title: b.title,
       attribution: b.attribution
     }));
-    const hash = JSON.stringify(items) + JSON.stringify(basemapLayers.map((b) => b.visible));
+    let selectedUrl = (_lastSelectedBasemapUrl !== null) ? _lastSelectedBasemapUrl : (items[0] ? items[0].url : '');
+    const hash = JSON.stringify(items) + '|' + selectedUrl;
     if (hash === _lastBasemapsHash) return;
     _lastBasemapsHash = hash;
-    const visible = basemapLayers.find((b) => b.visible);
-    let selectedUrl = visible ? visible.url : _lastSelectedBasemapUrl;
-    if (!selectedUrl && items[0]) selectedUrl = items[0].url;
     postToUI({ action: 'basemaps', items: items, selectedUrl: selectedUrl });
   } catch (e) {
     sendError('[sendBasemapsToUI] error:', e);
   }
 }
 
+// Hide legacy basemap layers added by older versions of this plugin (they were
+// regular tile layers marked with data.isBasemap and rendered above overlays).
+function hideLegacyBasemapLayers(): void {
+  try {
+    const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
+    const arr = normalizeLayers(all);
+    arr.forEach((l: any) => {
+      if (!l || !l.data || !l.data.isBasemap || !l.id) return;
+      try {
+        if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
+        else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: false });
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
+// Switch the basemap via the viewer property `tiles` (Re:Earth's official
+// basemap mechanism). Scene tiles are always kept at the BOTTOM of Cesium's
+// imagery layer collection by the engine, so overlay tile layers added by the
+// layer panel are never hidden — regardless of when the basemap is switched.
 function showBasemapByUrl(url: string | null): void {
   if (url === null || url === undefined) return;
   _lastSelectedBasemapUrl = url;
   try {
-    const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
-    const arr = normalizeLayers(all);
-    let targetId: string | null = null;
-    arr.forEach((l: any) => {
-      if (!l || !l.data || !l.data.isBasemap || !l.id) return;
-      if (urlsEqual(l.data.url, url)) targetId = l.id;
-    });
-    arr.forEach((l: any) => {
-      if (!l || !l.data || !l.data.isBasemap || !l.id) return;
-      const isMatch = (url !== '' && l.id === targetId);
-      try {
-        if (isMatch) {
-          if (typeof reearth.layers.show === 'function') reearth.layers.show(l.id);
-          else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: true });
-        } else {
-          if (typeof reearth.layers.hide === 'function') reearth.layers.hide(l.id);
-          else if (typeof reearth.layers.override === 'function') reearth.layers.override(l.id, { visible: false });
-        }
-      } catch (e) {}
-    });
+    const tiles: any[] = [];
+    if (url !== '') {
+      const entry = _parsedBaseTiles.find((b: any) => urlsEqual(b.encodedUrl, url) || urlsEqual(b.url, url));
+      const encodedUrl = entry ? entry.encodedUrl : encodeNonAscii(url);
+      const tile: any = { id: BASEMAP_TILE_ID, type: 'url', url: encodedUrl };
+      const minL = (entry && typeof entry.minLevel === 'number' && !isNaN(entry.minLevel)) ? entry.minLevel : null;
+      let maxL = (entry && typeof entry.maxLevel === 'number' && !isNaN(entry.maxLevel)) ? entry.maxLevel : null;
+      if (maxL === null) maxL = defaultMaxLevelForUrl(encodedUrl);
+      if (maxL !== null) tile.zoomLevelForURL = [minL !== null ? minL : 0, maxL];
+      else if (minL !== null) tile.zoomLevelForURL = [minL];
+      tiles.push(tile);
+    }
+    if (reearth && reearth.viewer && typeof reearth.viewer.overrideProperty === 'function') {
+      reearth.viewer.overrideProperty({ tiles: tiles });
+    } else {
+      sendError('[showBasemapByUrl] reearth.viewer.overrideProperty is not available');
+    }
+    hideLegacyBasemapLayers();
   } catch (e) {
     sendError('[showBasemapByUrl] error:', e);
   }
@@ -184,38 +173,6 @@ function defaultMaxLevelForUrl(url: string): number | null {
   return null;
 }
 
-function addBasemapLayer(url: string, title: string, attribution: string, minLevel?: number | null, maxLevel?: number | null): string | null {
-  if (!url || typeof url !== 'string') return null;
-  try {
-    const encodedUrl = encodeNonAscii(url);
-    const all = (reearth && reearth.layers && reearth.layers.layers) ? reearth.layers.layers : [];
-    const arr = normalizeLayers(all);
-    const dup = arr.find((l: any) => l && l.data && l.data.isBasemap && urlsEqual(l.data.url, encodedUrl));
-    if (dup) return dup.id || null;
-
-    const raster: any = {};
-    if (typeof minLevel === 'number' && !isNaN(minLevel)) raster.minimumLevel = minLevel;
-    let maxL = (typeof maxLevel === 'number' && !isNaN(maxLevel)) ? maxLevel : null;
-    if (maxL === null) maxL = defaultMaxLevelForUrl(encodedUrl);
-    if (typeof maxL === 'number' && !isNaN(maxL)) raster.maximumLevel = maxL;
-
-    const layer: any = {
-      type: 'simple',
-      title: title || `Basemap: ${url}`,
-      visible: true,
-      data: { type: 'tiles', url: encodedUrl, isBasemap: true, attribution: attribution || '' },
-      tiles: { isBasemap: true }
-    };
-    if (Object.keys(raster).length > 0) layer.raster = raster;
-
-    const newId = reearth.layers.add(layer);
-    return newId || null;
-  } catch (e) {
-    sendError('[addBasemapLayer] error:', e);
-    return null;
-  }
-}
-
 function applyBaseList(items: any[]): void {
   if (!Array.isArray(items)) return;
   try {
@@ -228,15 +185,7 @@ function applyBaseList(items: any[]): void {
     }).filter((b: any) => b.url);
     if (!_parsedBaseTiles.length) return;
 
-    // Basemap layers are normally added by the layer panel BEFORE overlay tile
-    // layers so they render below them (Cesium draws imagery in add order).
-    // addBasemapLayer() dedupes by URL, so this only adds layers as a fallback
-    // when the panel has not added them yet.
-    _parsedBaseTiles.forEach((b: any) => {
-      addBasemapLayer(b.url, b.title, b.attribution, b.minLevel, b.maxLevel);
-    });
-
-    if (!_lastSelectedBasemapUrl && _parsedBaseTiles[0]) {
+    if (_lastSelectedBasemapUrl === null && _parsedBaseTiles[0]) {
       _lastSelectedBasemapUrl = _parsedBaseTiles[0].encodedUrl;
     }
     showBasemapByUrl(_lastSelectedBasemapUrl);

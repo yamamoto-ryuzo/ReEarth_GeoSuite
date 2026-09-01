@@ -4832,23 +4832,14 @@ function applyGeojsonDrapeToAll() {
 function addXyzLayersFromArray(items) {
   if (!items || !Array.isArray(items)) return;
   const existing = (reearth.layers && reearth.layers.layers) || [];
-  // Add basemap layers FIRST so they render below all other tile layers
-  // (Cesium draws imagery layers in add order; the basemap widget only
-  // toggles visibility of these layers and skips re-adding duplicates).
-  const ordered = items.filter(it => it && it.isBase).concat(items.filter(it => !(it && it.isBase)));
-  let firstBaseSeen = false;
-  for (let i = 0; i < ordered.length; i++) {
-    const it = ordered[i] || {};
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] || {};
     const u = (it.url || it.inspectorUrl || "").trim();
     const t = (it.title || it.inspectorTitle || null);
     const type = it.type || "tiles";
     const isBase = !!it.isBase;
-    let visible = (it.visible !== undefined) ? it.visible : true;
-    if (isBase) {
-      // Only the first basemap starts visible; the basemap widget selects afterwards.
-      visible = !firstBaseSeen;
-      firstBaseSeen = true;
-    }
+    if (isBase) continue; // basemaps are applied via reearth.viewer.overrideProperty (basemap widget)
+    const visible = (it.visible !== undefined) ? it.visible : true;
     const zoom = { min: it.minLevel ?? null, max: it.maxLevel ?? null };
     if (!u) continue;
     if (!/^https?:\/\//.test(u)) continue;
