@@ -1317,6 +1317,36 @@ function getUI() {
                       instruction.style.display = msg.items.length > 0 ? 'none' : 'block';
                     }
                   }
+                } else if (msg.action === 'attrPanelHeight') {
+                  // Fix the document size (height: 1/3 of parent viewport, width: 600px)
+                  // so the iframe's content-based auto-resize matches it exactly.
+                  try {
+                    // Guard against stale expand responses: apply only while the
+                    // widget is still expanded (the user may have closed it before
+                    // this roundtrip message arrived).
+                    const attrWidget = document.getElementById('vector-attr-widget');
+                    const stillExpanded = window._attrPanelExpanded === true && attrWidget && attrWidget.classList.contains('visible');
+                    if (stillExpanded) {
+                      if (typeof msg.height === 'number' && msg.height > 0) {
+                        document.body.style.height = msg.height + 'px';
+                        document.body.style.overflow = 'hidden';
+                      }
+                      if (typeof msg.width === 'number' && msg.width > 0) {
+                        document.body.style.width = msg.width + 'px';
+                      }
+                    }
+                  } catch(e) {}
+                } else if (msg.action === 'attrPanelRestored') {
+                  // Parent confirmed the restore: force the UI back to the base
+                  // state so both size mechanisms (body size / ui.resize) agree.
+                  try {
+                    window._attrPanelExpanded = false;
+                    const attrWidget = document.getElementById('vector-attr-widget');
+                    if (attrWidget) attrWidget.classList.remove('visible');
+                    document.body.style.height = '';
+                    document.body.style.width = '';
+                    document.body.style.overflow = '';
+                  } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
                   try { uiLog('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'newtab');
@@ -2706,24 +2736,6 @@ function getUI() {
         vectorAttrWidgetLayerSelect.value = hasLayer ? layerId : '__all__';
       }
 
-      // State -> size: window._attrPanelExpanded is the single source of truth.
-      // The body size (which drives the iframe auto-resize = mouse hit area) is
-      // applied synchronously here; the parent only adjusts the iframe width.
-      function applyAttrPanelSize(expanded) {
-        window._attrPanelExpanded = expanded === true;
-        try {
-          if (window._attrPanelExpanded) {
-            document.body.style.width = '${ATTR_PANEL_EXPANDED_WIDTH}px';
-            document.body.style.height = '${ATTR_PANEL_EXPANDED_HEIGHT}px';
-            document.body.style.overflow = 'hidden';
-          } else {
-            document.body.style.width = '';
-            document.body.style.height = '';
-            document.body.style.overflow = '';
-          }
-        } catch (e) {}
-      }
-
       function openVectorAttrWidget(layerId) {
         if (!vectorAttrWidget) return;
         const wasVisible = vectorAttrWidget.classList.contains('visible');
@@ -2735,7 +2747,7 @@ function getUI() {
         // Send expand only on the first open (layer-select changes re-run this
         // function while already open).
         if (!wasVisible) {
-          applyAttrPanelSize(true);
+          window._attrPanelExpanded = true;
           try {
             if (window.parent) window.parent.postMessage({ action: 'expandAttributePanel' }, '*');
           } catch (e) {}
@@ -2744,8 +2756,14 @@ function getUI() {
 
       function closeVectorAttrWidget() {
         const wasExpanded = window._attrPanelExpanded === true || (vectorAttrWidget && vectorAttrWidget.classList.contains('visible'));
+        window._attrPanelExpanded = false;
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
-        applyAttrPanelSize(false);
+        try {
+          document.body.style.height = '';
+          document.body.style.width = '';
+          document.body.style.overflow = '';
+        } catch (e) {}
+        // Idempotent: notify the parent only when there was an expanded state to restore
         if (!wasExpanded) return;
         try {
           if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
@@ -2831,9 +2849,6 @@ function getUI() {
 // the width deterministic (no auto width, no compounding percentages).
 const ATTR_PANEL_BASE_WIDTH = 300;
 const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
-// Fixed height for the expanded state. Both ui.resize (extension side) and the
-// body size (UI side) use this same constant so the two mechanisms always agree.
-const ATTR_PANEL_EXPANDED_HEIGHT = 400;
 // Extension-side single source of truth for the expanded (600px) state
 let _attrPanelExpanded = false;
 
@@ -3816,21 +3831,34 @@ reearth.extension.on("message", (msg) => {
         } catch (e) { try { sendError('[flyToLatLng] error:', e); } catch(_) {} }
       } else if (msg.action === 'expandAttributePanel') {
         try {
-          // The UI has already fixed its body size synchronously (state -> size);
-          // the extension side mirrors the flag and pins the iframe to the exact
-          // same fixed size (width AND height) so the hit area is deterministic.
           _attrPanelExpanded = true;
+          // Height: fixed to 1/3 of the parent viewport. Sent to the UI, which sets
+          // body height so the iframe's content-based auto-resize matches it exactly.
+          // (Manual height via reearth.ui.resize conflicts with auto-resize.)
+          let vpHeight = 0;
+          try { vpHeight = (reearth.viewer && reearth.viewer.viewport && reearth.viewer.viewport.height) || 0; } catch (e) {}
+          if (!vpHeight) { try { vpHeight = (reearth.viewport && reearth.viewport.height) || 0; } catch (e) {} }
+          const panelHeight = Math.round(vpHeight / 3);
+          // Height follows the content-based auto-resize (the UI fixes body height).
+          // Width does NOT follow body width, so it must be set via resize as well;
+          // body width is also set to the same 600px so both mechanisms agree.
+          if (panelHeight > 0) { try { postToUI({ action: 'attrPanelHeight', height: panelHeight, width: ATTR_PANEL_EXPANDED_WIDTH }); } catch (e) {} }
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, ATTR_PANEL_EXPANDED_HEIGHT, false);
+            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, undefined, false);
           }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
         try {
-          // The UI has already cleared its body size; restore the base width.
+          // The UI clears the fixed body width/height (height returns to content
+          // size via auto-resize); width must be restored via resize to the fixed
+          // base width of the layers panel.
           _attrPanelExpanded = false;
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
             reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false);
           }
+          // Confirm back to the UI so it clears any fixed body size, even if an
+          // attrPanelHeight response arrived after the widget was closed.
+          try { postToUI({ action: 'attrPanelRestored' }); } catch (e) {}
         } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
       }
     return;
