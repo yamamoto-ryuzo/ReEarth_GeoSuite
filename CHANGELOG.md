@@ -1,5 +1,11 @@
 # Changelog
 
+## v18.1.5
+- 修正: 属性・値一覧クローズ後もマウス認識領域が 600px のまま残る問題を、サイズ制御の単純化で解消しました。
+    - 非同期の往復メッセージ（`attrPanelHeight` / `attrPanelRestored`）によるサイズ制御を全廃しました。
+    - UI 側のフラグ `window._attrPanelExpanded` を唯一の状態とし、`applyAttrPanelSize(expanded)` がフラグ設定と body サイズ（= iframe の当たり判定）を同期的に一括適用します。
+    - 拡張側は `expandAttributePanel` / `restoreAttributePanel` 受信時に幅（600px / 300px）を resize するだけの単純な構造にしました。
+
 ## v18.1.4
 - 修正: 属性・値一覧を閉じてパネルが 300px 幅に戻った後も、マウスの認識領域が拡張時（600px）のまま残ることがある問題を解消しました。
     - 拡張/通常の状態を UI 側（`window._attrPanelExpanded`）と拡張側（`_attrPanelExpanded`）のフラグで一元管理し、expand/restore をべき等化しました。
