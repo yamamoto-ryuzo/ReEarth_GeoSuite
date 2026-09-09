@@ -1336,17 +1336,6 @@ function getUI() {
                       }
                     }
                   } catch(e) {}
-                } else if (msg.action === 'attrPanelRestored') {
-                  // Parent confirmed the restore: force the UI back to the base
-                  // state so both size mechanisms (body size / ui.resize) agree.
-                  try {
-                    window._attrPanelExpanded = false;
-                    const attrWidget = document.getElementById('vector-attr-widget');
-                    if (attrWidget) attrWidget.classList.remove('visible');
-                    document.body.style.height = '';
-                    document.body.style.width = '';
-                    document.body.style.overflow = '';
-                  } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
                   try { uiLog('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.attrUrlOpen === 'string' ? msg.attrUrlOpen : 'newtab');
@@ -3859,16 +3848,13 @@ reearth.extension.on("message", (msg) => {
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
         try {
-          // The UI clears the fixed body width/height (height returns to content
-          // size via auto-resize); width must be restored via resize to the fixed
-          // base width of the layers panel.
+          // The engine grows the iframe via resize(600) but does NOT reliably
+          // shrink it back via resize(300), which left a 600px-wide transparent
+          // mouse hit area over the map. Recreate the iframe instead: ui.show
+          // destroys and rebuilds it at the base size, so the hit area is
+          // guaranteed to match the 300px panel again.
           _attrPanelExpanded = false;
-          if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize(ATTR_PANEL_BASE_WIDTH, undefined, false);
-          }
-          // Confirm back to the UI so it clears any fixed body size, even if an
-          // attrPanelHeight response arrived after the widget was closed.
-          try { postToUI({ action: 'attrPanelRestored' }); } catch (e) {}
+          safeShowUI('restoreAttributePanel');
         } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
       }
     return;
