@@ -2713,10 +2713,8 @@ function getUI() {
         window._attrPanelExpanded = expanded === true;
         try {
           if (window._attrPanelExpanded) {
-            const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || 600;
-            const h = Math.max(300, Math.min(600, Math.round(screenHeight / 3)));
             document.body.style.width = '${ATTR_PANEL_EXPANDED_WIDTH}px';
-            document.body.style.height = h + 'px';
+            document.body.style.height = '${ATTR_PANEL_EXPANDED_HEIGHT}px';
             document.body.style.overflow = 'hidden';
           } else {
             document.body.style.width = '';
@@ -2833,6 +2831,9 @@ function getUI() {
 // the width deterministic (no auto width, no compounding percentages).
 const ATTR_PANEL_BASE_WIDTH = 300;
 const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
+// Fixed height for the expanded state. Both ui.resize (extension side) and the
+// body size (UI side) use this same constant so the two mechanisms always agree.
+const ATTR_PANEL_EXPANDED_HEIGHT = 400;
 // Extension-side single source of truth for the expanded (600px) state
 let _attrPanelExpanded = false;
 
@@ -3816,11 +3817,11 @@ reearth.extension.on("message", (msg) => {
       } else if (msg.action === 'expandAttributePanel') {
         try {
           // The UI has already fixed its body size synchronously (state -> size);
-          // the extension side only mirrors the flag and sets the iframe width.
-          // Height follows the body size via the content-based auto-resize.
+          // the extension side mirrors the flag and pins the iframe to the exact
+          // same fixed size (width AND height) so the hit area is deterministic.
           _attrPanelExpanded = true;
           if (reearth && reearth.ui && typeof reearth.ui.resize === 'function') {
-            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, undefined, false);
+            reearth.ui.resize(ATTR_PANEL_EXPANDED_WIDTH, ATTR_PANEL_EXPANDED_HEIGHT, false);
           }
         } catch (e) { try { sendError('[expandAttributePanel] error:', e); } catch(_) {} }
       } else if (msg.action === 'restoreAttributePanel') {
