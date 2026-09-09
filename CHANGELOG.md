@@ -1,5 +1,12 @@
 # Changelog
 
+## v18.1.11
+- 改善: 属性・値一覧のパネル幅（300px/600px）とマウス認識領域を単一関数で制御するようリファクタリングしました。
+    - 拡張側に `setAttributePanelExpanded(expanded, activeTab)` を追加し、`_attrPanelExpanded` フラグに応じて幅と iframe サイズを一括変更します。
+    - UI 側に `applyAttrPanelSize(expanded, width, height)` を追加し、ウィジェット表示と `body` の `width/height/overflow` を同一関数で切り替えます。
+    - 開閉メッセージを `expandAttributePanel` / `restoreAttributePanel` / `attrPanelHeight` から `setAttributePanelExpanded` / `setAttrPanelSize` に統一しました。
+    - 閉じる際は `safeShowUI` による iframe 再作成を維持し、600px のマウス認識領域が残る既知の問題を回避します。
+
 ## v18.1.10
 - 改善: 属性・値一覧クローズ時の UI 再描画後、直前に表示していたタブへ自動復帰するようにしました。
     - クローズ時にアクティブタブの ID を親（拡張側）へ送信して保管し、再作成された UI がロード時（`requestRestoreState`）に受け取ってタブを復元します。
