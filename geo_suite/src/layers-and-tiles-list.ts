@@ -1008,6 +1008,10 @@ function getUI() {
   try { window._yahooAppId = ${JSON.stringify(_inspectorYahooAppId || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
+      // Ask the parent whether there is UI state (active tab) to restore after
+      // an iframe recreation (attribute-widget close re-renders the UI).
+      try { if (window.parent) window.parent.postMessage({ action: 'requestRestoreState' }, '*'); } catch(e) {}
+
       // Process pending hides (layers that were added as visible:true but need to be hidden)
       try {
         const pendingHides = document.querySelectorAll('input[data-pending-hide="true"]');
@@ -1335,6 +1339,13 @@ function getUI() {
                         document.body.style.width = msg.width + 'px';
                       }
                     }
+                  } catch(e) {}
+                } else if (msg.action === 'activateTab') {
+                  // Re-activate the tab that was open before the iframe was
+                  // recreated on attribute-widget close.
+                  try {
+                    const t = document.querySelector('.tab-bar .tab[data-target="' + msg.tab + '"]');
+                    if (t) t.click();
                   } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
                   try { uiLog('[featureSelected] received attrUrlOpen:', msg.attrUrlOpen, 'properties:', msg.properties ? Object.keys(msg.properties) : null); } catch(e) {}
@@ -2755,7 +2766,13 @@ function getUI() {
         // hit area) stuck at the expanded size.
         if (!wasExpanded) return;
         try {
-          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
+          // Include the currently active tab so the recreated iframe can restore it
+          let activeTab = null;
+          try {
+            const activeBtn = document.querySelector('.tab-bar .tab.active');
+            activeTab = activeBtn ? activeBtn.getAttribute('data-target') : null;
+          } catch (e2) {}
+          if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel', activeTab: activeTab }, '*');
         } catch (e) {}
         // Fallback: if the roundtrip is lost, clear the fixed body size anyway.
         try {
@@ -2850,6 +2867,8 @@ const ATTR_PANEL_BASE_WIDTH = 300;
 const ATTR_PANEL_EXPANDED_WIDTH = ATTR_PANEL_BASE_WIDTH * 2;
 // Extension-side single source of truth for the expanded (600px) state
 let _attrPanelExpanded = false;
+// Tab to re-activate after the UI iframe is recreated on widget close
+let _pendingActiveTab = null;
 
 const uiHTML = getUI();
 try { sendLog('[render] UI HTML length:', uiHTML ? uiHTML.length : 0, 'preview:', uiHTML ? uiHTML.substring(0, 200) : 'null'); } catch(e){}
@@ -3854,8 +3873,18 @@ reearth.extension.on("message", (msg) => {
           // destroys and rebuilds it at the base size, so the hit area is
           // guaranteed to match the 300px panel again.
           _attrPanelExpanded = false;
+          // Remember the tab that was active so the recreated UI can restore it
+          _pendingActiveTab = (typeof msg.activeTab === 'string' && msg.activeTab) ? msg.activeTab : null;
           safeShowUI('restoreAttributePanel');
         } catch (e) { try { sendError('[restoreAttributePanel] error:', e); } catch(_) {} }
+      } else if (msg.action === 'requestRestoreState') {
+        try {
+          // The recreated UI asks for state to restore on load (active tab)
+          if (_pendingActiveTab) {
+            postToUI({ action: 'activateTab', tab: _pendingActiveTab });
+            _pendingActiveTab = null;
+          }
+        } catch (e) { try { sendError('[requestRestoreState] error:', e); } catch(_) {} }
       }
     return;
   }
