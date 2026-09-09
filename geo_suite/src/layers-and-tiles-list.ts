@@ -2758,15 +2758,25 @@ function getUI() {
         const wasExpanded = window._attrPanelExpanded === true || (vectorAttrWidget && vectorAttrWidget.classList.contains('visible'));
         window._attrPanelExpanded = false;
         if (vectorAttrWidget) vectorAttrWidget.classList.remove('visible');
-        try {
-          document.body.style.height = '';
-          document.body.style.width = '';
-          document.body.style.overflow = '';
-        } catch (e) {}
-        // Idempotent: notify the parent only when there was an expanded state to restore
+        // Do NOT clear the body size here. Mirror the expand sequence that is
+        // known to work: the parent resizes the iframe FIRST, then the body size
+        // is changed (the parent answers restoreAttributePanel with
+        // attrPanelRestored, whose handler clears the fixed body size).
+        // Clearing the body before the parent resize leaves the iframe (= mouse
+        // hit area) stuck at the expanded size.
         if (!wasExpanded) return;
         try {
           if (window.parent) window.parent.postMessage({ action: 'restoreAttributePanel' }, '*');
+        } catch (e) {}
+        // Fallback: if the roundtrip is lost, clear the fixed body size anyway.
+        try {
+          setTimeout(function() {
+            if (window._attrPanelExpanded !== true) {
+              document.body.style.height = '';
+              document.body.style.width = '';
+              document.body.style.overflow = '';
+            }
+          }, 1000);
         } catch (e) {}
       }
 
