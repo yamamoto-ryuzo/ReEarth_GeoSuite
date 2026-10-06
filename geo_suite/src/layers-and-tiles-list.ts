@@ -27,6 +27,378 @@ let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
 
+// UI language override from inspector text ("lang: <code>"). 'auto' = detect via navigator.language in the widget iframe.
+let _inspectorLang = 'auto';
+
+// Supported UI locales. 'en' is the base language; missing keys fall back to English.
+const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
+
+// UI translation dictionary (English base). Values may contain {placeholder} tokens
+// that are replaced at runtime by t(key, vars). HTML-bearing values (camHelp) are
+// applied via data-i18n-html.
+const GEO_I18N = {
+  en: {
+    minimize:'Minimize', restore:'Restore', move:'Move', moveCamera:'Move Camera',
+    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr',
+    layersTitle:'Layers', note:'Note', refresh:'Refresh', refreshTitle:'Force Refresh User Layers',
+    generateLink:'Generate Link', generating:'Generating...', copy:'Copy', copied:'Copied!',
+    sharePasteLabel:'Paste a URL below.', sharePastePh:'Paste URL or ?lat=...', load:'Load', loaded:'Loaded!', invalidData:'Invalid Data', parseError:'Parse Error', error:'Error',
+    shareReadUrl:'Move to current URL parameters', urlLoadFlyTo:'Load URL & FlyTo', loading:'Loading...',
+    shareFlyCurrentLabel:'Move from current location', flyToCurrentLoc:'Fly to Current Location', getting:'Getting...', restored:'Restored!', noLatLng:'No Lat/Lng', noParams:'No Params', imported:'Imported!',
+    vectorSearch:'Vector Search', allSelect:'All', selectValue:'Select value', fly:'Fly', textSearchPh:'Search by text', searchGo:'Search', updateVector:'Update vector data', attrValueList:'Attributes & Values', attrsLoaded:'Loaded {n} attributes', noAttrVector:'No vector layers with attributes', noMatch:'No match',
+    addrSearch:'Address Search', providerGsi:'GSI', searchPh:'Enter search keyword', searching:'Searching...', noResults:'No results', searchFailCors:'Search failed. Check your network (CORS).', appIdMissing:'yahooAppId is not set. Add the following line to the plugin inspector:', appIdSample:'yahooAppId: your Yahoo AppID', searchFailAppId:'Search failed. Check the AppID setting and network (CORS).', yahooWarn:'Note: yahooAppId may be exposed. Do not use on public sites.',
+    camsTitle:'Camera Presets', camHelp:'cam:Title|Lat|Lng<br>cam:Title|Lat|Lng|h=Height(m)<br>cam:Title|Lat|Lng|h=Height|d=Heading&deg;|p=Pitch&deg;<br><br>Ex: cam:Tokyo Station|35.6812|139.7671<br>Ex: cam:Mt. Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Unspecified parameters keep the current camera settings', currentCamera:'Current Camera', positionLabel:'Position', hprLabel:'Heading/Pitch/Roll', flyToTitle:'Fly to {v}',
+    terrain:'Terrain', shadow:'Shadow', depthTest:'Depth Test', on:'ON', off:'OFF', geojsonDrape:'GeoJSON 3D Drape',
+    start:'Start', stop:'Stop', current:'Current', apply:'Apply', sentCurrent:'Sent (current set)', sent:'Sent', sendFailed:'Send failed',
+    legendTitle:'Legend', legendInstr:'Add "legend: ImageURL" to inspector text.', legendMain:'Main',
+    attrTitle:'Attributes', noFeature:'No feature selected.', noAttrAvail:'No attributes available or feature deselected.', backToAttrList:'Back to attribute list', openNewTab:'Open in new tab (bypass sandbox)',
+    selectLayer:'Select layer', attrOrValuePh:'Search attributes or values', selectLayerPrompt:'Please select a layer', countFmt:'{rows} items / {attrs} attributes', sortTitle:'Click to sort', noMatchingFeatures:'No matching features', clickToFly:'Click to fly', limitSuffix:' (showing up to {n})', closeAria:'Close',
+    noUrlConfigured:'No URL configured'
+  },
+  ja: {
+    minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
+    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性',
+    layersTitle:'レイヤー', note:'注意', refresh:'更新', refreshTitle:'ユーザーレイヤーを強制更新',
+    generateLink:'リンクを生成', generating:'生成中...', copy:'コピー', copied:'コピーしました!',
+    sharePasteLabel:'URLをペーストして下さい。', sharePastePh:'URL または ?lat=... を貼付', load:'読込', loaded:'読込完了!', invalidData:'無効なデータ', parseError:'解析エラー', error:'エラー',
+    shareReadUrl:'現在のURLパラメータを読み取って移動', urlLoadFlyTo:'URL読込 & FlyTo', loading:'読込中...',
+    shareFlyCurrentLabel:'現在位置から移動', flyToCurrentLoc:'現在位置から FlyTo', getting:'取得中...', restored:'復元しました!', noLatLng:'緯度経度なし', noParams:'パラメータなし', imported:'インポートしました!',
+    vectorSearch:'ベクトル検索', allSelect:'全選択', selectValue:'値を選択', fly:'移動', textSearchPh:'文字で検索', searchGo:'検索', updateVector:'ベクトルデータを更新', attrValueList:'属性・値一覧', attrsLoaded:'{n} 属性を読み込みました', noAttrVector:'属性付きベクトルがありません', noMatch:'該当なし',
+    addrSearch:'住所検索', providerGsi:'地理院', searchPh:'検索ワードを入力', searching:'検索中...', noResults:'結果なし', searchFailCors:'検索に失敗しました。ネットワーク（CORS）を確認してください。', appIdMissing:'AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：', appIdSample:'yahooAppId: あなたのYahoo AppID', searchFailAppId:'検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。', yahooWarn:'注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。',
+    camsTitle:'カメラプリセット', camHelp:'cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位&deg;|p=傾き&deg;<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持', currentCamera:'現在のカメラ', positionLabel:'位置', hprLabel:'方位/傾き/回転', flyToTitle:'{v} へ移動',
+    terrain:'地形', shadow:'影', depthTest:'深度テスト', on:'ON', off:'OFF', geojsonDrape:'GeoJSON 3D ドレープ',
+    start:'開始', stop:'終了', current:'現在', apply:'適用', sentCurrent:'送信しました（現在時刻設定済）', sent:'送信しました', sendFailed:'送信に失敗しました',
+    legendTitle:'凡例', legendInstr:'インスペクターテキストに "legend: 画像URL" を追加してください。', legendMain:'メイン',
+    attrTitle:'属性', noFeature:'地物が選択されていません。', noAttrAvail:'属性がないか、地物の選択が解除されました。', backToAttrList:'属性一覧に戻る', openNewTab:'新しいタブで開く（Sandbox回避）',
+    selectLayer:'レイヤを選択', attrOrValuePh:'属性または値で検索', selectLayerPrompt:'レイヤを選択してください', countFmt:'{rows} 件 / {attrs} 属性', sortTitle:'クリックで並び替え', noMatchingFeatures:'該当する地物がありません', clickToFly:'クリックで移動', limitSuffix:' （表示上限 {n} 件）', closeAria:'閉じる',
+    noUrlConfigured:'URLが設定されていません'
+  },
+  'zh-CN': {
+    minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
+    tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性',
+    layersTitle:'图层', note:'注意', refresh:'刷新', refreshTitle:'强制刷新用户图层',
+    generateLink:'生成链接', generating:'生成中...', copy:'复制', copied:'已复制！',
+    sharePasteLabel:'请在下方粘贴URL。', sharePastePh:'粘贴 URL 或 ?lat=...', load:'加载', loaded:'已加载！', invalidData:'无效数据', parseError:'解析错误', error:'错误',
+    shareReadUrl:'读取当前URL参数并移动', urlLoadFlyTo:'加载URL并飞行', loading:'加载中...',
+    shareFlyCurrentLabel:'从当前位置移动', flyToCurrentLoc:'飞往当前位置', getting:'获取中...', restored:'已恢复！', noLatLng:'无经纬度', noParams:'无参数', imported:'已导入！',
+    vectorSearch:'矢量搜索', allSelect:'全选', selectValue:'选择值', fly:'飞行', textSearchPh:'按文字搜索', searchGo:'搜索', updateVector:'更新矢量数据', attrValueList:'属性与值列表', attrsLoaded:'已加载 {n} 个属性', noAttrVector:'没有带属性的矢量图层', noMatch:'无匹配',
+    addrSearch:'地址搜索', providerGsi:'地理院', searchPh:'输入搜索关键词', searching:'搜索中...', noResults:'无结果', searchFailCors:'搜索失败。请检查网络（CORS）。', appIdMissing:'未设置 AppID。请在插件检查器中添加以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜索失败。请检查 AppID 设置和网络（CORS）。', yahooWarn:'注意：yahooAppId 可能会泄露。请勿在公开网站上使用。',
+    camsTitle:'相机预设', camHelp:'cam:标题|纬度|经度<br>cam:标题|纬度|经度|h=高度m<br>cam:标题|纬度|经度|h=高度|d=方位&deg;|p=俯仰&deg;<br><br>例: cam:东京站|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定的参数将保持当前相机设置', currentCamera:'当前相机', positionLabel:'位置', hprLabel:'航向/俯仰/横滚', flyToTitle:'飞往 {v}',
+    terrain:'地形', shadow:'阴影', depthTest:'深度测试', on:'开', off:'关', geojsonDrape:'GeoJSON 3D 贴地',
+    start:'开始', stop:'结束', current:'当前', apply:'应用', sentCurrent:'已发送（已设置当前时间）', sent:'已发送', sendFailed:'发送失败',
+    legendTitle:'图例', legendInstr:'在检查器文本中添加 "legend: 图片URL"。', legendMain:'主图',
+    attrTitle:'属性', noFeature:'未选择要素。', noAttrAvail:'没有属性或已取消选择要素。', backToAttrList:'返回属性列表', openNewTab:'在新标签页打开（绕过沙箱）',
+    selectLayer:'选择图层', attrOrValuePh:'按属性或值搜索', selectLayerPrompt:'请选择图层', countFmt:'{rows} 项 / {attrs} 个属性', sortTitle:'点击排序', noMatchingFeatures:'没有匹配的要素', clickToFly:'点击移动', limitSuffix:' （最多显示 {n} 项）', closeAria:'关闭',
+    noUrlConfigured:'未配置 URL'
+  },
+  'zh-TW': {
+    minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
+    tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性',
+    layersTitle:'圖層', note:'注意', refresh:'重新整理', refreshTitle:'強制重新整理使用者圖層',
+    generateLink:'產生連結', generating:'產生中...', copy:'複製', copied:'已複製！',
+    sharePasteLabel:'請在下方貼上 URL。', sharePastePh:'貼上 URL 或 ?lat=...', load:'載入', loaded:'已載入！', invalidData:'無效資料', parseError:'解析錯誤', error:'錯誤',
+    shareReadUrl:'讀取目前 URL 參數並移動', urlLoadFlyTo:'載入 URL 並飛行', loading:'載入中...',
+    shareFlyCurrentLabel:'從目前位置移動', flyToCurrentLoc:'飛往目前位置', getting:'取得中...', restored:'已還原！', noLatLng:'無經緯度', noParams:'無參數', imported:'已匯入！',
+    vectorSearch:'向量搜尋', allSelect:'全選', selectValue:'選擇值', fly:'飛行', textSearchPh:'按文字搜尋', searchGo:'搜尋', updateVector:'更新向量資料', attrValueList:'屬性與值清單', attrsLoaded:'已載入 {n} 個屬性', noAttrVector:'沒有含屬性的向量圖層', noMatch:'無符合項目',
+    addrSearch:'地址搜尋', providerGsi:'地理院', searchPh:'輸入搜尋關鍵字', searching:'搜尋中...', noResults:'無結果', searchFailCors:'搜尋失敗。請檢查網路（CORS）。', appIdMissing:'未設定 AppID。請在外掛檢查器中新增以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜尋失敗。請檢查 AppID 設定與網路（CORS）。', yahooWarn:'注意：yahooAppId 可能會外洩。請勿在公開網站上使用。',
+    camsTitle:'相機預設', camHelp:'cam:標題|緯度|經度<br>cam:標題|緯度|經度|h=高度m<br>cam:標題|緯度|經度|h=高度|d=方位&deg;|p=俯仰&deg;<br><br>例: cam:東京車站|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定的參數將維持目前相機設定', currentCamera:'目前相機', positionLabel:'位置', hprLabel:'航向/俯仰/橫滾', flyToTitle:'飛往 {v}',
+    terrain:'地形', shadow:'陰影', depthTest:'深度測試', on:'開', off:'關', geojsonDrape:'GeoJSON 3D 貼地',
+    start:'開始', stop:'結束', current:'目前', apply:'套用', sentCurrent:'已傳送（已設定目前時間）', sent:'已傳送', sendFailed:'傳送失敗',
+    legendTitle:'圖例', legendInstr:'在檢查器文字中新增 "legend: 圖片URL"。', legendMain:'主圖',
+    attrTitle:'屬性', noFeature:'未選擇圖徵。', noAttrAvail:'沒有屬性或已取消選擇圖徵。', backToAttrList:'返回屬性清單', openNewTab:'在新分頁開啟（繞過沙箱）',
+    selectLayer:'選擇圖層', attrOrValuePh:'按屬性或值搜尋', selectLayerPrompt:'請選擇圖層', countFmt:'{rows} 項 / {attrs} 個屬性', sortTitle:'點擊排序', noMatchingFeatures:'沒有符合的圖徵', clickToFly:'點擊移動', limitSuffix:' （最多顯示 {n} 項）', closeAria:'關閉',
+    noUrlConfigured:'未設定 URL'
+  },
+  ko: {
+    minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
+    tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성',
+    layersTitle:'레이어', note:'주의', refresh:'새로고침', refreshTitle:'사용자 레이어 강제 새로고침',
+    generateLink:'링크 생성', generating:'생성 중...', copy:'복사', copied:'복사됨!',
+    sharePasteLabel:'아래에 URL을 붙여넣으세요.', sharePastePh:'URL 또는 ?lat=... 붙여넣기', load:'불러오기', loaded:'불러옴!', invalidData:'잘못된 데이터', parseError:'파싱 오류', error:'오류',
+    shareReadUrl:'현재 URL 파라미터로 이동', urlLoadFlyTo:'URL 불러오기 & 이동', loading:'불러오는 중...',
+    shareFlyCurrentLabel:'현재 위치에서 이동', flyToCurrentLoc:'현재 위치로 이동', getting:'가져오는 중...', restored:'복원됨!', noLatLng:'위경도 없음', noParams:'파라미터 없음', imported:'가져옴!',
+    vectorSearch:'벡터 검색', allSelect:'전체 선택', selectValue:'값 선택', fly:'이동', textSearchPh:'텍스트로 검색', searchGo:'검색', updateVector:'벡터 데이터 업데이트', attrValueList:'속성·값 목록', attrsLoaded:'{n}개 속성을 불러왔습니다', noAttrVector:'속성이 있는 벡터 레이어가 없습니다', noMatch:'일치 없음',
+    addrSearch:'주소 검색', providerGsi:'지리원', searchPh:'검색어 입력', searching:'검색 중...', noResults:'결과 없음', searchFailCors:'검색에 실패했습니다. 네트워크(CORS)를 확인하세요.', appIdMissing:'AppID가 설정되어 있지 않습니다. 플러그인 인스펙터에 다음 줄을 추가하세요:', appIdSample:'yahooAppId: Yahoo AppID 입력', searchFailAppId:'검색에 실패했습니다. AppID 설정과 네트워크(CORS)를 확인하세요.', yahooWarn:'주의: yahooAppId가 노출될 수 있습니다. 공개 사이트에서는 사용하지 마세요.',
+    camsTitle:'카메라 프리셋', camHelp:'cam:제목|위도|경도<br>cam:제목|위도|경도|h=고도m<br>cam:제목|위도|경도|h=고도|d=방위&deg;|p=기울기&deg;<br><br>예: cam:도쿄역|35.6812|139.7671<br>예: cam:후지산|35.3606|138.7274|h=5000|p=-30<br><br>지정하지 않은 파라미터는 현재 카메라 설정을 유지', currentCamera:'현재 카메라', positionLabel:'위치', hprLabel:'방위/기울기/회전', flyToTitle:'{v}(으)로 이동',
+    terrain:'지형', shadow:'그림자', depthTest:'깊이 테스트', on:'켜기', off:'끄기', geojsonDrape:'GeoJSON 3D 드레이프',
+    start:'시작', stop:'종료', current:'현재', apply:'적용', sentCurrent:'전송됨(현재 시간 설정)', sent:'전송됨', sendFailed:'전송 실패',
+    legendTitle:'범례', legendInstr:'인스펙터 텍스트에 "legend: 이미지URL"을 추가하세요.', legendMain:'메인',
+    attrTitle:'속성', noFeature:'선택된 피처가 없습니다.', noAttrAvail:'속성이 없거나 피처 선택이 해제되었습니다.', backToAttrList:'속성 목록으로 돌아가기', openNewTab:'새 탭에서 열기(샌드박스 우회)',
+    selectLayer:'레이어 선택', attrOrValuePh:'속성 또는 값으로 검색', selectLayerPrompt:'레이어를 선택하세요', countFmt:'{rows}건 / {attrs}개 속성', sortTitle:'클릭하여 정렬', noMatchingFeatures:'일치하는 피처가 없습니다', clickToFly:'클릭하여 이동', limitSuffix:' (표시 상한 {n}건)', closeAria:'닫기',
+    noUrlConfigured:'URL이 설정되지 않았습니다'
+  },
+  es: {
+    minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
+    tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.',
+    layersTitle:'Capas', note:'Nota', refresh:'Actualizar', refreshTitle:'Forzar actualización de capas de usuario',
+    generateLink:'Generar enlace', generating:'Generando...', copy:'Copiar', copied:'¡Copiado!',
+    sharePasteLabel:'Pega una URL abajo.', sharePastePh:'Pegar URL o ?lat=...', load:'Cargar', loaded:'¡Cargado!', invalidData:'Datos no válidos', parseError:'Error de análisis', error:'Error',
+    shareReadUrl:'Ir a los parámetros de la URL actual', urlLoadFlyTo:'Cargar URL y volar', loading:'Cargando...',
+    shareFlyCurrentLabel:'Mover desde la ubicación actual', flyToCurrentLoc:'Volar a la ubicación actual', getting:'Obteniendo...', restored:'¡Restaurado!', noLatLng:'Sin lat/lng', noParams:'Sin parámetros', imported:'¡Importado!',
+    vectorSearch:'Búsqueda vectorial', allSelect:'Todo', selectValue:'Seleccionar valor', fly:'Volar', textSearchPh:'Buscar por texto', searchGo:'Buscar', updateVector:'Actualizar datos vectoriales', attrValueList:'Atributos y valores', attrsLoaded:'{n} atributos cargados', noAttrVector:'No hay capas vectoriales con atributos', noMatch:'Sin coincidencias',
+    addrSearch:'Búsqueda de direcciones', providerGsi:'GSI', searchPh:'Introduce palabra clave', searching:'Buscando...', noResults:'Sin resultados', searchFailCors:'Búsqueda fallida. Revisa la red (CORS).', appIdMissing:'AppID no configurado. Añade la siguiente línea al inspector del plugin:', appIdSample:'yahooAppId: tu AppID de Yahoo', searchFailAppId:'Búsqueda fallida. Revisa el AppID y la red (CORS).', yahooWarn:'Nota: yahooAppId puede quedar expuesto. No usar en sitios públicos.',
+    camsTitle:'Preajustes de cámara', camHelp:'cam:Título|Lat|Lng<br>cam:Título|Lat|Lng|h=Altura(m)<br>cam:Título|Lat|Lng|h=Altura|d=Rumbo&deg;|p=Inclinación&deg;<br><br>Ej: cam:Estación de Tokio|35.6812|139.7671<br>Ej: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Los parámetros no especificados mantienen la cámara actual', currentCamera:'Cámara actual', positionLabel:'Posición', hprLabel:'Rumbo/Inclinación/Balance', flyToTitle:'Volar a {v}',
+    terrain:'Terreno', shadow:'Sombra', depthTest:'Prueba de profundidad', on:'SÍ', off:'NO', geojsonDrape:'Drapeado 3D GeoJSON',
+    start:'Inicio', stop:'Fin', current:'Actual', apply:'Aplicar', sentCurrent:'Enviado (actual fijado)', sent:'Enviado', sendFailed:'Error al enviar',
+    legendTitle:'Leyenda', legendInstr:'Añade "legend: URLdeImagen" al texto del inspector.', legendMain:'Principal',
+    attrTitle:'Atributos', noFeature:'Ninguna entidad seleccionada.', noAttrAvail:'Sin atributos o entidad deseleccionada.', backToAttrList:'Volver a la lista', openNewTab:'Abrir en nueva pestaña (evitar sandbox)',
+    selectLayer:'Seleccionar capa', attrOrValuePh:'Buscar atributos o valores', selectLayerPrompt:'Selecciona una capa', countFmt:'{rows} elementos / {attrs} atributos', sortTitle:'Clic para ordenar', noMatchingFeatures:'No hay entidades coincidentes', clickToFly:'Clic para volar', limitSuffix:' (máx. {n} mostrados)', closeAria:'Cerrar',
+    noUrlConfigured:'URL no configurada'
+  },
+  fr: {
+    minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
+    tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.',
+    layersTitle:'Couches', note:'Note', refresh:'Actualiser', refreshTitle:'Forcer l’actualisation des couches',
+    generateLink:'Générer le lien', generating:'Génération...', copy:'Copier', copied:'Copié !',
+    sharePasteLabel:'Collez une URL ci-dessous.', sharePastePh:'Coller URL ou ?lat=...', load:'Charger', loaded:'Chargé !', invalidData:'Données invalides', parseError:'Erreur d’analyse', error:'Erreur',
+    shareReadUrl:'Aller aux paramètres de l’URL actuelle', urlLoadFlyTo:'Charger l’URL et voler', loading:'Chargement...',
+    shareFlyCurrentLabel:'Déplacer depuis la position actuelle', flyToCurrentLoc:'Vol vers la position actuelle', getting:'Obtention...', restored:'Restauré !', noLatLng:'Pas de lat/lng', noParams:'Pas de paramètres', imported:'Importé !',
+    vectorSearch:'Recherche vectorielle', allSelect:'Tout', selectValue:'Choisir une valeur', fly:'Voler', textSearchPh:'Recherche par texte', searchGo:'Rechercher', updateVector:'Mettre à jour les données vectorielles', attrValueList:'Attributs et valeurs', attrsLoaded:'{n} attributs chargés', noAttrVector:'Aucune couche vectorielle avec attributs', noMatch:'Aucun résultat',
+    addrSearch:'Recherche d’adresse', providerGsi:'GSI', searchPh:'Saisir un mot-clé', searching:'Recherche...', noResults:'Aucun résultat', searchFailCors:'Échec de la recherche. Vérifiez le réseau (CORS).', appIdMissing:'AppID non défini. Ajoutez la ligne suivante à l’inspecteur du plugin :', appIdSample:'yahooAppId : votre AppID Yahoo', searchFailAppId:'Échec de la recherche. Vérifiez l’AppID et le réseau (CORS).', yahooWarn:'Note : yahooAppId peut être exposé. Ne pas utiliser sur des sites publics.',
+    camsTitle:'Préréglages caméra', camHelp:'cam:Titre|Lat|Lng<br>cam:Titre|Lat|Lng|h=Altitude(m)<br>cam:Titre|Lat|Lng|h=Altitude|d=Cap&deg;|p=Inclinaison&deg;<br><br>Ex : cam:Gare de Tokyo|35.6812|139.7671<br>Ex : cam:Mont Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Les paramètres non spécifiés conservent les réglages actuels', currentCamera:'Caméra actuelle', positionLabel:'Position', hprLabel:'Cap/Inclinaison/Roulis', flyToTitle:'Vol vers {v}',
+    terrain:'Terrain', shadow:'Ombre', depthTest:'Test de profondeur', on:'OUI', off:'NON', geojsonDrape:'Drapé 3D GeoJSON',
+    start:'Début', stop:'Fin', current:'Actuel', apply:'Appliquer', sentCurrent:'Envoyé (actuel défini)', sent:'Envoyé', sendFailed:'Échec de l’envoi',
+    legendTitle:'Légende', legendInstr:'Ajoutez "legend: URLimage" au texte de l’inspecteur.', legendMain:'Principal',
+    attrTitle:'Attributs', noFeature:'Aucun objet sélectionné.', noAttrAvail:'Pas d’attributs ou objet désélectionné.', backToAttrList:'Retour à la liste', openNewTab:'Ouvrir dans un nouvel onglet (contourner le sandbox)',
+    selectLayer:'Choisir une couche', attrOrValuePh:'Rechercher attributs ou valeurs', selectLayerPrompt:'Veuillez choisir une couche', countFmt:'{rows} éléments / {attrs} attributs', sortTitle:'Cliquer pour trier', noMatchingFeatures:'Aucun objet correspondant', clickToFly:'Cliquer pour voler', limitSuffix:' (affichage limité à {n})', closeAria:'Fermer',
+    noUrlConfigured:'Aucune URL configurée'
+  },
+  de: {
+    minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
+    tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.',
+    layersTitle:'Layer', note:'Hinweis', refresh:'Aktualisieren', refreshTitle:'Benutzer-Layer neu laden',
+    generateLink:'Link erzeugen', generating:'Erzeuge...', copy:'Kopieren', copied:'Kopiert!',
+    sharePasteLabel:'URL unten einfügen.', sharePastePh:'URL oder ?lat=... einfügen', load:'Laden', loaded:'Geladen!', invalidData:'Ungültige Daten', parseError:'Parse-Fehler', error:'Fehler',
+    shareReadUrl:'Zu aktuellen URL-Parametern wechseln', urlLoadFlyTo:'URL laden & anfliegen', loading:'Laden...',
+    shareFlyCurrentLabel:'Vom aktuellen Standort bewegen', flyToCurrentLoc:'Zum aktuellen Standort fliegen', getting:'Abrufen...', restored:'Wiederhergestellt!', noLatLng:'Kein Lat/Lng', noParams:'Keine Parameter', imported:'Importiert!',
+    vectorSearch:'Vektorsuche', allSelect:'Alle', selectValue:'Wert wählen', fly:'Fliegen', textSearchPh:'Nach Text suchen', searchGo:'Suchen', updateVector:'Vektordaten aktualisieren', attrValueList:'Attribute & Werte', attrsLoaded:'{n} Attribute geladen', noAttrVector:'Keine Vektor-Layer mit Attributen', noMatch:'Kein Treffer',
+    addrSearch:'Adresssuche', providerGsi:'GSI', searchPh:'Suchbegriff eingeben', searching:'Suche...', noResults:'Keine Ergebnisse', searchFailCors:'Suche fehlgeschlagen. Netzwerk (CORS) prüfen.', appIdMissing:'AppID nicht gesetzt. Fügen Sie folgende Zeile im Plugin-Inspektor hinzu:', appIdSample:'yahooAppId: Ihre Yahoo-AppID', searchFailAppId:'Suche fehlgeschlagen. AppID und Netzwerk (CORS) prüfen.', yahooWarn:'Hinweis: yahooAppId könnte offengelegt werden. Nicht auf öffentlichen Seiten verwenden.',
+    camsTitle:'Kamera-Voreinstellungen', camHelp:'cam:Titel|Lat|Lng<br>cam:Titel|Lat|Lng|h=Höhe(m)<br>cam:Titel|Lat|Lng|h=Höhe|d=Kurs&deg;|p=Neigung&deg;<br><br>Bsp.: cam:Bahnhof Tokio|35.6812|139.7671<br>Bsp.: cam:Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Nicht angegebene Parameter behalten die aktuellen Kameraeinstellungen', currentCamera:'Aktuelle Kamera', positionLabel:'Position', hprLabel:'Kurs/Neigung/Roll', flyToTitle:'Flug zu {v}',
+    terrain:'Gelände', shadow:'Schatten', depthTest:'Tiefentest', on:'EIN', off:'AUS', geojsonDrape:'GeoJSON-3D-Drape',
+    start:'Start', stop:'Ende', current:'Aktuell', apply:'Anwenden', sentCurrent:'Gesendet (aktuell gesetzt)', sent:'Gesendet', sendFailed:'Senden fehlgeschlagen',
+    legendTitle:'Legende', legendInstr:'"legend: BildURL" zum Inspektor-Text hinzufügen.', legendMain:'Haupt',
+    attrTitle:'Attribute', noFeature:'Kein Objekt ausgewählt.', noAttrAvail:'Keine Attribute oder Auswahl aufgehoben.', backToAttrList:'Zurück zur Liste', openNewTab:'In neuem Tab öffnen (Sandbox umgehen)',
+    selectLayer:'Layer wählen', attrOrValuePh:'Attribute oder Werte suchen', selectLayerPrompt:'Bitte Layer wählen', countFmt:'{rows} Einträge / {attrs} Attribute', sortTitle:'Klicken zum Sortieren', noMatchingFeatures:'Keine passenden Objekte', clickToFly:'Klicken zum Anfliegen', limitSuffix:' (max. {n} angezeigt)', closeAria:'Schließen',
+    noUrlConfigured:'Keine URL konfiguriert'
+  },
+  it: {
+    minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
+    tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.',
+    layersTitle:'Layer', note:'Nota', refresh:'Aggiorna', refreshTitle:'Forza aggiornamento layer utente',
+    generateLink:'Genera link', generating:'Generazione...', copy:'Copia', copied:'Copiato!',
+    sharePasteLabel:'Incolla un URL qui sotto.', sharePastePh:'Incolla URL o ?lat=...', load:'Carica', loaded:'Caricato!', invalidData:'Dati non validi', parseError:'Errore di parsing', error:'Errore',
+    shareReadUrl:'Vai ai parametri URL correnti', urlLoadFlyTo:'Carica URL e vola', loading:'Caricamento...',
+    shareFlyCurrentLabel:'Sposta dalla posizione corrente', flyToCurrentLoc:'Vola alla posizione corrente', getting:'Recupero...', restored:'Ripristinato!', noLatLng:'Nessun lat/lng', noParams:'Nessun parametro', imported:'Importato!',
+    vectorSearch:'Ricerca vettoriale', allSelect:'Tutto', selectValue:'Seleziona valore', fly:'Vola', textSearchPh:'Cerca per testo', searchGo:'Cerca', updateVector:'Aggiorna dati vettoriali', attrValueList:'Attributi e valori', attrsLoaded:'{n} attributi caricati', noAttrVector:'Nessun layer vettoriale con attributi', noMatch:'Nessuna corrispondenza',
+    addrSearch:'Ricerca indirizzi', providerGsi:'GSI', searchPh:'Inserisci parola chiave', searching:'Ricerca...', noResults:'Nessun risultato', searchFailCors:'Ricerca fallita. Controlla la rete (CORS).', appIdMissing:'AppID non configurato. Aggiungi la riga seguente nell’ispettore del plugin:', appIdSample:'yahooAppId: il tuo AppID Yahoo', searchFailAppId:'Ricerca fallita. Controlla AppID e rete (CORS).', yahooWarn:'Nota: yahooAppId potrebbe essere esposto. Non usare su siti pubblici.',
+    camsTitle:'Preset camera', camHelp:'cam:Titolo|Lat|Lng<br>cam:Titolo|Lat|Lng|h=Altezza(m)<br>cam:Titolo|Lat|Lng|h=Altezza|d=Direzione&deg;|p=Inclinazione&deg;<br><br>Es: cam:Stazione di Tokyo|35.6812|139.7671<br>Es: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>I parametri non specificati mantengono le impostazioni attuali', currentCamera:'Camera corrente', positionLabel:'Posizione', hprLabel:'Direzione/Inclinazione/Rollio', flyToTitle:'Vola a {v}',
+    terrain:'Terreno', shadow:'Ombra', depthTest:'Test profondità', on:'SÌ', off:'NO', geojsonDrape:'Drappeggio 3D GeoJSON',
+    start:'Inizio', stop:'Fine', current:'Corrente', apply:'Applica', sentCurrent:'Inviato (corrente impostato)', sent:'Inviato', sendFailed:'Invio fallito',
+    legendTitle:'Legenda', legendInstr:'Aggiungi "legend: URLimmagine" al testo dell’ispettore.', legendMain:'Principale',
+    attrTitle:'Attributi', noFeature:'Nessun elemento selezionato.', noAttrAvail:'Nessun attributo o selezione rimossa.', backToAttrList:'Torna all’elenco', openNewTab:'Apri in nuova scheda (aggira sandbox)',
+    selectLayer:'Seleziona layer', attrOrValuePh:'Cerca attributi o valori', selectLayerPrompt:'Seleziona un layer', countFmt:'{rows} elementi / {attrs} attributi', sortTitle:'Clicca per ordinare', noMatchingFeatures:'Nessun elemento corrispondente', clickToFly:'Clicca per volare', limitSuffix:' (max {n} mostrati)', closeAria:'Chiudi',
+    noUrlConfigured:'URL non configurato'
+  },
+  pt: {
+    minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
+    tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.',
+    layersTitle:'Camadas', note:'Nota', refresh:'Atualizar', refreshTitle:'Forçar atualização das camadas',
+    generateLink:'Gerar link', generating:'Gerando...', copy:'Copiar', copied:'Copiado!',
+    sharePasteLabel:'Cole uma URL abaixo.', sharePastePh:'Colar URL ou ?lat=...', load:'Carregar', loaded:'Carregado!', invalidData:'Dados inválidos', parseError:'Erro de análise', error:'Erro',
+    shareReadUrl:'Ir para os parâmetros da URL atual', urlLoadFlyTo:'Carregar URL e voar', loading:'Carregando...',
+    shareFlyCurrentLabel:'Mover da localização atual', flyToCurrentLoc:'Voar para localização atual', getting:'Obtendo...', restored:'Restaurado!', noLatLng:'Sem lat/lng', noParams:'Sem parâmetros', imported:'Importado!',
+    vectorSearch:'Busca vetorial', allSelect:'Todos', selectValue:'Selecionar valor', fly:'Voar', textSearchPh:'Buscar por texto', searchGo:'Buscar', updateVector:'Atualizar dados vetoriais', attrValueList:'Atributos e valores', attrsLoaded:'{n} atributos carregados', noAttrVector:'Nenhuma camada vetorial com atributos', noMatch:'Sem correspondência',
+    addrSearch:'Busca de endereço', providerGsi:'GSI', searchPh:'Digite a palavra-chave', searching:'Buscando...', noResults:'Sem resultados', searchFailCors:'Falha na busca. Verifique a rede (CORS).', appIdMissing:'AppID não configurado. Adicione a linha a seguir ao inspetor do plugin:', appIdSample:'yahooAppId: seu AppID do Yahoo', searchFailAppId:'Falha na busca. Verifique o AppID e a rede (CORS).', yahooWarn:'Nota: o yahooAppId pode ser exposto. Não use em sites públicos.',
+    camsTitle:'Predefinições de câmera', camHelp:'cam:Título|Lat|Lng<br>cam:Título|Lat|Lng|h=Altura(m)<br>cam:Título|Lat|Lng|h=Altura|d=Direção&deg;|p=Inclinação&deg;<br><br>Ex: cam:Estação de Tóquio|35.6812|139.7671<br>Ex: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Parâmetros não especificados mantêm as configurações atuais', currentCamera:'Câmera atual', positionLabel:'Posição', hprLabel:'Direção/Inclinação/Rolagem', flyToTitle:'Voar para {v}',
+    terrain:'Terreno', shadow:'Sombra', depthTest:'Teste de profundidade', on:'SIM', off:'NÃO', geojsonDrape:'Drapeado 3D GeoJSON',
+    start:'Início', stop:'Fim', current:'Atual', apply:'Aplicar', sentCurrent:'Enviado (atual definido)', sent:'Enviado', sendFailed:'Falha ao enviar',
+    legendTitle:'Legenda', legendInstr:'Adicione "legend: URLdaImagem" ao texto do inspetor.', legendMain:'Principal',
+    attrTitle:'Atributos', noFeature:'Nenhum elemento selecionado.', noAttrAvail:'Sem atributos ou elemento desmarcado.', backToAttrList:'Voltar à lista', openNewTab:'Abrir em nova aba (contornar sandbox)',
+    selectLayer:'Selecionar camada', attrOrValuePh:'Buscar atributos ou valores', selectLayerPrompt:'Selecione uma camada', countFmt:'{rows} itens / {attrs} atributos', sortTitle:'Clique para ordenar', noMatchingFeatures:'Nenhum elemento correspondente', clickToFly:'Clique para voar', limitSuffix:' (mostrando até {n})', closeAria:'Fechar',
+    noUrlConfigured:'URL não configurada'
+  },
+  ru: {
+    minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
+    tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.',
+    layersTitle:'Слои', note:'Примечание', refresh:'Обновить', refreshTitle:'Принудительно обновить слои',
+    generateLink:'Создать ссылку', generating:'Создание...', copy:'Копировать', copied:'Скопировано!',
+    sharePasteLabel:'Вставьте URL ниже.', sharePastePh:'Вставить URL или ?lat=...', load:'Загрузить', loaded:'Загружено!', invalidData:'Неверные данные', parseError:'Ошибка разбора', error:'Ошибка',
+    shareReadUrl:'Перейти к параметрам текущего URL', urlLoadFlyTo:'Загрузить URL и перейти', loading:'Загрузка...',
+    shareFlyCurrentLabel:'Переместиться от текущего положения', flyToCurrentLoc:'К текущему положению', getting:'Получение...', restored:'Восстановлено!', noLatLng:'Нет координат', noParams:'Нет параметров', imported:'Импортировано!',
+    vectorSearch:'Векторный поиск', allSelect:'Все', selectValue:'Выберите значение', fly:'Перейти', textSearchPh:'Поиск по тексту', searchGo:'Поиск', updateVector:'Обновить векторные данные', attrValueList:'Атрибуты и значения', attrsLoaded:'Загружено атрибутов: {n}', noAttrVector:'Нет векторных слоёв с атрибутами', noMatch:'Нет совпадений',
+    addrSearch:'Поиск адреса', providerGsi:'GSI', searchPh:'Введите ключевое слово', searching:'Поиск...', noResults:'Нет результатов', searchFailCors:'Поиск не удался. Проверьте сеть (CORS).', appIdMissing:'AppID не задан. Добавьте следующую строку в инспектор плагина:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Поиск не удался. Проверьте AppID и сеть (CORS).', yahooWarn:'Внимание: yahooAppId может быть раскрыт. Не используйте на публичных сайтах.',
+    camsTitle:'Предустановки камеры', camHelp:'cam:Название|Широта|Долгота<br>cam:Название|Широта|Долгота|h=Высота(м)<br>cam:Название|Широта|Долгота|h=Высота|d=Азимут&deg;|p=Наклон&deg;<br><br>Пример: cam:Токийский вокзал|35.6812|139.7671<br>Пример: cam:Фудзи|35.3606|138.7274|h=5000|p=-30<br><br>Неуказанные параметры сохраняют текущие настройки камеры', currentCamera:'Текущая камера', positionLabel:'Позиция', hprLabel:'Азимут/Наклон/Крен', flyToTitle:'Перейти к {v}',
+    terrain:'Рельеф', shadow:'Тень', depthTest:'Тест глубины', on:'ВКЛ', off:'ВЫКЛ', geojsonDrape:'3D-драпировка GeoJSON',
+    start:'Начало', stop:'Конец', current:'Текущее', apply:'Применить', sentCurrent:'Отправлено (текущее задано)', sent:'Отправлено', sendFailed:'Ошибка отправки',
+    legendTitle:'Легенда', legendInstr:'Добавьте "legend: URLизображения" в текст инспектора.', legendMain:'Основная',
+    attrTitle:'Атрибуты', noFeature:'Объект не выбран.', noAttrAvail:'Нет атрибутов или выбор снят.', backToAttrList:'Назад к списку', openNewTab:'Открыть в новой вкладке (обход sandbox)',
+    selectLayer:'Выберите слой', attrOrValuePh:'Поиск по атрибутам или значениям', selectLayerPrompt:'Выберите слой', countFmt:'{rows} записей / {attrs} атрибутов', sortTitle:'Нажмите для сортировки', noMatchingFeatures:'Нет подходящих объектов', clickToFly:'Нажмите для перехода', limitSuffix:' (показано до {n})', closeAria:'Закрыть',
+    noUrlConfigured:'URL не настроен'
+  },
+  nl: {
+    minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
+    tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.',
+    layersTitle:'Lagen', note:'Let op', refresh:'Vernieuwen', refreshTitle:'Gebruikerslagen geforceerd vernieuwen',
+    generateLink:'Link genereren', generating:'Genereren...', copy:'Kopiëren', copied:'Gekopieerd!',
+    sharePasteLabel:'Plak hieronder een URL.', sharePastePh:'Plak URL of ?lat=...', load:'Laden', loaded:'Geladen!', invalidData:'Ongeldige gegevens', parseError:'Parsefout', error:'Fout',
+    shareReadUrl:'Naar huidige URL-parameters gaan', urlLoadFlyTo:'URL laden & heen vliegen', loading:'Laden...',
+    shareFlyCurrentLabel:'Vanaf huidige locatie verplaatsen', flyToCurrentLoc:'Naar huidige locatie vliegen', getting:'Ophalen...', restored:'Hersteld!', noLatLng:'Geen lat/lng', noParams:'Geen parameters', imported:'Geïmporteerd!',
+    vectorSearch:'Vectorzoeking', allSelect:'Alles', selectValue:'Kies waarde', fly:'Vliegen', textSearchPh:'Op tekst zoeken', searchGo:'Zoeken', updateVector:'Vectorgegevens bijwerken', attrValueList:'Attributen & waarden', attrsLoaded:'{n} attributen geladen', noAttrVector:'Geen vectorlagen met attributen', noMatch:'Geen overeenkomst',
+    addrSearch:'Adres zoeken', providerGsi:'GSI', searchPh:'Voer zoekterm in', searching:'Zoeken...', noResults:'Geen resultaten', searchFailCors:'Zoeken mislukt. Controleer netwerk (CORS).', appIdMissing:'AppID niet ingesteld. Voeg de volgende regel toe aan de plugin-inspector:', appIdSample:'yahooAppId: uw Yahoo AppID', searchFailAppId:'Zoeken mislukt. Controleer AppID en netwerk (CORS).', yahooWarn:'Let op: yahooAppId kan zichtbaar worden. Niet gebruiken op openbare sites.',
+    camsTitle:'Camera-presets', camHelp:'cam:Titel|Lat|Lng<br>cam:Titel|Lat|Lng|h=Hoogte(m)<br>cam:Titel|Lat|Lng|h=Hoogte|d=Richting&deg;|p=Helling&deg;<br><br>Bijv: cam:Station Tokio|35.6812|139.7671<br>Bijv: cam:Mount Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Niet-opgegeven parameters behouden de huidige camera-instellingen', currentCamera:'Huidige camera', positionLabel:'Positie', hprLabel:'Richting/Helling/Rol', flyToTitle:'Vlieg naar {v}',
+    terrain:'Terrein', shadow:'Schaduw', depthTest:'Dieptetest', on:'AAN', off:'UIT', geojsonDrape:'GeoJSON 3D-drape',
+    start:'Start', stop:'Einde', current:'Huidig', apply:'Toepassen', sentCurrent:'Verzonden (huidig ingesteld)', sent:'Verzonden', sendFailed:'Verzenden mislukt',
+    legendTitle:'Legenda', legendInstr:'Voeg "legend: AfbeeldingsURL" toe aan inspectortekst.', legendMain:'Hoofd',
+    attrTitle:'Attributen', noFeature:'Geen object geselecteerd.', noAttrAvail:'Geen attributen of selectie opgeheven.', backToAttrList:'Terug naar lijst', openNewTab:'Openen in nieuw tabblad (sandbox omzeilen)',
+    selectLayer:'Kies laag', attrOrValuePh:'Zoek attributen of waarden', selectLayerPrompt:'Kies een laag', countFmt:'{rows} items / {attrs} attributen', sortTitle:'Klik om te sorteren', noMatchingFeatures:'Geen overeenkomende objecten', clickToFly:'Klik om te vliegen', limitSuffix:' (max. {n} weergegeven)', closeAria:'Sluiten',
+    noUrlConfigured:'Geen URL geconfigureerd'
+  },
+  pl: {
+    minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
+    tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.',
+    layersTitle:'Warstwy', note:'Uwaga', refresh:'Odśwież', refreshTitle:'Wymuś odświeżenie warstw użytkownika',
+    generateLink:'Generuj link', generating:'Generowanie...', copy:'Kopiuj', copied:'Skopiowano!',
+    sharePasteLabel:'Wklej URL poniżej.', sharePastePh:'Wklej URL lub ?lat=...', load:'Wczytaj', loaded:'Wczytano!', invalidData:'Nieprawidłowe dane', parseError:'Błąd parsowania', error:'Błąd',
+    shareReadUrl:'Przejdź do parametrów bieżącego URL', urlLoadFlyTo:'Wczytaj URL i leć', loading:'Wczytywanie...',
+    shareFlyCurrentLabel:'Przenieś z bieżącej lokalizacji', flyToCurrentLoc:'Leć do bieżącej lokalizacji', getting:'Pobieranie...', restored:'Przywrócono!', noLatLng:'Brak lat/lng', noParams:'Brak parametrów', imported:'Zaimportowano!',
+    vectorSearch:'Wyszukiwanie wektorowe', allSelect:'Wszystkie', selectValue:'Wybierz wartość', fly:'Leć', textSearchPh:'Szukaj po tekście', searchGo:'Szukaj', updateVector:'Aktualizuj dane wektorowe', attrValueList:'Atrybuty i wartości', attrsLoaded:'Wczytano {n} atrybutów', noAttrVector:'Brak warstw wektorowych z atrybutami', noMatch:'Brak dopasowań',
+    addrSearch:'Wyszukiwanie adresu', providerGsi:'GSI', searchPh:'Wpisz słowo kluczowe', searching:'Wyszukiwanie...', noResults:'Brak wyników', searchFailCors:'Wyszukiwanie nie powiodło się. Sprawdź sieć (CORS).', appIdMissing:'AppID nie jest ustawione. Dodaj następujący wiersz do inspektora wtyczki:', appIdSample:'yahooAppId: Twój AppID Yahoo', searchFailAppId:'Wyszukiwanie nie powiodło się. Sprawdź AppID i sieć (CORS).', yahooWarn:'Uwaga: yahooAppId może zostać ujawnione. Nie używaj na publicznych stronach.',
+    camsTitle:'Presety kamery', camHelp:'cam:Tytuł|Szer.|Dług.<br>cam:Tytuł|Szer.|Dług.|h=Wysokość(m)<br>cam:Tytuł|Szer.|Dług.|h=Wysokość|d=Kierunek&deg;|p=Nachylenie&deg;<br><br>Przykład: cam:Stacja Tokio|35.6812|139.7671<br>Przykład: cam:Góra Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Nieokreślone parametry zachowują bieżące ustawienia kamery', currentCamera:'Bieżąca kamera', positionLabel:'Pozycja', hprLabel:'Kierunek/Nachylenie/Przechylenie', flyToTitle:'Leć do {v}',
+    terrain:'Teren', shadow:'Cień', depthTest:'Test głębi', on:'WŁ.', off:'WYŁ.', geojsonDrape:'Drapowanie 3D GeoJSON',
+    start:'Start', stop:'Koniec', current:'Bieżący', apply:'Zastosuj', sentCurrent:'Wysłano (bieżący ustawiony)', sent:'Wysłano', sendFailed:'Wysyłanie nie powiodło się',
+    legendTitle:'Legenda', legendInstr:'Dodaj "legend: URLobrazu" do tekstu inspektora.', legendMain:'Główna',
+    attrTitle:'Atrybuty', noFeature:'Nie wybrano obiektu.', noAttrAvail:'Brak atrybutów lub odznaczono obiekt.', backToAttrList:'Powrót do listy', openNewTab:'Otwórz w nowej karcie (obejście sandbox)',
+    selectLayer:'Wybierz warstwę', attrOrValuePh:'Szukaj atrybutów lub wartości', selectLayerPrompt:'Wybierz warstwę', countFmt:'{rows} elementów / {attrs} atrybutów', sortTitle:'Kliknij, aby sortować', noMatchingFeatures:'Brak pasujących obiektów', clickToFly:'Kliknij, aby polecieć', limitSuffix:' (wyświetlono maks. {n})', closeAria:'Zamknij',
+    noUrlConfigured:'Nie skonfigurowano URL'
+  },
+  uk: {
+    minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
+    tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.',
+    layersTitle:'Шари', note:'Примітка', refresh:'Оновити', refreshTitle:'Примусово оновити шари користувача',
+    generateLink:'Створити посилання', generating:'Створення...', copy:'Копіювати', copied:'Скопійовано!',
+    sharePasteLabel:'Вставте URL нижче.', sharePastePh:'Вставте URL або ?lat=...', load:'Завантажити', loaded:'Завантажено!', invalidData:'Недійсні дані', parseError:'Помилка розбору', error:'Помилка',
+    shareReadUrl:'Перейти до параметрів поточного URL', urlLoadFlyTo:'Завантажити URL і летіти', loading:'Завантаження...',
+    shareFlyCurrentLabel:'Переміститися з поточного місця', flyToCurrentLoc:'Летіти до поточного місця', getting:'Отримання...', restored:'Відновлено!', noLatLng:'Немає координат', noParams:'Немає параметрів', imported:'Імпортовано!',
+    vectorSearch:'Векторний пошук', allSelect:'Усі', selectValue:'Оберіть значення', fly:'Летіти', textSearchPh:'Пошук за текстом', searchGo:'Пошук', updateVector:'Оновити векторні дані', attrValueList:'Атрибути та значення', attrsLoaded:'Завантажено {n} атрибутів', noAttrVector:'Немає векторних шарів з атрибутами', noMatch:'Немає збігів',
+    addrSearch:'Пошук адреси', providerGsi:'GSI', searchPh:'Введіть ключове слово', searching:'Пошук...', noResults:'Немає результатів', searchFailCors:'Пошук не вдався. Перевірте мережу (CORS).', appIdMissing:'AppID не задано. Додайте наступний рядок в інспектор плагіна:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Пошук не вдався. Перевірте AppID та мережу (CORS).', yahooWarn:'Увага: yahooAppId може бути розкрито. Не використовуйте на публічних сайтах.',
+    camsTitle:'Пресети камери', camHelp:'cam:Назва|Широта|Довгота<br>cam:Назва|Широта|Довгота|h=Висота(м)<br>cam:Назва|Широта|Довгота|h=Висота|d=Азимут&deg;|p=Нахил&deg;<br><br>Приклад: cam:Токійський вокзал|35.6812|139.7671<br>Приклад: cam:Фудзі|35.3606|138.7274|h=5000|p=-30<br><br>Невказані параметри зберігають поточні налаштування камери', currentCamera:'Поточна камера', positionLabel:'Позиція', hprLabel:'Азимут/Нахил/Крен', flyToTitle:'Летіти до {v}',
+    terrain:'Рельєф', shadow:'Тінь', depthTest:'Тест глибини', on:'УВІМК', off:'ВИМК', geojsonDrape:'3D-драпірування GeoJSON',
+    start:'Початок', stop:'Кінець', current:'Поточний', apply:'Застосувати', sentCurrent:'Надіслано (поточний задано)', sent:'Надіслано', sendFailed:'Помилка надсилання',
+    legendTitle:'Легенда', legendInstr:'Додайте "legend: URLзображення" до тексту інспектора.', legendMain:'Основна',
+    attrTitle:'Атрибути', noFeature:'Об’єкт не вибрано.', noAttrAvail:'Немає атрибутів або вибір скасовано.', backToAttrList:'Назад до списку', openNewTab:'Відкрити в новій вкладці (обхід sandbox)',
+    selectLayer:'Виберіть шар', attrOrValuePh:'Пошук атрибутів або значень', selectLayerPrompt:'Виберіть шар', countFmt:'{rows} записів / {attrs} атрибутів', sortTitle:'Натисніть для сортування', noMatchingFeatures:'Немає відповідних об’єктів', clickToFly:'Натисніть, щоб летіти', limitSuffix:' (показано до {n})', closeAria:'Закрити',
+    noUrlConfigured:'URL не налаштовано'
+  },
+  tr: {
+    minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
+    tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik',
+    layersTitle:'Katmanlar', note:'Not', refresh:'Yenile', refreshTitle:'Kullanıcı katmanlarını zorla yenile',
+    generateLink:'Bağlantı oluştur', generating:'Oluşturuluyor...', copy:'Kopyala', copied:'Kopyalandı!',
+    sharePasteLabel:'Aşağıya bir URL yapıştırın.', sharePastePh:'URL veya ?lat=... yapıştır', load:'Yükle', loaded:'Yüklendi!', invalidData:'Geçersiz veri', parseError:'Ayrıştırma hatası', error:'Hata',
+    shareReadUrl:'Geçerli URL parametrelerine git', urlLoadFlyTo:'URL yükle ve uç', loading:'Yükleniyor...',
+    shareFlyCurrentLabel:'Geçerli konumdan hareket et', flyToCurrentLoc:'Geçerli konuma uç', getting:'Alınıyor...', restored:'Geri yüklendi!', noLatLng:'Enlem/boylam yok', noParams:'Parametre yok', imported:'İçe aktarıldı!',
+    vectorSearch:'Vektör arama', allSelect:'Tümü', selectValue:'Değer seç', fly:'Uç', textSearchPh:'Metne göre ara', searchGo:'Ara', updateVector:'Vektör verilerini güncelle', attrValueList:'Öznitelikler ve değerler', attrsLoaded:'{n} öznitelik yüklendi', noAttrVector:'Öznitelikli vektör katmanı yok', noMatch:'Eşleşme yok',
+    addrSearch:'Adres arama', providerGsi:'GSI', searchPh:'Anahtar kelime girin', searching:'Aranıyor...', noResults:'Sonuç yok', searchFailCors:'Arama başarısız. Ağı (CORS) kontrol edin.', appIdMissing:'AppID ayarlanmadı. Plugin denetçisine şu satırı ekleyin:', appIdSample:'yahooAppId: Yahoo AppID’niz', searchFailAppId:'Arama başarısız. AppID ve ağı (CORS) kontrol edin.', yahooWarn:'Not: yahooAppId ifşa olabilir. Herkese açık sitelerde kullanmayın.',
+    camsTitle:'Kamera önayarları', camHelp:'cam:Başlık|Enlem|Boylam<br>cam:Başlık|Enlem|Boylam|h=Yükseklik(m)<br>cam:Başlık|Enlem|Boylam|h=Yükseklik|d=Yön&deg;|p=Eğim&deg;<br><br>Örn: cam:Tokyo İstasyonu|35.6812|139.7671<br>Örn: cam:Fuji Dağı|35.3606|138.7274|h=5000|p=-30<br><br>Belirtilmeyen parametreler geçerli kamera ayarlarını korur', currentCamera:'Geçerli kamera', positionLabel:'Konum', hprLabel:'Yön/Eğim/Yatış', flyToTitle:'{v} konumuna uç',
+    terrain:'Arazi', shadow:'Gölge', depthTest:'Derinlik testi', on:'AÇIK', off:'KAPALI', geojsonDrape:'GeoJSON 3D Kaplama',
+    start:'Başlangıç', stop:'Bitiş', current:'Geçerli', apply:'Uygula', sentCurrent:'Gönderildi (geçerli ayarlı)', sent:'Gönderildi', sendFailed:'Gönderim başarısız',
+    legendTitle:'Lejant', legendInstr:'Denetçi metnine "legend: ResimURL" ekleyin.', legendMain:'Ana',
+    attrTitle:'Öznitelikler', noFeature:'Öğe seçilmedi.', noAttrAvail:'Öznitelik yok veya seçim kaldırıldı.', backToAttrList:'Listeye dön', openNewTab:'Yeni sekmede aç (sandbox’ı atla)',
+    selectLayer:'Katman seç', attrOrValuePh:'Öznitelik veya değer ara', selectLayerPrompt:'Lütfen katman seçin', countFmt:'{rows} öğe / {attrs} öznitelik', sortTitle:'Sıralamak için tıklayın', noMatchingFeatures:'Eşleşen öğe yok', clickToFly:'Uçmak için tıklayın', limitSuffix:' (en fazla {n} gösteriliyor)', closeAria:'Kapat',
+    noUrlConfigured:'URL yapılandırılmadı'
+  },
+  ar: {
+    minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
+    tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص',
+    layersTitle:'الطبقات', note:'ملاحظة', refresh:'تحديث', refreshTitle:'فرض تحديث طبقات المستخدم',
+    generateLink:'إنشاء رابط', generating:'جارٍ الإنشاء...', copy:'نسخ', copied:'تم النسخ!',
+    sharePasteLabel:'الصق عنوان URL أدناه.', sharePastePh:'الصق URL أو ?lat=...', load:'تحميل', loaded:'تم التحميل!', invalidData:'بيانات غير صالحة', parseError:'خطأ في التحليل', error:'خطأ',
+    shareReadUrl:'الانتقال إلى معلمات URL الحالية', urlLoadFlyTo:'تحميل URL والانتقال', loading:'جارٍ التحميل...',
+    shareFlyCurrentLabel:'التحرك من الموقع الحالي', flyToCurrentLoc:'الانتقال إلى الموقع الحالي', getting:'جارٍ الجلب...', restored:'تمت الاستعادة!', noLatLng:'لا توجد إحداثيات', noParams:'لا توجد معلمات', imported:'تم الاستيراد!',
+    vectorSearch:'بحث متجهي', allSelect:'الكل', selectValue:'اختر قيمة', fly:'انتقال', textSearchPh:'بحث بالنص', searchGo:'بحث', updateVector:'تحديث البيانات المتجهية', attrValueList:'الخصائص والقيم', attrsLoaded:'تم تحميل {n} خاصية', noAttrVector:'لا توجد طبقات متجهية بخصائص', noMatch:'لا تطابق',
+    addrSearch:'بحث العنوان', providerGsi:'GSI', searchPh:'أدخل كلمة البحث', searching:'جارٍ البحث...', noResults:'لا نتائج', searchFailCors:'فشل البحث. تحقق من الشبكة (CORS).', appIdMissing:'AppID غير مضبوط. أضف السطر التالي إلى مفتش الإضافة:', appIdSample:'yahooAppId: مُعرّف Yahoo الخاص بك', searchFailAppId:'فشل البحث. تحقق من AppID والشبكة (CORS).', yahooWarn:'ملاحظة: قد يتم كشف yahooAppId. لا تستخدمه في المواقع العامة.',
+    camsTitle:'إعدادات الكاميرا المسبقة', camHelp:'cam:العنوان|خط العرض|خط الطول<br>cam:العنوان|خط العرض|خط الطول|h=الارتفاع(م)<br>cam:العنوان|خط العرض|خط الطول|h=الارتفاع|d=الاتجاه&deg;|p=الميل&deg;<br><br>مثال: cam:محطة طوكيو|35.6812|139.7671<br>مثال: cam:جبل فوجي|35.3606|138.7274|h=5000|p=-30<br><br>المعلمات غير المحددة تحتفظ بإعدادات الكاميرا الحالية', currentCamera:'الكاميرا الحالية', positionLabel:'الموقع', hprLabel:'الاتجاه/الميل/الدوران', flyToTitle:'الانتقال إلى {v}',
+    terrain:'التضاريس', shadow:'الظل', depthTest:'اختبار العمق', on:'تشغيل', off:'إيقاف', geojsonDrape:'إسقاط GeoJSON ثلاثي الأبعاد',
+    start:'البداية', stop:'النهاية', current:'الحالي', apply:'تطبيق', sentCurrent:'تم الإرسال (تم تعيين الحالي)', sent:'تم الإرسال', sendFailed:'فشل الإرسال',
+    legendTitle:'المفتاح', legendInstr:'أضف "legend: رابط الصورة" إلى نص المفتش.', legendMain:'رئيسي',
+    attrTitle:'الخصائص', noFeature:'لم يتم اختيار عنصر.', noAttrAvail:'لا توجد خصائص أو تم إلغاء التحديد.', backToAttrList:'العودة إلى القائمة', openNewTab:'فتح في تبويب جديد (تجاوز sandbox)',
+    selectLayer:'اختر طبقة', attrOrValuePh:'بحث في الخصائص أو القيم', selectLayerPrompt:'يرجى اختيار طبقة', countFmt:'{rows} عنصر / {attrs} خاصية', sortTitle:'انقر للترتيب', noMatchingFeatures:'لا توجد عناصر مطابقة', clickToFly:'انقر للانتقال', limitSuffix:' (بحد أقصى {n})', closeAria:'إغلاق',
+    noUrlConfigured:'لم يتم تكوين URL'
+  },
+  hi: {
+    minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
+    tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ',
+    layersTitle:'लेयर', note:'नोट', refresh:'रीफ़्रेश', refreshTitle:'उपयोगकर्ता लेयर ज़बरदस्ती रीफ़्रेश',
+    generateLink:'लिंक बनाएँ', generating:'बनाया जा रहा है...', copy:'कॉपी', copied:'कॉपी किया गया!',
+    sharePasteLabel:'नीचे URL पेस्ट करें।', sharePastePh:'URL या ?lat=... पेस्ट करें', load:'लोड', loaded:'लोड हुआ!', invalidData:'अमान्य डेटा', parseError:'पार्स त्रुटि', error:'त्रुटि',
+    shareReadUrl:'वर्तमान URL पैरामीटर पर जाएँ', urlLoadFlyTo:'URL लोड करें और जाएँ', loading:'लोड हो रहा है...',
+    shareFlyCurrentLabel:'वर्तमान स्थान से जाएँ', flyToCurrentLoc:'वर्तमान स्थान पर जाएँ', getting:'प्राप्त हो रहा है...', restored:'पुनर्स्थापित!', noLatLng:'अक्षांश/देशांतर नहीं', noParams:'कोई पैरामीटर नहीं', imported:'आयातित!',
+    vectorSearch:'वेक्टर खोज', allSelect:'सभी', selectValue:'मान चुनें', fly:'जाएँ', textSearchPh:'टेक्स्ट से खोजें', searchGo:'खोज', updateVector:'वेक्टर डेटा अपडेट करें', attrValueList:'विशेषताएँ और मान', attrsLoaded:'{n} विशेषताएँ लोड हुईं', noAttrVector:'विशेषताओं वाली कोई वेक्टर लेयर नहीं', noMatch:'कोई मिलान नहीं',
+    addrSearch:'पता खोज', providerGsi:'GSI', searchPh:'खोज शब्द दर्ज करें', searching:'खोजा जा रहा है...', noResults:'कोई परिणाम नहीं', searchFailCors:'खोज विफल। नेटवर्क (CORS) जाँचें।', appIdMissing:'AppID सेट नहीं है। प्लगइन इंस्पेक्टर में यह पंक्ति जोड़ें:', appIdSample:'yahooAppId: आपकी Yahoo AppID', searchFailAppId:'खोज विफल। AppID और नेटवर्क (CORS) जाँचें।', yahooWarn:'नोट: yahooAppId उजागर हो सकती है। सार्वजनिक साइटों पर उपयोग न करें।',
+    camsTitle:'कैमरा प्रीसेट', camHelp:'cam:शीर्षक|अक्षांश|देशांतर<br>cam:शीर्षक|अक्षांश|देशांतर|h=ऊँचाई(m)<br>cam:शीर्षक|अक्षांश|देशांतर|h=ऊँचाई|d=दिशा&deg;|p=झुकाव&deg;<br><br>उदा: cam:टोक्यो स्टेशन|35.6812|139.7671<br>उदा: cam:फ़ूजी पर्वत|35.3606|138.7274|h=5000|p=-30<br><br>अनिर्दिष्ट पैरामीटर वर्तमान कैमरा सेटिंग बनाए रखते हैं', currentCamera:'वर्तमान कैमरा', positionLabel:'स्थिति', hprLabel:'दिशा/झुकाव/रोल', flyToTitle:'{v} पर जाएँ',
+    terrain:'भू-आकृति', shadow:'छाया', depthTest:'गहराई परीक्षण', on:'चालू', off:'बंद', geojsonDrape:'GeoJSON 3D ड्रेप',
+    start:'प्रारंभ', stop:'समाप्त', current:'वर्तमान', apply:'लागू करें', sentCurrent:'भेजा गया (वर्तमान सेट)', sent:'भेजा गया', sendFailed:'भेजना विफल',
+    legendTitle:'लीजेंड', legendInstr:'इंस्पेक्टर टेक्स्ट में "legend: छविURL" जोड़ें।', legendMain:'मुख्य',
+    attrTitle:'विशेषताएँ', noFeature:'कोई फ़ीचर चयनित नहीं।', noAttrAvail:'कोई विशेषता नहीं या चयन हटाया गया।', backToAttrList:'सूची पर वापस', openNewTab:'नए टैब में खोलें (sandbox बायपास)',
+    selectLayer:'लेयर चुनें', attrOrValuePh:'विशेषता या मान खोजें', selectLayerPrompt:'कृपया लेयर चुनें', countFmt:'{rows} आइटम / {attrs} विशेषताएँ', sortTitle:'क्रमबद्ध करने क्लिक करें', noMatchingFeatures:'कोई मेल खाने वाला फ़ीचर नहीं', clickToFly:'जाने के लिए क्लिक करें', limitSuffix:' (अधिकतम {n} दिखाए गए)', closeAria:'बंद करें',
+    noUrlConfigured:'URL कॉन्फ़िगर नहीं'
+  },
+  id: {
+    minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
+    tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut',
+    layersTitle:'Lapisan', note:'Catatan', refresh:'Muat ulang', refreshTitle:'Paksa muat ulang lapisan pengguna',
+    generateLink:'Buat tautan', generating:'Membuat...', copy:'Salin', copied:'Tersalin!',
+    sharePasteLabel:'Tempel URL di bawah.', sharePastePh:'Tempel URL atau ?lat=...', load:'Muat', loaded:'Termuat!', invalidData:'Data tidak valid', parseError:'Kesalahan parsing', error:'Kesalahan',
+    shareReadUrl:'Pindah ke parameter URL saat ini', urlLoadFlyTo:'Muat URL & Terbang', loading:'Memuat...',
+    shareFlyCurrentLabel:'Pindah dari lokasi saat ini', flyToCurrentLoc:'Terbang ke lokasi saat ini', getting:'Mengambil...', restored:'Dipulihkan!', noLatLng:'Tanpa lat/lng', noParams:'Tanpa parameter', imported:'Diimpor!',
+    vectorSearch:'Pencarian vektor', allSelect:'Semua', selectValue:'Pilih nilai', fly:'Terbang', textSearchPh:'Cari teks', searchGo:'Cari', updateVector:'Perbarui data vektor', attrValueList:'Atribut & nilai', attrsLoaded:'{n} atribut dimuat', noAttrVector:'Tidak ada lapisan vektor beratribut', noMatch:'Tidak cocok',
+    addrSearch:'Pencarian alamat', providerGsi:'GSI', searchPh:'Masukkan kata kunci', searching:'Mencari...', noResults:'Tidak ada hasil', searchFailCors:'Pencarian gagal. Periksa jaringan (CORS).', appIdMissing:'AppID belum diatur. Tambahkan baris berikut ke inspektur plugin:', appIdSample:'yahooAppId: AppID Yahoo Anda', searchFailAppId:'Pencarian gagal. Periksa AppID dan jaringan (CORS).', yahooWarn:'Catatan: yahooAppId dapat terekspos. Jangan gunakan di situs publik.',
+    camsTitle:'Preset kamera', camHelp:'cam:Judul|Lintang|Bujur<br>cam:Judul|Lintang|Bujur|h=Ketinggian(m)<br>cam:Judul|Lintang|Bujur|h=Ketinggian|d=Arah&deg;|p=Kemiringan&deg;<br><br>Cth: cam:Stasiun Tokyo|35.6812|139.7671<br>Cth: cam:Gunung Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Parameter yang tidak diisi mempertahankan pengaturan kamera saat ini', currentCamera:'Kamera saat ini', positionLabel:'Posisi', hprLabel:'Arah/Kemiringan/Roll', flyToTitle:'Terbang ke {v}',
+    terrain:'Medan', shadow:'Bayangan', depthTest:'Uji kedalaman', on:'AKTIF', off:'MATI', geojsonDrape:'Drape 3D GeoJSON',
+    start:'Mulai', stop:'Selesai', current:'Saat ini', apply:'Terapkan', sentCurrent:'Terkirim (saat ini diatur)', sent:'Terkirim', sendFailed:'Gagal mengirim',
+    legendTitle:'Legenda', legendInstr:'Tambahkan "legend: URLGambar" ke teks inspektur.', legendMain:'Utama',
+    attrTitle:'Atribut', noFeature:'Tidak ada fitur dipilih.', noAttrAvail:'Tidak ada atribut atau pilihan dibatalkan.', backToAttrList:'Kembali ke daftar', openNewTab:'Buka di tab baru (lewati sandbox)',
+    selectLayer:'Pilih lapisan', attrOrValuePh:'Cari atribut atau nilai', selectLayerPrompt:'Silakan pilih lapisan', countFmt:'{rows} item / {attrs} atribut', sortTitle:'Klik untuk mengurutkan', noMatchingFeatures:'Tidak ada fitur yang cocok', clickToFly:'Klik untuk terbang', limitSuffix:' (maks {n} ditampilkan)', closeAria:'Tutup',
+    noUrlConfigured:'URL belum dikonfigurasi'
+  },
+  th: {
+    minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
+    tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ',
+    layersTitle:'เลเยอร์', note:'หมายเหตุ', refresh:'รีเฟรช', refreshTitle:'บังคับรีเฟรชเลเยอร์ผู้ใช้',
+    generateLink:'สร้างลิงก์', generating:'กำลังสร้าง...', copy:'คัดลอก', copied:'คัดลอกแล้ว!',
+    sharePasteLabel:'วาง URL ด้านล่าง', sharePastePh:'วาง URL หรือ ?lat=...', load:'โหลด', loaded:'โหลดแล้ว!', invalidData:'ข้อมูลไม่ถูกต้อง', parseError:'ข้อผิดพลาดในการแยกวิเคราะห์', error:'ข้อผิดพลาด',
+    shareReadUrl:'ไปยังพารามิเตอร์ URL ปัจจุบัน', urlLoadFlyTo:'โหลด URL และบินไป', loading:'กำลังโหลด...',
+    shareFlyCurrentLabel:'ย้ายจากตำแหน่งปัจจุบัน', flyToCurrentLoc:'บินไปตำแหน่งปัจจุบัน', getting:'กำลังดึงข้อมูล...', restored:'คืนค่าแล้ว!', noLatLng:'ไม่มีละติจูด/ลองจิจูด', noParams:'ไม่มีพารามิเตอร์', imported:'นำเข้าแล้ว!',
+    vectorSearch:'ค้นหาเวกเตอร์', allSelect:'ทั้งหมด', selectValue:'เลือกค่า', fly:'บินไป', textSearchPh:'ค้นหาด้วยข้อความ', searchGo:'ค้นหา', updateVector:'อัปเดตข้อมูลเวกเตอร์', attrValueList:'คุณลักษณะและค่า', attrsLoaded:'โหลด {n} คุณลักษณะแล้ว', noAttrVector:'ไม่มีเลเยอร์เวกเตอร์ที่มีคุณลักษณะ', noMatch:'ไม่พบ',
+    addrSearch:'ค้นหาที่อยู่', providerGsi:'GSI', searchPh:'ป้อนคำค้นหา', searching:'กำลังค้นหา...', noResults:'ไม่มีผลลัพธ์', searchFailCors:'ค้นหาล้มเหลว ตรวจสอบเครือข่าย (CORS)', appIdMissing:'ยังไม่ได้ตั้ง AppID เพิ่มบรรทัดต่อไปนี้ในอินสเปกเตอร์ของปลั๊กอิน:', appIdSample:'yahooAppId: AppID Yahoo ของคุณ', searchFailAppId:'ค้นหาล้มเหลว ตรวจสอบ AppID และเครือข่าย (CORS)', yahooWarn:'หมายเหตุ: yahooAppId อาจรั่วไหลได้ อย่าใช้บนเว็บไซต์สาธารณะ',
+    camsTitle:'พรีเซ็ตกล้อง', camHelp:'cam:ชื่อ|ละติจูด|ลองจิจูด<br>cam:ชื่อ|ละติจูด|ลองจิจูด|h=ความสูง(m)<br>cam:ชื่อ|ละติจูด|ลองจิจูด|h=ความสูง|d=ทิศ&deg;|p=ความเอียง&deg;<br><br>ตัวอย่าง: cam:สถานีโตเกียว|35.6812|139.7671<br>ตัวอย่าง: cam:ภูเขาไฟฟูจิ|35.3606|138.7274|h=5000|p=-30<br><br>พารามิเตอร์ที่ไม่ระบุจะใช้การตั้งค่ากล้องปัจจุบัน', currentCamera:'กล้องปัจจุบัน', positionLabel:'ตำแหน่ง', hprLabel:'ทิศ/ความเอียง/มุมกลิ้ง', flyToTitle:'บินไป {v}',
+    terrain:'ภูมิประเทศ', shadow:'เงา', depthTest:'ทดสอบความลึก', on:'เปิด', off:'ปิด', geojsonDrape:'การวาง GeoJSON 3D',
+    start:'เริ่ม', stop:'สิ้นสุด', current:'ปัจจุบัน', apply:'ใช้', sentCurrent:'ส่งแล้ว (ตั้งค่าปัจจุบัน)', sent:'ส่งแล้ว', sendFailed:'ส่งไม่สำเร็จ',
+    legendTitle:'คำอธิบาย', legendInstr:'เพิ่ม "legend: URLรูปภาพ" ในข้อความอินสเปกเตอร์', legendMain:'หลัก',
+    attrTitle:'คุณลักษณะ', noFeature:'ไม่ได้เลือกฟีเจอร์', noAttrAvail:'ไม่มีคุณลักษณะหรือยกเลิกการเลือกแล้ว', backToAttrList:'กลับไปที่รายการ', openNewTab:'เปิดในแท็บใหม่ (ข้าม sandbox)',
+    selectLayer:'เลือกเลเยอร์', attrOrValuePh:'ค้นหาคุณลักษณะหรือค่า', selectLayerPrompt:'โปรดเลือกเลเยอร์', countFmt:'{rows} รายการ / {attrs} คุณลักษณะ', sortTitle:'คลิกเพื่อจัดเรียง', noMatchingFeatures:'ไม่มีฟีเจอร์ที่ตรงกัน', clickToFly:'คลิกเพื่อบินไป', limitSuffix:' (แสดงสูงสุด {n})', closeAria:'ปิด',
+    noUrlConfigured:'ยังไม่ได้ตั้งค่า URL'
+  },
+  vi: {
+    minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
+    tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính',
+    layersTitle:'Lớp', note:'Lưu ý', refresh:'Làm mới', refreshTitle:'Bắt buộc làm mới lớp người dùng',
+    generateLink:'Tạo liên kết', generating:'Đang tạo...', copy:'Sao chép', copied:'Đã sao chép!',
+    sharePasteLabel:'Dán URL bên dưới.', sharePastePh:'Dán URL hoặc ?lat=...', load:'Tải', loaded:'Đã tải!', invalidData:'Dữ liệu không hợp lệ', parseError:'Lỗi phân tích', error:'Lỗi',
+    shareReadUrl:'Đến tham số URL hiện tại', urlLoadFlyTo:'Tải URL & bay tới', loading:'Đang tải...',
+    shareFlyCurrentLabel:'Di chuyển từ vị trí hiện tại', flyToCurrentLoc:'Bay tới vị trí hiện tại', getting:'Đang lấy...', restored:'Đã khôi phục!', noLatLng:'Không có lat/lng', noParams:'Không có tham số', imported:'Đã nhập!',
+    vectorSearch:'Tìm kiếm vector', allSelect:'Tất cả', selectValue:'Chọn giá trị', fly:'Bay', textSearchPh:'Tìm theo văn bản', searchGo:'Tìm', updateVector:'Cập nhật dữ liệu vector', attrValueList:'Thuộc tính & giá trị', attrsLoaded:'Đã tải {n} thuộc tính', noAttrVector:'Không có lớp vector có thuộc tính', noMatch:'Không khớp',
+    addrSearch:'Tìm địa chỉ', providerGsi:'GSI', searchPh:'Nhập từ khóa', searching:'Đang tìm...', noResults:'Không có kết quả', searchFailCors:'Tìm kiếm thất bại. Kiểm tra mạng (CORS).', appIdMissing:'Chưa đặt AppID. Thêm dòng sau vào inspector của plugin:', appIdSample:'yahooAppId: AppID Yahoo của bạn', searchFailAppId:'Tìm kiếm thất bại. Kiểm tra AppID và mạng (CORS).', yahooWarn:'Lưu ý: yahooAppId có thể bị lộ. Không dùng trên trang công khai.',
+    camsTitle:'Preset camera', camHelp:'cam:Tiêu đề|Vĩ độ|Kinh độ<br>cam:Tiêu đề|Vĩ độ|Kinh độ|h=Độ cao(m)<br>cam:Tiêu đề|Vĩ độ|Kinh độ|h=Độ cao|d=Hướng&deg;|p=Nghiêng&deg;<br><br>VD: cam:Ga Tokyo|35.6812|139.7671<br>VD: cam:Núi Phú Sĩ|35.3606|138.7274|h=5000|p=-30<br><br>Tham số không chỉ định sẽ giữ cài đặt camera hiện tại', currentCamera:'Camera hiện tại', positionLabel:'Vị trí', hprLabel:'Hướng/Nghiêng/Cuộn', flyToTitle:'Bay tới {v}',
+    terrain:'Địa hình', shadow:'Bóng', depthTest:'Kiểm tra độ sâu', on:'BẬT', off:'TẮT', geojsonDrape:'Drape 3D GeoJSON',
+    start:'Bắt đầu', stop:'Kết thúc', current:'Hiện tại', apply:'Áp dụng', sentCurrent:'Đã gửi (đặt hiện tại)', sent:'Đã gửi', sendFailed:'Gửi thất bại',
+    legendTitle:'Chú giải', legendInstr:'Thêm "legend: URLẢnh" vào văn bản inspector.', legendMain:'Chính',
+    attrTitle:'Thuộc tính', noFeature:'Chưa chọn đối tượng.', noAttrAvail:'Không có thuộc tính hoặc đã bỏ chọn.', backToAttrList:'Quay lại danh sách', openNewTab:'Mở trong tab mới (bỏ qua sandbox)',
+    selectLayer:'Chọn lớp', attrOrValuePh:'Tìm thuộc tính hoặc giá trị', selectLayerPrompt:'Vui lòng chọn lớp', countFmt:'{rows} mục / {attrs} thuộc tính', sortTitle:'Nhấp để sắp xếp', noMatchingFeatures:'Không có đối tượng phù hợp', clickToFly:'Nhấp để bay', limitSuffix:' (hiển thị tối đa {n})', closeAria:'Đóng',
+    noUrlConfigured:'Chưa cấu hình URL'
+  }
+};
+
 // GeoJSON 3D draping global default. One of: "terrain" | "3dtiles" | "both"
 let _geojsonClassification = 'terrain';
 let _pluginAddedGeojsonLayerIds = []; // track GeoJSON layer ids for runtime classification updates
@@ -74,7 +446,7 @@ const generateLayerItem = (layer, isPreset, displayName) => {
         <span class="layer-name" title="${name}">${name}</span>
       </div>
       <div class="actions">
-        <button class="btn-icon move-btn" data-layer-id="${layer.id}" aria-label="Move" title="Move Camera">📍</button>
+        <button class="btn-icon move-btn" data-layer-id="${layer.id}" aria-label="Move" title="Move Camera" data-i18n-aria="move" data-i18n-title="moveCamera">📍</button>
       </div>
     </li>
   `;
@@ -279,7 +651,7 @@ function getUI() {
 
   // Generate camera preset buttons
   const camButtons = _cameraPresets.map((cam, i) => `
-    <li class="cam-item" data-cam-index="${i}" title="FlyTo ${cam.title}">
+    <li class="cam-item" data-cam-index="${i}" title="Fly to ${cam.title}" data-i18n-title="flyToTitle" data-i18n-arg="${cam.title}">
       <span class="cam-title">${cam.title}</span>
       <div class="actions">
       </div>
@@ -324,7 +696,7 @@ function getUI() {
           const activeClass = index === 0 ? 'active' : '';
           const displayStyle = index === 0 ? '' : 'display:none;';
           
-          tabs += `<button class="sub-tab ${activeClass}" data-target="${id}">${label}</button>`;
+          tabs += `<button class="sub-tab ${activeClass}" data-target="${id}"${isDefault ? ' data-i18n="legendMain"' : ''}>${label}</button>`;
           
           const imgs = grouped[g].map(u => `<img src="${u}" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">`).join('');
           panels += `<div id="${id}" class="legend-sub-panel" style="${displayStyle}">${imgs}</div>`;
@@ -752,101 +1124,101 @@ function getUI() {
 
 <div class="primary-background rounded-sm">
     <div class="tab-bar" role="tablist">
-    <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize">—</button>
-    <button class="tab active" data-target="layers-panel" aria-selected="true">Layers</button>
-    <button class="tab" data-target="legend-panel" aria-selected="false">Legend</button>
-    <button class="tab" data-target="search-panel" aria-selected="false">Search</button>
-    <button class="tab" data-target="cams-panel" aria-selected="false">Cams</button>
-    <button class="tab" data-target="info-panel" aria-selected="false">info</button>
-    <button class="tab" data-target="share-panel" aria-selected="false">Share</button>
-    <button class="tab" data-target="settings-panel" aria-selected="false">Set</button>
-    <button class="tab" data-target="attr-panel" aria-selected="false">Attr</button>
+    <button class="tab minimize" data-action="minimize" aria-pressed="false" title="Minimize" data-i18n-title="minimize">—</button>
+    <button class="tab active" data-target="layers-panel" aria-selected="true" data-i18n="tabLayers">Layers</button>
+    <button class="tab" data-target="legend-panel" aria-selected="false" data-i18n="tabLegend">Legend</button>
+    <button class="tab" data-target="search-panel" aria-selected="false" data-i18n="tabSearch">Search</button>
+    <button class="tab" data-target="cams-panel" aria-selected="false" data-i18n="tabCams">Cams</button>
+    <button class="tab" data-target="info-panel" aria-selected="false" data-i18n="tabInfo">Info</button>
+    <button class="tab" data-target="share-panel" aria-selected="false" data-i18n="tabShare">Share</button>
+    <button class="tab" data-target="settings-panel" aria-selected="false" data-i18n="tabSet">Set</button>
+    <button class="tab" data-target="attr-panel" aria-selected="false" data-i18n="tabAttr">Attr</button>
   </div>
 
     <div id="share-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;">Kasugai Link</div>
     <div style="margin-bottom:8px;">
-      <button id="generate-permalink-btn" class="btn-primary p-8" style="width:100%;">Generate Link</button>
+      <button id="generate-permalink-btn" class="btn-primary p-8" style="width:100%;" data-i18n="generateLink">Generate Link</button>
     </div>
     <div style="display:flex;gap:4px;">
       <input type="text" id="permalink-output" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" readonly />
-      <button id="copy-permalink-btn" class="btn-primary p-8" style="min-width:60px;">Copy</button>
+      <button id="copy-permalink-btn" class="btn-primary p-8" style="min-width:60px;" data-i18n="copy">Copy</button>
     </div>
-    
+
     <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
-      <div style="margin-bottom:6px;color:#333;">URLをペーストして下さい。</div>
+      <div style="margin-bottom:6px;color:#333;" data-i18n="sharePasteLabel">Paste a URL below.</div>
       <div style="display:flex;gap:4px;">
-        <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
-        <button id="load-permalink-btn" class="btn-primary p-6" style="min-width:60px;font-size:0.9em;">Load</button>
+        <input type="text" id="import-permalink-input" placeholder="Paste URL or ?lat=..." data-i18n-ph="sharePastePh" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:4px;font-size:0.85em;" />
+        <button id="load-permalink-btn" class="btn-primary p-6" style="min-width:60px;font-size:0.9em;" data-i18n="load">Load</button>
       </div>
     </div>
-    
+
     <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
-      <div style="margin-bottom:6px;color:#333;">現在のURLパラメータを読み取って移動</div>
-      <button id="flyto-viewport-url-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">URL読込 & FlyTo</button>
+      <div style="margin-bottom:6px;color:#333;" data-i18n="shareReadUrl">Move to current URL parameters</div>
+      <button id="flyto-viewport-url-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;" data-i18n="urlLoadFlyTo">Load URL & FlyTo</button>
     </div>
-    
+
     <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">
-      <div style="margin-bottom:6px;color:#333;">現在位置から移動</div>
-      <button id="flyto-current-location-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;">現在位置から FlyTo</button>
+      <div style="margin-bottom:6px;color:#333;" data-i18n="shareFlyCurrentLabel">Move from current location</div>
+      <button id="flyto-current-location-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;" data-i18n="flyToCurrentLoc">Fly to Current Location</button>
     </div>
     </div>
 
   <div id="search-panel" style="display:none;">
     <div id="vector-search" style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd;">
-      <div style="font-weight:600;margin-bottom:6px;">ベクトル検索</div>
+      <div style="font-weight:600;margin-bottom:6px;" data-i18n="vectorSearch">Vector Search</div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
         <select id="vector-layer" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
-          <option value="__all__">全選択</option>
+          <option value="__all__" data-i18n="allSelect">All</option>
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
         <select id="vector-attr" disabled style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
-          <option value="__all__">全選択</option>
+          <option value="__all__" data-i18n="allSelect">All</option>
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
         <select id="vector-value" disabled style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
-          <option value="">値を選択</option>
+          <option value="" data-i18n="selectValue">Select value</option>
         </select>
-        <button id="vector-fly-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;" disabled>Fly</button>
+        <button id="vector-fly-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;" data-i18n="fly" disabled>Fly</button>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
-        <input id="vector-search-text" type="text" placeholder="文字で検索" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
-        <button id="vector-text-search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;">検索</button>
+        <input id="vector-search-text" type="text" placeholder="Search by text" data-i18n-ph="textSearchPh" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
+        <button id="vector-text-search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;" data-i18n="searchGo">Search</button>
       </div>
       <ul id="vector-search-results" style="list-style:none;padding:0;margin:0;max-height:160px;overflow:auto;font-size:0.85em;"></ul>
-      <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;">ベクトルデータを更新</button>
-      <button id="vector-attr-list-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;">属性・値一覧</button>
+      <button id="vector-refresh-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;" data-i18n="updateVector">Update vector data</button>
+      <button id="vector-attr-list-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-top:6px;" data-i18n="attrValueList">Attributes & Values</button>
       <div id="vector-search-status" style="font-size:0.85em;color:#666;margin-top:4px;"></div>
     </div>
     <div style="display:flex;justify-content:flex-start;gap:8px;align-items:center;margin-bottom:8px;">
-      <div style="font-weight:600;">住所検索</div>
+      <div style="font-weight:600;" data-i18n="addrSearch">Address Search</div>
       <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
-        <option value="gsi" selected>地理院</option>
+        <option value="gsi" selected data-i18n="providerGsi">GSI</option>
         <option value="yahoo">Yahoo</option>
       </select>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
-      <input type="text" id="search-query" placeholder="検索ワードを入力" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
-      <button id="search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;">Search</button>
+      <input type="text" id="search-query" placeholder="Enter search keyword" data-i18n-ph="searchPh" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;min-width:0;" />
+      <button id="search-btn" class="btn-primary p-8" style="flex:0 0 auto;white-space:nowrap;" data-i18n="searchGo">Search</button>
     </div>
     <div id="search-results" style="max-height:320px;overflow:auto;">
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
     </div>
-    <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;">注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。</div>
+    <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;" data-i18n="yahooWarn">Note: yahooAppId may be exposed. Do not use on public sites.</div>
   </div>
 
   <div id="layers-panel">
     ${basemapSelectHtml}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <div style="font-weight:600;">Layers</div>
+      <div style="font-weight:600;" data-i18n="layersTitle">Layers</div>
       <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
-        <a href="https://re-earth-geo-suite.vercel.app/#system-layer-note" target="_blank" rel="noopener noreferrer" style="font-size:0.85em;color:#000;text-decoration:none;border:1px solid #ccc;padding:2px 6px;border-radius:4px;">注意</a>
-        <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers">Refresh</button>
+        <a href="https://re-earth-geo-suite.vercel.app/#system-layer-note" target="_blank" rel="noopener noreferrer" style="font-size:0.85em;color:#000;text-decoration:none;border:1px solid #ccc;padding:2px 6px;border-radius:4px;" data-i18n="note">Note</a>
+        <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers" data-i18n="refresh" data-i18n-title="refreshTitle">Refresh</button>
       </div>
     </div>
-    
+
     <ul class="layers-list">
       ${combinedLayerItems}
     </ul>
@@ -854,14 +1226,14 @@ function getUI() {
 
   <div id="cams-panel" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <div style="font-weight:600;">Camera Presets</div>
+      <div style="font-weight:600;" data-i18n="camsTitle">Camera Presets</div>
       <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
-        <button id="cam-flyto-current" class="btn-primary p-8" title="Fly to Current Location">Fly to Current Location</button>
+        <button id="cam-flyto-current" class="btn-primary p-8" title="Fly to Current Location" data-i18n="flyToCurrentLoc" data-i18n-title="flyToCurrentLoc">Fly to Current Location</button>
       </div>
     </div>
-    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;">cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位°|p=傾き°<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持</div>'}
+    ${_cameraPresets.length > 0 ? `<ul class="layers-list">${camButtons}</ul>` : '<div class="text-sm" style="color:#888;padding:8px 0;" data-i18n-html="camHelp">cam:Title|Lat|Lng<br>cam:Title|Lat|Lng|h=Height(m)<br>cam:Title|Lat|Lng|h=Height|d=Heading&deg;|p=Pitch&deg;<br><br>Ex: cam:Tokyo Station|35.6812|139.7671<br>Ex: cam:Mt. Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Unspecified parameters keep the current camera settings</div>'}
     <div class="cam-current">
-      <div style="font-weight:600;margin-bottom:4px;font-size:0.85em;">Current Camera</div>
+      <div style="font-weight:600;margin-bottom:4px;font-size:0.85em;" data-i18n="currentCamera">Current Camera</div>
       <div class="cam-grid">
         <div class="cam-cell"><label>Lat</label><input type="number" step="any" id="cam-lat" value="0"></div>
         <div class="cam-cell"><label>Lng</label><input type="number" step="any" id="cam-lng" value="0"></div>
@@ -870,8 +1242,8 @@ function getUI() {
         <div class="cam-cell full"><label>H(m)</label><input type="number" step="any" id="cam-height" value="1000"></div>
       </div>
       <div style="display:flex;gap:6px;margin-top:4px;">
-        <button class="btn-primary cam-flyto-btn" id="cam-refresh" style="flex:1;">🔄 Refresh</button>
-        <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto" style="flex:1;">▶ FlyTo</button>
+        <button class="btn-primary cam-flyto-btn" id="cam-refresh" style="flex:1;">🔄 <span data-i18n="refresh">Refresh</span></button>
+        <button class="btn-primary cam-flyto-btn" id="cam-manual-flyto" style="flex:1;">▶ <span data-i18n="fly">FlyTo</span></button>
       </div>
     </div>
   </div>
@@ -920,34 +1292,34 @@ function getUI() {
     <!-- Time row: start / stop / current + Apply (hidden unless Shadow ON) -->
     <div id="time-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
       <div style="display:flex;gap:8px;align-items:center;">
-        <label class="text-sm" for="startTime">Start</label>
+        <label class="text-sm" for="startTime" data-i18n="start">Start</label>
         <input type="datetime-local" id="startTime" style="height:28px;" />
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <label class="text-sm" for="stopTime">Stop</label>
+        <label class="text-sm" for="stopTime" data-i18n="stop">Stop</label>
         <input type="datetime-local" id="stopTime" style="height:28px;" />
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <label class="text-sm" for="currentTime">Current</label>
+        <label class="text-sm" for="currentTime" data-i18n="current">Current</label>
         <input type="datetime-local" id="currentTime" style="height:28px;" />
       </div>
-      <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;">Apply</button>
+      <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;" data-i18n="apply">Apply</button>
       <div id="time-status" class="text-sm" style="margin-left:8px; color:#333;">&nbsp;</div>
     </div>
   </div>
 
   <div id="legend-panel" style="display:none;">
-    <div style="font-weight:600;margin-bottom:8px;">Legend</div>
+    <div style="font-weight:600;margin-bottom:8px;" data-i18n="legendTitle">Legend</div>
     <div id="legend-content">${legendInnerHtml}</div>
-    <div id="legend-instruction" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;">
+    <div id="legend-instruction" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;" data-i18n="legendInstr">
       Add "legend: ImageURL" to inspector text.
     </div>
   </div>
 
   <div id="attr-panel" style="display:none;">
-    <div style="font-weight:600;margin-bottom:8px;">Attributes</div>
-    <button id="attr-vector-attr-list-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-bottom:8px;" type="button">属性・値一覧</button>
-    <div id="attr-content" style="font-size:0.85em;color:#333;">No feature selected.</div>
+    <div style="font-weight:600;margin-bottom:8px;" data-i18n="attrTitle">Attributes</div>
+    <button id="attr-vector-attr-list-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;margin-bottom:8px;" type="button" data-i18n="attrValueList">Attributes & Values</button>
+    <div id="attr-content" style="font-size:0.85em;color:#333;" data-i18n="noFeature">No feature selected.</div>
   </div>
 
 </div>
@@ -955,12 +1327,12 @@ function getUI() {
 <div id="vector-attr-widget" class="vector-attr-widget">
   <div class="vector-attr-widget-inner">
     <div class="vector-attr-widget-header">
-      <span class="vector-attr-widget-title">属性・値一覧</span>
-      <button class="vector-attr-widget-close" type="button" aria-label="閉じる">×</button>
+      <span class="vector-attr-widget-title" data-i18n="attrValueList">Attributes & Values</span>
+      <button class="vector-attr-widget-close" type="button" aria-label="Close" data-i18n-aria="closeAria">×</button>
     </div>
     <div class="vector-attr-widget-filter">
-      <select id="vector-attr-widget-layer" class="vector-attr-widget-layer" title="レイヤを選択"></select>
-      <input id="vector-attr-widget-search" type="text" placeholder="属性または値で検索" />
+      <select id="vector-attr-widget-layer" class="vector-attr-widget-layer" title="Select layer" data-i18n-title="selectLayer"></select>
+      <input id="vector-attr-widget-search" type="text" placeholder="Search attributes or values" data-i18n-ph="attrOrValuePh" />
       <span id="vector-attr-widget-count" class="vector-attr-widget-count"></span>
     </div>
     <div class="vector-attr-widget-table-wrap">
@@ -975,6 +1347,59 @@ function getUI() {
 <script>
   // Debug logging flag injected from the extension side (see DEBUG_LOG at top of file)
   window._DEBUG_LOG = ${DEBUG_LOG};
+
+  // --- i18n: translation dictionary + language config injected from the extension side ---
+  window._GEO_I18N = ${JSON.stringify(GEO_I18N).replace(/</g, '\\u003c')};
+  window._GEO_LANG_CONF = ${JSON.stringify(_inspectorLang || 'auto')};
+  var GEO_I18N = window._GEO_I18N || {};
+  var GEO_SUPPORTED = ${JSON.stringify(GEO_SUPPORTED)};
+  var GEO_LANG = (function() {
+    try {
+      var cand = '';
+      var conf = String(window._GEO_LANG_CONF || 'auto').toLowerCase().trim();
+      if (conf && conf !== 'auto') cand = conf;
+      else cand = String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+      if (cand.indexOf('zh') === 0) {
+        return (cand.indexOf('tw') > -1 || cand.indexOf('hk') > -1 || cand.indexOf('mo') > -1 || cand.indexOf('hant') > -1) ? 'zh-TW' : 'zh-CN';
+      }
+      var i;
+      for (i = 0; i < GEO_SUPPORTED.length; i++) { if (GEO_SUPPORTED[i].toLowerCase() === cand) return GEO_SUPPORTED[i]; }
+      var base = cand.split('-')[0];
+      for (i = 0; i < GEO_SUPPORTED.length; i++) { if (GEO_SUPPORTED[i].toLowerCase().split('-')[0] === base) return GEO_SUPPORTED[i]; }
+    } catch (e) {}
+    return 'en';
+  })();
+  function t(key, vars) {
+    var s = (GEO_I18N[GEO_LANG] && GEO_I18N[GEO_LANG][key]) || (GEO_I18N.en && GEO_I18N.en[key]) || key;
+    if (vars) { for (var k in vars) { try { s = s.split('{' + k + '}').join(String(vars[k])); } catch (e) {} } }
+    return s;
+  }
+  function applyI18n() {
+    try {
+      try { document.documentElement.lang = GEO_LANG; } catch (e) {}
+      var apply = function(sel, fn) {
+        try {
+          var nodes = document.querySelectorAll(sel);
+          for (var i = 0; i < nodes.length; i++) { try { fn(nodes[i]); } catch (e) {} }
+        } catch (e) {}
+      };
+      apply('[data-i18n]', function(el) { el.textContent = t(el.getAttribute('data-i18n')); });
+      apply('[data-i18n-html]', function(el) { el.innerHTML = t(el.getAttribute('data-i18n-html')); });
+      apply('[data-i18n-title]', function(el) { el.setAttribute('title', t(el.getAttribute('data-i18n-title'), { v: el.getAttribute('data-i18n-arg') || '' })); });
+      apply('[data-i18n-ph]', function(el) { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+      apply('[data-i18n-aria]', function(el) { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))); });
+      // Status rows: label is composed from key + current ON/OFF state
+      var ts = document.getElementById('toggleSwitch'), st = document.getElementById('status');
+      if (st) st.textContent = t('terrain') + ': ' + ((ts && ts.checked) ? t('on') : t('off'));
+      var ss = document.getElementById('toggleShadowSwitch'), sst = document.getElementById('shadow-status');
+      if (sst) sst.textContent = t('shadow') + ': ' + ((ss && ss.checked) ? t('on') : t('off'));
+      var dst = document.getElementById('depth-status');
+      if (dst) { var wasOff = /OFF\s*$/i.test(String(dst.textContent || '')); dst.textContent = t('depthTest') + ': ' + (wasOff ? t('off') : t('on')); }
+      var gd = document.getElementById('geojson-drape-select'), gs = document.getElementById('geojson-drape-status');
+      if (gs) gs.textContent = t('geojsonDrape') + ((gd && gd.value) ? ': ' + gd.value : '');
+    } catch (e) {}
+  }
+
   function uiLog() { if (!window._DEBUG_LOG) return; try { console.log.apply(console, arguments); } catch(e) {} }
   function escapeHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   window.openUrlInAttrPanel = function(event, url) {
@@ -992,8 +1417,8 @@ function getUI() {
     let availableHeight = screenHeight - tabBarHeight - 100;
     availableHeight = Math.max(400, Math.min(800, availableHeight));
 
-    attrContent.innerHTML = 
-      '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; 属性一覧に戻る</button></div>' + 
+    attrContent.innerHTML =
+      '<div style="margin-bottom:8px;"><button onclick="window.restoreAttrTable()" style="padding:4px 8px; font-size:0.85em; cursor:pointer; background:#f0f0f0; border:1px solid #ccc; border-radius:4px;">&larr; ' + t('backToAttrList') + '</button></div>' +
       '<iframe src="' + url + '" style="width:100%; height:' + availableHeight + 'px; border:1px solid #ccc; background:#fff; overflow:auto;"></iframe>';
   };
 
@@ -1008,6 +1433,9 @@ function getUI() {
   try { window._yahooAppId = ${JSON.stringify(_inspectorYahooAppId || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
+      // Apply translations (data-i18n attributes + status labels)
+      try { applyI18n(); } catch(e) {}
+
       // Ask the parent whether there is UI state (active tab) to restore after
       // an iframe recreation (attribute-widget close re-renders the UI).
       try { if (window.parent) window.parent.postMessage({ action: 'requestRestoreState' }, '*'); } catch(e) {}
@@ -1053,12 +1481,12 @@ function getUI() {
                   root.classList.remove('minimized');
                   this.setAttribute('aria-pressed', 'false');
                   this.textContent = '—';
-                  this.title = 'Minimize';
+                  this.title = t('minimize');
                 } else {
                   root.classList.add('minimized');
                   this.setAttribute('aria-pressed', 'true');
                   this.textContent = '+';
-                  this.title = 'Restore';
+                  this.title = t('restore');
                 }
                 return;
               }
@@ -1148,12 +1576,12 @@ function getUI() {
       if (toggleSwitch && status) {
           toggleSwitch.addEventListener('change', function() {
               if (this.checked) {
-                  status.textContent = 'Terrain: ON';
+                  status.textContent = t('terrain') + ': ' + t('on');
                   if (window.parent) {
                       window.parent.postMessage({ action: "activateTerrain" }, "*");
                   }
               } else {
-                  status.textContent = 'Terrain: OFF';
+                  status.textContent = t('terrain') + ': ' + t('off');
                   if (window.parent) {
                       window.parent.postMessage({ action: "deactivateTerrain" }, "*");
                   }
@@ -1176,11 +1604,11 @@ function getUI() {
             if (toggleShadow && shadowStatus) {
               // initialize visibility explicitly based on checked state
               updateTimeRowVisibility(Boolean(toggleShadow.checked));
-              shadowStatus.textContent = toggleShadow.checked ? 'Shadow: ON' : 'Shadow: OFF';
+              shadowStatus.textContent = t('shadow') + ': ' + (toggleShadow.checked ? t('on') : t('off'));
 
               toggleShadow.addEventListener('change', function() {
                 const checked = !!this.checked;
-                shadowStatus.textContent = checked ? 'Shadow: ON' : 'Shadow: OFF';
+                shadowStatus.textContent = t('shadow') + ': ' + (checked ? t('on') : t('off'));
                 updateTimeRowVisibility(checked);
                 if (window.parent) {
                   window.parent.postMessage({ action: checked ? "activateShadow" : "deactivateShadow" }, "*");
@@ -1195,7 +1623,7 @@ function getUI() {
             if (toggleDepth && depthStatus) {
               toggleDepth.addEventListener('change', function() {
                 const checked = !!this.checked;
-                depthStatus.textContent = checked ? 'Depth Test: ON' : 'Depth Test: OFF';
+                depthStatus.textContent = t('depthTest') + ': ' + (checked ? t('on') : t('off'));
                 if (window.parent) {
                   window.parent.postMessage({ action: "toggleDepthTest", enabled: checked }, "*");
                 }
@@ -1228,7 +1656,7 @@ function getUI() {
                     const iframe = document.getElementById('info-content');
                     if (!iframe) return;
                     if (!url) {
-                      iframe.srcdoc = '<div style="padding:16px;color:#666;">No URL configured</div>';
+                      iframe.srcdoc = '<div style="padding:16px;color:#666;">' + t('noUrlConfigured') + '</div>';
                       return;
                     }
                     iframe.src = url;
@@ -1238,27 +1666,27 @@ function getUI() {
                 if (msg.action === 'activateShadow' || msg.action === 'deactivateShadow') {
                   const on = msg.action === 'activateShadow';
                   if (toggleShadow) toggleShadow.checked = on;
-                  if (shadowStatus) shadowStatus.textContent = on ? 'Shadow: ON' : 'Shadow: OFF';
+                  if (shadowStatus) shadowStatus.textContent = t('shadow') + ': ' + (on ? t('on') : t('off'));
                   updateTimeRowVisibility(on);
                 } else if (msg.action === 'terrainState') {
                   // message from extension to initialize/sync terrain toggle
                   const on = !!msg.enabled;
                   if (toggleSwitch) toggleSwitch.checked = on;
-                  if (status) status.textContent = on ? 'Terrain: ON' : 'Terrain: OFF';
+                  if (status) status.textContent = t('terrain') + ': ' + (on ? t('on') : t('off'));
                 } else if (msg.action === 'shadowState') {
                   // message from extension to initialize/sync shadow toggle
                   const on = !!msg.enabled;
                   if (toggleShadow) toggleShadow.checked = on;
-                  if (shadowStatus) shadowStatus.textContent = on ? 'Shadow: ON' : 'Shadow: OFF';
+                  if (shadowStatus) shadowStatus.textContent = t('shadow') + ': ' + (on ? t('on') : t('off'));
                   updateTimeRowVisibility(on);
                 } else if (msg.action === 'depthTestState') {
                   const on = !!msg.enabled;
                   if (toggleDepth) toggleDepth.checked = on;
-                  if (depthStatus) depthStatus.textContent = on ? 'Depth Test: ON' : 'Depth Test: OFF';
+                  if (depthStatus) depthStatus.textContent = t('depthTest') + ': ' + (on ? t('on') : t('off'));
                 } else if (msg.action === 'geojsonDrapeState') {
                   const value = msg.classification || 'terrain';
                   if (geojsonDrapeSelect) geojsonDrapeSelect.value = value;
-                  if (geojsonDrapeStatus) geojsonDrapeStatus.textContent = 'GeoJSON 3D Drape: ' + value;
+                  if (geojsonDrapeStatus) geojsonDrapeStatus.textContent = t('geojsonDrape') + ': ' + value;
                 } else if (msg.action === 'cameraState') {
                   // message from extension to initialize/sync camera info
                   const cam = msg.camera || null;
@@ -1267,11 +1695,11 @@ function getUI() {
                     const rotEl = document.getElementById('camera-rotation');
                     try {
                       const p = cam.position || cam.pos || cam.center || null;
-                      if (posEl) posEl.textContent = 'Position: ' + (p ? JSON.stringify(p) : JSON.stringify(cam));
+                      if (posEl) posEl.textContent = t('positionLabel') + ': ' + (p ? JSON.stringify(p) : JSON.stringify(cam));
                       const h = cam.heading || cam.yaw || cam.h || null;
                       const pch = cam.pitch || cam.pitchDeg || cam.pitchDegree || null;
                       const r = cam.roll || cam.r || null;
-                      if (rotEl) rotEl.textContent = 'Heading/Pitch/Roll: ' + [h, pch, r].map(v => v == null ? '—' : String(v)).join(' / ');
+                      if (rotEl) rotEl.textContent = t('hprLabel') + ': ' + [h, pch, r].map(v => v == null ? '—' : String(v)).join(' / ');
                     } catch (e) {}
                   }
                 } else if (msg.action === 'updateLegends') {
@@ -1302,7 +1730,7 @@ function getUI() {
                         
                         sortedGroups.forEach(function(g, index) {
                             const isDefault = (g === 'Default');
-                            const label = isDefault ? 'Main' : g;
+                            const label = isDefault ? t('legendMain') : g;
                             const id = 'legend-sub-' + encodeURIComponent(g).replace(/%/g, '_');
                             const activeClass = index === 0 ? 'active' : '';
                             const displayStyle = index === 0 ? '' : 'display:none;';
@@ -1356,7 +1784,7 @@ function getUI() {
                              // _top を指定して、サンドボックス化されたiframeではなく最上位のウィンドウから開かせる
                              // 左クリック時は onclick イベントでウィジェット内の属性パネル(attr-panel)に表示させる
                              // エスケープ処理: テンプレート文字列内でシングルクォーテーションを正しく出力するためにバックスラッシュを2重にする
-                             let linkIcon = '&nbsp;<span title="新しいタブで開く(Sandbox回避)" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;" onclick="event.stopPropagation(); window.parent.postMessage({ action: \\\'openUrl\\\', url: \\\'' + displayVal + '\\\' }, \\\'*\\\'); return false;">&#x2197;</span>';
+                             let linkIcon = '&nbsp;<span title="' + t('openNewTab') + '" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;" onclick="event.stopPropagation(); window.parent.postMessage({ action: \\\'openUrl\\\', url: \\\'' + displayVal + '\\\' }, \\\'*\\\'); return false;">&#x2197;</span>';
                              escapedVal = '<a href="' + displayVal + '" target="_top" rel="noopener noreferrer" style="color:#0066cc; text-decoration:underline; word-break:break-all;" onclick="window.openUrlInAttrPanel(event, \\\'' + displayVal + '\\\')">' + escapedVal + '</a>' + linkIcon;
                          }
                          
@@ -1369,7 +1797,7 @@ function getUI() {
                       attrContent.innerHTML = html;
                       window._currentAttrHtml = html; // 戻るボタン用にバックアップ
                     } else {
-                      attrContent.innerHTML = 'No attributes available or feature deselected.';
+                      attrContent.innerHTML = t('noAttrAvail');
                       window._currentAttrHtml = attrContent.innerHTML;
                     }
                   }
@@ -1425,7 +1853,7 @@ function getUI() {
                     window._vectorSearchData = { all: (msg.all || {}), layers: (msg.layers || {}), layerOptions: (msg.layerOptions || []) };
 
                     if (layerSelect) {
-                      let html = '<option value="__all__">全選択</option>';
+                      let html = '<option value="__all__">' + t('allSelect') + '</option>';
                       const opts = window._vectorSearchData.layerOptions || [];
                       opts.forEach((o) => {
                         html += '<option value="' + String(o.id).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(o.title || o.id).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>';
@@ -1440,9 +1868,9 @@ function getUI() {
 
                     const all = window._vectorSearchData.all || {};
                     if (all.attributes && all.attributes.length) {
-                      if (statusEl) statusEl.textContent = all.attributes.length + ' 属性を読み込みました';
+                      if (statusEl) statusEl.textContent = t('attrsLoaded', { n: all.attributes.length });
                     } else if (statusEl) {
-                      statusEl.textContent = '属性付きベクトルがありません';
+                      statusEl.textContent = t('noAttrVector');
                     }
                   } catch (e) { console.error('[vectorFeatureIndex] UI error', e); }
                 } else if (msg.action === 'attrUrlOpen') {
@@ -1470,7 +1898,7 @@ function getUI() {
                   // If current not specified, default it to start (or stop) so timeline current moves
                   if (!msg.current && (msg.start || msg.stop)) {
                     msg.current = msg.start || msg.stop;
-                    if (timeStatus) timeStatus.textContent = 'Sent (current set)';
+                    if (timeStatus) timeStatus.textContent = t('sentCurrent');
                   }
                 try {
                   uiLog('[UI] posting setTime message', msg);
@@ -1478,12 +1906,12 @@ function getUI() {
                     window.parent.postMessage(msg, "*");
                   }
                   if (timeStatus) {
-                    timeStatus.textContent = 'Sent';
+                    timeStatus.textContent = t('sent');
                     setTimeout(() => { if (timeStatus) timeStatus.textContent = '\u00A0'; }, 2000);
                   }
                 } catch (e) {
                   console.error('[UI] failed to post setTime', e);
-                  if (timeStatus) timeStatus.textContent = 'Send failed';
+                  if (timeStatus) timeStatus.textContent = t('sendFailed');
                 }
               });
             }
@@ -1810,11 +2238,11 @@ function getUI() {
       const flyToCurrentBtn = document.getElementById('cam-flyto-current');
       if (flyToCurrentBtn) {
         flyToCurrentBtn.addEventListener('click', function() {
-            flyToCurrentBtn.textContent = 'Getting...';
+            flyToCurrentBtn.textContent = t('getting');
             parent.postMessage({ action: 'requestGeolocation' }, '*');
             setTimeout(() => {
-                 if(flyToCurrentBtn.textContent === 'Getting...') {
-                     flyToCurrentBtn.textContent = 'Fly to Current Location';
+                 if(flyToCurrentBtn.textContent === t('getting')) {
+                     flyToCurrentBtn.textContent = t('flyToCurrentLoc');
                  }
             }, 8000);
         });
@@ -1860,7 +2288,7 @@ function getUI() {
               const btn = document.getElementById('cam-flyto-current');
               try { uiLog('[UI] geolocationResult received:', msg); } catch(e) {}
               if (msg.success) {
-                if (btn) btn.textContent = 'Fly to Current Location';
+                if (btn) btn.textContent = t('flyToCurrentLoc');
                 try {
                   if (msg.layerId) {
                     // Use shared scheduler so search and geolocation both trigger removal
@@ -1869,8 +2297,8 @@ function getUI() {
                 } catch(e) {}
               } else {
                 if (btn) {
-                  btn.textContent = 'Error';
-                  setTimeout(() => { btn.textContent = 'Fly to Current Location'; }, 2000);
+                  btn.textContent = t('error');
+                  setTimeout(() => { btn.textContent = t('flyToCurrentLoc'); }, 2000);
                 }
               }
             } catch(e) { try { console.error('[UI] btn update error', e); } catch(_){} }
@@ -1974,7 +2402,7 @@ function getUI() {
           if (feedbackEl) {
             try {
               const orig = feedbackEl.textContent;
-              feedbackEl.textContent = 'Imported!';
+              feedbackEl.textContent = t('imported');
               setTimeout(() => { feedbackEl.textContent = orig; }, 2000);
             } catch(e){}
           }
@@ -2009,7 +2437,7 @@ function getUI() {
             try {
               if (!el) return;
               const orig = el.textContent;
-              el.textContent = 'Copied!';
+              el.textContent = t('copied');
               setTimeout(() => { el.textContent = orig; }, 1500);
             } catch(e) {}
           };
@@ -2041,7 +2469,7 @@ function getUI() {
 
           if (generateBtn) {
           generateBtn.addEventListener('click', function() {
-            if (output) output.value = 'Generating...';
+            if (output) output.value = t('generating');
             // Send request to extension to generate fresh permalink
             parent.postMessage({ action: 'generatePermalink' }, '*');
           });
@@ -2093,22 +2521,22 @@ function getUI() {
                       // Forward to parent/host to apply (restore previous behavior)
                       try { window.parent.postMessage(payload, '*'); } catch(e) { try { console.error('[UI] parent.postMessage failed', e); } catch(_){} }
                       const originalText = loadBtn.textContent;
-                      loadBtn.textContent = 'Loaded!';
+                      loadBtn.textContent = t('loaded');
                       setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
                     } else {
                       const originalText = loadBtn.textContent;
-                      loadBtn.textContent = 'Invalid Data';
+                      loadBtn.textContent = t('invalidData');
                       setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
                     }
                 } else {
                     const originalText = loadBtn.textContent;
-                    loadBtn.textContent = 'Parse Error';
+                    loadBtn.textContent = t('parseError');
                     setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
                 }
             } catch(e) {
                 try { console.error('Failed to parse permalink', e); } catch(_){}
                 const originalText = loadBtn.textContent;
-                loadBtn.textContent = 'Error';
+                loadBtn.textContent = t('error');
                 setTimeout(() => { loadBtn.textContent = originalText; }, 2000);
             }
           });
@@ -2120,7 +2548,7 @@ function getUI() {
         flytoViewportUrlBtn.addEventListener('click', function() {
           try {
             const originalText = flytoViewportUrlBtn.textContent;
-            flytoViewportUrlBtn.textContent = '読込中...';
+            flytoViewportUrlBtn.textContent = t('loading');
             parent.postMessage({ action: 'flyToViewportUrlParams' }, '*');
             setTimeout(() => { flytoViewportUrlBtn.textContent = originalText; }, 2000);
           } catch(e) {
@@ -2135,7 +2563,7 @@ function getUI() {
         flytoCurrentLocationBtn.addEventListener('click', function() {
           try {
             const originalText = flytoCurrentLocationBtn.textContent;
-            flytoCurrentLocationBtn.textContent = '取得中...';
+            flytoCurrentLocationBtn.textContent = t('getting');
             parent.postMessage({ action: 'requestGeolocation' }, '*');
             setTimeout(() => { flytoCurrentLocationBtn.textContent = originalText; }, 2000);
           } catch(e) {
@@ -2200,18 +2628,18 @@ function getUI() {
                     if (payload.lat !== undefined && !isNaN(payload.lat)) {
                       const ok = applyPermalinkPayload(payload, reloadBtn);
                       const originalText = reloadBtn.textContent;
-                      reloadBtn.textContent = ok ? 'Restored!' : 'No Lat/Lng';
+                      reloadBtn.textContent = ok ? t('restored') : t('noLatLng');
                       setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
                     } else {
                       // alert('URL found but no valid lat/lng parameters.');
                       const originalText = reloadBtn.textContent;
-                      reloadBtn.textContent = 'No Lat/Lng';
+                      reloadBtn.textContent = t('noLatLng');
                       setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
                   }
               } else {
                   // alert('Could not read URL parameters from browser address bar or referrer.');
                   const originalText = reloadBtn.textContent;
-                  reloadBtn.textContent = 'No Params';
+                  reloadBtn.textContent = t('noParams');
                   setTimeout(() => { reloadBtn.textContent = originalText; }, 2000);
               }
           });
@@ -2256,7 +2684,7 @@ function getUI() {
             const li = document.createElement('li');
             li.style.padding = '8px';
             li.style.color = '#666';
-            li.textContent = 'No results';
+            li.textContent = t('noResults');
             resultsList.appendChild(li);
             return;
           }
@@ -2289,7 +2717,7 @@ function getUI() {
 
               const flyBtn = document.createElement('button');
               flyBtn.className = 'btn-primary p-6';
-              flyBtn.textContent = 'Fly';
+              flyBtn.textContent = t('fly');
               flyBtn.addEventListener('click', () => {
                 try {
                   const coords = it.coordinates || it.Coordinates || it.geometry || it.Geometry || null;
@@ -2327,7 +2755,7 @@ function getUI() {
 
           if (provider === 'gsi') {
             try {
-              resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
+              resultsList.innerHTML = '<li style="padding:8px;color:#666;">' + t('searching') + '</li>';
               const url = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=' + encodeURIComponent(q.trim());
               const res = await fetch(url, { method: 'GET' });
               if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2345,7 +2773,7 @@ function getUI() {
               renderSearchResults(items);
             } catch (e) {
               try { console.error('GSI search failed', e); } catch(_) {}
-              if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">検索に失敗しました。ネットワーク（CORS）を確認してください。</li>';
+              if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">' + t('searchFailCors') + '</li>';
             }
             return;
           }
@@ -2364,7 +2792,7 @@ function getUI() {
           const rawAppId = String((window && window._yahooAppId) ? window._yahooAppId : '').trim().replace(/^"+|"+$/g, '');
           const inspectorAppId = (rawAppId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawAppId) && !/あなた/.test(rawAppId)) ? rawAppId : null;
           if (!serverHasAppId && !inspectorAppId) {
-            resultsList.innerHTML = '<li style="padding:8px;color:#a00;">AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">yahooAppId: あなたのYahoo AppID</div></li>';
+            resultsList.innerHTML = '<li style="padding:8px;color:#a00;">' + t('appIdMissing') + '<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">' + t('appIdSample') + '</div></li>';
             return;
           }
 
@@ -2373,7 +2801,7 @@ function getUI() {
           try {
             // expose query for debugging and notify parent that search started
             try { window._lastYahooQuery = q; if (window.parent) window.parent.postMessage({ action: 'yahooDebug', event: 'search-start', query: q }, '*'); } catch(e){}
-            resultsList.innerHTML = '<li style="padding:8px;color:#666;">Searching...</li>';
+            resultsList.innerHTML = '<li style="padding:8px;color:#666;">' + t('searching') + '</li>';
             const url = proxyEndpoint + '?query=' + encodeURIComponent(q) + (serverHasAppId ? '' : ('&appid=' + encodeURIComponent(inspectorAppId || '')));
             const res = await fetch(url, { method: 'GET' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2391,7 +2819,7 @@ function getUI() {
           } catch (e) {
             try { console.error('Yahoo search failed', e); } catch(_){ }
             try { if (window.parent) window.parent.postMessage({ action: 'yahooDebug', event: 'search-error', query: q, detail: String(e) }, '*'); } catch(_){}
-            if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。</li>';
+            if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">' + t('searchFailAppId') + '</li>';
           }
         };
 
@@ -2435,7 +2863,7 @@ function getUI() {
                   values.forEach((val) => {
                     const haystack = (String(val) + ' ' + String(attr)).toLowerCase();
                     if (haystack.includes(query)) {
-                      const layerTitle = (layerId === '__all__') ? '全選択' : ((data.layers && data.layers[layerId] && data.layers[layerId].title) || layerId);
+                      const layerTitle = (layerId === '__all__') ? t('allSelect') : ((data.layers && data.layers[layerId] && data.layers[layerId].title) || layerId);
                       res.push({ layerId: (layerId === '__all__') ? '__all__' : layerId, layerTitle: layerTitle, attr: attr, value: val });
                     }
                   });
@@ -2443,7 +2871,7 @@ function getUI() {
               } catch (e) {}
             });
             if (!res.length) {
-              vectorSearchResults.innerHTML = '<li style="padding:4px;color:#666;">該当なし</li>';
+              vectorSearchResults.innerHTML = '<li style="padding:4px;color:#666;">' + t('noMatch') + '</li>';
               return;
             }
             vectorSearchResults.innerHTML = res.slice(0, 50).map((r, i) => '<li class="vector-search-result" data-idx="' + i + '" style="padding:4px;border-bottom:1px solid #eee;cursor:pointer;">' + String(r.layerTitle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + ' / ' + String(r.attr).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + ' / ' + String(r.value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</li>').join('');
@@ -2486,16 +2914,16 @@ function getUI() {
               const source = getCurrentVectorSource();
               if (vectorAttr) {
                 if (source && source.attributes && source.attributes.length) {
-                  vectorAttr.innerHTML = '<option value="__all__">全選択</option>' + source.attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                  vectorAttr.innerHTML = '<option value="__all__">' + t('allSelect') + '</option>' + source.attributes.map(a => '<option value="' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
                   vectorAttr.disabled = false;
                 } else {
-                  vectorAttr.innerHTML = '<option value="__all__">全選択</option>';
+                  vectorAttr.innerHTML = '<option value="__all__">' + t('allSelect') + '</option>';
                   vectorAttr.disabled = true;
                 }
                 vectorAttr.value = '__all__';
               }
               if (vectorValue) {
-                vectorValue.innerHTML = '<option value="">値を選択</option>';
+                vectorValue.innerHTML = '<option value="">' + t('selectValue') + '</option>';
                 vectorValue.disabled = true;
               }
               if (vectorFlyBtn) vectorFlyBtn.disabled = true;
@@ -2510,10 +2938,10 @@ function getUI() {
               const attr = vectorAttr.value;
               if (vectorValue) {
                 if (source && source.valuesByAttr && attr && attr !== '__all__' && Array.isArray(source.valuesByAttr[attr])) {
-                  vectorValue.innerHTML = '<option value="">値を選択</option>' + source.valuesByAttr[attr].map(v => '<option value="' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
+                  vectorValue.innerHTML = '<option value="">' + t('selectValue') + '</option>' + source.valuesByAttr[attr].map(v => '<option value="' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '">' + String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>').join('');
                   vectorValue.disabled = false;
                 } else {
-                  vectorValue.innerHTML = '<option value="">値を選択</option>';
+                  vectorValue.innerHTML = '<option value="">' + t('selectValue') + '</option>';
                   vectorValue.disabled = true;
                 }
                 vectorValue.value = '';
@@ -2542,7 +2970,7 @@ function getUI() {
         if (vectorRefreshBtn) {
           vectorRefreshBtn.addEventListener('click', () => {
             try {
-              if (vectorStatus) vectorStatus.textContent = '読み込み中...';
+              if (vectorStatus) vectorStatus.textContent = t('loading');
               parent.postMessage({ action: 'getVectorFeatureIndex' }, '*');
             } catch (e) { console.error('vector refresh error', e); }
           });
@@ -2680,43 +3108,43 @@ function getUI() {
           }
           const displayRows = matched.slice(0, 1000);
           const layerId = (vectorAttrWidgetLayerSelect && vectorAttrWidgetLayerSelect.value) ? vectorAttrWidgetLayerSelect.value : '';
-          const layerTitle = (!layerId || layerId === '__all__') ? '全選択' : ((window._vectorSearchData && window._vectorSearchData.layers && window._vectorSearchData.layers[layerId] && window._vectorSearchData.layers[layerId].title) || layerId);
-          vectorAttrWidgetTitle.textContent = '属性・値一覧' + (layerTitle ? ' — ' + layerTitle : '');
+          const layerTitle = (!layerId || layerId === '__all__') ? t('allSelect') : ((window._vectorSearchData && window._vectorSearchData.layers && window._vectorSearchData.layers[layerId] && window._vectorSearchData.layers[layerId].title) || layerId);
+          vectorAttrWidgetTitle.textContent = t('attrValueList') + (layerTitle ? ' — ' + layerTitle : '');
           if (!vectorAttrWidgetAttributes.length) {
             if (vectorAttrWidgetHead) vectorAttrWidgetHead.innerHTML = '';
-            vectorAttrWidgetList.innerHTML = '<tr><td style="padding:12px 14px;color:#71818d;">レイヤを選択してください</td></tr>';
-            vectorAttrWidgetCount.textContent = '0 件 / 0 属性';
+            vectorAttrWidgetList.innerHTML = '<tr><td style="padding:12px 14px;color:#71818d;">' + t('selectLayerPrompt') + '</td></tr>';
+            vectorAttrWidgetCount.textContent = t('countFmt', { rows: 0, attrs: 0 });
             return;
           }
           if (vectorAttrWidgetHead) {
             vectorAttrWidgetHead.innerHTML = '<tr>' + vectorAttrWidgetAttributes.map(function(attr, idx) {
               const active = vectorAttrWidgetSort.column === idx;
               const marker = active ? (vectorAttrWidgetSort.order > 0 ? ' ▲' : ' ▼') : '';
-              return '<th data-idx="' + idx + '" title="クリックで並び替え"' + (active ? ' class="sorted"' : '') + '>' + escapeHtml(attr) + '<span class="sort-marker">' + marker + '</span></th>';
+              return '<th data-idx="' + idx + '" title="' + t('sortTitle') + '"' + (active ? ' class="sorted"' : '') + '>' + escapeHtml(attr) + '<span class="sort-marker">' + marker + '</span></th>';
             }).join('') + '</tr>';
           }
           if (!displayRows.length) {
-            vectorAttrWidgetList.innerHTML = '<tr><td colspan="' + vectorAttrWidgetAttributes.length + '" style="padding:12px 14px;color:#71818d;">該当する地物がありません</td></tr>';
-            vectorAttrWidgetCount.textContent = (query ? '0' : String(vectorAttrWidgetRows.length)) + ' 件 / ' + vectorAttrWidgetAttributes.length + ' 属性';
+            vectorAttrWidgetList.innerHTML = '<tr><td colspan="' + vectorAttrWidgetAttributes.length + '" style="padding:12px 14px;color:#71818d;">' + t('noMatchingFeatures') + '</td></tr>';
+            vectorAttrWidgetCount.textContent = t('countFmt', { rows: (query ? 0 : vectorAttrWidgetRows.length), attrs: vectorAttrWidgetAttributes.length });
             return;
           }
           vectorAttrWidgetList.innerHTML = displayRows.map(function(row) {
             const flyable = Number.isFinite(row.lat) && Number.isFinite(row.lng);
             const dataAttrs = flyable ? 'data-lat="' + row.lat + '" data-lng="' + row.lng + '"' : '';
             const style = flyable ? 'style="cursor:pointer;"' : '';
-            return '<tr class="vector-attr-widget-row" ' + dataAttrs + ' ' + style + ' title="' + (flyable ? 'クリックで移動' : '') + '">' +
-              row.values.map(function(val) { var displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val); var escapedVal = escapeHtml(displayVal); if (escapedVal.indexOf('http://') === 0 || escapedVal.indexOf('https://') === 0) { return '<td class="vector-attr-widget-cell" title="' + escapedVal + '"><a href="' + displayVal + '" target="_top" rel="noopener noreferrer" class="attr-url-link" style="color:#0066cc; text-decoration:underline; word-break:break-all;">' + escapedVal + '</a>&nbsp;<span class="attr-url-open" data-url="' + displayVal + '" title="新しいタブで開く(Sandbox回避)" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;">&#x2197;</span></td>'; } return '<td class="vector-attr-widget-cell" title="' + escapedVal + '">' + escapedVal + '</td>'; }).join('') +
+            return '<tr class="vector-attr-widget-row" ' + dataAttrs + ' ' + style + ' title="' + (flyable ? t('clickToFly') : '') + '">' +
+              row.values.map(function(val) { var displayVal = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val); var escapedVal = escapeHtml(displayVal); if (escapedVal.indexOf('http://') === 0 || escapedVal.indexOf('https://') === 0) { return '<td class="vector-attr-widget-cell" title="' + escapedVal + '"><a href="' + displayVal + '" target="_top" rel="noopener noreferrer" class="attr-url-link" style="color:#0066cc; text-decoration:underline; word-break:break-all;">' + escapedVal + '</a>&nbsp;<span class="attr-url-open" data-url="' + displayVal + '" title="' + t('openNewTab') + '" style="text-decoration:none; color:#666; font-size:1.1em; cursor:pointer;">&#x2197;</span></td>'; } return '<td class="vector-attr-widget-cell" title="' + escapedVal + '">' + escapedVal + '</td>'; }).join('') +
               '</tr>';
           }).join('');
-          const suffix = (matched.length > displayRows.length) ? ' （表示上限 ' + displayRows.length + ' 件）' : '';
-          vectorAttrWidgetCount.textContent = String(matched.length) + ' 件 / ' + vectorAttrWidgetAttributes.length + ' 属性' + suffix;
+          const suffix = (matched.length > displayRows.length) ? t('limitSuffix', { n: displayRows.length }) : '';
+          vectorAttrWidgetCount.textContent = t('countFmt', { rows: matched.length, attrs: vectorAttrWidgetAttributes.length }) + suffix;
         } catch (e) { console.error('vector attr widget render error', e); }
       }
 
       function updateVectorAttrWidgetLayerOptions(layerId) {
         if (!vectorAttrWidgetLayerSelect) return;
         const opts = (window._vectorSearchData && window._vectorSearchData.layerOptions) || [];
-        let html = '<option value="__all__">全選択</option>';
+        let html = '<option value="__all__">' + t('allSelect') + '</option>';
         for (const o of opts) {
           html += '<option value="' + escapeHtml(o.id) + '">' + escapeHtml(o.title || o.id) + '</option>';
         }
@@ -4029,6 +4457,8 @@ try {
         if (data && data.action === 'requestBaseList') {
           const targetId = msg.sender || null;
           if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+            // Share the current UI language override with the basemap widget
+            try { reearth.extension.postMessage(targetId, { action: 'lang', lang: _inspectorLang || 'auto' }); } catch (e) {}
             // If _parsedBaseTiles is empty, re-parse only base: lines from the inspector text
             // before responding so the basemap selector can recover from load order races.
             let baseEntries = _parsedBaseTiles || [];
@@ -4254,6 +4684,19 @@ function findBasemapWidgetId() {
 
 let _basemapWidgetId = null;
 
+// Forward the inspector "lang:" override to the basemap widget so its UI
+// strings follow the same language as the layer panel.
+function postLangToBasemapWidget() {
+  try {
+    const targetId = _basemapWidgetId || findBasemapWidgetId();
+    if (!targetId) return;
+    _basemapWidgetId = targetId;
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(targetId, { action: 'lang', lang: _inspectorLang || 'auto' });
+    }
+  } catch (e) {}
+}
+
 function postBaseListToBasemapWidget(baseEntries) {
   if (!baseEntries || !baseEntries.length) return;
   try {
@@ -4471,6 +4914,18 @@ function processInspectorText(text) {
         }
         try { sendLog('[processInspectorText] found attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
         try { sendLog('[processInspectorText] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
+      } catch(e){}
+      nonCamLines.push(line);
+      return;
+    }
+
+    // UI language override: "lang: auto|en|ja|zh-CN|zh-TW|ko|..." (auto = browser language)
+    if (/^lang\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim().toLowerCase();
+        if (val) _inspectorLang = val;
+        try { sendLog('[processInspectorText] found lang:', _inspectorLang); } catch(e){}
+        try { postLangToBasemapWidget(); } catch(e){}
       } catch(e){}
       nonCamLines.push(line);
       return;

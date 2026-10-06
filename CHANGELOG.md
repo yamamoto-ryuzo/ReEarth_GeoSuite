@@ -1,5 +1,15 @@
 # Changelog
 
+## v18.2.0
+- 新機能: UI を英語ベースの i18n で多言語化しました（20言語対応）。
+    - 対応言語: en / ja / zh-CN / zh-TW / ko / es / fr / de / it / pt / ru / nl / pl / uk / tr / ar / hi / id / th / vi
+    - 翻訳辞書（`GEO_I18N`）をプラグイン内に埋め込み、UI 側で `t(key)` + `data-i18n` 属性により適用します。
+    - 静的 UI（タブ、ボタン、ラベル、プレースホルダ、title/aria）と動的メッセージ（検索・共有・カメラ・地形/影/深度のステータス、エラー）の両方を翻訳対象にしました。
+    - 言語は iframe 内の `navigator.language` から自動検出し、未対応言語は英語へフォールバックします。
+    - インスペクターテキストの `lang: <コード>` 行で言語を明示指定可能（`lang: auto` で自動検出に戻ります）。
+    - `basemap-widget` も同方式で対応（`(なし)` オプション、Google Earth タイトル）。レイヤーパネルの `lang:` 設定は拡張間メッセージで basemap ウィジェットへ転送されます。
+    - レイヤー名・カメラタイトル・凡例タイトル・住所・地物属性などのユーザーデータは翻訳対象外です。
+
 ## v18.1.11
 - 改善: 属性・値一覧のパネル幅（300px/600px）とマウス認識領域を単一関数で制御するようリファクタリングしました。
     - 拡張側に `setAttributePanelExpanded(expanded, activeTab)` を追加し、`_attrPanelExpanded` フラグに応じて幅と iframe サイズを一括変更します。

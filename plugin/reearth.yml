@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "18.1.11"
+version: "18.2.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Terrain/Shadow トグル、Info 表示、Google Earth 連携を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -25,6 +25,7 @@ extensions:
               description: |
                 https://re-earth-geo-suite.vercel.app/ を参照して、設定を入力してください。
                 属性パネルのURLクリック動作は attrUrlOpen: panel|newtab で設定できます（openUrlInNewTab: true も newtab として有効です）。
+                UI言語は lang: en|ja|zh-CN|zh-TW|ko|es|fr|de|it|pt|ru|nl|pl|uk|tr|ar|hi|id|th|vi で固定できます（lang: auto または未指定でブラウザ言語を自動検出。未対応言語は英語にフォールバック）。
               type: string
               ui: multiline
               defaultValue: |

@@ -206,14 +206,73 @@ const html: string = `
     .basemap-attribution { font-size: 0.7em; color: #333; margin-top: 4px; min-height: 1.2em; overflow-wrap: break-word; word-break: break-word; flex-basis: 100%; }
   </style>
   <div class="basemap-wrap">
-    <div id="basemap-globe" class="basemap-globe" title="Google Earth で現在の表示を開く" role="button" aria-label="Google Earth で現在の表示を開く">🌐</div>
+    <div id="basemap-globe" class="basemap-globe" title="Open current view in Google Earth" data-i18n-title="openInGoogleEarth" role="button" aria-label="Open current view in Google Earth" data-i18n-aria="openInGoogleEarth">🌐</div>
     <select id="basemap-select" class="basemap-select">
-      <option value="">(なし)</option>
+      <option value="" data-i18n="none">(None)</option>
     </select>
     <div id="basemap-attribution" class="basemap-attribution"></div>
   </div>
   <script>
     (function(){
+      // --- i18n: English-base dictionary (missing keys fall back to en) ---
+      var GEO_I18N = {
+        en: { none:'(None)', openInGoogleEarth:'Open current view in Google Earth' },
+        ja: { none:'(なし)', openInGoogleEarth:'Google Earth で現在の表示を開く' },
+        'zh-CN': { none:'（无）', openInGoogleEarth:'在 Google 地球中打开当前视图' },
+        'zh-TW': { none:'（無）', openInGoogleEarth:'在 Google 地球中開啟目前檢視' },
+        ko: { none:'(없음)', openInGoogleEarth:'Google 어스에서 현재 뷰 열기' },
+        es: { none:'(Ninguno)', openInGoogleEarth:'Abrir vista actual en Google Earth' },
+        fr: { none:'(Aucun)', openInGoogleEarth:'Ouvrir la vue actuelle dans Google Earth' },
+        de: { none:'(Keine)', openInGoogleEarth:'Aktuelle Ansicht in Google Earth öffnen' },
+        it: { none:'(Nessuna)', openInGoogleEarth:'Apri vista corrente in Google Earth' },
+        pt: { none:'(Nenhum)', openInGoogleEarth:'Abrir vista atual no Google Earth' },
+        ru: { none:'(Нет)', openInGoogleEarth:'Открыть текущий вид в Google Earth' },
+        nl: { none:'(Geen)', openInGoogleEarth:'Huidige weergave openen in Google Earth' },
+        pl: { none:'(Brak)', openInGoogleEarth:'Otwórz bieżący widok w Google Earth' },
+        uk: { none:'(Немає)', openInGoogleEarth:'Відкрити поточний вигляд у Google Earth' },
+        tr: { none:'(Yok)', openInGoogleEarth:'Geçerli görünümü Google Earth’te aç' },
+        ar: { none:'(لا شيء)', openInGoogleEarth:'فتح العرض الحالي في Google Earth' },
+        hi: { none:'(कोई नहीं)', openInGoogleEarth:'Google Earth में वर्तमान दृश्य खोलें' },
+        id: { none:'(Tidak ada)', openInGoogleEarth:'Buka tampilan saat ini di Google Earth' },
+        th: { none:'(ไม่มี)', openInGoogleEarth:'เปิดมุมมองปัจจุบันใน Google Earth' },
+        vi: { none:'(Không có)', openInGoogleEarth:'Mở chế độ xem hiện tại trong Google Earth' }
+      };
+      var GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
+      var GEO_LANG = 'en';
+      function resolveLang() {
+        try {
+          var conf = String(window._GEO_LANG_CONF || 'auto').toLowerCase().trim();
+          var cand = (conf && conf !== 'auto') ? conf : String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+          if (cand.indexOf('zh') === 0) {
+            return (cand.indexOf('tw') > -1 || cand.indexOf('hk') > -1 || cand.indexOf('mo') > -1 || cand.indexOf('hant') > -1) ? 'zh-TW' : 'zh-CN';
+          }
+          var i;
+          for (i = 0; i < GEO_SUPPORTED.length; i++) { if (GEO_SUPPORTED[i].toLowerCase() === cand) return GEO_SUPPORTED[i]; }
+          var base = cand.split('-')[0];
+          for (i = 0; i < GEO_SUPPORTED.length; i++) { if (GEO_SUPPORTED[i].toLowerCase().split('-')[0] === base) return GEO_SUPPORTED[i]; }
+        } catch (e) {}
+        return 'en';
+      }
+      GEO_LANG = resolveLang();
+      function t(key) {
+        return (GEO_I18N[GEO_LANG] && GEO_I18N[GEO_LANG][key]) || (GEO_I18N.en && GEO_I18N.en[key]) || key;
+      }
+      function applyI18n() {
+        try {
+          try { document.documentElement.lang = GEO_LANG; } catch (e) {}
+          var apply = function(sel, fn) {
+            try {
+              var nodes = document.querySelectorAll(sel);
+              for (var i = 0; i < nodes.length; i++) { try { fn(nodes[i]); } catch (e) {} }
+            } catch (e) {}
+          };
+          apply('[data-i18n]', function(el) { el.textContent = t(el.getAttribute('data-i18n')); });
+          apply('[data-i18n-title]', function(el) { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
+          apply('[data-i18n-aria]', function(el) { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))); });
+        } catch (e) {}
+      }
+      try { applyI18n(); } catch (e) {}
+
       const select = document.getElementById('basemap-select');
       const attrEl = document.getElementById('basemap-attribution');
       const globeBtn = document.getElementById('basemap-globe');
@@ -245,7 +304,7 @@ const html: string = `
         select.innerHTML = '';
         const noneOpt = document.createElement('option');
         noneOpt.value = '';
-        noneOpt.textContent = '(なし)';
+        noneOpt.textContent = t('none');
         select.appendChild(noneOpt);
         if (items && items.length > 0) {
           items.forEach(function(b) {
@@ -291,6 +350,12 @@ const html: string = `
           if (!msg || !msg.action) return;
           if (msg.action === 'basemaps') {
             renderOptions(msg.items, msg.selectedUrl);
+          } else if (msg.action === 'lang') {
+            try {
+              window._GEO_LANG_CONF = String(msg.lang || 'auto');
+              GEO_LANG = resolveLang();
+              applyI18n();
+            } catch (e) {}
           }
         } catch(e) {}
       });
@@ -392,6 +457,9 @@ try {
         if (!data || !data.action) return;
         if (data.action === 'baseList') {
           applyBaseList(data.items);
+        } else if (data.action === 'lang') {
+          // Language override forwarded from the layer panel (inspector "lang:" line)
+          try { postToUI({ action: 'lang', lang: data.lang || 'auto' }); } catch (e) {}
         } else if (data.action === 'requestBaseList') {
           // If asked by layer panel (unexpected direction), respond with current list
           _layerPanelId = msg.sender || _layerPanelId;

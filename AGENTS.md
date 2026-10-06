@@ -26,6 +26,15 @@
 - バージョンは `package.json` と `plugin/reearth.yml` の両方に記述します。
 - `CHANGELOG.md` にもリリース内容を記載します。
 
+## i18n（多言語化）
+- UI は英語ベースの i18n で多言語化されています（v18.2.0〜）。
+- `layers-and-tiles-list.ts` 先頭の `GEO_I18N` 辞書に全言語分のキーを定義し、生成 HTML の `<script>` 内へ `window._GEO_I18N` として JSON 埋め込みしています。
+- UI 文字列は生成 HTML 内で `data-i18n` / `data-i18n-ph` / `data-i18n-title` / `data-i18n-aria` / `data-i18n-html` 属性または `t(key)` 呼び出しで解決します。新しい UI 文字列を追加する際は必ず `en` キーを基準に全ロケールへ追加してください。
+- 言語は `navigator.language` から自動検出し、インスペクターテキストの `lang: <コード>` で固定可能（`lang: auto` で自動検出）。未対応言語は英語へフォールバックします。
+- 対応言語: en / ja / zh-CN / zh-TW / ko / es / fr / de / it / pt / ru / nl / pl / uk / tr / ar / hi / id / th / vi
+- `basemap-widget.ts` も独自辞書で同方式。`lang:` 設定は拡張間メッセージ（`action: 'lang'`）でレイヤーパネルから転送されます。
+- レイヤー名・カメラタイトル・凡例タイトル・地物属性などのユーザーデータは翻訳しません。
+
 ## SHARE タブ・URL 出力の仕様
 - Re:Earth Visualizer の UI iframe は `allow-same-origin` なしのサンドボックスのため、親ページの URL 本体（`https://...` 部分）を取得できません。
 - SHARE タブの「Generate Link」は完全な URL を生成せず、常に `?lat=...&lng=...` 形式のクエリ文字列のみを出力します。
