@@ -49,7 +49,7 @@ const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','
 const GEO_I18N = {
   en: {
     minimize:'Minimize', restore:'Restore', move:'Move', moveCamera:'Move Camera',
-    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr',
+    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied',
     layersTitle:'Layers', note:'Note', refresh:'Refresh', refreshTitle:'Force Refresh User Layers',
     generateLink:'Generate Link', generating:'Generating...', copy:'Copy', copied:'Copied!',
     sharePasteLabel:'Paste a URL below.', sharePastePh:'Paste URL or ?lat=...', load:'Load', loaded:'Loaded!', invalidData:'Invalid Data', parseError:'Parse Error', error:'Error',
@@ -74,7 +74,7 @@ const GEO_I18N = {
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
-    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性',
+    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました',
     layersTitle:'レイヤー', note:'注意', refresh:'更新', refreshTitle:'ユーザーレイヤーを強制更新',
     generateLink:'リンクを生成', generating:'生成中...', copy:'コピー', copied:'コピーしました!',
     sharePasteLabel:'URLをペーストして下さい。', sharePastePh:'URL または ?lat=... を貼付', load:'読込', loaded:'読込完了!', invalidData:'無効なデータ', parseError:'解析エラー', error:'エラー',
@@ -99,7 +99,7 @@ const GEO_I18N = {
   },
   'zh-CN': {
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
-    tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性',
+    tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性', tabDisplay:'显示', manageTitle:'管理', manageInspectorLbl:'设置文本', manageApply:'应用', manageApplied:'已应用',
     layersTitle:'图层', note:'注意', refresh:'刷新', refreshTitle:'强制刷新用户图层',
     generateLink:'生成链接', generating:'生成中...', copy:'复制', copied:'已复制！',
     sharePasteLabel:'请在下方粘贴URL。', sharePastePh:'粘贴 URL 或 ?lat=...', load:'加载', loaded:'已加载！', invalidData:'无效数据', parseError:'解析错误', error:'错误',
@@ -124,7 +124,7 @@ const GEO_I18N = {
   },
   'zh-TW': {
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
-    tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性',
+    tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性', tabDisplay:'顯示', manageTitle:'管理', manageInspectorLbl:'設定文字', manageApply:'套用', manageApplied:'已套用',
     layersTitle:'圖層', note:'注意', refresh:'重新整理', refreshTitle:'強制重新整理使用者圖層',
     generateLink:'產生連結', generating:'產生中...', copy:'複製', copied:'已複製！',
     sharePasteLabel:'請在下方貼上 URL。', sharePastePh:'貼上 URL 或 ?lat=...', load:'載入', loaded:'已載入！', invalidData:'無效資料', parseError:'解析錯誤', error:'錯誤',
@@ -149,7 +149,7 @@ const GEO_I18N = {
   },
   ko: {
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
-    tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성',
+    tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성', tabDisplay:'표시', manageTitle:'관리', manageInspectorLbl:'설정 텍스트', manageApply:'적용', manageApplied:'적용됨',
     layersTitle:'레이어', note:'주의', refresh:'새로고침', refreshTitle:'사용자 레이어 강제 새로고침',
     generateLink:'링크 생성', generating:'생성 중...', copy:'복사', copied:'복사됨!',
     sharePasteLabel:'아래에 URL을 붙여넣으세요.', sharePastePh:'URL 또는 ?lat=... 붙여넣기', load:'불러오기', loaded:'불러옴!', invalidData:'잘못된 데이터', parseError:'파싱 오류', error:'오류',
@@ -174,7 +174,7 @@ const GEO_I18N = {
   },
   es: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
-    tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.',
+    tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.', tabDisplay:'Vista', manageTitle:'Gestión', manageInspectorLbl:'Texto de configuración', manageApply:'Aplicar', manageApplied:'Aplicado',
     layersTitle:'Capas', note:'Nota', refresh:'Actualizar', refreshTitle:'Forzar actualización de capas de usuario',
     generateLink:'Generar enlace', generating:'Generando...', copy:'Copiar', copied:'¡Copiado!',
     sharePasteLabel:'Pega una URL abajo.', sharePastePh:'Pegar URL o ?lat=...', load:'Cargar', loaded:'¡Cargado!', invalidData:'Datos no válidos', parseError:'Error de análisis', error:'Error',
@@ -199,7 +199,7 @@ const GEO_I18N = {
   },
   fr: {
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
-    tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.',
+    tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.', tabDisplay:'Affichage', manageTitle:'Gestion', manageInspectorLbl:'Texte de configuration', manageApply:'Appliquer', manageApplied:'Appliqué',
     layersTitle:'Couches', note:'Note', refresh:'Actualiser', refreshTitle:'Forcer l’actualisation des couches',
     generateLink:'Générer le lien', generating:'Génération...', copy:'Copier', copied:'Copié !',
     sharePasteLabel:'Collez une URL ci-dessous.', sharePastePh:'Coller URL ou ?lat=...', load:'Charger', loaded:'Chargé !', invalidData:'Données invalides', parseError:'Erreur d’analyse', error:'Erreur',
@@ -224,7 +224,7 @@ const GEO_I18N = {
   },
   de: {
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
-    tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.',
+    tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.', tabDisplay:'Anzeige', manageTitle:'Verwaltung', manageInspectorLbl:'Einstellungstext', manageApply:'Anwenden', manageApplied:'Angewendet',
     layersTitle:'Layer', note:'Hinweis', refresh:'Aktualisieren', refreshTitle:'Benutzer-Layer neu laden',
     generateLink:'Link erzeugen', generating:'Erzeuge...', copy:'Kopieren', copied:'Kopiert!',
     sharePasteLabel:'URL unten einfügen.', sharePastePh:'URL oder ?lat=... einfügen', load:'Laden', loaded:'Geladen!', invalidData:'Ungültige Daten', parseError:'Parse-Fehler', error:'Fehler',
@@ -249,7 +249,7 @@ const GEO_I18N = {
   },
   it: {
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
-    tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.',
+    tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.', tabDisplay:'Vista', manageTitle:'Gestione', manageInspectorLbl:'Testo di configurazione', manageApply:'Applica', manageApplied:'Applicato',
     layersTitle:'Layer', note:'Nota', refresh:'Aggiorna', refreshTitle:'Forza aggiornamento layer utente',
     generateLink:'Genera link', generating:'Generazione...', copy:'Copia', copied:'Copiato!',
     sharePasteLabel:'Incolla un URL qui sotto.', sharePastePh:'Incolla URL o ?lat=...', load:'Carica', loaded:'Caricato!', invalidData:'Dati non validi', parseError:'Errore di parsing', error:'Errore',
@@ -274,7 +274,7 @@ const GEO_I18N = {
   },
   pt: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
-    tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.',
+    tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.', tabDisplay:'Exibição', manageTitle:'Gestão', manageInspectorLbl:'Texto de configuração', manageApply:'Aplicar', manageApplied:'Aplicado',
     layersTitle:'Camadas', note:'Nota', refresh:'Atualizar', refreshTitle:'Forçar atualização das camadas',
     generateLink:'Gerar link', generating:'Gerando...', copy:'Copiar', copied:'Copiado!',
     sharePasteLabel:'Cole uma URL abaixo.', sharePastePh:'Colar URL ou ?lat=...', load:'Carregar', loaded:'Carregado!', invalidData:'Dados inválidos', parseError:'Erro de análise', error:'Erro',
@@ -299,7 +299,7 @@ const GEO_I18N = {
   },
   ru: {
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
-    tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.',
+    tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.', tabDisplay:'Вид', manageTitle:'Управление', manageInspectorLbl:'Текст настроек', manageApply:'Применить', manageApplied:'Применено',
     layersTitle:'Слои', note:'Примечание', refresh:'Обновить', refreshTitle:'Принудительно обновить слои',
     generateLink:'Создать ссылку', generating:'Создание...', copy:'Копировать', copied:'Скопировано!',
     sharePasteLabel:'Вставьте URL ниже.', sharePastePh:'Вставить URL или ?lat=...', load:'Загрузить', loaded:'Загружено!', invalidData:'Неверные данные', parseError:'Ошибка разбора', error:'Ошибка',
@@ -324,7 +324,7 @@ const GEO_I18N = {
   },
   nl: {
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
-    tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.',
+    tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.', tabDisplay:'Weergave', manageTitle:'Beheer', manageInspectorLbl:'Instellingentekst', manageApply:'Toepassen', manageApplied:'Toegepast',
     layersTitle:'Lagen', note:'Let op', refresh:'Vernieuwen', refreshTitle:'Gebruikerslagen geforceerd vernieuwen',
     generateLink:'Link genereren', generating:'Genereren...', copy:'Kopiëren', copied:'Gekopieerd!',
     sharePasteLabel:'Plak hieronder een URL.', sharePastePh:'Plak URL of ?lat=...', load:'Laden', loaded:'Geladen!', invalidData:'Ongeldige gegevens', parseError:'Parsefout', error:'Fout',
@@ -349,7 +349,7 @@ const GEO_I18N = {
   },
   pl: {
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
-    tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.',
+    tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.', tabDisplay:'Widok', manageTitle:'Zarządzanie', manageInspectorLbl:'Tekst ustawień', manageApply:'Zastosuj', manageApplied:'Zastosowano',
     layersTitle:'Warstwy', note:'Uwaga', refresh:'Odśwież', refreshTitle:'Wymuś odświeżenie warstw użytkownika',
     generateLink:'Generuj link', generating:'Generowanie...', copy:'Kopiuj', copied:'Skopiowano!',
     sharePasteLabel:'Wklej URL poniżej.', sharePastePh:'Wklej URL lub ?lat=...', load:'Wczytaj', loaded:'Wczytano!', invalidData:'Nieprawidłowe dane', parseError:'Błąd parsowania', error:'Błąd',
@@ -374,7 +374,7 @@ const GEO_I18N = {
   },
   uk: {
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
-    tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.',
+    tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.', tabDisplay:'Вигляд', manageTitle:'Керування', manageInspectorLbl:'Текст налаштувань', manageApply:'Застосувати', manageApplied:'Застосовано',
     layersTitle:'Шари', note:'Примітка', refresh:'Оновити', refreshTitle:'Примусово оновити шари користувача',
     generateLink:'Створити посилання', generating:'Створення...', copy:'Копіювати', copied:'Скопійовано!',
     sharePasteLabel:'Вставте URL нижче.', sharePastePh:'Вставте URL або ?lat=...', load:'Завантажити', loaded:'Завантажено!', invalidData:'Недійсні дані', parseError:'Помилка розбору', error:'Помилка',
@@ -399,7 +399,7 @@ const GEO_I18N = {
   },
   tr: {
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
-    tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik',
+    tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik', tabDisplay:'Görünüm', manageTitle:'Yönetim', manageInspectorLbl:'Ayar metni', manageApply:'Uygula', manageApplied:'Uygulandı',
     layersTitle:'Katmanlar', note:'Not', refresh:'Yenile', refreshTitle:'Kullanıcı katmanlarını zorla yenile',
     generateLink:'Bağlantı oluştur', generating:'Oluşturuluyor...', copy:'Kopyala', copied:'Kopyalandı!',
     sharePasteLabel:'Aşağıya bir URL yapıştırın.', sharePastePh:'URL veya ?lat=... yapıştır', load:'Yükle', loaded:'Yüklendi!', invalidData:'Geçersiz veri', parseError:'Ayrıştırma hatası', error:'Hata',
@@ -424,7 +424,7 @@ const GEO_I18N = {
   },
   ar: {
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
-    tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص',
+    tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص', tabDisplay:'عرض', manageTitle:'إدارة', manageInspectorLbl:'نص الإعدادات', manageApply:'تطبيق', manageApplied:'تم التطبيق',
     layersTitle:'الطبقات', note:'ملاحظة', refresh:'تحديث', refreshTitle:'فرض تحديث طبقات المستخدم',
     generateLink:'إنشاء رابط', generating:'جارٍ الإنشاء...', copy:'نسخ', copied:'تم النسخ!',
     sharePasteLabel:'الصق عنوان URL أدناه.', sharePastePh:'الصق URL أو ?lat=...', load:'تحميل', loaded:'تم التحميل!', invalidData:'بيانات غير صالحة', parseError:'خطأ في التحليل', error:'خطأ',
@@ -449,7 +449,7 @@ const GEO_I18N = {
   },
   hi: {
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
-    tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ',
+    tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ', tabDisplay:'प्रदर्शन', manageTitle:'प्रबंधन', manageInspectorLbl:'सेटिंग टेक्स्ट', manageApply:'लागू करें', manageApplied:'लागू किया गया',
     layersTitle:'लेयर', note:'नोट', refresh:'रीफ़्रेश', refreshTitle:'उपयोगकर्ता लेयर ज़बरदस्ती रीफ़्रेश',
     generateLink:'लिंक बनाएँ', generating:'बनाया जा रहा है...', copy:'कॉपी', copied:'कॉपी किया गया!',
     sharePasteLabel:'नीचे URL पेस्ट करें।', sharePastePh:'URL या ?lat=... पेस्ट करें', load:'लोड', loaded:'लोड हुआ!', invalidData:'अमान्य डेटा', parseError:'पार्स त्रुटि', error:'त्रुटि',
@@ -474,7 +474,7 @@ const GEO_I18N = {
   },
   id: {
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
-    tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut',
+    tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut', tabDisplay:'Tampilan', manageTitle:'Kelola', manageInspectorLbl:'Teks pengaturan', manageApply:'Terapkan', manageApplied:'Diterapkan',
     layersTitle:'Lapisan', note:'Catatan', refresh:'Muat ulang', refreshTitle:'Paksa muat ulang lapisan pengguna',
     generateLink:'Buat tautan', generating:'Membuat...', copy:'Salin', copied:'Tersalin!',
     sharePasteLabel:'Tempel URL di bawah.', sharePastePh:'Tempel URL atau ?lat=...', load:'Muat', loaded:'Termuat!', invalidData:'Data tidak valid', parseError:'Kesalahan parsing', error:'Kesalahan',
@@ -499,7 +499,7 @@ const GEO_I18N = {
   },
   th: {
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
-    tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ',
+    tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ', tabDisplay:'การแสดง', manageTitle:'จัดการ', manageInspectorLbl:'ข้อความการตั้งค่า', manageApply:'ใช้', manageApplied:'ใช้แล้ว',
     layersTitle:'เลเยอร์', note:'หมายเหตุ', refresh:'รีเฟรช', refreshTitle:'บังคับรีเฟรชเลเยอร์ผู้ใช้',
     generateLink:'สร้างลิงก์', generating:'กำลังสร้าง...', copy:'คัดลอก', copied:'คัดลอกแล้ว!',
     sharePasteLabel:'วาง URL ด้านล่าง', sharePastePh:'วาง URL หรือ ?lat=...', load:'โหลด', loaded:'โหลดแล้ว!', invalidData:'ข้อมูลไม่ถูกต้อง', parseError:'ข้อผิดพลาดในการแยกวิเคราะห์', error:'ข้อผิดพลาด',
@@ -524,7 +524,7 @@ const GEO_I18N = {
   },
   vi: {
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
-    tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính',
+    tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính', tabDisplay:'Hiển thị', manageTitle:'Quản lý', manageInspectorLbl:'Văn bản cài đặt', manageApply:'Áp dụng', manageApplied:'Đã áp dụng',
     layersTitle:'Lớp', note:'Lưu ý', refresh:'Làm mới', refreshTitle:'Bắt buộc làm mới lớp người dùng',
     generateLink:'Tạo liên kết', generating:'Đang tạo...', copy:'Sao chép', copied:'Đã sao chép!',
     sharePasteLabel:'Dán URL bên dưới.', sharePastePh:'Dán URL hoặc ?lat=...', load:'Tải', loaded:'Đã tải!', invalidData:'Dữ liệu không hợp lệ', parseError:'Lỗi phân tích', error:'Lỗi',
@@ -876,6 +876,13 @@ function getUI() {
   .tab.minimize{ width:32px; padding:4px 6px; text-align:center; }
   .tab.minimize[aria-pressed="true"]{ background:rgba(255,255,255,0.9); }
 
+  /* Action buttons (FLY / Share / Settings) right-aligned at the end of the
+     tab bar — KASUGAI Canvas .panel-manage style icon buttons */
+  .action-group{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .action-btn{ flex:0 0 26px; min-width:26px; min-height:26px; padding:1px 4px; border:0; border-radius:4px; background:rgba(49,86,79,.16); color:#31564f; font-size:14px; line-height:1; cursor:pointer; }
+  .action-btn:hover{ background:rgba(49,86,79,.26); }
+  .action-btn.active{ background:rgba(49,86,79,.36); color:#31564f; }
+
   /* Minimized state: shrink padding and hide panels */
   .primary-background.minimized{ padding:6px; }
   .primary-background.minimized #layers-panel,
@@ -885,13 +892,14 @@ function getUI() {
   .primary-background.minimized #legend-panel,
   .primary-background.minimized #share-panel,
   .primary-background.minimized #fly-panel,
+  .primary-background.minimized #manage-panel,
   .primary-background.minimized #attr-panel { display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
   /* Panel Scroll Configuration */
   /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
-  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, #attr-panel, #fly-panel {
+  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, #attr-panel, #fly-panel, #manage-panel {
     max-height: 600px;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -1287,12 +1295,15 @@ function getUI() {
     <button class="tab active" data-target="layers-panel" aria-selected="true" data-i18n="tabLayers">Layers</button>
     <button class="tab" data-target="legend-panel" aria-selected="false" data-i18n="tabLegend">Legend</button>
     <button class="tab" data-target="search-panel" aria-selected="false" data-i18n="tabSearch">Search</button>
-    <button class="tab" data-target="cams-panel" aria-selected="false" data-i18n="tabCams">Cams</button>
-    <button class="tab" data-target="info-panel" aria-selected="false" data-i18n="tabInfo">Info</button>
-    <button class="tab" data-target="share-panel" aria-selected="false" data-i18n="tabShare">Share</button>
-    <button class="tab" data-target="fly-panel" aria-selected="false" data-i18n="tabFly">Fly</button>
-    <button class="tab" data-target="settings-panel" aria-selected="false" data-i18n="tabSet">Set</button>
     <button class="tab" data-target="attr-panel" aria-selected="false" data-i18n="tabAttr">Attr</button>
+    <button class="tab" data-target="cams-panel" aria-selected="false" data-i18n="tabCams">Cams</button>
+    <button class="tab" data-target="settings-panel" aria-selected="false" data-i18n="tabDisplay">Display</button>
+    <button class="tab" data-target="info-panel" aria-selected="false" data-i18n="tabInfo">Info</button>
+    <span class="action-group">
+    <button class="action-btn" data-target="fly-panel" aria-pressed="false" title="Fly" aria-label="Fly" data-i18n-title="tabFly" data-i18n-aria="tabFly">✈️</button>
+    <button class="action-btn" data-target="share-panel" aria-pressed="false" title="Share" aria-label="Share" data-i18n-title="tabShare" data-i18n-aria="tabShare">🔗</button>
+    <button class="action-btn" id="manage-open-btn" data-target="manage-panel" aria-pressed="false" title="Manage" aria-label="Manage" data-i18n-title="manageTitle" data-i18n-aria="manageTitle">⚙️</button>
+    </span>
   </div>
 
     <div id="share-panel" style="display:none;">
@@ -1518,6 +1529,17 @@ function getUI() {
     </div>
   </div>
 
+  <div id="manage-panel" style="display:none;">
+    <div style="font-weight:600;margin-bottom:8px;" data-i18n="manageTitle">Manage</div>
+    <label class="text-sm" for="manage-inspector-text" data-i18n="manageInspectorLbl">Settings text</label>
+    <textarea id="manage-inspector-text" spellcheck="false" style="width:100%;height:180px;font-size:0.75em;border:1px solid #ccc;border-radius:4px;font-family:monospace;margin-top:4px;"></textarea>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button id="manage-apply-btn" class="btn-primary p-6" style="flex:1;" data-i18n="manageApply">Apply</button>
+      <button id="manage-copy-btn" class="btn-primary p-6" style="flex:1;" data-i18n="copy">Copy</button>
+    </div>
+    <div id="manage-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;">&nbsp;</div>
+  </div>
+
   <div id="legend-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;" data-i18n="legendTitle">Legend</div>
     <div id="legend-content">${legendInnerHtml}</div>
@@ -1672,15 +1694,50 @@ function getUI() {
         }
       } catch(e) { console.error('pending hide processing failed', e); }
 
-      // Tab switching: handle normal tabs and a minimize-action tab
+      // Tab switching: handle normal tabs, a minimize-action tab, and
+      // standalone action buttons (FLY / Share / Settings) that open panels
       try {
         const tabs = document.querySelectorAll('.tab-bar .tab');
+        const actionBtns = document.querySelectorAll('.tab-bar .action-btn');
+        const _panelIds = ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','fly-panel','settings-panel','attr-panel','manage-panel'];
+        const activatePanel = (target) => {
+          _panelIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = (id === target) ? '' : 'none';
+            // Adjust iframe height when info panel is shown
+            if (id === 'info-panel' && id === target) {
+              try {
+                const iframe = document.getElementById('info-content');
+                const infoPanel = document.getElementById('info-panel');
+                if (iframe && infoPanel) {
+                  const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
+                  const tabBarHeight = document.querySelector('.tab-bar')?.offsetHeight || 50;
+                  let availableHeight = screenHeight - tabBarHeight - 100;
+                  // Apply min-height: 400px, max-height: 800px
+                  availableHeight = Math.max(400, Math.min(800, availableHeight));
+                  infoPanel.style.height = availableHeight + 'px';
+                  iframe.style.height = availableHeight + 'px';
+                }
+              } catch(e) {}
+            }
+          });
+        };
+        const clearActionBtns = () => {
+          try { (actionBtns || []).forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); }); } catch(e) {}
+        };
+        const clearTabs = () => {
+          try { (tabs || []).forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); }); } catch(e) {}
+        };
+        const closeAttrWidgetIfOpen = () => {
+          try { if (window._attrPanelExpanded && typeof window.closeVectorAttrWidget === 'function') window.closeVectorAttrWidget(); } catch(e) {}
+        };
         if (tabs && tabs.length) {
           tabs.forEach(btn => {
             btn.addEventListener('click', function() {
               // Close the expanded attribute widget on minimize / tab switch so
               // the panel always returns to the base size first
-              try { if (window._attrPanelExpanded && typeof window.closeVectorAttrWidget === 'function') window.closeVectorAttrWidget(); } catch(e) {}
+              closeAttrWidgetIfOpen();
               const action = this.getAttribute('data-action');
               // minimize action handled here
               if (action === 'minimize') {
@@ -1702,29 +1759,22 @@ function getUI() {
               }
               const target = this.getAttribute('data-target');
               if (!target) return;
-              tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+              clearTabs();
+              clearActionBtns();
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','fly-panel','settings-panel','attr-panel'].forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.style.display = (id === target) ? '' : 'none';
-                // Adjust iframe height when info panel is shown
-                if (id === 'info-panel' && id === target) {
-                  try {
-                    const iframe = document.getElementById('info-content');
-                    const infoPanel = document.getElementById('info-panel');
-                    if (iframe && infoPanel) {
-                      const screenHeight = (window.screen && window.screen.availHeight) || (window.screen && window.screen.height) || window.innerHeight;
-                      const tabBarHeight = document.querySelector('.tab-bar')?.offsetHeight || 50;
-                      let availableHeight = screenHeight - tabBarHeight - 100;
-                      // Apply min-height: 400px, max-height: 800px
-                      availableHeight = Math.max(400, Math.min(800, availableHeight));
-                      infoPanel.style.height = availableHeight + 'px';
-                      iframe.style.height = availableHeight + 'px';
-                    }
-                  } catch(e) {}
-                }
-              });
+              activatePanel(target);
+            });
+          });
+          // Standalone action buttons open their panels the same way as tabs
+          (actionBtns || []).forEach(btn => {
+            btn.addEventListener('click', function() {
+              closeAttrWidgetIfOpen();
+              const target = this.getAttribute('data-target');
+              if (!target) return;
+              clearTabs();
+              clearActionBtns();
+              this.classList.add('active'); this.setAttribute('aria-pressed','true');
+              activatePanel(target);
             });
           });
 
@@ -1752,7 +1802,7 @@ function getUI() {
           const tabBar = document.querySelector('.tab-bar');
           const updateTabRows = () => {
             if (!tabBar) return;
-            const tabsArr = Array.from(tabBar.querySelectorAll('.tab'));
+            const tabsArr = Array.from(tabBar.querySelectorAll('.tab, .action-btn'));
             if (!tabsArr.length) return;
             const offsetTops = Array.from(new Set(tabsArr.map(t => t.offsetTop)));
             const rows = offsetTops.length || 1;
@@ -1852,6 +1902,35 @@ function getUI() {
                 }
               });
             }
+
+            // Manage panel (KASUGAI Canvas manage window equivalent):
+            // inspector settings text viewer/editor
+            try {
+              const manageOpenBtn = document.getElementById('manage-open-btn');
+              if (manageOpenBtn) {
+                manageOpenBtn.addEventListener('click', function() {
+                  try { window.parent.postMessage({ action: 'manageTextRequest' }, '*'); } catch(e) {}
+                });
+              }
+              const manageApplyBtn = document.getElementById('manage-apply-btn');
+              if (manageApplyBtn) {
+                manageApplyBtn.addEventListener('click', function() {
+                  const ta = document.getElementById('manage-inspector-text');
+                  if (ta && window.parent) window.parent.postMessage({ action: 'applyInspectorText', text: ta.value }, '*');
+                });
+              }
+              const manageCopyBtn = document.getElementById('manage-copy-btn');
+              if (manageCopyBtn) {
+                manageCopyBtn.addEventListener('click', function() {
+                  const ta = document.getElementById('manage-inspector-text');
+                  if (!ta) return;
+                  try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value);
+                    else { ta.select(); document.execCommand('copy'); }
+                  } catch(e) { try { ta.select(); document.execCommand('copy'); } catch(e2) {} }
+                });
+              }
+            } catch(e) {}
 
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
@@ -1971,7 +2050,7 @@ function getUI() {
                   // Re-activate the tab that was open before the iframe was
                   // recreated on attribute-widget close.
                   try {
-                    const t = document.querySelector('.tab-bar .tab[data-target="' + msg.tab + '"]');
+                    const t = document.querySelector('.tab[data-target="' + msg.tab + '"], .action-btn[data-target="' + msg.tab + '"]');
                     if (t) t.click();
                   } catch(e) {}
                 } else if (msg.action === 'featureSelected') {
@@ -2016,7 +2095,7 @@ function getUI() {
                     try {
                       const attrTab = document.querySelector('.tab[data-target="attr-panel"]');
                       if (attrTab) {
-                        document.querySelectorAll('.tab-bar .tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+                        document.querySelectorAll('.tab-bar .tab, .tab-bar .action-btn').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); t.setAttribute('aria-pressed','false'); });
                         attrTab.classList.add('active'); attrTab.setAttribute('aria-selected','true');
                       }
                       ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','fly-panel','settings-panel','attr-panel'].forEach(id => {
@@ -2112,6 +2191,16 @@ function getUI() {
                     const wrap = document.getElementById('capture-result');
                     const img = document.getElementById('capture-img');
                     if (wrap && img && msg.dataUrl) { img.src = msg.dataUrl; wrap.style.display = ''; }
+                  } catch (e) {}
+                } else if (msg.action === 'manageText') {
+                  try {
+                    const ta = document.getElementById('manage-inspector-text');
+                    if (ta) ta.value = (typeof msg.text === 'string') ? msg.text : '';
+                  } catch (e) {}
+                } else if (msg.action === 'manageTextApplied') {
+                  try {
+                    const st = document.getElementById('manage-status');
+                    if (st) st.textContent = t('manageApplied');
                   } catch (e) {}
                 }
               } catch (e) {}
@@ -3837,7 +3926,7 @@ function getUI() {
           // Include the currently active tab so the recreated iframe can restore it
           let activeTab = null;
           try {
-            const activeBtn = document.querySelector('.tab-bar .tab.active');
+            const activeBtn = document.querySelector('.tab-bar .tab.active, .tab-bar .action-btn.active');
             activeTab = activeBtn ? activeBtn.getAttribute('data-target') : null;
           } catch (e2) {}
           if (window.parent) window.parent.postMessage({ action: 'setAttributePanelExpanded', expanded: false, activeTab: activeTab }, '*');
@@ -5303,6 +5392,29 @@ reearth.extension.on("message", (msg) => {
               viewerCapture();
           }
           catch (e) { }
+      }
+      else if (msg.action === 'manageTextRequest') {
+          try {
+              const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+              const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText || '';
+              postToUI({ action: 'manageText', text: (typeof text === 'string') ? text : '' });
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'applyInspectorText') {
+          try {
+              const newText = (typeof msg.text === 'string') ? msg.text : '';
+              if (reearth.extension && reearth.extension.widget && typeof reearth.extension.widget.setPropertyValue === 'function') {
+                  reearth.extension.widget.setPropertyValue('settings', 'inspectorText', newText);
+              }
+              // Skip re-processing the text we just wrote via the inspector poll
+              _lastInspectorLayersJson = newText;
+              processInspectorText(newText);
+              postToUI({ action: 'manageTextApplied' });
+          }
+          catch (e) {
+              try { sendError('[applyInspectorText] failed:', e); } catch(_){ }
+          }
       }
     return;
   }

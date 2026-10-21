@@ -13,6 +13,10 @@
     - Street View: `camera.getGlobeIntersection`（地形考慮の注視点）から Google Street View を `viewer.open` で開きます。
     - Capture: `viewer.capture` で現在のビューを PNG 画像として表示します。
 - 改善: `AGENTS.md` に Re:Earth プラグイン API の公式参照先（docs.reearth.io / reearth-visualizer リポジトリ）を明記しました。
+- 変更: タブバーを KASUGAI Canvas スタイルに統一しました。
+    - FLY / Share / Settings のタブを廃止し、タブバー右端のアイコンボタン（✈️ / 🔗 / ⚙️）に置き換えました。
+    - タブ順を `レイヤー / 凡例 / 検索 / 属性 / カメラ / 表示 / 情報` に変更（表示タブ = 旧 Settings パネル: Terrain/Shadow/Depth/GeoJSON Drape）。
+    - ⚙️（管理）ボタンは新規「管理」パネルを開き、インスペクターの設定テキストの確認・編集・適用が可能です（`setPropertyValue` で inspectorText へ書き戻し、即時反映）。
 
 ## v18.2.0
 - 新機能: UI を英語ベースの i18n で多言語化しました（20言語対応）。

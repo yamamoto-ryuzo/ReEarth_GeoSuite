@@ -244,7 +244,7 @@
                 <div class="features">
                     <div class="feature-card">
                         <h3>⚙️ インスペクター一括設定</h3>
-                        <p>Inspector の一括設定で行単位（例: <code>xyz:</code> / <code>info:</code> / <code>cam:</code>）の設定が可能。似た構成の複数プロジェクトへの導入と設定作業が飛躍的に楽になります。</p>
+                        <p>Inspector の一括設定で行単位（例: <code>xyz:</code> / <code>info:</code> / <code>cam:</code>）の設定が可能。似た構成の複数プロジェクトへの導入と設定作業が飛躍的に楽になります。タブバーの ⚙️（管理）ボタンからも設定テキストの確認・編集・適用ができます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🗺️ ベースマップ</h3>
@@ -268,7 +268,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>🖼️ 凡例表示</h3>
-                        <p>legend: 行で画像URLを指定。Legendタブに凡例画像を一覧表示できます。</p>
+                        <p>legend: 行で画像URLを指定。凡例タブに凡例画像を一覧表示できます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🔎 住所検索</h3>
@@ -288,15 +288,15 @@
                     </div>
                     <div class="feature-card">
                         <h3>ℹ️ Info表示</h3>
-                        <p>外部HTMLをInfoタブに表示。プロジェクト説明やドキュメントを埋め込めます。</p>
+                        <p>外部HTMLを情報タブに表示。プロジェクト説明やドキュメントを埋め込めます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🔗 Share（位置情報共有）</h3>
-                        <p>現在のカメラ位置や選択地点の座標をURLパラメータとして生成・共有可能です。<a href="https://yamamoto-ryuzo.github.io/kasugai/" target="_blank" class="github-link">Kasugai</a> を通じて、Google Earth や Yahoo! Map 等との位置情報連携に対応しています。注視点の Google Street View を開く「Street View」ボタンと、現在のビューを PNG として取得する「Capture」ボタンも備えています。</p>
+                        <p>タブバーの 🔗 ボタンで共有パネルを開き、現在のカメラ位置や選択地点の座標をURLパラメータとして生成・共有可能です。<a href="https://yamamoto-ryuzo.github.io/kasugai/" target="_blank" class="github-link">Kasugai</a> を通じて、Google Earth や Yahoo! Map 等との位置情報連携に対応しています。注視点の Google Street View を開く「Street View」ボタンと、現在のビューを PNG として取得する「Capture」ボタンも備えています。</p>
                     </div>
                     <div class="feature-card">
                         <h3>✈️ Fly モード（ルート飛行）</h3>
-                        <p><code>fly_geojson:</code> 行で GeoJSON ルートを定義し、FLY タブでルートに沿ったカメラ飛行を再生できます。速度・対地高度・ピッチ・ループ・POV/追従視点の切替に対応し、地形追従（AGL）も可能です。「描画」ボタンで地図上にポリラインを描いてルートを保存することもできます。</p>
+                        <p><code>fly_geojson:</code> 行で GeoJSON ルートを定義し、タブバーの ✈️ ボタンで Fly パネルを開いてルートに沿ったカメラ飛行を再生できます。速度・対地高度・ピッチ・ループ・POV/追従視点の切替に対応し、地形追従（AGL）も可能です。「描画」ボタンで地図上にポリラインを描いてルートを保存することもできます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🌐 Google Earth 連携</h3>
@@ -304,7 +304,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>🗺️ GeoJSON 3D ドレープ制御</h3>
-                        <p>GeoJSONレイヤーが 3D タイルに張り付くか、地面/Terrain に張り付くかをインスペクター行または Settings タブのドロップダウンで切り替え可能です。</p>
+                        <p>GeoJSONレイヤーが 3D タイルに張り付くか、地面/Terrain に張り付くかをインスペクター行または「表示」タブのドロップダウンで切り替え可能です。</p>
                     </div>
                     <div class="feature-card">
                         <h3>⛰️ Terrain/Shadow</h3>
@@ -357,11 +357,11 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>base:</strong> ベースマップ用レイヤです。UI上部のドロップダウンに追加され、選択した1つだけが有効化されます。</li>
                         <li><strong>max=</strong>/<strong>min=</strong>/<strong>zoom=</strong>: XYZ タイルのズームレベル制限を指定します。例: <code>max=18</code>、<code>zoom=2-18</code>。地理院タイルや OpenStreetMap には既知の最大ズームを自動で適用します。</li>
                         <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
-                        <li><strong>geojson:</strong> GeoJSONレイヤです。末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、3D タイルへのドレープ方法を指定できます（既定は Settings タブのドロップダウン準拠）。</li>
-                        <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
+                        <li><strong>geojson:</strong> GeoJSONレイヤです。末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、3D タイルへのドレープ方法を指定できます（既定は「表示」タブのドロップダウン準拠）。</li>
+                        <li><strong>info:</strong> 情報タブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
-                        <li><strong>fly_geojson:</strong> FLY タブに登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は FLY タブで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
+                        <li><strong>fly_geojson:</strong> Fly パネル（タブバーの ✈️ ボタン）に登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は Fly パネルで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
                         <li><strong>attrUrlOpen:</strong> 属性パネル内のURLクリック動作を切り替えます。<code>panel</code> / <code>newtab</code> を指定できます。既定は <code>newtab</code> です。</li>
                     </ul>
                 </div>
@@ -431,13 +431,13 @@ geojson: 避難所 | https://example.com/shelters.geojson | ON
                     <pre style="background:#f8f9fa;padding:10px;border-radius:6px;margin-top:6px;"><code>geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | 3dtiles
 geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | terrain
 geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | both</code></pre>
-                    <p style="margin-top:6px; color:#666;">省略時は Settings タブの「GeoJSON 3D ドレープ」選択が適用されます。</p>
+                    <p style="margin-top:6px; color:#666;">省略時は「表示」タブの「GeoJSON 3D ドレープ」選択が適用されます。</p>
                 </div>
 
                 <div class="install-steps" style="margin-bottom:14px;">
                     <h3>✈️ Fly モードの使い方</h3>
                     <ol>
-                        <li>プラグイン UI の <strong>FLY タブ</strong>を開きます。</li>
+                        <li>プラグイン UI のタブバーにある <strong>✈️ ボタン</strong>で Fly パネルを開きます。</li>
                         <li>ルートは <code>fly_geojson:</code> 行で定義したもの、または <strong>「描画」ボタン</strong>で地図上にポリラインを描いて保存したもの（<code>route:名前</code>）をドロップダウンから選択します。</li>
                         <li><strong>「ルートを表示」</strong>で選択中のルートを黄色ラインでプレビューできます。</li>
                         <li>速度（km/h、負値で逆再生）・対地高度（m）・ピッチ・視点（POV/追従）・ループを調整し、<strong>▶ 再生</strong>で飛行開始。<strong>⏸ 一時停止</strong>／<strong>■ 停止</strong>で制御します。</li>
@@ -460,7 +460,7 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                         <p style="color:#333;">
                             Google Photorealistic 3D Tiles を使用している場合、追加したユーザーレイヤ（XYZタイルなど）が表示されないことがあります。<br>
                             これは 3D Tiles が立体物として地面の上に描画され、地表に張り付くユーザーレイヤを覆い隠してしまうためです。<br>
-                            GeoJSON レイヤーについては、<strong>Settings タブの「GeoJSON 3D Drape」ドロップダウン</strong>で <code>terrain</code> を選ぶか、インスペクター行に <code>| terrain</code> を指定することで、3D タイルではなく地面/Terrain にドレープさせることができます。
+                            GeoJSON レイヤーについては、<strong>「表示」タブの「GeoJSON 3D Drape」ドロップダウン</strong>で <code>terrain</code> を選ぶか、インスペクター行に <code>| terrain</code> を指定することで、3D タイルではなく地面/Terrain にドレープさせることができます。
                         </p>
                     </div>
                 </div>
