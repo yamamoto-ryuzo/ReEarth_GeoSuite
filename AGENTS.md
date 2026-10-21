@@ -1,15 +1,30 @@
 # リポジトリ運用ルール
 
 ## ソースファイル
-- このリポジトリには **2 つの Re:Earth プラグイン**が含まれています。
+- このリポジトリには Re:Earth プラグイン（拡張 3 つ）が含まれています。
   - `geo_suite/src/layers-and-tiles-list.ts` — レイヤー / タイル管理・属性パネル・位置情報共有（メイン）
   - `geo_suite/src/navigation-toolbar.ts` — ナビゲーションツールバー
+  - `geo_suite/src/basemap-widget.ts` — ベースマップ選択
+- マニフェストは `plugin/reearth.yml`。拡張の `entry` は `workbench/plugin-build/` 内のコンパイル済み JS を参照します。
 
 ## ビルド
 - `npx tsc -p geo_suite/tsconfig.json` で `geo_suite/build/` にコンパイルされます。
 - `npm run build` は bash スクリプトのため Windows PowerShell ではそのまま実行できません。
-- 本番では Vercel 上で `npm run build` が実行されるため、ローカルでは `npx tsc` や `npm run build` を実行しないでください。最終的なビルドは Vercel に任せます。
+- 本番では Vercel 上で `npm run build` が実行されるため、ローカルでは `geo_suite/build/` へのコンパイルや `npm run build` を実行しないでください。最終的なビルドは Vercel に任せます。
+- ローカル動作検証用のコンパイルは `npm run dev` が `workbench/plugin-build/`（gitignore 済み）に出力するので、これだけを使ってください。
 - 万が一ビルドを実行した場合、必ず `geo_suite/build/` や `vercel/output/` などの不要な成果物を削除してからコミットしてください。
+
+## ローカル動作検証（Workbench・完全自動化）
+- Re:Earth Visualizer 公式の **Workbench**（プラグイン開発用スタンドアロン Viewer、v1.0.0-beta.16.28 / plugin API 2.1.0）を `workbench/` に組み込んでいます。
+- `npm run dev` 一発で全自動ループが起動します（初回は Workbench 成果物を GitHub Release から自動ダウンロード・sha256 検証・展開）:
+  1. `geo_suite/src/*.ts` 保存 → `tsc --watch` が `workbench/plugin-build/` へ再コンパイル
+  2. `plugin/reearth.yml` 保存 → `scripts/prepare_default_inspector.js` で `_defaultInspectorText` へ自動反映 → 再コンパイル
+  3. `workbench/plugin-build/` の変更を `server.js` が検知 → `/plugin/events` SSE で `change` イベント → Workbench が自動リロード
+- ブラウザで `http://localhost:8787/` を開く（`?dev-plugin=` 付きの workbench へリダイレクト）。ステータスが「ライブ」なら保存即リロードが有効です。
+- `npm run shot -- [url] [out.png] [待機ms]` でヘッドレス Chrome（CDP）によるスクリーンショット + コンソールログ取得が可能。エージェントはこれで UI 変更を自力検証できます（既定 url は `http://localhost:8787/`）。
+- `workbench/dist-workbench/`・`plugin-build/`・`.chrome-profile/`・`*.png` は gitignore 済み。コミット対象は `workbench/*.js` のスクリプトのみです。
+- Workbench のバージョンを上げるときは `workbench/setup.js` の `WORKBENCH_VERSION` を変更してください。
+- 注意: Workbench のプラグイン API は 2.1.0。`reearth.viewer.viewport` の `query` しか取れない等、SHARE タブの制約（下記）は Workbench でも同じです。
 
 ## デプロイ
 - 本サイトは **Vercel** でデプロイされます。

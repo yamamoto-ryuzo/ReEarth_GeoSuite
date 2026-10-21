@@ -46,16 +46,43 @@ Re:Earth Visualizer 向け統合プラグイン「geo_suite」です。XYZ タ�
 
 Issue や Pull Request を歓迎します。変更内容と再現手順を明記してください。
 
+## 🤖 AI 開発による自動化（ローカル動作検証）
+
+Re:Earth Visualizer 公式の **Workbench**（プラグイン開発用スタンドアロン Viewer）を `workbench/` に組み込み、**編集 → ビルド → リロード → 検証** を完全自動化しています。AI エージェントがブラウザを自分で操作して動作確認できる構成です。
+
+```bash
+npm run dev    # 全自動開発ループ起動（初回は Workbench を自動 DL・sha256 検証・展開）
+npm run shot   # ヘッドレス Chrome でスクリーンショット + コンソールログ取得
+npm test       # E2E 動作テスト（ロード・タブ操作・自動リロードを検証）
+```
+
+自動連鎖の内容:
+
+| 操作 | 自動で行われること |
+|---|---|
+| `geo_suite/src/*.ts` を保存 | `tsc --watch` が `workbench/plugin-build/` に再コンパイル → SSE `change` → Workbench 自動リロード |
+| `plugin/reearth.yml` を保存 | `prepare_default_inspector.js` が設定テキストを TS へ同期 → 再コンパイル → 自動リロード |
+| `npm run dev` 初回実行 | Workbench 成果物を GitHub Release から取得・検証・展開 |
+| AI エージェントの検証 | `npm run shot` / `workbench/test.js` で CDP 経由の撮影・DOM 操作・コンソール取得 |
+
+ブラウザで `http://localhost:8787/` を開くとプラグイン読み込み済みの Workbench が表示されます。生成物（`workbench/dist-workbench/`・`plugin-build/` 等）は `.gitignore` 済みで、リポジトリにはスクリプトのみを管理しています。
+
 ## リポジトリ構成（簡易）
 
 ```
 ReEarth_GeoSuite/
-├─ geo_suite/            # プラグイン本体のソース（`src/`）と設定
-├─ plugin/               # 配布用のマニフェスト（`reearth.yml`）
+├─ geo_suite/src/        # プラグイン本体のソース（layers-and-tiles-list / navigation-toolbar / basemap-widget）
+├─ plugin/               # 配布用マニフェスト（`reearth.yml`）
+├─ workbench/            # ローカル動作検証環境（Workbench・server・shot・test のスクリプトのみ管理）
+│  ├─ dist-workbench/    #   └─ 公式 Workbench 成果物（自動 DL・gitignore）
+│  └─ plugin-build/      #   └─ 検証用コンパイル出力（gitignore）
+├─ scripts/              # ビルド補助（`prepare_default_inspector.js` など）
+├─ docs/                 # ドキュメント
+├─ image/                # サイト用画像
 ├─ .github/              # GitHub Actions ワークフロー
-├─ index.html, ryu.html  # サイト用の HTML
-├─ README.md
-├─ package.json
+├─ index.html, ryu.html  # サイト用 HTML
+├─ AGENTS.md             # AI エージェント向け運用ルール
+├─ package.json          # dev / shot / workbench:setup スクリプト
 └─ vercel.json
 ```
 
