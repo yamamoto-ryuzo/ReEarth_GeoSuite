@@ -7,11 +7,21 @@ function readYmlDefault(ymlPath) {
   const lines = raw.split(/\r?\n/);
   const idx = lines.findIndex(l => /defaultValue\s*:\s*\|/.test(l));
   if (idx === -1) return null;
+  // Determine the literal-block indentation from the first non-empty line,
+  // then collect lines until a non-empty line with less indentation appears
+  // (a shallower-indent line marks the end of the YAML literal block).
+  let blockIndent = -1;
+  for (let i = idx + 1; i < lines.length; i++) {
+    if (lines[i].trim() !== '') { blockIndent = (lines[i].match(/^(\s*)/) || ['',''])[1].length; break; }
+  }
+  if (blockIndent < 0) return null;
   const block = [];
   for (let i = idx + 1; i < lines.length; i++) {
     const line = lines[i];
-    if (/^\s+/.test(line)) block.push(line);
-    else break;
+    if (line.trim() === '') { block.push(''); continue; }
+    const indent = (line.match(/^(\s*)/) || ['',''])[1].length;
+    if (indent < blockIndent) break;
+    block.push(line);
   }
   if (!block.length) return null;
   // remove common indentation

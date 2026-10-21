@@ -292,7 +292,11 @@
                     </div>
                     <div class="feature-card">
                         <h3>🔗 Share（位置情報共有）</h3>
-                        <p>現在のカメラ位置や選択地点の座標をURLパラメータとして生成・共有可能です。<a href="https://yamamoto-ryuzo.github.io/kasugai/" target="_blank" class="github-link">Kasugai</a> を通じて、Google Earth や Yahoo! Map 等との位置情報連携に対応しています。</p>
+                        <p>現在のカメラ位置や選択地点の座標をURLパラメータとして生成・共有可能です。<a href="https://yamamoto-ryuzo.github.io/kasugai/" target="_blank" class="github-link">Kasugai</a> を通じて、Google Earth や Yahoo! Map 等との位置情報連携に対応しています。注視点の Google Street View を開く「Street View」ボタンと、現在のビューを PNG として取得する「Capture」ボタンも備えています。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>✈️ Fly モード（ルート飛行）</h3>
+                        <p><code>fly_geojson:</code> 行で GeoJSON ルートを定義し、FLY タブでルートに沿ったカメラ飛行を再生できます。速度・対地高度・ピッチ・ループ・POV/追従視点の切替に対応し、地形追従（AGL）も可能です。「描画」ボタンで地図上にポリラインを描いてルートを保存することもできます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🌐 Google Earth 連携</h3>
@@ -344,6 +348,7 @@ geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062
 background: #ffffff
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
+fly_geojson: 東京都心ルート | https://example.com/route.geojson | speed=30 | height=100 | pitch=-10 | loop=true | view=camera
 legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</code></pre>
                     <p style="margin-top:8px; color:#444;">設定行は順不同です。背景色は <code>background:</code> で指定します。</p>
                     <ul>
@@ -356,6 +361,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>info:</strong> Infoタブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
+                        <li><strong>fly_geojson:</strong> FLY タブに登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は FLY タブで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
                         <li><strong>attrUrlOpen:</strong> 属性パネル内のURLクリック動作を切り替えます。<code>panel</code> / <code>newtab</code> を指定できます。既定は <code>newtab</code> です。</li>
                     </ul>
                 </div>
@@ -426,6 +432,18 @@ geojson: 避難所 | https://example.com/shelters.geojson | ON
 geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | terrain
 geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on | both</code></pre>
                     <p style="margin-top:6px; color:#666;">省略時は Settings タブの「GeoJSON 3D ドレープ」選択が適用されます。</p>
+                </div>
+
+                <div class="install-steps" style="margin-bottom:14px;">
+                    <h3>✈️ Fly モードの使い方</h3>
+                    <ol>
+                        <li>プラグイン UI の <strong>FLY タブ</strong>を開きます。</li>
+                        <li>ルートは <code>fly_geojson:</code> 行で定義したもの、または <strong>「描画」ボタン</strong>で地図上にポリラインを描いて保存したもの（<code>route:名前</code>）をドロップダウンから選択します。</li>
+                        <li><strong>「ルートを表示」</strong>で選択中のルートを黄色ラインでプレビューできます。</li>
+                        <li>速度（km/h、負値で逆再生）・対地高度（m）・ピッチ・視点（POV/追従）・ループを調整し、<strong>▶ 再生</strong>で飛行開始。<strong>⏸ 一時停止</strong>／<strong>■ 停止</strong>で制御します。</li>
+                        <li>「GeoJSON」ボタンで選択ルートの GeoJSON をコピーできます。</li>
+                    </ol>
+                    <p style="margin-top:8px; color:#666;">※ 描画機能（スケッチ）や地形サンプリングは、利用している Re:Earth 環境のプラグイン API が対応している場合のみ有効です。非対応環境では該当ボタンが無効表示になります。</p>
                 </div>
 
                 <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:8px;">

@@ -1,5 +1,19 @@
 # Changelog
 
+## v18.3.0
+- 新機能: KASUGAI Canvas（Cesium アプリ）から Fly モードを移植し、「FLY」タブを追加しました。
+    - インスペクタ行 `fly_geojson: 名前 | URL | speed=30 | height=0 | pitch=-10 | loop=true | view=camera|center` で飛行ルートを定義できます（`route:名前` で描画保存済みルートも参照可能。`| off` で無効化）。
+    - 飛行アニメーションは UI iframe 側の `requestAnimationFrame` で駆動し、フレーム毎に `reearth.camera.setView` を適用します（拡張サンドボックスにはタイマーが無いため）。
+    - 速度 km/h（負値で逆再生）、対地高度 AGL、ピッチ、ループ再生、POV/追従視点（view=camera/center）、GeoJSON `properties.fly` によるルート単位の指定、`heightReference: "MSL"` による絶対高度に対応。
+    - `reearth.viewer.tools.getTerrainHeightAsync` による地形高さサンプリングでルートを自動的に地形追従させます（API 非搭載時は自動スキップ）。
+    - 「描画」ボタンで `reearth.sketch` のポリライン描画 → `clientStorage` に保存（`flyRoute:名前`）。保存ルートの選択・削除・GeoJSON コピーが可能。
+    - 選択中のルートは黄色ポリラインの一時レイヤーで地図上にプレビュー表示します。
+    - `sketch` / `viewer.tools` / `capture` 等の新しい API は `flyInit` でホスト側の実装有無を検出し、非対応機能は UI を無効化します。
+- 新機能: SHARE タブに「Street View」「Capture」ボタンを追加しました。
+    - Street View: `camera.getGlobeIntersection`（地形考慮の注視点）から Google Street View を `viewer.open` で開きます。
+    - Capture: `viewer.capture` で現在のビューを PNG 画像として表示します。
+- 改善: `AGENTS.md` に Re:Earth プラグイン API の公式参照先（docs.reearth.io / reearth-visualizer リポジトリ）を明記しました。
+
 ## v18.2.0
 - 新機能: UI を英語ベースの i18n で多言語化しました（20言語対応）。
     - 対応言語: en / ja / zh-CN / zh-TW / ko / es / fr / de / it / pt / ru / nl / pl / uk / tr / ar / hi / id / th / vi

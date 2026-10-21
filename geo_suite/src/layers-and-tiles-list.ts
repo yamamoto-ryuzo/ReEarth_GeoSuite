@@ -27,6 +27,16 @@ let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
 
+// --- Fly mode (ported from kasugai_canvas) ---
+// Inspector syntax: fly_geojson: Name | URL | speed=30 | height=0 | pitch=-10 | loop=true | view=camera|center
+// `route:<name>` as URL references a drawn route stored in reearth.data.clientStorage.
+let _flyRoutes = []; // [{ title, url, speed, height, pitch, loop, step, view }]
+let _flyDrawnRouteNames = []; // route names persisted in clientStorage ("flyRoute:<name>" keys)
+let _flyRouteLayerId = null; // layer id of the currently shown fly route polyline
+let _flySampleSeq = 0;
+const FLY_ROUTE_STORAGE_PREFIX = 'flyRoute:';
+const FLY_ROUTE_LAYER_TITLE = 'Fly Route (geo_suite)';
+
 // UI language override from inspector text ("lang: <code>"). 'auto' = detect via navigator.language in the widget iframe.
 let _inspectorLang = 'auto';
 
@@ -53,7 +63,14 @@ const GEO_I18N = {
     legendTitle:'Legend', legendInstr:'Add "legend: ImageURL" to inspector text.', legendMain:'Main',
     attrTitle:'Attributes', noFeature:'No feature selected.', noAttrAvail:'No attributes available or feature deselected.', backToAttrList:'Back to attribute list', openNewTab:'Open in new tab (bypass sandbox)',
     selectLayer:'Select layer', attrOrValuePh:'Search attributes or values', selectLayerPrompt:'Please select a layer', countFmt:'{rows} items / {attrs} attributes', sortTitle:'Click to sort', noMatchingFeatures:'No matching features', clickToFly:'Click to fly', limitSuffix:' (showing up to {n})', closeAria:'Close',
-    noUrlConfigured:'No URL configured'
+    noUrlConfigured: 'No URL configured',
+    tabFly: 'Fly',
+    flyRoute: 'Route', flyRoutePh: 'Select route', flyDraw: 'Draw', flyDrawing: 'Drawing — click the map to add points, double-click to finish', flyCancelDraw: 'Cancel', flyDelete: 'Delete', flyCopyGeo: 'GeoJSON', flyCopied: 'Copied!',
+    flyPlay: 'Play', flyPause: 'Pause', flyStop: 'Stop', flyRestart: 'Restart',
+    flySpeedLbl: 'Speed (km/h)', flyHeightLbl: 'AGL (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'View', flyViewCam: 'POV', flyViewCenter: 'Follow',
+    flyShowLine: 'Show route', flyLoading: 'Loading route...', flySampling: 'Sampling terrain...', flyDone: 'Finished', flyErr: 'Failed to load route', flyNoRoute: 'No route selected',
+    flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Or press Draw and sketch a polyline on the map.',
+    svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save'
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
@@ -71,7 +88,14 @@ const GEO_I18N = {
     legendTitle:'凡例', legendInstr:'インスペクターテキストに "legend: 画像URL" を追加してください。', legendMain:'メイン',
     attrTitle:'属性', noFeature:'地物が選択されていません。', noAttrAvail:'属性がないか、地物の選択が解除されました。', backToAttrList:'属性一覧に戻る', openNewTab:'新しいタブで開く（Sandbox回避）',
     selectLayer:'レイヤを選択', attrOrValuePh:'属性または値で検索', selectLayerPrompt:'レイヤを選択してください', countFmt:'{rows} 件 / {attrs} 属性', sortTitle:'クリックで並び替え', noMatchingFeatures:'該当する地物がありません', clickToFly:'クリックで移動', limitSuffix:' （表示上限 {n} 件）', closeAria:'閉じる',
-    noUrlConfigured:'URLが設定されていません'
+    noUrlConfigured: 'URLが設定されていません',
+    tabFly: 'Fly',
+    flyRoute: 'ルート', flyRoutePh: 'ルートを選択', flyDraw: '描画', flyDrawing: '描画中 — 地図をクリックで点を追加、ダブルクリックで終了', flyCancelDraw: 'キャンセル', flyDelete: '削除', flyCopyGeo: 'GeoJSON', flyCopied: 'コピーしました',
+    flyPlay: '再生', flyPause: '一時停止', flyStop: '停止', flyRestart: '最初から',
+    flySpeedLbl: '速度 (km/h)', flyHeightLbl: '地上高 (m)', flyPitchLbl: 'ピッチ (°)', flyLoop: 'ループ', flyView: '視点', flyViewCam: '一人称', flyViewCenter: '追随',
+    flyShowLine: 'ルートを表示', flyLoading: 'ルート読み込み中...', flySampling: '地形を取得中...', flyDone: '終了', flyErr: 'ルートの読み込みに失敗しました', flyNoRoute: 'ルートが選択されていません',
+    flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>または「描画」ボタンで地図上にポリラインを描きます。',
+    svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存'
   },
   'zh-CN': {
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
@@ -89,7 +113,14 @@ const GEO_I18N = {
     legendTitle:'图例', legendInstr:'在检查器文本中添加 "legend: 图片URL"。', legendMain:'主图',
     attrTitle:'属性', noFeature:'未选择要素。', noAttrAvail:'没有属性或已取消选择要素。', backToAttrList:'返回属性列表', openNewTab:'在新标签页打开（绕过沙箱）',
     selectLayer:'选择图层', attrOrValuePh:'按属性或值搜索', selectLayerPrompt:'请选择图层', countFmt:'{rows} 项 / {attrs} 个属性', sortTitle:'点击排序', noMatchingFeatures:'没有匹配的要素', clickToFly:'点击移动', limitSuffix:' （最多显示 {n} 项）', closeAria:'关闭',
-    noUrlConfigured:'未配置 URL'
+    noUrlConfigured: '未配置 URL',
+    tabFly: '飞行',
+    flyRoute: '路线', flyRoutePh: '选择路线', flyDraw: '绘制', flyDrawing: '绘制中 — 单击地图添加点，双击结束', flyCancelDraw: '取消', flyDelete: '删除', flyCopyGeo: 'GeoJSON', flyCopied: '已复制',
+    flyPlay: '播放', flyPause: '暂停', flyStop: '停止', flyRestart: '重新开始',
+    flySpeedLbl: '速度 (km/h)', flyHeightLbl: '离地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循环', flyView: '视角', flyViewCam: '第一人称', flyViewCenter: '跟随',
+    flyShowLine: '显示路线', flyLoading: '正在加载路线...', flySampling: '正在采样地形...', flyDone: '已完成', flyErr: '路线加载失败', flyNoRoute: '未选择路线',
+    flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>或点击"绘制"在地图上画出折线。',
+    svOpen: '街景', captureBtn: '截图', capturedHint: '右键点击图片保存'
   },
   'zh-TW': {
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
@@ -107,7 +138,14 @@ const GEO_I18N = {
     legendTitle:'圖例', legendInstr:'在檢查器文字中新增 "legend: 圖片URL"。', legendMain:'主圖',
     attrTitle:'屬性', noFeature:'未選擇圖徵。', noAttrAvail:'沒有屬性或已取消選擇圖徵。', backToAttrList:'返回屬性清單', openNewTab:'在新分頁開啟（繞過沙箱）',
     selectLayer:'選擇圖層', attrOrValuePh:'按屬性或值搜尋', selectLayerPrompt:'請選擇圖層', countFmt:'{rows} 項 / {attrs} 個屬性', sortTitle:'點擊排序', noMatchingFeatures:'沒有符合的圖徵', clickToFly:'點擊移動', limitSuffix:' （最多顯示 {n} 項）', closeAria:'關閉',
-    noUrlConfigured:'未設定 URL'
+    noUrlConfigured: '未設定 URL',
+    tabFly: '飛行',
+    flyRoute: '路線', flyRoutePh: '選擇路線', flyDraw: '繪製', flyDrawing: '繪製中 — 點擊地圖新增點，雙擊結束', flyCancelDraw: '取消', flyDelete: '刪除', flyCopyGeo: 'GeoJSON', flyCopied: '已複製',
+    flyPlay: '播放', flyPause: '暫停', flyStop: '停止', flyRestart: '重新開始',
+    flySpeedLbl: '速度 (km/h)', flyHeightLbl: '離地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循環', flyView: '視角', flyViewCam: '第一人稱', flyViewCenter: '跟隨',
+    flyShowLine: '顯示路線', flyLoading: '正在載入路線...', flySampling: '正在取樣地形...', flyDone: '已完成', flyErr: '路線載入失敗', flyNoRoute: '未選擇路線',
+    flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>或按「繪製」在地圖上畫出折線。',
+    svOpen: '街景', captureBtn: '截圖', capturedHint: '在圖片上按右鍵儲存'
   },
   ko: {
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
@@ -125,7 +163,14 @@ const GEO_I18N = {
     legendTitle:'범례', legendInstr:'인스펙터 텍스트에 "legend: 이미지URL"을 추가하세요.', legendMain:'메인',
     attrTitle:'속성', noFeature:'선택된 피처가 없습니다.', noAttrAvail:'속성이 없거나 피처 선택이 해제되었습니다.', backToAttrList:'속성 목록으로 돌아가기', openNewTab:'새 탭에서 열기(샌드박스 우회)',
     selectLayer:'레이어 선택', attrOrValuePh:'속성 또는 값으로 검색', selectLayerPrompt:'레이어를 선택하세요', countFmt:'{rows}건 / {attrs}개 속성', sortTitle:'클릭하여 정렬', noMatchingFeatures:'일치하는 피처가 없습니다', clickToFly:'클릭하여 이동', limitSuffix:' (표시 상한 {n}건)', closeAria:'닫기',
-    noUrlConfigured:'URL이 설정되지 않았습니다'
+    noUrlConfigured: 'URL이 설정되지 않았습니다',
+    tabFly: '비행',
+    flyRoute: '경로', flyRoutePh: '경로 선택', flyDraw: '그리기', flyDrawing: '그리는 중 — 지도를 클릭해 점 추가, 더블클릭으로 완료', flyCancelDraw: '취소', flyDelete: '삭제', flyCopyGeo: 'GeoJSON', flyCopied: '복사됨',
+    flyPlay: '재생', flyPause: '일시정지', flyStop: '정지', flyRestart: '처음부터',
+    flySpeedLbl: '속도 (km/h)', flyHeightLbl: '지상고 (m)', flyPitchLbl: '피치 (°)', flyLoop: '반복', flyView: '시점', flyViewCam: '1인칭', flyViewCenter: '추적',
+    flyShowLine: '경로 표시', flyLoading: '경로 로드 중...', flySampling: '지형 샘플링 중...', flyDone: '완료', flyErr: '경로 로드 실패', flyNoRoute: '경로가 선택되지 않았습니다',
+    flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
+    svOpen: '스트리트 뷰', captureBtn: '캡처', capturedHint: '이미지를 우클릭해 저장'
   },
   es: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
@@ -143,7 +188,14 @@ const GEO_I18N = {
     legendTitle:'Leyenda', legendInstr:'Añade "legend: URLdeImagen" al texto del inspector.', legendMain:'Principal',
     attrTitle:'Atributos', noFeature:'Ninguna entidad seleccionada.', noAttrAvail:'Sin atributos o entidad deseleccionada.', backToAttrList:'Volver a la lista', openNewTab:'Abrir en nueva pestaña (evitar sandbox)',
     selectLayer:'Seleccionar capa', attrOrValuePh:'Buscar atributos o valores', selectLayerPrompt:'Selecciona una capa', countFmt:'{rows} elementos / {attrs} atributos', sortTitle:'Clic para ordenar', noMatchingFeatures:'No hay entidades coincidentes', clickToFly:'Clic para volar', limitSuffix:' (máx. {n} mostrados)', closeAria:'Cerrar',
-    noUrlConfigured:'URL no configurada'
+    noUrlConfigured: 'URL no configurada',
+    tabFly: 'Vuelo',
+    flyRoute: 'Ruta', flyRoutePh: 'Seleccionar ruta', flyDraw: 'Dibujar', flyDrawing: 'Dibujando — haga clic en el mapa para añadir puntos, doble clic para terminar', flyCancelDraw: 'Cancelar', flyDelete: 'Eliminar', flyCopyGeo: 'GeoJSON', flyCopied: '¡Copiado!',
+    flyPlay: 'Reproducir', flyPause: 'Pausa', flyStop: 'Detener', flyRestart: 'Reiniciar',
+    flySpeedLbl: 'Velocidad (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Bucle', flyView: 'Vista', flyViewCam: 'POV', flyViewCenter: 'Seguir',
+    flyShowLine: 'Mostrar ruta', flyLoading: 'Cargando ruta...', flySampling: 'Muestreando terreno...', flyDone: 'Finalizado', flyErr: 'Error al cargar la ruta', flyNoRoute: 'No hay ruta seleccionada',
+    flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>O pulse Dibujar y trace una polilínea en el mapa.',
+    svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clic derecho en la imagen para guardar'
   },
   fr: {
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
@@ -161,7 +213,14 @@ const GEO_I18N = {
     legendTitle:'Légende', legendInstr:'Ajoutez "legend: URLimage" au texte de l’inspecteur.', legendMain:'Principal',
     attrTitle:'Attributs', noFeature:'Aucun objet sélectionné.', noAttrAvail:'Pas d’attributs ou objet désélectionné.', backToAttrList:'Retour à la liste', openNewTab:'Ouvrir dans un nouvel onglet (contourner le sandbox)',
     selectLayer:'Choisir une couche', attrOrValuePh:'Rechercher attributs ou valeurs', selectLayerPrompt:'Veuillez choisir une couche', countFmt:'{rows} éléments / {attrs} attributs', sortTitle:'Cliquer pour trier', noMatchingFeatures:'Aucun objet correspondant', clickToFly:'Cliquer pour voler', limitSuffix:' (affichage limité à {n})', closeAria:'Fermer',
-    noUrlConfigured:'Aucune URL configurée'
+    noUrlConfigured: 'Aucune URL configurée',
+    tabFly: 'Vol',
+    flyRoute: 'Route', flyRoutePh: 'Sélectionner une route', flyDraw: 'Dessiner', flyDrawing: 'Dessin — cliquez sur la carte pour ajouter des points, double-clic pour terminer', flyCancelDraw: 'Annuler', flyDelete: 'Supprimer', flyCopyGeo: 'GeoJSON', flyCopied: 'Copié !',
+    flyPlay: 'Lecture', flyPause: 'Pause', flyStop: 'Arrêter', flyRestart: 'Recommencer',
+    flySpeedLbl: 'Vitesse (km/h)', flyHeightLbl: 'Hauteur (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Boucle', flyView: 'Vue', flyViewCam: 'POV', flyViewCenter: 'Suivi',
+    flyShowLine: 'Afficher la route', flyLoading: 'Chargement de la route...', flySampling: 'Échantillonnage du terrain...', flyDone: 'Terminé', flyErr: 'Échec du chargement de la route', flyNoRoute: 'Aucune route sélectionnée',
+    flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
+    svOpen: 'Street View', captureBtn: 'Capturer', capturedHint: 'Clic droit sur l\u2019image pour enregistrer'
   },
   de: {
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
@@ -179,7 +238,14 @@ const GEO_I18N = {
     legendTitle:'Legende', legendInstr:'"legend: BildURL" zum Inspektor-Text hinzufügen.', legendMain:'Haupt',
     attrTitle:'Attribute', noFeature:'Kein Objekt ausgewählt.', noAttrAvail:'Keine Attribute oder Auswahl aufgehoben.', backToAttrList:'Zurück zur Liste', openNewTab:'In neuem Tab öffnen (Sandbox umgehen)',
     selectLayer:'Layer wählen', attrOrValuePh:'Attribute oder Werte suchen', selectLayerPrompt:'Bitte Layer wählen', countFmt:'{rows} Einträge / {attrs} Attribute', sortTitle:'Klicken zum Sortieren', noMatchingFeatures:'Keine passenden Objekte', clickToFly:'Klicken zum Anfliegen', limitSuffix:' (max. {n} angezeigt)', closeAria:'Schließen',
-    noUrlConfigured:'Keine URL konfiguriert'
+    noUrlConfigured: 'Keine URL konfiguriert',
+    tabFly: 'Flug',
+    flyRoute: 'Route', flyRoutePh: 'Route wählen', flyDraw: 'Zeichnen', flyDrawing: 'Zeichnen — auf die Karte klicken, um Punkte zu setzen, Doppelklick zum Beenden', flyCancelDraw: 'Abbrechen', flyDelete: 'Löschen', flyCopyGeo: 'GeoJSON', flyCopied: 'Kopiert!',
+    flyPlay: 'Abspielen', flyPause: 'Pause', flyStop: 'Stopp', flyRestart: 'Neustart',
+    flySpeedLbl: 'Tempo (km/h)', flyHeightLbl: 'Höhe ü.Gr. (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Schleife', flyView: 'Ansicht', flyViewCam: 'EGO', flyViewCenter: 'Verfolgen',
+    flyShowLine: 'Route anzeigen', flyLoading: 'Route wird geladen...', flySampling: 'Gelände wird abgetastet...', flyDone: 'Fertig', flyErr: 'Route konnte nicht geladen werden', flyNoRoute: 'Keine Route ausgewählt',
+    flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
+    svOpen: 'Street View', captureBtn: 'Aufnehmen', capturedHint: 'Bild per Rechtsklick speichern'
   },
   it: {
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
@@ -197,7 +263,14 @@ const GEO_I18N = {
     legendTitle:'Legenda', legendInstr:'Aggiungi "legend: URLimmagine" al testo dell’ispettore.', legendMain:'Principale',
     attrTitle:'Attributi', noFeature:'Nessun elemento selezionato.', noAttrAvail:'Nessun attributo o selezione rimossa.', backToAttrList:'Torna all’elenco', openNewTab:'Apri in nuova scheda (aggira sandbox)',
     selectLayer:'Seleziona layer', attrOrValuePh:'Cerca attributi o valori', selectLayerPrompt:'Seleziona un layer', countFmt:'{rows} elementi / {attrs} attributi', sortTitle:'Clicca per ordinare', noMatchingFeatures:'Nessun elemento corrispondente', clickToFly:'Clicca per volare', limitSuffix:' (max {n} mostrati)', closeAria:'Chiudi',
-    noUrlConfigured:'URL non configurato'
+    noUrlConfigured: 'URL non configurato',
+    tabFly: 'Volo',
+    flyRoute: 'Percorso', flyRoutePh: 'Seleziona percorso', flyDraw: 'Disegna', flyDrawing: 'Disegno — clicca sulla mappa per aggiungere punti, doppio clic per terminare', flyCancelDraw: 'Annulla', flyDelete: 'Elimina', flyCopyGeo: 'GeoJSON', flyCopied: 'Copiato!',
+    flyPlay: 'Riproduci', flyPause: 'Pausa', flyStop: 'Ferma', flyRestart: 'Riavvia',
+    flySpeedLbl: 'Velocità (km/h)', flyHeightLbl: 'Quota (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Ciclo', flyView: 'Vista', flyViewCam: 'POV', flyViewCenter: 'Segui',
+    flyShowLine: 'Mostra percorso', flyLoading: 'Caricamento percorso...', flySampling: 'Campionamento terreno...', flyDone: 'Completato', flyErr: 'Caricamento del percorso non riuscito', flyNoRoute: 'Nessun percorso selezionato',
+    flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
+    svOpen: 'Street View', captureBtn: 'Cattura', capturedHint: 'Tasto destro sull\u2019immagine per salvare'
   },
   pt: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
@@ -215,7 +288,14 @@ const GEO_I18N = {
     legendTitle:'Legenda', legendInstr:'Adicione "legend: URLdaImagem" ao texto do inspetor.', legendMain:'Principal',
     attrTitle:'Atributos', noFeature:'Nenhum elemento selecionado.', noAttrAvail:'Sem atributos ou elemento desmarcado.', backToAttrList:'Voltar à lista', openNewTab:'Abrir em nova aba (contornar sandbox)',
     selectLayer:'Selecionar camada', attrOrValuePh:'Buscar atributos ou valores', selectLayerPrompt:'Selecione uma camada', countFmt:'{rows} itens / {attrs} atributos', sortTitle:'Clique para ordenar', noMatchingFeatures:'Nenhum elemento correspondente', clickToFly:'Clique para voar', limitSuffix:' (mostrando até {n})', closeAria:'Fechar',
-    noUrlConfigured:'URL não configurada'
+    noUrlConfigured: 'URL não configurada',
+    tabFly: 'Voo',
+    flyRoute: 'Rota', flyRoutePh: 'Selecionar rota', flyDraw: 'Desenhar', flyDrawing: 'Desenhando — clique no mapa para adicionar pontos, clique duplo para terminar', flyCancelDraw: 'Cancelar', flyDelete: 'Excluir', flyCopyGeo: 'GeoJSON', flyCopied: 'Copiado!',
+    flyPlay: 'Reproduzir', flyPause: 'Pausar', flyStop: 'Parar', flyRestart: 'Reiniciar',
+    flySpeedLbl: 'Velocidade (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Vista', flyViewCam: 'POV', flyViewCenter: 'Seguir',
+    flyShowLine: 'Mostrar rota', flyLoading: 'Carregando rota...', flySampling: 'Amostrando terreno...', flyDone: 'Concluído', flyErr: 'Falha ao carregar a rota', flyNoRoute: 'Nenhuma rota selecionada',
+    flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
+    svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clique com o botão direito na imagem para salvar'
   },
   ru: {
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
@@ -233,7 +313,14 @@ const GEO_I18N = {
     legendTitle:'Легенда', legendInstr:'Добавьте "legend: URLизображения" в текст инспектора.', legendMain:'Основная',
     attrTitle:'Атрибуты', noFeature:'Объект не выбран.', noAttrAvail:'Нет атрибутов или выбор снят.', backToAttrList:'Назад к списку', openNewTab:'Открыть в новой вкладке (обход sandbox)',
     selectLayer:'Выберите слой', attrOrValuePh:'Поиск по атрибутам или значениям', selectLayerPrompt:'Выберите слой', countFmt:'{rows} записей / {attrs} атрибутов', sortTitle:'Нажмите для сортировки', noMatchingFeatures:'Нет подходящих объектов', clickToFly:'Нажмите для перехода', limitSuffix:' (показано до {n})', closeAria:'Закрыть',
-    noUrlConfigured:'URL не настроен'
+    noUrlConfigured: 'URL не настроен',
+    tabFly: 'Полёт',
+    flyRoute: 'Маршрут', flyRoutePh: 'Выберите маршрут', flyDraw: 'Нарисовать', flyDrawing: 'Рисование — кликайте по карте для добавления точек, двойной клик для завершения', flyCancelDraw: 'Отмена', flyDelete: 'Удалить', flyCopyGeo: 'GeoJSON', flyCopied: 'Скопировано!',
+    flyPlay: 'Старт', flyPause: 'Пауза', flyStop: 'Стоп', flyRestart: 'Сначала',
+    flySpeedLbl: 'Скорость (км/ч)', flyHeightLbl: 'Высота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По кругу', flyView: 'Вид', flyViewCam: 'От 1-го лица', flyViewCenter: 'Слежение',
+    flyShowLine: 'Показать маршрут', flyLoading: 'Загрузка маршрута...', flySampling: 'Замер рельефа...', flyDone: 'Завершено', flyErr: 'Не удалось загрузить маршрут', flyNoRoute: 'Маршрут не выбран',
+    flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
+    svOpen: 'Просмотр улиц', captureBtn: 'Снимок', capturedHint: 'Щёлкните изображение правой кнопкой, чтобы сохранить'
   },
   nl: {
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
@@ -251,7 +338,14 @@ const GEO_I18N = {
     legendTitle:'Legenda', legendInstr:'Voeg "legend: AfbeeldingsURL" toe aan inspectortekst.', legendMain:'Hoofd',
     attrTitle:'Attributen', noFeature:'Geen object geselecteerd.', noAttrAvail:'Geen attributen of selectie opgeheven.', backToAttrList:'Terug naar lijst', openNewTab:'Openen in nieuw tabblad (sandbox omzeilen)',
     selectLayer:'Kies laag', attrOrValuePh:'Zoek attributen of waarden', selectLayerPrompt:'Kies een laag', countFmt:'{rows} items / {attrs} attributen', sortTitle:'Klik om te sorteren', noMatchingFeatures:'Geen overeenkomende objecten', clickToFly:'Klik om te vliegen', limitSuffix:' (max. {n} weergegeven)', closeAria:'Sluiten',
-    noUrlConfigured:'Geen URL geconfigureerd'
+    noUrlConfigured: 'Geen URL geconfigureerd',
+    tabFly: 'Vliegen',
+    flyRoute: 'Route', flyRoutePh: 'Route kiezen', flyDraw: 'Tekenen', flyDrawing: 'Tekenen — klik op de kaart om punten toe te voegen, dubbelklik om te voltooien', flyCancelDraw: 'Annuleren', flyDelete: 'Verwijderen', flyCopyGeo: 'GeoJSON', flyCopied: 'Gekopieerd!',
+    flyPlay: 'Afspelen', flyPause: 'Pauze', flyStop: 'Stop', flyRestart: 'Opnieuw',
+    flySpeedLbl: 'Snelheid (km/h)', flyHeightLbl: 'Hoogte (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Herhalen', flyView: 'Weergave', flyViewCam: 'POV', flyViewCenter: 'Volgen',
+    flyShowLine: 'Route tonen', flyLoading: 'Route laden...', flySampling: 'Terrein bemonsteren...', flyDone: 'Voltooid', flyErr: 'Route laden mislukt', flyNoRoute: 'Geen route geselecteerd',
+    flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Of druk op Tekenen en schets een polylijn op de kaart.',
+    svOpen: 'Street View', captureBtn: 'Vastleggen', capturedHint: 'Rechtermuisknop op afbeelding om op te slaan'
   },
   pl: {
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
@@ -269,7 +363,14 @@ const GEO_I18N = {
     legendTitle:'Legenda', legendInstr:'Dodaj "legend: URLobrazu" do tekstu inspektora.', legendMain:'Główna',
     attrTitle:'Atrybuty', noFeature:'Nie wybrano obiektu.', noAttrAvail:'Brak atrybutów lub odznaczono obiekt.', backToAttrList:'Powrót do listy', openNewTab:'Otwórz w nowej karcie (obejście sandbox)',
     selectLayer:'Wybierz warstwę', attrOrValuePh:'Szukaj atrybutów lub wartości', selectLayerPrompt:'Wybierz warstwę', countFmt:'{rows} elementów / {attrs} atrybutów', sortTitle:'Kliknij, aby sortować', noMatchingFeatures:'Brak pasujących obiektów', clickToFly:'Kliknij, aby polecieć', limitSuffix:' (wyświetlono maks. {n})', closeAria:'Zamknij',
-    noUrlConfigured:'Nie skonfigurowano URL'
+    noUrlConfigured: 'Nie skonfigurowano URL',
+    tabFly: 'Lot',
+    flyRoute: 'Trasa', flyRoutePh: 'Wybierz trasę', flyDraw: 'Rysuj', flyDrawing: 'Rysowanie — klikaj mapę, aby dodawać punkty, dwuklik kończy', flyCancelDraw: 'Anuluj', flyDelete: 'Usuń', flyCopyGeo: 'GeoJSON', flyCopied: 'Skopiowano!',
+    flyPlay: 'Odtwórz', flyPause: 'Pauza', flyStop: 'Stop', flyRestart: 'Od początku',
+    flySpeedLbl: 'Prędkość (km/h)', flyHeightLbl: 'Wysokość (m)', flyPitchLbl: 'Pochylenie (°)', flyLoop: 'Pętla', flyView: 'Widok', flyViewCam: 'POV', flyViewCenter: 'Śledzenie',
+    flyShowLine: 'Pokaż trasę', flyLoading: 'Ładowanie trasy...', flySampling: 'Próbkowanie terenu...', flyDone: 'Zakończono', flyErr: 'Nie udało się wczytać trasy', flyNoRoute: 'Nie wybrano trasy',
+    flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
+    svOpen: 'Street View', captureBtn: 'Zrzut', capturedHint: 'Kliknij obraz prawym przyciskiem, aby zapisać'
   },
   uk: {
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
@@ -287,7 +388,14 @@ const GEO_I18N = {
     legendTitle:'Легенда', legendInstr:'Додайте "legend: URLзображення" до тексту інспектора.', legendMain:'Основна',
     attrTitle:'Атрибути', noFeature:'Об’єкт не вибрано.', noAttrAvail:'Немає атрибутів або вибір скасовано.', backToAttrList:'Назад до списку', openNewTab:'Відкрити в новій вкладці (обхід sandbox)',
     selectLayer:'Виберіть шар', attrOrValuePh:'Пошук атрибутів або значень', selectLayerPrompt:'Виберіть шар', countFmt:'{rows} записів / {attrs} атрибутів', sortTitle:'Натисніть для сортування', noMatchingFeatures:'Немає відповідних об’єктів', clickToFly:'Натисніть, щоб летіти', limitSuffix:' (показано до {n})', closeAria:'Закрити',
-    noUrlConfigured:'URL не налаштовано'
+    noUrlConfigured: 'URL не налаштовано',
+    tabFly: 'Політ',
+    flyRoute: 'Маршрут', flyRoutePh: 'Оберіть маршрут', flyDraw: 'Намалювати', flyDrawing: 'Малювання — клацайте мапу для додавання точок, подвійний клік для завершення', flyCancelDraw: 'Скасувати', flyDelete: 'Видалити', flyCopyGeo: 'GeoJSON', flyCopied: 'Скопійовано!',
+    flyPlay: 'Старт', flyPause: 'Пауза', flyStop: 'Стоп', flyRestart: 'Спочатку',
+    flySpeedLbl: 'Швидкість (км/год)', flyHeightLbl: 'Висота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По колу', flyView: 'Вигляд', flyViewCam: 'Від 1-ї особи', flyViewCenter: 'Стеження',
+    flyShowLine: 'Показати маршрут', flyLoading: 'Завантаження маршруту...', flySampling: 'Замір рельєфу...', flyDone: 'Завершено', flyErr: 'Не вдалося завантажити маршрут', flyNoRoute: 'Маршрут не вибрано',
+    flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
+    svOpen: 'Перегляд вулиць', captureBtn: 'Знімок', capturedHint: 'Клацніть зображення правою кнопкою, щоб зберегти'
   },
   tr: {
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
@@ -305,7 +413,14 @@ const GEO_I18N = {
     legendTitle:'Lejant', legendInstr:'Denetçi metnine "legend: ResimURL" ekleyin.', legendMain:'Ana',
     attrTitle:'Öznitelikler', noFeature:'Öğe seçilmedi.', noAttrAvail:'Öznitelik yok veya seçim kaldırıldı.', backToAttrList:'Listeye dön', openNewTab:'Yeni sekmede aç (sandbox’ı atla)',
     selectLayer:'Katman seç', attrOrValuePh:'Öznitelik veya değer ara', selectLayerPrompt:'Lütfen katman seçin', countFmt:'{rows} öğe / {attrs} öznitelik', sortTitle:'Sıralamak için tıklayın', noMatchingFeatures:'Eşleşen öğe yok', clickToFly:'Uçmak için tıklayın', limitSuffix:' (en fazla {n} gösteriliyor)', closeAria:'Kapat',
-    noUrlConfigured:'URL yapılandırılmadı'
+    noUrlConfigured: 'URL yapılandırılmadı',
+    tabFly: 'Uçuş',
+    flyRoute: 'Rota', flyRoutePh: 'Rota seçin', flyDraw: 'Çiz', flyDrawing: 'Çiziliyor — nokta eklemek için haritaya tıklayın, bitirmek için çift tıklayın', flyCancelDraw: 'İptal', flyDelete: 'Sil', flyCopyGeo: 'GeoJSON', flyCopied: 'Kopyalandı!',
+    flyPlay: 'Oynat', flyPause: 'Duraklat', flyStop: 'Durdur', flyRestart: 'Yeniden',
+    flySpeedLbl: 'Hız (km/sa)', flyHeightLbl: 'Yükseklik (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Döngü', flyView: 'Görünüm', flyViewCam: 'POV', flyViewCenter: 'Takip',
+    flyShowLine: 'Rotayı göster', flyLoading: 'Rota yükleniyor...', flySampling: 'Arazi örnekleniyor...', flyDone: 'Tamamlandı', flyErr: 'Rota yüklenemedi', flyNoRoute: 'Rota seçilmedi',
+    flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
+    svOpen: 'Sokak Görünümü', captureBtn: 'Yakala', capturedHint: 'Kaydetmek için görüntüye sağ tıklayın'
   },
   ar: {
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
@@ -323,7 +438,14 @@ const GEO_I18N = {
     legendTitle:'المفتاح', legendInstr:'أضف "legend: رابط الصورة" إلى نص المفتش.', legendMain:'رئيسي',
     attrTitle:'الخصائص', noFeature:'لم يتم اختيار عنصر.', noAttrAvail:'لا توجد خصائص أو تم إلغاء التحديد.', backToAttrList:'العودة إلى القائمة', openNewTab:'فتح في تبويب جديد (تجاوز sandbox)',
     selectLayer:'اختر طبقة', attrOrValuePh:'بحث في الخصائص أو القيم', selectLayerPrompt:'يرجى اختيار طبقة', countFmt:'{rows} عنصر / {attrs} خاصية', sortTitle:'انقر للترتيب', noMatchingFeatures:'لا توجد عناصر مطابقة', clickToFly:'انقر للانتقال', limitSuffix:' (بحد أقصى {n})', closeAria:'إغلاق',
-    noUrlConfigured:'لم يتم تكوين URL'
+    noUrlConfigured: 'لم يتم تكوين URL',
+    tabFly: 'طيران',
+    flyRoute: 'المسار', flyRoutePh: 'اختر المسار', flyDraw: 'رسم', flyDrawing: 'جارٍ الرسم — انقر على الخريطة لإضافة نقاط، انقر نقرًا مزدوجًا للإنهاء', flyCancelDraw: 'إلغاء', flyDelete: 'حذف', flyCopyGeo: 'GeoJSON', flyCopied: 'تم النسخ!',
+    flyPlay: 'تشغيل', flyPause: 'إيقاف مؤقت', flyStop: 'إيقاف', flyRestart: 'إعادة البدء',
+    flySpeedLbl: 'السرعة (كم/س)', flyHeightLbl: 'الارتفاع (م)', flyPitchLbl: 'الميل (°)', flyLoop: 'تكرار', flyView: 'العرض', flyViewCam: 'منظور أول', flyViewCenter: 'تتبّع',
+    flyShowLine: 'إظهار المسار', flyLoading: 'جارٍ تحميل المسار...', flySampling: 'جارٍ قياس التضاريس...', flyDone: 'اكتمل', flyErr: 'فشل تحميل المسار', flyNoRoute: 'لم يتم اختيار مسار',
+    flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
+    svOpen: 'التجوّل الافتراضي', captureBtn: 'لقطة', capturedHint: 'انقر بزر الفأرة الأيمن على الصورة للحفظ'
   },
   hi: {
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
@@ -341,7 +463,14 @@ const GEO_I18N = {
     legendTitle:'लीजेंड', legendInstr:'इंस्पेक्टर टेक्स्ट में "legend: छविURL" जोड़ें।', legendMain:'मुख्य',
     attrTitle:'विशेषताएँ', noFeature:'कोई फ़ीचर चयनित नहीं।', noAttrAvail:'कोई विशेषता नहीं या चयन हटाया गया।', backToAttrList:'सूची पर वापस', openNewTab:'नए टैब में खोलें (sandbox बायपास)',
     selectLayer:'लेयर चुनें', attrOrValuePh:'विशेषता या मान खोजें', selectLayerPrompt:'कृपया लेयर चुनें', countFmt:'{rows} आइटम / {attrs} विशेषताएँ', sortTitle:'क्रमबद्ध करने क्लिक करें', noMatchingFeatures:'कोई मेल खाने वाला फ़ीचर नहीं', clickToFly:'जाने के लिए क्लिक करें', limitSuffix:' (अधिकतम {n} दिखाए गए)', closeAria:'बंद करें',
-    noUrlConfigured:'URL कॉन्फ़िगर नहीं'
+    noUrlConfigured: 'URL कॉन्फ़िगर नहीं',
+    tabFly: 'उड़ान',
+    flyRoute: 'मार्ग', flyRoutePh: 'मार्ग चुनें', flyDraw: 'बनाएँ', flyDrawing: 'बना रहे हैं — बिंदु जोड़ने के लिए मानचित्र पर क्लिक करें, समाप्त करने के लिए डबल-क्लिक करें', flyCancelDraw: 'रद्द करें', flyDelete: 'हटाएँ', flyCopyGeo: 'GeoJSON', flyCopied: 'कॉपी किया गया!',
+    flyPlay: 'चलाएँ', flyPause: 'रोकें', flyStop: 'बंद करें', flyRestart: 'पुनः आरंभ',
+    flySpeedLbl: 'गति (km/h)', flyHeightLbl: 'ऊँचाई (m)', flyPitchLbl: 'पिच (°)', flyLoop: 'लूप', flyView: 'दृश्य', flyViewCam: 'POV', flyViewCenter: 'अनुसरण',
+    flyShowLine: 'मार्ग दिखाएँ', flyLoading: 'मार्ग लोड हो रहा है...', flySampling: 'भू-आकृति मापी जा रही है...', flyDone: 'पूर्ण', flyErr: 'मार्ग लोड करने में विफल', flyNoRoute: 'कोई मार्ग नहीं चुना गया',
+    flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
+    svOpen: 'स्ट्रीट व्यू', captureBtn: 'कैप्चर', capturedHint: 'सहेजने के लिए छवि पर राइट-क्लिक करें'
   },
   id: {
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
@@ -359,7 +488,14 @@ const GEO_I18N = {
     legendTitle:'Legenda', legendInstr:'Tambahkan "legend: URLGambar" ke teks inspektur.', legendMain:'Utama',
     attrTitle:'Atribut', noFeature:'Tidak ada fitur dipilih.', noAttrAvail:'Tidak ada atribut atau pilihan dibatalkan.', backToAttrList:'Kembali ke daftar', openNewTab:'Buka di tab baru (lewati sandbox)',
     selectLayer:'Pilih lapisan', attrOrValuePh:'Cari atribut atau nilai', selectLayerPrompt:'Silakan pilih lapisan', countFmt:'{rows} item / {attrs} atribut', sortTitle:'Klik untuk mengurutkan', noMatchingFeatures:'Tidak ada fitur yang cocok', clickToFly:'Klik untuk terbang', limitSuffix:' (maks {n} ditampilkan)', closeAria:'Tutup',
-    noUrlConfigured:'URL belum dikonfigurasi'
+    noUrlConfigured: 'URL belum dikonfigurasi',
+    tabFly: 'Terbang',
+    flyRoute: 'Rute', flyRoutePh: 'Pilih rute', flyDraw: 'Gambar', flyDrawing: 'Menggambar — klik peta untuk menambah titik, klik ganda untuk selesai', flyCancelDraw: 'Batal', flyDelete: 'Hapus', flyCopyGeo: 'GeoJSON', flyCopied: 'Tersalin!',
+    flyPlay: 'Putar', flyPause: 'Jeda', flyStop: 'Berhenti', flyRestart: 'Mulai ulang',
+    flySpeedLbl: 'Kecepatan (km/j)', flyHeightLbl: 'Ketinggian (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Tampilan', flyViewCam: 'POV', flyViewCenter: 'Ikuti',
+    flyShowLine: 'Tampilkan rute', flyLoading: 'Memuat rute...', flySampling: 'Mengambil sampel medan...', flyDone: 'Selesai', flyErr: 'Gagal memuat rute', flyNoRoute: 'Belum ada rute dipilih',
+    flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Atau tekan Gambar lalu sketsa polyline di peta.',
+    svOpen: 'Street View', captureBtn: 'Tangkap', capturedHint: 'Klik kanan gambar untuk menyimpan'
   },
   th: {
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
@@ -377,7 +513,14 @@ const GEO_I18N = {
     legendTitle:'คำอธิบาย', legendInstr:'เพิ่ม "legend: URLรูปภาพ" ในข้อความอินสเปกเตอร์', legendMain:'หลัก',
     attrTitle:'คุณลักษณะ', noFeature:'ไม่ได้เลือกฟีเจอร์', noAttrAvail:'ไม่มีคุณลักษณะหรือยกเลิกการเลือกแล้ว', backToAttrList:'กลับไปที่รายการ', openNewTab:'เปิดในแท็บใหม่ (ข้าม sandbox)',
     selectLayer:'เลือกเลเยอร์', attrOrValuePh:'ค้นหาคุณลักษณะหรือค่า', selectLayerPrompt:'โปรดเลือกเลเยอร์', countFmt:'{rows} รายการ / {attrs} คุณลักษณะ', sortTitle:'คลิกเพื่อจัดเรียง', noMatchingFeatures:'ไม่มีฟีเจอร์ที่ตรงกัน', clickToFly:'คลิกเพื่อบินไป', limitSuffix:' (แสดงสูงสุด {n})', closeAria:'ปิด',
-    noUrlConfigured:'ยังไม่ได้ตั้งค่า URL'
+    noUrlConfigured: 'ยังไม่ได้ตั้งค่า URL',
+    tabFly: 'บิน',
+    flyRoute: 'เส้นทาง', flyRoutePh: 'เลือกเส้นทาง', flyDraw: 'วาด', flyDrawing: 'กำลังวาด — คลิกแผนที่เพื่อเพิ่มจุด ดับเบิลคลิกเพื่อจบ', flyCancelDraw: 'ยกเลิก', flyDelete: 'ลบ', flyCopyGeo: 'GeoJSON', flyCopied: 'คัดลอกแล้ว!',
+    flyPlay: 'เล่น', flyPause: 'หยุดชั่วคราว', flyStop: 'หยุด', flyRestart: 'เริ่มใหม่',
+    flySpeedLbl: 'ความเร็ว (km/h)', flyHeightLbl: 'ความสูง (m)', flyPitchLbl: 'พิตช์ (°)', flyLoop: 'วนซ้ำ', flyView: 'มุมมอง', flyViewCam: 'POV', flyViewCenter: 'ติดตาม',
+    flyShowLine: 'แสดงเส้นทาง', flyLoading: 'กำลังโหลดเส้นทาง...', flySampling: 'กำลังสุ่มภูมิประเทศ...', flyDone: 'เสร็จสิ้น', flyErr: 'โหลดเส้นทางไม่สำเร็จ', flyNoRoute: 'ยังไม่ได้เลือกเส้นทาง',
+    flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
+    svOpen: 'Street View', captureBtn: 'จับภาพ', capturedHint: 'คลิกขวาที่ภาพเพื่อบันทึก'
   },
   vi: {
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
@@ -395,7 +538,14 @@ const GEO_I18N = {
     legendTitle:'Chú giải', legendInstr:'Thêm "legend: URLẢnh" vào văn bản inspector.', legendMain:'Chính',
     attrTitle:'Thuộc tính', noFeature:'Chưa chọn đối tượng.', noAttrAvail:'Không có thuộc tính hoặc đã bỏ chọn.', backToAttrList:'Quay lại danh sách', openNewTab:'Mở trong tab mới (bỏ qua sandbox)',
     selectLayer:'Chọn lớp', attrOrValuePh:'Tìm thuộc tính hoặc giá trị', selectLayerPrompt:'Vui lòng chọn lớp', countFmt:'{rows} mục / {attrs} thuộc tính', sortTitle:'Nhấp để sắp xếp', noMatchingFeatures:'Không có đối tượng phù hợp', clickToFly:'Nhấp để bay', limitSuffix:' (hiển thị tối đa {n})', closeAria:'Đóng',
-    noUrlConfigured:'Chưa cấu hình URL'
+    noUrlConfigured: 'Chưa cấu hình URL',
+    tabFly: 'Bay',
+    flyRoute: 'Tuyến đường', flyRoutePh: 'Chọn tuyến đường', flyDraw: 'Vẽ', flyDrawing: 'Đang vẽ — nhấp bản đồ để thêm điểm, nhấp đúp để kết thúc', flyCancelDraw: 'Hủy', flyDelete: 'Xóa', flyCopyGeo: 'GeoJSON', flyCopied: 'Đã sao chép!',
+    flyPlay: 'Phát', flyPause: 'Tạm dừng', flyStop: 'Dừng', flyRestart: 'Chơi lại',
+    flySpeedLbl: 'Tốc độ (km/h)', flyHeightLbl: 'Độ cao (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Lặp lại', flyView: 'Góc nhìn', flyViewCam: 'POV', flyViewCenter: 'Theo dõi',
+    flyShowLine: 'Hiện tuyến đường', flyLoading: 'Đang tải tuyến...', flySampling: 'Đang lấy mẫu địa hình...', flyDone: 'Hoàn tất', flyErr: 'Không tải được tuyến', flyNoRoute: 'Chưa chọn tuyến',
+    flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
+    svOpen: 'Street View', captureBtn: 'Chụp', capturedHint: 'Nhấp chuột phải vào ảnh để lưu'
   }
 };
 
@@ -658,6 +808,14 @@ function getUI() {
     </li>
   `).join('');
 
+  // Fly route options (inspector-defined fly_geojson: lines). Drawn routes are
+  // appended at runtime by the 'flyDrawnList' message.
+  const escOpt = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const flyRouteOptions = _flyRoutes.map((r, i) => {
+      const title = (r && r.title) ? String(r.title) : ('route ' + i);
+      return `<option value="i:${i}">${escOpt(title)}</option>`;
+  }).join('');
+
   // Information panel content
   // (Info content will be loaded from configured URL and injected into #info-content)
   // Prepare legend HTML (Sub-tabs structure)
@@ -726,13 +884,14 @@ function getUI() {
   .primary-background.minimized #info-panel,
   .primary-background.minimized #legend-panel,
   .primary-background.minimized #share-panel,
+  .primary-background.minimized #fly-panel,
   .primary-background.minimized #attr-panel { display:none !important; }
 
   /* Generic styling system that provides consistent UI components and styling across all plugins */
 
   /* Panel Scroll Configuration */
   /* Limit panels to fixed height to ensure scrollbar appears even if window auto-resizes */
-  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, #attr-panel {
+  #layers-panel, #legend-panel, #cams-panel, #settings-panel, #search-panel, #info-panel, #attr-panel, #fly-panel {
     max-height: 600px;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -1131,6 +1290,7 @@ function getUI() {
     <button class="tab" data-target="cams-panel" aria-selected="false" data-i18n="tabCams">Cams</button>
     <button class="tab" data-target="info-panel" aria-selected="false" data-i18n="tabInfo">Info</button>
     <button class="tab" data-target="share-panel" aria-selected="false" data-i18n="tabShare">Share</button>
+    <button class="tab" data-target="fly-panel" aria-selected="false" data-i18n="tabFly">Fly</button>
     <button class="tab" data-target="settings-panel" aria-selected="false" data-i18n="tabSet">Set</button>
     <button class="tab" data-target="attr-panel" aria-selected="false" data-i18n="tabAttr">Attr</button>
   </div>
@@ -1162,7 +1322,57 @@ function getUI() {
       <div style="margin-bottom:6px;color:#333;" data-i18n="shareFlyCurrentLabel">Move from current location</div>
       <button id="flyto-current-location-btn" class="btn-primary p-6" style="width:100%;font-size:0.9em;" data-i18n="flyToCurrentLoc">Fly to Current Location</button>
     </div>
+
+    <div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;display:flex;gap:6px;">
+      <button id="open-streetview-btn" class="btn-primary p-6" style="flex:1;font-size:0.9em;" data-i18n="svOpen">Street View</button>
+      <button id="viewer-capture-btn" class="btn-primary p-6" style="flex:1;font-size:0.9em;" data-i18n="captureBtn">Capture</button>
     </div>
+    <div id="capture-result" style="margin-top:8px;display:none;">
+      <img id="capture-img" style="max-width:100%;border:1px solid #ccc;border-radius:4px;display:block;" alt="capture" />
+      <div class="text-sm" style="color:#666;margin-top:4px;font-size:0.8em;" data-i18n="capturedHint">Right-click the image to save</div>
+    </div>
+    </div>
+
+  <div id="fly-panel" style="display:none;">
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+      <div style="font-weight:600;" data-i18n="flyRoute">Route</div>
+      <select id="fly-route-select" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;min-width:0;">
+        ${flyRouteOptions}
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+      <button id="fly-draw-btn" class="btn-primary p-6" style="flex:1;font-size:0.9em;" data-i18n="flyDraw">Draw</button>
+      <button id="fly-delete-btn" class="btn-primary p-6" style="flex:1;font-size:0.9em;" data-i18n="flyDelete" disabled>Delete</button>
+      <button id="fly-copygeo-btn" class="btn-primary p-6" style="flex:1;font-size:0.9em;" data-i18n="flyCopyGeo" disabled>GeoJSON</button>
+    </div>
+    <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+      <div class="text-md" id="fly-line-status" data-i18n="flyShowLine">Show route</div>
+      <label class="toggle" id="fly-line-toggle" aria-label="Show route line">
+        <input type="checkbox" id="fly-line-check" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <button id="fly-play-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyPlay">Play</button>
+      <button id="fly-pause-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyPause" disabled>Pause</button>
+      <button id="fly-stop-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyStop" disabled>Stop</button>
+    </div>
+    <div class="cam-grid" style="margin-bottom:6px;">
+      <div class="cam-cell"><label data-i18n="flySpeedLbl">Speed (km/h)</label><input type="number" step="any" id="fly-speed" value="30"></div>
+      <div class="cam-cell"><label data-i18n="flyHeightLbl">AGL (m)</label><input type="number" step="any" id="fly-height" value="0"></div>
+      <div class="cam-cell"><label data-i18n="flyPitchLbl">Pitch (°)</label><input type="number" step="any" id="fly-pitch" value="-10"></div>
+      <div class="cam-cell"><label data-i18n="flyView">View</label>
+        <select id="fly-view" style="width:100%;padding:2px;border:1px solid #ccc;border-radius:4px;font-size:0.9em;background:#fff;">
+          <option value="camera" data-i18n="flyViewCam">POV</option>
+          <option value="center" data-i18n="flyViewCenter">Follow</option>
+        </select>
+      </div>
+      <div class="cam-cell"><label data-i18n="flyLoop">Loop</label><input type="checkbox" id="fly-loop" style="margin-top:4px;"></div>
+    </div>
+    <div id="fly-status" class="text-sm" style="color:#666;min-height:1.2em;">&nbsp;</div>
+    <div id="fly-help" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;" data-i18n-html="flyHelp">fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Or press Draw and sketch a polyline on the map.</div>
+    <textarea id="fly-geojson-out" style="display:none;width:100%;height:120px;font-size:0.75em;border:1px solid #ccc;border-radius:4px;" readonly></textarea>
+  </div>
 
   <div id="search-panel" style="display:none;">
     <div id="vector-search" style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd;">
@@ -1494,7 +1704,7 @@ function getUI() {
               if (!target) return;
               tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
               this.classList.add('active'); this.setAttribute('aria-selected','true');
-              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel','attr-panel'].forEach(id => {
+              ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','fly-panel','settings-panel','attr-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.style.display = (id === target) ? '' : 'none';
@@ -1809,7 +2019,7 @@ function getUI() {
                         document.querySelectorAll('.tab-bar .tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
                         attrTab.classList.add('active'); attrTab.setAttribute('aria-selected','true');
                       }
-                      ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','settings-panel','attr-panel'].forEach(id => {
+                      ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','fly-panel','settings-panel','attr-panel'].forEach(id => {
                         const el = document.getElementById(id);
                         if (el) el.style.display = (id === 'attr-panel') ? '' : 'none';
                       });
@@ -1876,9 +2086,431 @@ function getUI() {
                 } else if (msg.action === 'attrUrlOpen') {
                   try { uiLog('[attrUrlOpen] received mode:', msg.mode); } catch(e) {}
                   window._attrUrlOpen = (typeof msg.mode === 'string' ? msg.mode : 'newtab');
+                } else if (msg.action === 'flyInit') {
+                  try {
+                    window._flyCaps = msg.caps || {};
+                    if (window._flyCaps && window._flyCaps.sketch === false) {
+                      const db = document.getElementById('fly-draw-btn');
+                      if (db) { db.disabled = true; db.title = 'sketch API not available'; }
+                    }
+                    (msg.drawn || []).forEach(function(n) { flyAddDrawnOption(n); });
+                  } catch (e) {}
+                } else if (msg.action === 'flyDrawn') {
+                  try { flyOnSketchCreated(msg.geojson); } catch (e) {}
+                } else if (msg.action === 'flyDrawnData') {
+                  try {
+                    const p = window._flyPendingDrawn && window._flyPendingDrawn[msg.name];
+                    if (p) { delete window._flyPendingDrawn[msg.name]; p(msg.geojson || null); }
+                  } catch (e) {}
+                } else if (msg.action === 'flySampleResult') {
+                  try {
+                    const p = window._flyPendingSample && window._flyPendingSample[msg.reqId];
+                    if (p) { delete window._flyPendingSample[msg.reqId]; p(msg.heights || []); }
+                  } catch (e) {}
+                } else if (msg.action === 'captureResult') {
+                  try {
+                    const wrap = document.getElementById('capture-result');
+                    const img = document.getElementById('capture-img');
+                    if (wrap && img && msg.dataUrl) { img.src = msg.dataUrl; wrap.style.display = ''; }
+                  } catch (e) {}
                 }
               } catch (e) {}
             });
+
+          // ---------- Fly mode (ported from kasugai_canvas) ----------
+          // The camera tick loop runs here in the UI iframe because the extension
+          // sandbox (QuickJS) has no requestAnimationFrame/setInterval. Each frame
+          // posts flySetView which the extension turns into reearth.camera.setView.
+          window._flyRoutes = ${JSON.stringify(_flyRoutes).replace(/</g, '\\u003c')};
+          window._flyCaps = {};
+          window._flyPendingDrawn = {};
+          window._flyPendingSample = {};
+          var flyDrawnCache = {};
+          var fly = {
+            pts: null, dists: null, dist: 0,
+            props: { speed: 30, height: 0, pitch: -10, loop: false, view: 'camera', absolute: false },
+            active: false, paused: false, raf: null, lastTs: 0
+          };
+
+          function flyPost(m) { try { if (window.parent) window.parent.postMessage(m, '*'); } catch (e) {} }
+          function flySetStatus(s) { var el = document.getElementById('fly-status'); if (el) el.textContent = s; }
+          function flyNum(id, def) { var el = document.getElementById(id); var v = el ? parseFloat(el.value) : NaN; return isFinite(v) ? v : def; }
+          function flySetVal(id, v) { var el = document.getElementById(id); if (el && isFinite(v)) el.value = v; }
+
+          function flyAddDrawnOption(name) {
+            var sel = document.getElementById('fly-route-select'); if (!sel || !name) return;
+            for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === 'd:' + name) return; }
+            var o = document.createElement('option'); o.value = 'd:' + name; o.textContent = name; sel.appendChild(o);
+          }
+          function flyRemoveDrawnOption(name) {
+            var sel = document.getElementById('fly-route-select'); if (!sel) return;
+            for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === 'd:' + name) { sel.remove(i); return; } }
+          }
+
+          // Collect all LineString coordinates from a GeoJSON object (port of kasugai extractLineStringCoordinates)
+          function flyExtractCoords(g) {
+            if (!g || typeof g !== 'object') return [];
+            var coords = [];
+            var collect = function(obj) {
+              if (!obj || typeof obj !== 'object') return;
+              if (obj.type === 'LineString') {
+                if (Array.isArray(obj.coordinates)) coords.push.apply(coords, obj.coordinates);
+              } else if (obj.type === 'MultiLineString') {
+                (obj.coordinates || []).forEach(function(line) { if (Array.isArray(line)) coords.push.apply(coords, line); });
+              } else if (obj.type === 'Feature') {
+                collect(obj.geometry);
+              } else if (obj.type === 'FeatureCollection' || Array.isArray(obj.features)) {
+                (obj.features || []).forEach(collect);
+              } else if (obj.type === 'GeometryCollection' || Array.isArray(obj.geometries)) {
+                (obj.geometries || []).forEach(collect);
+              }
+            };
+            collect(g);
+            return coords.filter(function(c) { return Array.isArray(c) && c.length >= 2 && isFinite(c[0]) && isFinite(c[1]); });
+          }
+
+          function flyBuildPath(rawCoords) {
+            if (!rawCoords.length) return { points: [], distances: [] };
+            var points = rawCoords.map(function(c) { return { longitude: c[0], latitude: c[1], altitude: isFinite(c[2]) ? c[2] : 0, terrain: 0 }; });
+            var distances = [0];
+            for (var i = 0; i < points.length - 1; i++) {
+              var a = points[i], b = points[i + 1];
+              var dx = (b.longitude - a.longitude) * 111320 * Math.cos((a.latitude + b.latitude) * Math.PI / 360);
+              var dy = (b.latitude - a.latitude) * 111320;
+              var dz = (b.altitude - a.altitude);
+              distances.push(distances[distances.length - 1] + (Math.sqrt(dx * dx + dy * dy + dz * dz) || 0));
+            }
+            return { points: points, distances: distances };
+          }
+
+          function flyBearing(a, b) {
+            var lat1 = a.latitude * Math.PI / 180, lat2 = b.latitude * Math.PI / 180;
+            var dLng = (b.longitude - a.longitude) * Math.PI / 180;
+            return Math.atan2(Math.sin(dLng) * Math.cos(lat2), Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng));
+          }
+          function flyLerpBearing(a, b, tt) {
+            var diff = b - a;
+            while (diff <= -Math.PI) diff += 2 * Math.PI;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            return a + diff * tt;
+          }
+          function flyRouteDistance(coords) {
+            var d = 0;
+            for (var i = 0; i < coords.length - 1; i++) {
+              var dx = (coords[i + 1][0] - coords[i][0]) * 111320 * Math.cos((coords[i][1] + coords[i + 1][1]) * Math.PI / 360);
+              var dy = (coords[i + 1][1] - coords[i][1]) * 111320;
+              d += Math.sqrt(dx * dx + dy * dy);
+            }
+            return d;
+          }
+          function flyAutoProfile(m) {
+            if (!isFinite(m) || m < 0) return { agl: 300, speed: 200 };
+            if (m < 2000) return { agl: 50, speed: 80 };
+            if (m < 20000) return { agl: 300, speed: 200 };
+            if (m < 100000) return { agl: 800, speed: 400 };
+            if (m < 500000) return { agl: 3000, speed: 1000 };
+            return { agl: 10000, speed: 2000 };
+          }
+          // properties.fly → cfg (port of applyFlySettingsFromGeoJson)
+          function flyApplyProps(g, cfg, rawCoords) {
+            try {
+              var f = g && g.properties && g.properties.fly;
+              if (f && typeof f === 'object') {
+                if (isFinite(+f.speed) && +f.speed !== 0) cfg.speed = +f.speed;
+                if (isFinite(+f.height)) cfg.height = +f.height;
+                if (isFinite(+f.pitch)) cfg.pitch = +f.pitch;
+                if (f.loop !== undefined) cfg.loop = !!f.loop;
+                if (f.view === 'center' || f.view === 'camera') cfg.view = f.view;
+                return;
+              }
+              var gen = g && g.properties && (g.properties.source === 'flyRoute' || /^(msl|absolute)$/i.test(String(g.properties.heightReference || '')));
+              if (gen && !isFinite(cfg.speed)) { cfg.speed = flyAutoProfile(flyRouteDistance(rawCoords || [])).speed; }
+            } catch (e) {}
+          }
+
+          function flyResolveSpec() {
+            var sel = document.getElementById('fly-route-select'); if (!sel) return null;
+            var v = sel.value || '';
+            if (v.indexOf('i:') === 0) { var i = parseInt(v.slice(2), 10); return window._flyRoutes[i] || null; }
+            if (v.indexOf('d:') === 0) return { title: v.slice(2), url: 'route:' + encodeURIComponent(v.slice(2)), drawn: true };
+            return null;
+          }
+
+          // Load a route's GeoJSON (http fetch, or route:<name> from clientStorage via the extension)
+          function flyLoadRoute(spec) {
+            return new Promise(function(resolve, reject) {
+              var url = spec.url || '';
+              var finish = function(text) {
+                try {
+                  var g = typeof text === 'string' ? JSON.parse(text) : text;
+                  var raw = flyExtractCoords(g);
+                  if (!raw.length) throw new Error('no LineString');
+                  var cfg = { speed: spec.speed, height: spec.height, pitch: spec.pitch, loop: spec.loop, view: spec.view, absolute: /^(msl|absolute)$/i.test(String(g.properties && g.properties.heightReference || '')) };
+                  flyApplyProps(g, cfg, raw);
+                  resolve({ raw: raw, props: cfg, geojson: g });
+                } catch (e) { reject(e); }
+              };
+              if (/^route:/i.test(url)) {
+                var name = decodeURIComponent(url.slice(6));
+                if (flyDrawnCache[name]) { finish(flyDrawnCache[name]); return; }
+                window._flyPendingDrawn[name] = function(g) { if (g) finish(g); else reject(new Error('route not found')); };
+                flyPost({ action: 'flyGetDrawn', name: name });
+                setTimeout(function() { if (window._flyPendingDrawn[name]) { delete window._flyPendingDrawn[name]; reject(new Error('timeout')); } }, 8000);
+                return;
+              }
+              fetch(url, { method: 'GET' }).then(function(r) { if (!r || !r.ok) throw new Error('HTTP ' + (r && r.status)); return r.text(); }).then(finish).catch(reject);
+            });
+          }
+
+          // Sample terrain height for each point via the extension (reearth.viewer.tools.getTerrainHeightAsync)
+          var _flySampleSeq = 0;
+          function flySampleTerrain(pts) {
+            return new Promise(function(resolve) {
+              var zeros = pts.map(function() { return 0; });
+              if (!(window._flyCaps && window._flyCaps.terrain)) { resolve(zeros); return; }
+              var stride = Math.max(1, Math.ceil(pts.length / 300));
+              var idx = [], spts = [];
+              for (var i = 0; i < pts.length; i += stride) { idx.push(i); spts.push({ lng: pts[i].longitude, lat: pts[i].latitude }); }
+              var reqId = 's' + (++_flySampleSeq);
+              window._flyPendingSample[reqId] = function(heights) {
+                var out = zeros.slice();
+                for (var i = 0; i < idx.length; i++) { if (heights && isFinite(heights[i])) out[idx[i]] = heights[i]; }
+                var last = 0;
+                for (var j = 0; j < out.length; j++) { if (out[j]) last = out[j]; else out[j] = last; }
+                resolve(out);
+              };
+              flyPost({ action: 'flySample', reqId: reqId, pts: spts });
+              setTimeout(function() { if (window._flyPendingSample[reqId]) { delete window._flyPendingSample[reqId]; resolve(zeros); } }, 20000);
+            });
+          }
+
+          // Compute camera for route distance d and post flySetView (port of kasugai updateFlyPathCamera)
+          function flyUpdateCam(d) {
+            var path = fly.pts, dists = fly.dists;
+            if (!path || !dists || path.length < 2) return;
+            var total = dists[dists.length - 1] || 0;
+            var dist = Math.max(0, Math.min(d, total));
+            var idx = 0;
+            while (idx + 1 < dists.length && dist >= dists[idx + 1]) idx++;
+            var nextIdx = Math.min(idx + 1, path.length - 1);
+            var segLen = (dists[nextIdx] - dists[idx]) || 1;
+            var tSeg = (dist - dists[idx]) / segLen;
+            var a = path[idx], b = path[nextIdx];
+            var lat = a.latitude + (b.latitude - a.latitude) * tSeg;
+            var lng = a.longitude + (b.longitude - a.longitude) * tSeg;
+            var alt = a.altitude + (b.altitude - a.altitude) * tSeg;
+            var terr = (a.terrain || 0) + (((b.terrain || 0) - (a.terrain || 0)) * tSeg);
+            var height = alt + (fly.props.absolute ? 0 : terr) + fly.props.height;
+            var heading = flyBearing(a, b);
+            if (nextIdx + 1 < path.length) {
+              var nb = flyBearing(path[nextIdx], path[nextIdx + 1]);
+              var remaining = (1 - tSeg) * segLen;
+              var blendStart = Math.min(segLen, 100);
+              var blend = remaining < blendStart ? 1 - (remaining / blendStart) : 0;
+              heading = flyLerpBearing(heading, nb, blend);
+            }
+            var pitchDeg = Math.max(-85, Math.min(fly.props.view === 'center' ? -1 : 0, fly.props.pitch));
+            var pitch = pitchDeg * Math.PI / 180;
+            var camLat = lat, camLng = lng;
+            if (fly.props.view === 'center') {
+              var backDistance = fly.props.height > 0 ? fly.props.height / Math.tan(-pitch) : 0;
+              camLat -= (Math.cos(heading) * backDistance) / 111320;
+              camLng -= (Math.sin(heading) * backDistance) / (111320 * Math.cos(lat * Math.PI / 180));
+            }
+            flyPost({ action: 'flySetView', lat: camLat, lng: camLng, height: height, heading: heading, pitch: pitch, roll: 0 });
+            if (total > 0) flySetStatus(Math.round(dist / total * 100) + '% / ' + Math.round(total) + 'm');
+          }
+
+          function flyTick(ts) {
+            fly.raf = null;
+            if (!fly.active || fly.paused || !fly.pts) return;
+            try {
+              var dt = Math.max(0, Math.min((ts - fly.lastTs) / 1000, 0.1));
+              fly.lastTs = ts;
+              var total = fly.dists[fly.dists.length - 1] || 0;
+              fly.dist += (fly.props.speed / 3.6) * dt;
+              if (fly.dist > total) {
+                if (fly.props.loop) { fly.dist = total > 0 ? fly.dist % total : 0; }
+                else { fly.dist = total; flyUpdateCam(fly.dist); flyStopAll(true); return; }
+              }
+              if (fly.dist < 0) {
+                if (fly.props.loop && total > 0) { fly.dist = (total + fly.dist % total) % total; }
+                else { fly.dist = 0; flyUpdateCam(0); flyStopAll(true); return; }
+              }
+              flyUpdateCam(fly.dist);
+              if (fly.active && !fly.paused) fly.raf = requestAnimationFrame(flyTick);
+            } catch (e) { flyStopAll(true); }
+          }
+
+          function flyUpdateButtons() {
+            var play = document.getElementById('fly-play-btn');
+            var pause = document.getElementById('fly-pause-btn');
+            var stop = document.getElementById('fly-stop-btn');
+            if (play) play.disabled = fly.active && !fly.paused;
+            if (pause) { pause.disabled = !fly.active || fly.paused; }
+            if (stop) stop.disabled = !fly.active && !fly.pts;
+          }
+
+          function flyStopAll(finished) {
+            fly.active = false; fly.paused = false;
+            if (fly.raf) { try { cancelAnimationFrame(fly.raf); } catch (e) {} fly.raf = null; }
+            flyPost({ action: 'flyStop' });
+            if (finished) flySetStatus(t('flyDone'));
+            flyUpdateButtons();
+          }
+
+          function flyShowRouteLine(raw) {
+            try {
+              var chk = document.getElementById('fly-line-check');
+              if (chk && chk.checked) flyPost({ action: 'flyShowRoute', coords: raw });
+              else flyPost({ action: 'flyHideRoute' });
+            } catch (e) {}
+          }
+
+          function flyPlay() {
+            if (fly.active && fly.paused && fly.pts) {
+              fly.paused = false; fly.lastTs = performance.now();
+              fly.raf = requestAnimationFrame(flyTick); flyUpdateButtons(); return;
+            }
+            if (fly.active) return;
+            var spec = flyResolveSpec();
+            if (!spec) { flySetStatus(t('flyNoRoute')); return; }
+            flySetStatus(t('flyLoading'));
+            flyLoadRoute(spec).then(function(res) {
+              // properties.fly overrides inspector/UI defaults → reflect into inputs
+              var p = res.props || {};
+              if (isFinite(p.speed)) flySetVal('fly-speed', p.speed);
+              if (isFinite(p.height)) flySetVal('fly-height', p.height);
+              if (isFinite(p.pitch)) flySetVal('fly-pitch', p.pitch);
+              var loopEl = document.getElementById('fly-loop');
+              var viewEl = document.getElementById('fly-view');
+              if (loopEl && p.loop !== undefined) loopEl.checked = !!p.loop;
+              if (viewEl && p.view) viewEl.value = p.view;
+              fly.props = {
+                speed: flyNum('fly-speed', 30),
+                height: flyNum('fly-height', 0),
+                pitch: flyNum('fly-pitch', -10),
+                loop: !!(loopEl && loopEl.checked),
+                view: (viewEl && viewEl.value === 'center') ? 'center' : 'camera',
+                absolute: !!p.absolute
+              };
+              fly.geojson = res.geojson;
+              var built = flyBuildPath(res.raw);
+              fly.pts = built.points; fly.dists = built.distances; fly.dist = 0;
+              flyShowRouteLine(res.raw);
+              var copyBtn = document.getElementById('fly-copygeo-btn'); if (copyBtn) copyBtn.disabled = false;
+              flySetStatus(t('flySampling'));
+              return flySampleTerrain(fly.pts).then(function(heights) {
+                for (var i = 0; i < fly.pts.length; i++) fly.pts[i].terrain = heights[i] || 0;
+                fly.active = true; fly.paused = false;
+                fly.lastTs = performance.now();
+                flyUpdateCam(0);
+                fly.raf = requestAnimationFrame(flyTick);
+                flyUpdateButtons();
+              });
+            }).catch(function(e) {
+              try { console.error('[fly] load failed', e); } catch (_) {}
+              flySetStatus(t('flyErr'));
+              flyUpdateButtons();
+            });
+          }
+
+          function flyPause() {
+            if (!fly.active || fly.paused) return;
+            fly.paused = true;
+            if (fly.raf) { try { cancelAnimationFrame(fly.raf); } catch (e) {} fly.raf = null; }
+            flySetStatus(t('flyPause'));
+            flyUpdateButtons();
+          }
+
+          function flyOnSketchCreated(geojson) {
+            try {
+              var g = typeof geojson === 'string' ? geojson : JSON.stringify(geojson);
+              var name = 'drawn_route_' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+              flyDrawnCache[name] = g;
+              flyAddDrawnOption(name);
+              flyPost({ action: 'flySaveRoute', name: name, geojson: g });
+              var sel = document.getElementById('fly-route-select');
+              if (sel) { sel.value = 'd:' + name; }
+              var del = document.getElementById('fly-delete-btn'); if (del) del.disabled = false;
+              flySetStatus(name);
+            } catch (e) {}
+          }
+
+          // Wire controls
+          try {
+            var flySel = document.getElementById('fly-route-select');
+            if (flySel) flySel.addEventListener('change', function() {
+              flyStopAll(false);
+              var spec = flyResolveSpec();
+              if (spec && !spec.drawn) {
+                flySetVal('fly-speed', spec.speed); flySetVal('fly-height', spec.height); flySetVal('fly-pitch', spec.pitch);
+                var loopEl = document.getElementById('fly-loop'); if (loopEl) loopEl.checked = !!spec.loop;
+                var viewEl = document.getElementById('fly-view'); if (viewEl) viewEl.value = spec.view === 'center' ? 'center' : 'camera';
+              }
+              var del = document.getElementById('fly-delete-btn'); if (del) del.disabled = !(spec && spec.drawn);
+              fly.pts = null; fly.dists = null;
+              // Preview the route line immediately
+              if (spec) {
+                flyLoadRoute(spec).then(function(res) {
+                  fly.geojson = res.geojson;
+                  flyShowRouteLine(res.raw);
+                  var copyBtn = document.getElementById('fly-copygeo-btn'); if (copyBtn) copyBtn.disabled = false;
+                }).catch(function() { flySetStatus(t('flyErr')); });
+              } else {
+                flyPost({ action: 'flyHideRoute' });
+              }
+            });
+            var flyPlayBtn = document.getElementById('fly-play-btn');
+            if (flyPlayBtn) flyPlayBtn.addEventListener('click', flyPlay);
+            var flyPauseBtn = document.getElementById('fly-pause-btn');
+            if (flyPauseBtn) flyPauseBtn.addEventListener('click', flyPause);
+            var flyStopBtn = document.getElementById('fly-stop-btn');
+            if (flyStopBtn) flyStopBtn.addEventListener('click', function() { fly.dist = 0; flyStopAll(false); flySetStatus('\u00A0'); });
+            var flyDrawBtn = document.getElementById('fly-draw-btn');
+            if (flyDrawBtn) flyDrawBtn.addEventListener('click', function() {
+              flyPost({ action: 'flyDrawStart' });
+              flySetStatus(t('flyDrawing'));
+            });
+            var flyDeleteBtn = document.getElementById('fly-delete-btn');
+            if (flyDeleteBtn) flyDeleteBtn.addEventListener('click', function() {
+              var sel = document.getElementById('fly-route-select'); if (!sel) return;
+              var v = sel.value || '';
+              if (v.indexOf('d:') !== 0) return;
+              var name = v.slice(2);
+              flyPost({ action: 'flyDeleteRoute', name: name });
+              delete flyDrawnCache[name];
+              flyRemoveDrawnOption(name);
+              flyStopAll(false);
+              flyPost({ action: 'flyHideRoute' });
+              fly.pts = null; fly.dists = null; flySetStatus(name);
+            });
+            var flyCopyBtn = document.getElementById('fly-copygeo-btn');
+            if (flyCopyBtn) flyCopyBtn.addEventListener('click', function() {
+              var out = document.getElementById('fly-geojson-out');
+              var text = fly.geojson ? (typeof fly.geojson === 'string' ? fly.geojson : JSON.stringify(fly.geojson, null, 2)) : '';
+              if (!text) return;
+              if (out) { out.style.display = ''; out.value = text; try { out.select(); } catch (e) {} }
+              try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function() { flySetStatus(t('flyCopied')); }); } catch (e) {}
+            });
+            var flyLineChk = document.getElementById('fly-line-check');
+            if (flyLineChk) flyLineChk.addEventListener('change', function() {
+              if (fly.geojson) { flyShowRouteLine(flyExtractCoords(fly.geojson)); }
+              else flyPost({ action: 'flyHideRoute' });
+            });
+            var svBtn = document.getElementById('open-streetview-btn');
+            if (svBtn) svBtn.addEventListener('click', function() { flyPost({ action: 'openStreetView' }); });
+            var capBtn = document.getElementById('viewer-capture-btn');
+            if (capBtn) capBtn.addEventListener('click', function() { flyPost({ action: 'viewerCapture' }); });
+            var curLocBtn = document.getElementById('flyto-current-location-btn');
+            if (curLocBtn) curLocBtn.addEventListener('click', function() {
+              curLocBtn.textContent = t('getting');
+              flyPost({ action: 'requestGeolocation' });
+              setTimeout(function() { if (curLocBtn.textContent === t('getting')) curLocBtn.textContent = t('flyToCurrentLoc'); }, 8000);
+            });
+            // Ask the extension for fly capabilities + drawn route list
+            flyPost({ action: 'flyInitRequest' });
+          } catch (e) { try { console.error('[fly] init error', e); } catch (_) {} }
 
           // Time inputs: send start/stop/current to parent when Apply clicked
           const startInput = document.getElementById('startTime');
@@ -3990,6 +4622,253 @@ try {
   try { sendError("Failed to register layer select event", e); } catch(_){}
 }
 
+// ---------- Fly mode support (ported from kasugai_canvas) ----------
+// Detect which optional APIs exist on this host (sketch/tools/capture are newer
+// additions; Workbench plugin API 2.1.0 may not have them all).
+function flyDetectCaps() {
+    const caps = { sketch: false, terrain: false, capture: false };
+    try {
+        caps.sketch = !!(reearth.sketch && typeof reearth.sketch.setTool === 'function' && typeof reearth.sketch.on === 'function' && reearth.viewer && reearth.viewer.interactionMode && typeof reearth.viewer.interactionMode.override === 'function');
+    }
+    catch (e) { }
+    try {
+        caps.terrain = !!(reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function');
+    }
+    catch (e) { }
+    try {
+        caps.capture = !!(reearth.viewer && typeof reearth.viewer.capture === 'function');
+    }
+    catch (e) { }
+    return caps;
+}
+// Report capabilities + drawn-route list (stored in clientStorage) to the UI.
+function flyPostInit() {
+    (async () => {
+        const caps = flyDetectCaps();
+        const drawn = [];
+        try {
+            if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.keysAsync === 'function') {
+                const keys = await reearth.data.clientStorage.keysAsync();
+                (keys || []).forEach(k => {
+                    if (typeof k === 'string' && k.indexOf(FLY_ROUTE_STORAGE_PREFIX) === 0) {
+                        const name = k.slice(FLY_ROUTE_STORAGE_PREFIX.length);
+                        if (name) {
+                            drawn.push(name);
+                            if (_flyDrawnRouteNames.indexOf(name) === -1)
+                                _flyDrawnRouteNames.push(name);
+                        }
+                    }
+                });
+            }
+        }
+        catch (e) { }
+        postToUI({ action: 'flyInit', caps: caps, drawn: drawn });
+    })();
+}
+// Show the selected route as a glowing polyline layer (removed on change/stop).
+function flyShowRouteLayer(coords) {
+    try {
+        flyHideRouteLayer();
+        if (!Array.isArray(coords) || coords.length < 2)
+            return;
+        const layerId = reearth.layers.add({
+            type: "simple",
+            title: FLY_ROUTE_LAYER_TITLE,
+            data: {
+                type: "geojson",
+                value: {
+                    type: "FeatureCollection",
+                    features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } }]
+                }
+            },
+            polyline: { strokeColor: "#ffcc00", strokeWidth: 6, clampToGround: true },
+            marker: { pointColor: "#ffcc00", pointSize: 0 }
+        });
+        if (layerId) {
+            _flyRouteLayerId = layerId;
+            try {
+                _pluginAddedLayerIds.add(layerId);
+            }
+            catch (e) { }
+        }
+    }
+    catch (e) {
+        try {
+            sendError('[flyShowRouteLayer] error:', e);
+        }
+        catch (_) { }
+    }
+}
+function flyHideRouteLayer() {
+    try {
+        if (_flyRouteLayerId) {
+            try {
+                reearth.layers.delete(_flyRouteLayerId);
+            }
+            catch (e) { }
+            try {
+                _pluginAddedLayerIds.delete(_flyRouteLayerId);
+            }
+            catch (e) { }
+            _flyRouteLayerId = null;
+        }
+    }
+    catch (e) { }
+}
+// Sketch-based route drawing: put the viewer in sketch mode and emit a GeoJSON
+// LineString to the UI on 'create'. Guarded — sketch API is optional.
+let _flySketchWired = false;
+function flyStartSketch() {
+    try {
+        if (!(reearth.sketch && typeof reearth.sketch.setTool === 'function'))
+            return;
+        if (!_flySketchWired) {
+            _flySketchWired = true;
+            try {
+                reearth.sketch.on('create', (prop) => {
+                    try {
+                        const feature = prop && prop.feature;
+                        let coords = null;
+                        try {
+                            if (feature && feature.geometry && feature.geometry.coordinates)
+                                coords = feature.geometry.coordinates;
+                        }
+                        catch (e) { }
+                        if (!coords) {
+                            try {
+                                coords = feature && feature.properties && feature.properties.positions;
+                            }
+                            catch (e) { }
+                        }
+                        const line = (coords || []).map(c => Array.isArray(c) ? c : [(c && (c.lng !== undefined ? c.lng : c.longitude)), (c && (c.lat !== undefined ? c.lat : c.latitude))]).filter(c => isFinite(c[0]) && isFinite(c[1]));
+                        if (line.length >= 2) {
+                            postToUI({ action: 'flyDrawn', geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { source: 'draw' }, geometry: { type: 'LineString', coordinates: line } }] } });
+                        }
+                    }
+                    catch (e) {
+                        try {
+                            sendError('[sketch create] error:', e);
+                        }
+                        catch (_) { }
+                    }
+                    flyStopSketch();
+                });
+            }
+            catch (e) {
+                _flySketchWired = false;
+            }
+        }
+        try {
+            if (reearth.viewer && reearth.viewer.interactionMode && typeof reearth.viewer.interactionMode.override === 'function')
+                reearth.viewer.interactionMode.override('sketch');
+        }
+        catch (e) { }
+        try {
+            if (typeof reearth.sketch.overrideOptions === 'function')
+                reearth.sketch.overrideOptions({ dataOnly: true, color: '#ffcc00', autoResetInteractionMode: true });
+        }
+        catch (e) { }
+        reearth.sketch.setTool('polyline');
+    }
+    catch (e) {
+        try {
+            sendError('[flyStartSketch] error:', e);
+        }
+        catch (_) { }
+    }
+}
+function flyStopSketch() {
+    try {
+        if (reearth.sketch && typeof reearth.sketch.setTool === 'function')
+            reearth.sketch.setTool(undefined);
+    }
+    catch (e) { }
+    try {
+        if (reearth.viewer && reearth.viewer.interactionMode && typeof reearth.viewer.interactionMode.override === 'function')
+            reearth.viewer.interactionMode.override('default');
+    }
+    catch (e) { }
+}
+// Terrain sampling along a route (UI sends points, we reply with heights).
+async function flySampleTerrain(reqId, pts) {
+    const heights = [];
+    try {
+        if (reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
+            for (let i = 0; i < pts.length; i += 16) {
+                const batch = pts.slice(i, i + 16);
+                const res = await Promise.all(batch.map(p => {
+                    try {
+                        return reearth.viewer.tools.getTerrainHeightAsync(p.lng, p.lat);
+                    }
+                    catch (e) {
+                        return Promise.resolve(undefined);
+                    }
+                }));
+                res.forEach(h => heights.push(h));
+            }
+        }
+    }
+    catch (e) {
+        try {
+            sendError('[flySampleTerrain] error:', e);
+        }
+        catch (_) { }
+    }
+    postToUI({ action: 'flySampleResult', reqId: reqId, heights: heights });
+}
+// Open Google Street View at the point the camera is looking at (globe
+// intersection preferred, camera position as fallback).
+function openStreetViewFromCamera() {
+    try {
+        let lat = null, lng = null;
+        try {
+            if (reearth.camera && typeof reearth.camera.getGlobeIntersection === 'function') {
+                const inter = reearth.camera.getGlobeIntersection({ withTerrain: true });
+                if (inter && inter.center && isFinite(inter.center.lat) && isFinite(inter.center.lng)) {
+                    lat = inter.center.lat;
+                    lng = inter.center.lng;
+                }
+            }
+        }
+        catch (e) { }
+        if (lat === null) {
+            try {
+                const cur = reearth.camera && reearth.camera.position;
+                if (cur) {
+                    lat = cur.lat;
+                    lng = cur.lng;
+                }
+            }
+            catch (e) { }
+        }
+        if (isFinite(lat) && isFinite(lng)) {
+            reearth.viewer.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + lat + ',' + lng);
+        }
+    }
+    catch (e) {
+        try {
+            sendError('[openStreetView] error:', e);
+        }
+        catch (_) { }
+    }
+}
+// Capture the current view as PNG and hand the data URL to the UI for display.
+function viewerCapture() {
+    try {
+        if (reearth.viewer && typeof reearth.viewer.capture === 'function') {
+            const dataUrl = reearth.viewer.capture('image/png');
+            if (dataUrl)
+                postToUI({ action: 'captureResult', dataUrl: dataUrl });
+        }
+    }
+    catch (e) {
+        try {
+            sendError('[viewerCapture] error:', e);
+        }
+        catch (_) { }
+    }
+}
+
 reearth.extension.on("message", (msg) => {
   try { sendLog("[extension.message] received:", msg); } catch(e){}
   // Handle action-based messages from the UI (terrain toggle)
@@ -4326,6 +5205,104 @@ reearth.extension.on("message", (msg) => {
             _pendingActiveTab = null;
           }
         } catch (e) { try { sendError('[requestRestoreState] error:', e); } catch(_) {} }
+      } else if (msg.action === 'flyInitRequest') {
+          try {
+              flyPostInit();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flySetView') {
+          // Per-frame camera update from the UI-side flight loop
+          try {
+              if (isFinite(msg.lat) && isFinite(msg.lng)) {
+                  reearth.camera.setView({
+                      lat: msg.lat, lng: msg.lng,
+                      height: isFinite(msg.height) ? msg.height : 0,
+                      heading: isFinite(msg.heading) ? msg.heading : 0,
+                      pitch: isFinite(msg.pitch) ? msg.pitch : 0,
+                      roll: isFinite(msg.roll) ? msg.roll : 0
+                  });
+              }
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flySample') {
+          try {
+              if (Array.isArray(msg.pts) && msg.pts.length)
+                  flySampleTerrain(msg.reqId, msg.pts);
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyShowRoute') {
+          try {
+              flyShowRouteLayer(msg.coords);
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyHideRoute') {
+          try {
+              flyHideRouteLayer();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyDrawStart') {
+          try {
+              flyStartSketch();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyDrawStop' || msg.action === 'flyStop') {
+          try {
+              flyStopSketch();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyGetDrawn') {
+          (async () => {
+              let g = null;
+              try {
+                  g = await reearth.data.clientStorage.getAsync(FLY_ROUTE_STORAGE_PREFIX + msg.name);
+              }
+              catch (e) { }
+              try {
+                  postToUI({ action: 'flyDrawnData', name: msg.name, geojson: g });
+              }
+              catch (e) { }
+          })();
+      }
+      else if (msg.action === 'flySaveRoute') {
+          try {
+              if (msg.name && msg.geojson) {
+                  reearth.data.clientStorage.setAsync(FLY_ROUTE_STORAGE_PREFIX + msg.name, msg.geojson);
+                  if (_flyDrawnRouteNames.indexOf(msg.name) === -1)
+                      _flyDrawnRouteNames.push(msg.name);
+              }
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyDeleteRoute') {
+          try {
+              reearth.data.clientStorage.deleteAsync(FLY_ROUTE_STORAGE_PREFIX + msg.name);
+          }
+          catch (e) { }
+          try {
+              const i = _flyDrawnRouteNames.indexOf(msg.name);
+              if (i >= 0)
+                  _flyDrawnRouteNames.splice(i, 1);
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'openStreetView') {
+          try {
+              openStreetViewFromCamera();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'viewerCapture') {
+          try {
+              viewerCapture();
+          }
+          catch (e) { }
       }
     return;
   }
@@ -4607,28 +5584,28 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
 tryInitFromProperty();
 
 // Default inspector text (matches reearth.yml defaultValue)
-const _defaultInspectorText = `              attrUrlOpen: newtab
-              layer:Googleフォトリアリスティック3Dタイル|off
-              3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json|off
-              geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
-              3dtiles: 東京都//千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
-              geojson: 東京都//行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
-              background: #ffffff
-              info: https://re-earth-geo-suite.vercel.app/ryu.html
-              cam:東京駅|35.653108|139.761449|h=2200.6|p=-30|d=348.5
-              cam:富士山|35.188733|138.610404|h=9807.7|p=-24.72|d=28.56
-              cam:大阪城|34.683329|135.525766|h=311.2|d=356.57|p=-32.92
-              legend:https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
-              legend:凡例|https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
-              base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors
-              base: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png | 出典：国土地理院
-              base: 地理院タイル 淡色地図 | https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png| 出典：国土地理院
-              base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg| 出典：国土地理院
-              base: 地理院タイル 1987～1990年 | https://cyberjapandata.gsi.go.jp/xyz/gazo4/{z}/{x}/{y}.jpg| 出典：国土地理院
-              base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
-              base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
-              base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
-              yahooAppId: あなたのYahoo Local Search API AppID`;
+const _defaultInspectorText = `attrUrlOpen: newtab
+layer:Googleフォトリアリスティック3Dタイル|off
+3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json|off
+geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+3dtiles: 東京都//千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json
+geojson: 東京都//行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson
+background: #ffffff
+info: https://re-earth-geo-suite.vercel.app/ryu.html
+cam:東京駅|35.653108|139.761449|h=2200.6|p=-30|d=348.5
+cam:富士山|35.188733|138.610404|h=9807.7|p=-24.72|d=28.56
+cam:大阪城|34.683329|135.525766|h=311.2|d=356.57|p=-32.92
+legend:https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
+legend:凡例|https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG
+base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors
+base: 地理院タイル 標準地図 | https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png | 出典：国土地理院
+base: 地理院タイル 淡色地図 | https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png| 出典：国土地理院
+base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg| 出典：国土地理院
+base: 地理院タイル 1987～1990年 | https://cyberjapandata.gsi.go.jp/xyz/gazo4/{z}/{x}/{y}.jpg| 出典：国土地理院
+base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
+base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
+base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
+yahooAppId: あなたのYahoo Local Search API AppID`;
 
 // Also process any inspector text/config present at init
 try {
@@ -4781,6 +5758,7 @@ function processInspectorText(text) {
   // reset parsed base tiles to avoid duplicates when called repeatedly
   sendLog('[processInspectorText] called, text:', text.substring(0, 300));
   try { _parsedBaseTiles = []; } catch(e) {}
+  try { _flyRoutes = []; } catch(e) {}
   // Handle various newline formats
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   // reset inspector-sourced yahooAppId each time we parse inspector text
@@ -4961,6 +5939,57 @@ function processInspectorText(text) {
       }
       nonCamLines.push(line);
       return;
+    }
+
+    // Fly route (ported from kasugai_canvas):
+    // "fly_geojson: 名前 | URL | speed=30 | height=0 | pitch=-10 | loop=true | view=camera|center | step=100"
+    // `route:<name>` as URL references a drawn route kept in reearth.data.clientStorage.
+    if (lowerLine.startsWith('fly_geojson:')) {
+        try {
+            const content = line.substring(line.indexOf(':') + 1).trim();
+            if (content) {
+                const parts = content.split('|').map(p => p.trim());
+                const title = parts[0];
+                const url = parts[1];
+                if (url) {
+                    const cfg = { title: title || url, url: url, speed: 30, height: 0, pitch: -10, loop: false, step: 100, view: 'camera' };
+                    const off = parts.some(part => /^(off|false)$/i.test(part));
+                    parts.slice(2).forEach(part => {
+                        const eq = part.indexOf('=');
+                        if (eq < 0) {
+                            if (/^loop$/i.test(part))
+                                cfg.loop = true;
+                            return;
+                        }
+                        const key = part.slice(0, eq).trim().toLowerCase();
+                        const raw = part.slice(eq + 1).trim();
+                        const num = Number(raw);
+                        if ((key === 'speed' || key === 's') && Number.isFinite(num) && num !== 0)
+                            cfg.speed = num;
+                        if ((key === 'height' || key === 'h') && Number.isFinite(num))
+                            cfg.height = num;
+                        if ((key === 'pitch' || key === 'p') && Number.isFinite(num))
+                            cfg.pitch = num;
+                        if (key === 'step' && Number.isFinite(num) && num > 0)
+                            cfg.step = num;
+                        if (key === 'loop' || key === 'l')
+                            cfg.loop = /^(true|1|on|yes)$/i.test(raw);
+                        if (key === 'view' || key === 'v')
+                            cfg.view = /^(center|chase|follow|3rd|third)$/i.test(raw) ? 'center' : 'camera';
+                    });
+                    if (!off)
+                        _flyRoutes.push(cfg);
+                }
+            }
+        }
+        catch (e) {
+            try {
+                sendError('[processInspectorText] fly_geojson parse error:', e);
+            }
+            catch (_) { }
+        }
+        nonCamLines.push(line);
+        return;
     }
 
     // Camera preset: "cam:タイトル|緯度|経度" + optional h=高度 d=方位° p=傾き°

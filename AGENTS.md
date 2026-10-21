@@ -50,6 +50,20 @@
 - `basemap-widget.ts` も独自辞書で同方式。`lang:` 設定は拡張間メッセージ（`action: 'lang'`）でレイヤーパネルから転送されます。
 - レイヤー名・カメラタイトル・凡例タイトル・地物属性などのユーザーデータは翻訳しません。
 
+## Re:Earth プラグイン API の参照先
+- プラグイン API の仕様確認は必ず以下の公式ソースで行ってください。推測で API を使わないこと。
+  - 概要・仕組み: https://docs.reearth.io/ja/developer/plugin/overview/what-is-a-plugin/
+  - API リファレンス目次: https://docs.reearth.io/ja/developer/plugin/api-reference/
+    - viewer: .../api-reference/viewer/（`overrideProperty`, `capture`, `open`, `viewer.tools.*`）
+    - camera: .../api-reference/camera/（`flyTo`, `lookAt`, `setView`, `getGlobeIntersection` 等）
+    - sketch: .../api-reference/sketch/（`setTool`, `overrideOptions`, `on("create")`）
+    - data:   .../api-reference/data/（`clientStorage` の get/set/delete）
+    - その他 event / layers / popup / extension の各ページも同ツリー配下
+- ドキュメントに無い API や挙動が不明な場合は、公式リポジトリの実装を直接参照してください:
+  - https://github.com/reearth/reearth-visualizer
+  - 拡張 API の実装は `web/src/beta/lib/reearth-ui` / `web/src/beta/lib/cesium` / `web/src/beta/features/Visualizer` など `web/src/...` 配下にあります。`type ExtensionContext` / `reearth.*` の定義ファイルを検索すると API 一覧を確認できます。
+- Workbench 同梱版のプラグイン API は 2.1.0 なので、新しい API（例: `viewer.tools.*` 系）は存在しない可能性があります。使う前に `typeof reearth.viewer.tools === 'object'` のような実行時検出でフォールバックを組み込んでください。
+
 ## SHARE タブ・URL 出力の仕様
 - Re:Earth Visualizer の UI iframe は `allow-same-origin` なしのサンドボックスのため、親ページの URL 本体（`https://...` 部分）を取得できません。
 - SHARE タブの「Generate Link」は完全な URL を生成せず、常に `?lat=...&lng=...` 形式のクエリ文字列のみを出力します。
