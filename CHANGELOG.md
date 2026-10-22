@@ -1,5 +1,15 @@
 # Changelog
 
+## v18.4.0
+- 新機能: 第4の拡張「AI Chat」ウィジェット（`ai-chat`）を追加しました。KASUGAI Canvas の AI 連携（Gemini function calling）を Re:Earth プラグイン向けに移植したものです。
+    - ブラウザの widget iframe から Gemini `generateContent` を直接呼び出し、function calling の往復ループで地図を操作します（BYO APIキー方式。`localStorage` が使えないサンドボックスのため、キーは `reearth.data.clientStorage` に保存）。
+    - インスペクタ行 `geminiApiKey: キー` / `geminiModel: モデル名` でも設定可能（レイヤーパネルが拡張間メッセージ `aiConfig` で ai-chat へ転送。公開サイトでのキー漏洩に注意）。
+    - ツール実装は2系統: `reearth.*` API で直接実行するもの（flyTo・getCamera・listLayers・setLayerVisible・focusLayer・GeoJSON/XYZ/3D Tiles 追加・AI追加レイヤーのみの removeLayer・captureView・getShareUrl）は ai-chat 内で処理。インスペクタ依存のもの（カメラプリセット・ベースマップ切替・fly ルート再生/停止・Terrain/Shadow・Street View・地物属性 flyTo）は拡張間メッセージ `aiToolRequest`/`aiToolResult` でレイヤーパネルへ委譲します。
+    - `searchLocation`（地理院 msearch）と `runCode`（iframe 内サンドボックス eval、`api.*` 非同期メソッド + fetch 利用可）は iframe 側で実行します。
+    - fly ルートの再生はレイヤーパネル UI の `aiFlyPlay`/`aiFlyStop` メッセージで既存の rAF ループを起動します。
+    - UI は既存の `GEO_I18N` 方式で20言語対応。`lang:` 設定はレイヤーパネルから転送されます。
+- 変更: `basemap-widget` の拡張間メッセージに `selectBasemap`（URL またはタイトル指定でのベースマップ切替）を追加しました。
+
 ## v18.3.0
 - 新機能: KASUGAI Canvas（Cesium アプリ）から Fly モードを移植し、「FLY」タブを追加しました。
     - インスペクタ行 `fly_geojson: 名前 | URL | speed=30 | height=0 | pitch=-10 | loop=true | view=camera|center` で飛行ルートを定義できます（`route:名前` で描画保存済みルートも参照可能。`| off` で無効化）。

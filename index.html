@@ -318,6 +318,10 @@
                         <h3>📊 属性（Attr）表示</h3>
                         <p>Re:Earth上の地物を選択した際に、その属性情報を一覧表示します。</p>
                     </div>
+                    <div class="feature-card">
+                        <h3>🤖 AI チャット</h3>
+                        <p>Gemini の function calling で地図を自然言語操作できるチャットウィジェットです。「東京駅に飛んで」「○○レイヤーを隠して」などの指示で、カメラ移動・地名検索・レイヤー操作・カメラプリセット・ベースマップ切替・Fly ルート再生・Terrain/Shadow・Street View・スクリーンショットなどを実行します。<code>runCode</code> ツールで複数ステップの処理も可能です。Gemini API キー（BYO）はウィジェットの ⚙ 設定または Inspector の <code>geminiApiKey:</code> 行で指定します。</p>
+                    </div>
                 </div>
             </section>
             
@@ -363,6 +367,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
                         <li><strong>fly_geojson:</strong> Fly パネル（タブバーの ✈️ ボタン）に登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は Fly パネルで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
                         <li><strong>attrUrlOpen:</strong> 属性パネル内のURLクリック動作を切り替えます。<code>panel</code> / <code>newtab</code> を指定できます。既定は <code>newtab</code> です。</li>
+                        <li><strong>geminiApiKey:</strong> / <strong>geminiModel:</strong> AI チャットウィジェットで使う Gemini API キーとモデル名（省略可）を指定します。キーはウィジェットの ⚙ 設定からも入力できます。注意: Inspector に書いたキーは公開サイトでは漏洩する可能性があります。</li>
                     </ul>
                 </div>
                 

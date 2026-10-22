@@ -23,6 +23,8 @@ let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 let _inspectorLegendItems = []; // cached legend items from inspector for initial UI render
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
+let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector text (forwarded to ai-chat widget)
+let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
 let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
@@ -2202,6 +2204,37 @@ function getUI() {
                     const st = document.getElementById('manage-status');
                     if (st) st.textContent = t('manageApplied');
                   } catch (e) {}
+                } else if (msg.action === 'aiFlyPlay') {
+                  // Triggered by the ai-chat widget's playFlyPath tool
+                  try {
+                    const sel = document.getElementById('fly-route-select');
+                    if (sel) {
+                      let target = null;
+                      if (msg.drawn) {
+                        for (let i = 0; i < sel.options.length; i++) {
+                          if (sel.options[i].value === 'd:' + msg.drawn) { target = sel.options[i].value; break; }
+                        }
+                      } else if (msg.name) {
+                        const want = String(msg.name).toLowerCase();
+                        for (let i = 0; i < sel.options.length; i++) {
+                          const o = sel.options[i];
+                          if (o.value.indexOf('i:') === 0 && o.textContent === msg.name) { target = o.value; break; }
+                        }
+                        if (target === null) {
+                          for (let i = 0; i < sel.options.length; i++) {
+                            const o = sel.options[i];
+                            if (o.value.indexOf('i:') === 0 && String(o.textContent).toLowerCase().indexOf(want) >= 0) { target = o.value; break; }
+                          }
+                        }
+                      }
+                      if (target !== null) {
+                        sel.value = target;
+                        flyPlay();
+                      }
+                    }
+                  } catch (e) {}
+                } else if (msg.action === 'aiFlyStop') {
+                  try { flyStopAll(false); } catch (e) {}
                 }
               } catch (e) {}
             });
@@ -5564,6 +5597,23 @@ try {
               reearth.extension.postMessage(targetId, { action: 'baseList', items: baseEntries });
             }
           }
+        } else if (data && data.action === 'requestAiConfig') {
+          // The ai-chat widget asks for inspector-provided config (API key, model, lang).
+          const targetId = msg.sender || null;
+          if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+            try {
+              reearth.extension.postMessage(targetId, {
+                action: 'aiConfig',
+                lang: _inspectorLang || 'auto',
+                geminiApiKey: _inspectorGeminiApiKey || '',
+                geminiModel: _inspectorGeminiModel || ''
+              });
+            } catch (e) {}
+          }
+        } else if (data && data.action === 'aiToolRequest') {
+          // The ai-chat widget delegates inspector-bound tools here (presets,
+          // basemaps, fly routes, terrain/shadow, street view, vector features).
+          try { handleAiToolRequest(msg.sender || null, data); } catch (e) { try { sendError('[aiToolRequest] error:', e); } catch(_){} }
         }
       } catch (e) {}
     });
@@ -5797,6 +5847,165 @@ function postBaseListToBasemapWidget(baseEntries) {
   } catch (e) {}
 }
 
+// Tell the basemap widget to switch basemap (url '' = none). Used by ai-chat tools.
+function postSelectBasemap(url) {
+  try {
+    const id = _basemapWidgetId || findBasemapWidgetId();
+    if (!id) return false;
+    _basemapWidgetId = id;
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(id, { action: 'selectBasemap', url: url });
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function aiToolReply(senderId, reqId, ok, result) {
+  try {
+    if (senderId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(senderId, { action: 'aiToolResult', reqId: reqId, ok: ok, result: result });
+    }
+  } catch (e) {}
+}
+
+// Execute tools delegated by the ai-chat widget. These all depend on state
+// owned by this widget (inspector text, camera presets, fly routes, vector index).
+function handleAiToolRequest(senderId, data) {
+  const reqId = data && data.reqId;
+  const name = data && data.name;
+  const args = (data && data.args) || {};
+  const fail = (m) => aiToolReply(senderId, reqId, false, { error: m });
+  try {
+    switch (name) {
+      case 'listCameraPresets':
+        aiToolReply(senderId, reqId, true, (_cameraPresets || []).map(c => ({ name: c.title, lat: c.lat, lng: c.lng })));
+        return;
+      case 'flyToPreset': {
+        const n = String(args.name || '').toLowerCase();
+        const cam = (_cameraPresets || []).find(c => String(c.title).toLowerCase() === n)
+          || (_cameraPresets || []).find(c => String(c.title).toLowerCase().indexOf(n) >= 0);
+        if (!cam) { fail('preset not found: ' + args.name); return; }
+        flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false })
+          .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { name: cam.title }))
+          .catch(e => fail(String(e)));
+        return;
+      }
+      case 'listBasemaps':
+        aiToolReply(senderId, reqId, true, (_parsedBaseTiles || []).map(b => ({ name: b.title, url: b.url })));
+        return;
+      case 'setBasemap': {
+        const n = String(args.name || '').toLowerCase().trim();
+        if (!n || n === 'none' || n === '(none)') {
+          if (postSelectBasemap('')) aiToolReply(senderId, reqId, true, { selected: 'none' });
+          else fail('basemap widget unavailable');
+          return;
+        }
+        const tiles = _parsedBaseTiles || [];
+        const b = tiles.find(x => String(x.title || '').toLowerCase() === n)
+          || tiles.find(x => String(x.title || '').toLowerCase().indexOf(n) >= 0)
+          || tiles.find(x => String(x.url || '').toLowerCase() === n);
+        if (!b) { fail('basemap not found: ' + args.name); return; }
+        if (postSelectBasemap(b.url)) aiToolReply(senderId, reqId, true, { selected: b.title || b.url });
+        else fail('basemap widget unavailable');
+        return;
+      }
+      case 'listFlyPaths':
+        aiToolReply(senderId, reqId, true, {
+          inspector: (_flyRoutes || []).map(r => ({ name: r.title, speed: r.speed, height: r.height, pitch: r.pitch, loop: r.loop })),
+          drawn: (_flyDrawnRouteNames || []).slice()
+        });
+        return;
+      case 'playFlyPath': {
+        const n = String(args.name || '').toLowerCase();
+        const hit = (_flyRoutes || []).find(r => String(r.title).toLowerCase() === n)
+          || (_flyRoutes || []).find(r => String(r.title).toLowerCase().indexOf(n) >= 0);
+        const drawn = (_flyDrawnRouteNames || []).find(d => String(d).toLowerCase() === n)
+          || (_flyDrawnRouteNames || []).find(d => String(d).toLowerCase().indexOf(n) >= 0);
+        if (!hit && !drawn) { fail('fly path not found: ' + args.name); return; }
+        // Playback runs in the UI iframe (requestAnimationFrame lives there)
+        postToUI({ action: 'aiFlyPlay', name: hit ? hit.title : null, drawn: drawn || null });
+        aiToolReply(senderId, reqId, true, { playing: hit ? hit.title : drawn });
+        return;
+      }
+      case 'stopFly':
+        postToUI({ action: 'aiFlyStop' });
+        aiToolReply(senderId, reqId, true, {});
+        return;
+      case 'setTerrain': {
+        const en = !!args.enabled;
+        const bg = _lastInspectorBackground || '#ffffff';
+        reearth.viewer.overrideProperty({
+          terrain: { enabled: en, type: 'reearth_terrain' },
+          globe: { depthTestAgainstTerrain: en, baseColor: bg },
+          scene: { backgroundColor: bg },
+        });
+        aiToolReply(senderId, reqId, true, { enabled: en });
+        return;
+      }
+      case 'setShadow': {
+        const en = !!args.enabled;
+        const bg = _lastInspectorBackground || '#ffffff';
+        reearth.viewer.overrideProperty({
+          scene: { shadow: { enabled: en }, backgroundColor: bg },
+          globe: { baseColor: bg },
+        });
+        aiToolReply(senderId, reqId, true, { enabled: en });
+        return;
+      }
+      case 'openStreetView':
+        openStreetViewFromCamera();
+        aiToolReply(senderId, reqId, true, {});
+        return;
+      case 'flyToFeature': {
+        if (!_vectorFeatureIndex) {
+          try { buildVectorFeatureIndexFromLayers(); } catch (e) {}
+        }
+        const idx = _vectorFeatureIndex;
+        if (!idx) { fail('vector index unavailable'); return; }
+        let layerId = '__all__';
+        if (args.layer) {
+          const n = String(args.layer).toLowerCase();
+          const opt = (idx.layerOptions || []).find(o => String(o.title).toLowerCase() === n)
+            || (idx.layerOptions || []).find(o => String(o.title).toLowerCase().indexOf(n) >= 0);
+          if (!opt) { fail('layer not found: ' + args.layer); return; }
+          layerId = opt.id;
+        }
+        const src = (layerId === '__all__') ? idx.all : (idx.layers ? idx.layers[layerId] : null);
+        const attr = String(args.attribute || '');
+        const val = String(args.value === undefined || args.value === null ? '' : args.value);
+        let hit = null;
+        if (src && src.featureByAttr) {
+          hit = (src.featureByAttr[attr] || {})[val] || null;
+          if (!hit) {
+            // fuzzy match on attribute name, then on value
+            const attrs = Object.keys(src.featureByAttr);
+            const ak = attrs.find(a => a.toLowerCase() === attr.toLowerCase())
+              || attrs.find(a => a.toLowerCase().indexOf(attr.toLowerCase()) >= 0);
+            if (ak) {
+              const vals = Object.keys(src.featureByAttr[ak] || {});
+              const vk = vals.find(v => v === val)
+                || vals.find(v => v.toLowerCase() === val.toLowerCase())
+                || vals.find(v => v.toLowerCase().indexOf(val.toLowerCase()) >= 0);
+              if (vk) hit = src.featureByAttr[ak][vk];
+            }
+          }
+        }
+        if (!hit || hit.lat == null || hit.lng == null) { fail('feature not found'); return; }
+        flyToAndNotify(hit.lat, hit.lng, { addMarker: false })
+          .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { lat: hit.lat, lng: hit.lng }))
+          .catch(e => fail(String(e)));
+        return;
+      }
+      default:
+        fail('unknown tool: ' + name);
+        return;
+    }
+  } catch (e) {
+    fail(String((e && e.message) || e));
+  }
+}
+
 // Parse only base: lines from text, without side effects, for dynamic re-requests.
 function extractBaseTilesFromText(text) {
   if (!text || typeof text !== 'string') return [];
@@ -5875,6 +6084,8 @@ function processInspectorText(text) {
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   // reset inspector-sourced yahooAppId each time we parse inspector text
   try { _inspectorYahooAppId = null; } catch(e) {}
+  try { _inspectorGeminiApiKey = null; } catch(e) {}
+  try { _inspectorGeminiModel = null; } catch(e) {}
   _systemLayerSettings = [];
   _inspectorAttrUrlOpen = 'newtab';
   _pluginAddedGeojsonLayerIds = [];
@@ -5988,6 +6199,29 @@ function processInspectorText(text) {
           _inspectorYahooAppId = val;
           try { sendLog('[processInspectorText] found inspector yahooAppId'); } catch(e){}
         }
+      } catch(e){}
+      nonCamLines.push(line);
+      return;
+    }
+
+    // Inspector-provided Gemini API key for the ai-chat widget: "geminiApiKey: KEY"
+    if (/^geminiapikey\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        if (val) {
+          _inspectorGeminiApiKey = val;
+          try { sendLog('[processInspectorText] found inspector geminiApiKey'); } catch(e){}
+        }
+      } catch(e){}
+      nonCamLines.push(line);
+      return;
+    }
+
+    // Optional Gemini model override for the ai-chat widget: "geminiModel: gemini-..."
+    if (/^geminimodel\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        if (val) _inspectorGeminiModel = val;
       } catch(e){}
       nonCamLines.push(line);
       return;

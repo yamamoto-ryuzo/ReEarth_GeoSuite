@@ -470,6 +470,26 @@ try {
               }
             } catch (e) {}
           }
+        } else if (data.action === 'selectBasemap') {
+          // Basemap switch requested by another widget (e.g. ai-chat tool).
+          // Accepts a URL or a basemap title.
+          try {
+            const ref = (typeof data.url === 'string') ? data.url : ((typeof data.name === 'string') ? data.name : '');
+            let url = ref;
+            if (ref) {
+              const rl = ref.toLowerCase();
+              const hit = _parsedBaseTiles.find((b: any) => String(b.title || '').toLowerCase() === rl)
+                || _parsedBaseTiles.find((b: any) => String(b.title || '').toLowerCase().indexOf(rl) >= 0)
+                || _parsedBaseTiles.find((b: any) => urlsEqual(b.url, ref) || urlsEqual(b.encodedUrl, ref));
+              if (hit) url = hit.encodedUrl || hit.url;
+            }
+            showBasemapByUrl(url === '' ? '' : url);
+            if (typeof setTimeout === 'function') {
+              setTimeout(() => { sendBasemapsToUI(); }, 150);
+            } else {
+              sendBasemapsToUI();
+            }
+          } catch (e) { sendError('[selectBasemap/ext] error:', e); }
         }
       } catch (e) {}
     });
