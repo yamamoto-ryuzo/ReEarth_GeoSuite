@@ -1,5 +1,20 @@
 # Changelog
 
+## v18.5.0
+- 新機能: AI Chat がプラグインの全機能を操作できるようになりました。Gemini function calling のツールを大幅に拡張しています。
+    - カメラ/ナビゲーション: `setCamera`（`camera.setView` で即時配置）、`lookAt`（注目点への向き変更、半径 `radius` 必須のため付与）、`zoomIn`/`zoomOut`（Navigation Toolbar 相当）、`flyToCurrentLocation`（ジオロケーション→飛行）、`flyToUrl`（共有 URL/`?lat=..` クエリ解析→飛行）。
+    - FLY: `createFlyPath`（座標列から描画ルートを `flyRoute:` ストレージへ作成→即再生可能）、`deleteFlyPath`（描画ルート削除+UI 選択肢から除去）。
+    - パネル/情報表示: `showPanel`（layers/legend/search/attr/cams/display/info/fly/share/manage 全タブを `activateTab` で開く）、`showInfo`（INFO タブに URL 読込+表示）、`listLegends`（凡例一覧）、`showFeatureAttributes`（属性一致で ATTR パネルに属性表表示、`fly:false` で表示のみ）、`getInspectorText`/`applyInspectorText`（設定テキストの読取・適用、Manage パネルと同等）。
+    - 表示設定: `setDepthTest`、`setGeojsonDrape`（3dtiles/terrain/both）、`setBackground`（背景色）。
+    - 検索: `searchLocation` に `provider: gsi|yahoo|auto` を追加。Yahoo は Search タブと同一プロキシ経由で、inspector の `yahooAppId` を `aiConfig` 経由で受け取ります。
+    - `openUrl`（任意 URL を新タブで開く。Google Maps/Earth リンク向け）、`runCode` の `api.*` メソッドも全ツール分に拡張。
+- 改善: AI 操作時の UI 状態同期を追加しました。
+    - レイヤー追加/表示切替はレイヤーパネル側で実行するよう変更し、チェックボックスを `aiLayerState` メッセージで即時同期（AI 追加レイヤーもパネル管理対象に）。
+    - Terrain/Shadow/DepthTest/GeoJSON Drape も `terrainState`/`shadowState`/`depthTestState`/`geojsonDrapeState` で Display タブのトグルと同期。
+    - `openUrl`/Street View がポップアップブロックされた場合に備え、チャットの bot メッセージ内 URL をクリック可能なリンクに変更。
+- 検証: `workbench/ai_tool_test.js`（CDP 経由で実際の iframe→拡張→パネルのメッセージ経路を駆動する E2E テスト）で全 35 項目の動作を確認済み。
+- 修正: `lookAt` に `radius` を付与（viewer が `BoundingSphere(center, radius)` を組み立てるため、未指定では無操作になっていました）。
+
 ## v18.4.0
 - 新機能: 第4の拡張「AI Chat」ウィジェット（`ai-chat`）を追加しました。KASUGAI Canvas の AI 連携（Gemini function calling）を Re:Earth プラグイン向けに移植したものです。
     - ブラウザの widget iframe から Gemini `generateContent` を直接呼び出し、function calling の往復ループで地図を操作します（BYO APIキー方式。`localStorage` が使えないサンドボックスのため、キーは `reearth.data.clientStorage` に保存）。

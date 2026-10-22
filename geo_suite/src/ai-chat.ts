@@ -84,8 +84,16 @@ const PANEL_TOOLS = [
   'listBasemaps', 'setBasemap',
   'listFlyPaths', 'playFlyPath', 'stopFly',
   'setTerrain', 'setShadow',
-  'openStreetView', 'flyToFeature'
+  'openStreetView', 'flyToFeature',
+  'setLayerVisible', 'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer',
+  'createFlyPath', 'deleteFlyPath',
+  'showPanel', 'showInfo', 'listLegends', 'showFeatureAttributes',
+  'getInspectorText', 'applyInspectorText',
+  'setDepthTest', 'setGeojsonDrape', 'setBackground'
 ];
+
+// Panel tools that still work (degraded) without the layer panel.
+const LOCAL_FALLBACK = ['setLayerVisible', 'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer'];
 
 // reqIds currently forwarded to the layer panel; extensionMessage replies are routed back to the UI.
 const _pendingForward: any = {};
@@ -96,6 +104,7 @@ const _aiAddedLayerIds = new Set();
 // Inspector-provided config (forwarded from the layer panel).
 let _inspectorGeminiApiKey: string | null = null;
 let _inspectorGeminiModel: string | null = null;
+let _inspectorYahooAppId: string | null = null;
 let _inspectorLang = 'auto';
 
 const AI_STORAGE_KEY = 'geminiApiKey';
@@ -119,6 +128,7 @@ async function sendConfig(): Promise<void> {
     hasKey: !!key,
     keySource: _inspectorGeminiApiKey ? 'inspector' : (storedKey ? 'storage' : 'none'),
     model: model,
+    yahooAppId: _inspectorYahooAppId || '',
     lang: _inspectorLang || 'auto'
   });
 }
@@ -316,6 +326,74 @@ function aiShareUrl(): any {
   return { ok: true, query: '?' + params.join('&') };
 }
 
+function aiSetCamera(args: any): any {
+  const lat = Number(args && args.lat);
+  const lng = Number(args && args.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return { error: 'lat/lng required' };
+  const cur = getCameraPos() || {};
+  const dest: any = { lat: lat, lng: lng };
+  dest.height = isFinite(Number(args.height)) ? Number(args.height) : (typeof cur.height === 'number' ? cur.height : 2000);
+  dest.heading = isFinite(Number(args.heading)) ? Number(args.heading) * Math.PI / 180 : (typeof cur.heading === 'number' ? cur.heading : 0);
+  dest.pitch = isFinite(Number(args.pitch)) ? Number(args.pitch) * Math.PI / 180 : (typeof cur.pitch === 'number' ? cur.pitch : -Math.PI / 4);
+  dest.roll = isFinite(Number(args.roll)) ? Number(args.roll) * Math.PI / 180 : (typeof cur.roll === 'number' ? cur.roll : 0);
+  try {
+    reearth.camera.setView(dest);
+    return { ok: true, lat: lat, lng: lng };
+  } catch (e) {
+    return { error: 'setView failed: ' + String(e) };
+  }
+}
+
+function aiLookAt(args: any): any {
+  const lat = Number(args && args.lat);
+  const lng = Number(args && args.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return { error: 'lat/lng required' };
+  if (!reearth.camera || typeof reearth.camera.lookAt !== 'function') return { error: 'camera.lookAt unavailable' };
+  const dest: any = { lat: lat, lng: lng };
+  if (isFinite(Number(args.height))) dest.height = Number(args.height);
+  if (isFinite(Number(args.heading))) dest.heading = Number(args.heading) * Math.PI / 180;
+  if (isFinite(Number(args.pitch))) dest.pitch = Number(args.pitch) * Math.PI / 180;
+  if (isFinite(Number(args.range))) dest.range = Number(args.range);
+  // The viewer builds a BoundingSphere from `radius`; without it lookAt is a no-op.
+  dest.radius = isFinite(Number(args.radius)) ? Number(args.radius)
+    : (isFinite(Number(args.range)) ? Number(args.range) : 500);
+  const opts: any = {};
+  if (args.instant) opts.withoutAnimation = true;
+  else if (isFinite(Number(args.duration))) opts.duration = Number(args.duration);
+  try {
+    reearth.camera.lookAt(dest, opts);
+    return { ok: true, lat: lat, lng: lng };
+  } catch (e) {
+    return { error: 'lookAt failed: ' + String(e) };
+  }
+}
+
+function aiZoom(args: any, dir: string): any {
+  const amt = isFinite(Number(args && args.amount)) ? Number(args.amount) : 2;
+  const fn = dir === 'in' ? reearth.camera && reearth.camera.zoomIn : reearth.camera && reearth.camera.zoomOut;
+  if (typeof fn !== 'function') return { error: 'camera.zoom' + (dir === 'in' ? 'In' : 'Out') + ' unavailable' };
+  try {
+    fn.call(reearth.camera, amt);
+    return { ok: true, direction: dir, amount: amt };
+  } catch (e) {
+    return { error: 'zoom failed: ' + String(e) };
+  }
+}
+
+function aiOpenUrl(args: any): any {
+  const url = String((args && args.url) || '').trim();
+  if (!/^https?:\/\//i.test(url)) return { error: 'url must be http(s)' };
+  try {
+    if (reearth.viewer && typeof reearth.viewer.open === 'function') {
+      reearth.viewer.open(url);
+      return { ok: true, url: url, note: 'browser may block popups not triggered by a user gesture' };
+    }
+    return { error: 'viewer.open unavailable' };
+  } catch (e) {
+    return { error: 'open failed: ' + String(e) };
+  }
+}
+
 async function execLocalTool(name: string, args: any): Promise<any> {
   try {
     switch (name) {
@@ -330,6 +408,11 @@ async function execLocalTool(name: string, args: any): Promise<any> {
       case 'removeLayer': return aiRemoveLayer(args);
       case 'captureView': return aiCaptureView();
       case 'getShareUrl': return aiShareUrl();
+      case 'setCamera': return aiSetCamera(args);
+      case 'lookAt': return aiLookAt(args);
+      case 'zoomIn': return aiZoom(args, 'in');
+      case 'zoomOut': return aiZoom(args, 'out');
+      case 'openUrl': return aiOpenUrl(args);
       default: return { error: 'unknown tool: ' + name };
     }
   } catch (e) {
@@ -348,12 +431,26 @@ try {
           const reqId = msg.reqId;
           const name = String(msg.name || '');
           const args = msg.args || {};
+          if (name === 'removeLayer') {
+            const rl = aiResolveLayer(args.layer);
+            if (!rl || !rl.id || !_aiAddedLayerIds.has(rl.id)) {
+              postToUI({ action: 'aiToolResult', reqId: reqId, result: { error: 'only layers added by the AI can be removed' } });
+              return;
+            }
+            args._layerId = rl.id;
+          }
           if (PANEL_TOOLS.indexOf(name) >= 0) {
-            _pendingForward[reqId] = true;
+            _pendingForward[reqId] = { name: name };
             const sent = postToLayerPanel({ action: 'aiToolRequest', reqId: reqId, name: name, args: args });
             if (!sent) {
               delete _pendingForward[reqId];
-              postToUI({ action: 'aiToolResult', reqId: reqId, result: { error: 'layer panel unavailable' } });
+              if (LOCAL_FALLBACK.indexOf(name) >= 0) {
+                execLocalTool(name, args).then((result: any) => {
+                  postToUI({ action: 'aiToolResult', reqId: reqId, result: result });
+                });
+              } else {
+                postToUI({ action: 'aiToolResult', reqId: reqId, result: { error: 'layer panel unavailable' } });
+              }
             }
           } else {
             execLocalTool(name, args).then((result: any) => {
@@ -393,11 +490,21 @@ try {
         const data = (msg && msg.data !== undefined) ? msg.data : msg;
         if (!data || !data.action) return;
         if (data.action === 'aiToolResult' && data.reqId && _pendingForward[data.reqId]) {
+          const meta = _pendingForward[data.reqId];
           delete _pendingForward[data.reqId];
+          try {
+            const r = data.result;
+            if (meta && meta.name === 'removeLayer') {
+              if (r && !r.error && r.id) _aiAddedLayerIds.delete(r.id);
+            } else if (meta && (meta.name === 'addGeoJsonLayer' || meta.name === 'addTileLayer' || meta.name === 'add3dTilesLayer')) {
+              if (r && r.id) _aiAddedLayerIds.add(r.id);
+            }
+          } catch (e) {}
           postToUI({ action: 'aiToolResult', reqId: data.reqId, result: data.result });
         } else if (data.action === 'aiConfig') {
           _inspectorGeminiApiKey = (typeof data.geminiApiKey === 'string' && data.geminiApiKey) ? data.geminiApiKey : null;
           _inspectorGeminiModel = (typeof data.geminiModel === 'string' && data.geminiModel) ? data.geminiModel : null;
+          _inspectorYahooAppId = (typeof data.yahooAppId === 'string' && data.yahooAppId) ? data.yahooAppId : null;
           _inspectorLang = (typeof data.lang === 'string' && data.lang) ? data.lang : 'auto';
           sendConfig();
         } else if (data.action === 'lang') {
@@ -540,7 +647,7 @@ const html: string = `
   var TOOL_DECLS = [{ functionDeclarations: [
     { name:'getCamera', description:'Get the current camera position/orientation', parameters:{ type:'OBJECT', properties:{} } },
     { name:'flyTo', description:'Fly the camera to a location. lat/lng in degrees, height in meters, heading/pitch in degrees (-90 = straight down). Omit height/heading/pitch to keep current values.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'}, duration:{type:'NUMBER', description:'flight seconds'} }, required:['lat','lng'] } },
-    { name:'searchLocation', description:'Search for a place or address by keyword (Japan GSI geocoding). Returns candidate names with lat/lng — call flyTo afterwards to move.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, limit:{type:'NUMBER'} }, required:['query'] } },
+    { name:'searchLocation', description:'Search for a place or address by keyword (Japan GSI geocoding by default; provider "yahoo" uses Yahoo Local Search, "auto" tries Yahoo then GSI). Returns candidate names with lat/lng — call flyTo afterwards to move.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, limit:{type:'NUMBER'}, provider:{type:'STRING', description:'gsi (default) | yahoo | auto'} }, required:['query'] } },
     { name:'listLayers', description:'List map layers (id, title, type, visible)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'setLayerVisible', description:'Show or hide a layer by title or id', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'}, visible:{type:'BOOLEAN'} }, required:['layer','visible'] } },
     { name:'focusLayer', description:'Fly the camera to a layer extent', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'} }, required:['layer'] } },
@@ -561,10 +668,28 @@ const html: string = `
     { name:'flyToFeature', description:'Fly to a vector feature whose attribute matches a value (optionally within a named layer)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'} }, required:['attribute','value'] } },
     { name:'captureView', description:'Capture a screenshot of the current map view', parameters:{ type:'OBJECT', properties:{} } },
     { name:'getShareUrl', description:'Get a permalink query string (?lat=...&lng=...) for the current view', parameters:{ type:'OBJECT', properties:{} } },
-    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, removeLayer, searchLocation, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, captureView, flyToFeature, playFlyPath, stopFly, openStreetView, getShareUrl. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
+    { name:'setCamera', description:'Instantly place the camera (no animation). lat/lng in degrees, height in meters, heading/pitch/roll in degrees.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'}, roll:{type:'NUMBER'} }, required:['lat','lng'] } },
+    { name:'lookAt', description:'Aim the camera at a target point. range = distance in meters, instant = no animation.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'}, range:{type:'NUMBER'}, duration:{type:'NUMBER'}, instant:{type:'BOOLEAN'} }, required:['lat','lng'] } },
+    { name:'zoomIn', description:'Zoom in by a factor (default 2)', parameters:{ type:'OBJECT', properties:{ amount:{type:'NUMBER'} } } },
+    { name:'zoomOut', description:'Zoom out by a factor (default 2)', parameters:{ type:'OBJECT', properties:{ amount:{type:'NUMBER'} } } },
+    { name:'openUrl', description:'Open a URL in a new browser tab (e.g. Google Maps or Google Earth links). May be popup-blocked; the URL is returned so it can be shown as a link instead.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'} }, required:['url'] } },
+    { name:'flyToCurrentLocation', description:'Fly to the user\'s current geolocation (browser permission required)', parameters:{ type:'OBJECT', properties:{} } },
+    { name:'flyToUrl', description:'Parse a shared map URL or a "?lat=..&lng=.." query string and fly the camera there', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'} }, required:['url'] } },
+    { name:'createFlyPath', description:'Create a named fly route from coordinates [[lng,lat,(height)],...]. Saved as a drawn route and playable via playFlyPath.', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, coordinates:{type:'ARRAY', items:{type:'ARRAY', items:{type:'NUMBER'}}}, speed:{type:'NUMBER'}, height:{type:'NUMBER'}, pitch:{type:'NUMBER'}, loop:{type:'BOOLEAN'}, view:{type:'STRING'} }, required:['name','coordinates'] } },
+    { name:'deleteFlyPath', description:'Delete a drawn fly route by name (inspector-defined routes cannot be deleted)', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'} }, required:['name'] } },
+    { name:'showPanel', description:'Open a panel in the Layers widget. panel: layers|legend|search|attr|cams|display|info|fly|share|manage', parameters:{ type:'OBJECT', properties:{ panel:{type:'STRING'} }, required:['panel'] } },
+    { name:'showInfo', description:'Load a URL into the Info tab iframe and open the tab. Without url, opens the current Info tab.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'} } } },
+    { name:'listLegends', description:'List legend images defined in the plugin inspector', parameters:{ type:'OBJECT', properties:{} } },
+    { name:'showFeatureAttributes', description:'Display a vector feature\'s attributes in the Attr panel and fly to it (set fly:false to only show the panel)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'}, fly:{type:'BOOLEAN'} }, required:['attribute','value'] } },
+    { name:'getInspectorText', description:'Get the plugin inspector settings text (layers, cams, routes, basemaps, legends etc.)', parameters:{ type:'OBJECT', properties:{} } },
+    { name:'applyInspectorText', description:'Replace the plugin inspector settings text and apply it. Read the current text with getInspectorText first, then modify only the needed lines.', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
+    { name:'setDepthTest', description:'Enable or disable depth test against terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
+    { name:'setGeojsonDrape', description:'Set how GeoJSON layers drape: 3dtiles | terrain | both', parameters:{ type:'OBJECT', properties:{ classification:{type:'STRING'} }, required:['classification'] } },
+    { name:'setBackground', description:'Set the globe/scene background color as #rgb, #rrggbb or #rrggbbaa', parameters:{ type:'OBJECT', properties:{ color:{type:'STRING'} }, required:['color'] } },
+    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, removeLayer, searchLocation, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, listFlyPaths, openStreetView, openUrl, getShareUrl, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
 
-  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl'];
+  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','listFlyPaths','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground'];
 
   var SYSTEM_INSTRUCTION = [
     'You are an AI assistant embedded inside a Re:Earth 3D GIS map viewer (geo_suite plugin).',
@@ -601,7 +726,27 @@ const html: string = `
   function addMsg(cls, text) {
     var d = document.createElement('div');
     d.className = 'ai-msg ' + cls;
-    d.textContent = text;
+    // Linkify URLs in bot messages so openUrl/share results stay clickable
+    // even when the browser blocks popup opens.
+    if (cls === 'bot' && typeof text === 'string' && text.indexOf('http') >= 0) {
+      var parts = text.split(/(https?:\/\/[^\s<>"')]+)/g);
+      parts.forEach(function(part) {
+        if (/^https?:\/\//.test(part)) {
+          var a = document.createElement('a');
+          a.href = part;
+          a.target = '_top';
+          a.rel = 'noopener noreferrer';
+          a.textContent = part.length > 60 ? part.slice(0, 57) + '...' : part;
+          a.style.color = '#3b7bd4';
+          a.style.wordBreak = 'break-all';
+          d.appendChild(a);
+        } else if (part) {
+          d.appendChild(document.createTextNode(part));
+        }
+      });
+    } else {
+      d.textContent = text;
+    }
     msgsEl.appendChild(d);
     msgsEl.scrollTop = msgsEl.scrollHeight;
     return d;
@@ -643,7 +788,7 @@ const html: string = `
     });
   }
 
-  function toolSearchLocation(args) {
+  function toolSearchGsi(args) {
     var q = String((args && args.query) || '').trim();
     var limit = Math.max(1, Math.min(10, Number(args && args.limit) || 5));
     if (!q) return Promise.resolve({ error: 'query required' });
@@ -670,12 +815,93 @@ const html: string = `
     });
   }
 
+  function toolSearchYahoo(args) {
+    var q = String((args && args.query) || '').trim();
+    var limit = Math.max(1, Math.min(10, Number(args && args.limit) || 5));
+    if (!q) return Promise.resolve({ error: 'query required' });
+    // Same proxy as the Search tab: uses the server-side key when available,
+    // otherwise falls back to the inspector-provided yahooAppId.
+    return fetch('https://re-earth-geo-suite.vercel.app/api/yahoo-env').then(function(envRes) {
+      return (envRes && envRes.ok) ? envRes.json() : {};
+    }).catch(function() { return {}; }).then(function(envJson) {
+      var serverHasAppId = !!(envJson && envJson.hasAppId);
+      var rawId = String(window._yahooAppId || '').trim().replace(/^"+|"+$/g, '');
+      var inspectorAppId = (rawId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawId) && !/あなた/.test(rawId)) ? rawId : null;
+      if (!serverHasAppId && !inspectorAppId) return { error: 'yahooAppId not set (inspector) and no server key' };
+      var url = 'https://re-earth-geo-suite.vercel.app/api/yahoo-search?query=' + encodeURIComponent(q) + (serverHasAppId ? '' : ('&appid=' + encodeURIComponent(inspectorAppId || '')));
+      return fetch(url).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function(data) {
+        var features = (data && data.Feature) ? data.Feature : [];
+        var out = features.slice(0, limit).map(function(f) {
+          var coords = (f && f.Geometry && f.Geometry.Coordinates) ? String(f.Geometry.Coordinates).split(',') : null;
+          var lng = coords && coords.length > 0 ? Number(coords[0]) : null;
+          var lat = coords && coords.length > 1 ? Number(coords[1]) : null;
+          return {
+            name: (f && (f.Name || f.name) || (f && f.Property && f.Property.Title) || ''),
+            address: (f && f.Property && f.Property.Address) || '',
+            lng: (typeof lng === 'number' && isFinite(lng)) ? lng : null,
+            lat: (typeof lat === 'number' && isFinite(lat)) ? lat : null
+          };
+        }).filter(function(it) { return it.lat !== null && it.lng !== null; });
+        return { results: out, provider: 'yahoo' };
+      }).catch(function(e) {
+        return { error: 'yahoo search failed: ' + String(e && e.message || e) };
+      });
+    });
+  }
+
+  function toolSearchLocation(args) {
+    var provider = String((args && args.provider) || 'gsi').toLowerCase();
+    if (provider === 'yahoo') return toolSearchYahoo(args);
+    if (provider === 'auto') {
+      return toolSearchYahoo(args).then(function(r) {
+        return (r && r.results && r.results.length) ? r : toolSearchGsi(args);
+      });
+    }
+    return toolSearchGsi(args);
+  }
+
+  function toolFlyToCurrentLocation() {
+    return new Promise(function(resolve) {
+      if (!navigator.geolocation) { resolve({ error: 'geolocation unavailable in this context' }); return; }
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        callHostTool('flyTo', { lat: pos.coords.latitude, lng: pos.coords.longitude, height: 2000 }).then(function(r) {
+          if (r && !r.error) r.accuracy = pos.coords.accuracy;
+          resolve(r);
+        });
+      }, function(err) {
+        resolve({ error: 'geolocation failed: ' + String(err && err.message || err) });
+      }, { timeout: 10000, enableHighAccuracy: false });
+    });
+  }
+
+  function toolFlyToUrl(args) {
+    var raw = String((args && args.url) || '').trim();
+    if (!raw) return Promise.resolve({ error: 'url required' });
+    var q = raw.indexOf('?') >= 0 ? raw.slice(raw.indexOf('?')) : raw;
+    var m = {};
+    try { q.replace(/[?&#]([a-zA-Z_][a-zA-Z0-9_]*)=([^&#]*)/g, function(_, k, v) { try { m[k.toLowerCase()] = decodeURIComponent(v); } catch (e) { m[k.toLowerCase()] = v; } return ''; }); } catch (e) {}
+    var lat = parseFloat(m.lat);
+    var lng = parseFloat(m.lng !== undefined ? m.lng : m.lon);
+    if (!isFinite(lat) || !isFinite(lng)) return Promise.resolve({ error: 'no lat/lng found in url' });
+    var fargs = { lat: lat, lng: lng };
+    ['height', 'heading', 'pitch'].forEach(function(k) {
+      var v = parseFloat(m[k]);
+      if (isFinite(v)) fargs[k] = v;
+    });
+    return callHostTool('flyTo', fargs);
+  }
+
   function makeApi() {
     var api = {};
     API_METHODS.forEach(function(n) {
       api[n] = function(args) { return callHostTool(n, args || {}); };
     });
     api.searchLocation = function(a) { return toolSearchLocation(typeof a === 'string' ? { query: a } : a); };
+    api.flyToUrl = function(a) { return toolFlyToUrl(typeof a === 'string' ? { url: a } : a); };
+    api.flyToCurrentLocation = function() { return toolFlyToCurrentLocation(); };
     return api;
   }
 
@@ -708,6 +934,8 @@ const html: string = `
 
   function executeTool(name, args) {
     if (name === 'searchLocation') return toolSearchLocation(args);
+    if (name === 'flyToUrl') return toolFlyToUrl(args);
+    if (name === 'flyToCurrentLocation') return toolFlyToCurrentLocation();
     if (name === 'runCode') return toolRunCode(args);
     return callHostTool(name, args);
   }
@@ -841,6 +1069,7 @@ const html: string = `
         _apiKey = (typeof msg.apiKey === 'string') ? msg.apiKey : '';
         _keySource = msg.keySource || 'none';
         if (typeof msg.model === 'string' && msg.model) _model = msg.model;
+        window._yahooAppId = (typeof msg.yahooAppId === 'string') ? msg.yahooAppId : '';
         if (_keySource !== 'inspector') keyInput.value = _apiKey;
         modelInput.value = _model;
         updateKeyStatus();

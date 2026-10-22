@@ -1703,6 +1703,7 @@ function getUI() {
         const actionBtns = document.querySelectorAll('.tab-bar .action-btn');
         const _panelIds = ['layers-panel','legend-panel','search-panel','cams-panel','info-panel','share-panel','fly-panel','settings-panel','attr-panel','manage-panel'];
         const activatePanel = (target) => {
+          try { window._activeTabId = target; } catch (e) {}
           _panelIds.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -2235,6 +2236,15 @@ function getUI() {
                   } catch (e) {}
                 } else if (msg.action === 'aiFlyStop') {
                   try { flyStopAll(false); } catch (e) {}
+                } else if (msg.action === 'aiLayerState') {
+                  // Sync a layer checkbox after an ai-chat setLayerVisible call
+                  try {
+                    const cb = document.querySelector('input.layer-checkbox[data-layer-id="' + msg.id + '"], input.group-checkbox[data-layer-id="' + msg.id + '"]');
+                    if (cb) cb.checked = !!msg.visible;
+                  } catch (e) {}
+                } else if (msg.action === 'flyRemoveDrawn') {
+                  // Drop a deleted drawn route from the FLY tab select (ai-chat deleteFlyPath)
+                  try { flyRemoveDrawnOption(msg.name); } catch (e) {}
                 }
               } catch (e) {}
             });
@@ -5606,7 +5616,8 @@ try {
                 action: 'aiConfig',
                 lang: _inspectorLang || 'auto',
                 geminiApiKey: _inspectorGeminiApiKey || '',
-                geminiModel: _inspectorGeminiModel || ''
+                geminiModel: _inspectorGeminiModel || '',
+                yahooAppId: _inspectorYahooAppId || ''
               });
             } catch (e) {}
           }
@@ -5869,6 +5880,62 @@ function aiToolReply(senderId, reqId, ok, result) {
   } catch (e) {}
 }
 
+// Resolve a layer by id or (partial, case-insensitive) title — ai-chat tools.
+function aiFindLayer(ref) {
+  try {
+    if (ref === undefined || ref === null) return null;
+    const raw = (reearth && reearth.layers && reearth.layers.layers);
+    const all = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+    const r = String(ref);
+    let l = all.find(x => x && x.id === r);
+    if (l) return l;
+    const rl = r.toLowerCase();
+    l = all.find(x => x && String(x.title || '').toLowerCase() === rl);
+    if (l) return l;
+    l = all.find(x => x && String(x.title || '').toLowerCase().indexOf(rl) >= 0);
+    return l || null;
+  } catch (e) { return null; }
+}
+
+// Locate a vector feature by attribute/value inside the feature index.
+// Returns { lat, lng, attr, val, src } or null (mirrors the flyToFeature logic).
+function aiFindFeature(idx, layerId, attr, val) {
+  try {
+    const src = (layerId === '__all__') ? idx.all : (idx.layers ? idx.layers[layerId] : null);
+    if (!src || !src.featureByAttr) return null;
+    let hit = (src.featureByAttr[attr] || {})[val] || null;
+    let hitAttr = attr, hitVal = val;
+    if (!hit) {
+      const attrs = Object.keys(src.featureByAttr);
+      const ak = attrs.find(a => a.toLowerCase() === attr.toLowerCase())
+        || attrs.find(a => a.toLowerCase().indexOf(attr.toLowerCase()) >= 0);
+      if (ak) {
+        const vals = Object.keys(src.featureByAttr[ak] || {});
+        const vk = vals.find(v => v === val)
+          || vals.find(v => v.toLowerCase() === val.toLowerCase())
+          || vals.find(v => v.toLowerCase().indexOf(val.toLowerCase()) >= 0);
+        if (vk) { hit = src.featureByAttr[ak][vk]; hitAttr = ak; hitVal = vk; }
+      }
+    }
+    if (!hit || hit.lat == null || hit.lng == null) return null;
+    return { lat: hit.lat, lng: hit.lng, attr: hitAttr, val: hitVal, src: src };
+  } catch (e) { return null; }
+}
+
+// Rebuild the full property map for an index row matching attr/value.
+function aiFeatureProps(src, attr, val) {
+  try {
+    if (!src || !src.attributes || !src.rows) return null;
+    const ai = src.attributes.indexOf(attr);
+    if (ai < 0) return null;
+    const row = src.rows.find(r => r && r.values && r.values[ai] === val);
+    if (!row) return null;
+    const props = {};
+    src.attributes.forEach((a, i) => { props[a] = row.values[i]; });
+    return props;
+  } catch (e) { return null; }
+}
+
 // Execute tools delegated by the ai-chat widget. These all depend on state
 // owned by this widget (inspector text, camera presets, fly routes, vector index).
 function handleAiToolRequest(senderId, data) {
@@ -5940,6 +6007,7 @@ function handleAiToolRequest(senderId, data) {
           globe: { depthTestAgainstTerrain: en, baseColor: bg },
           scene: { backgroundColor: bg },
         });
+        try { postToUI({ action: 'terrainState', enabled: en }); } catch (e) {}
         aiToolReply(senderId, reqId, true, { enabled: en });
         return;
       }
@@ -5950,6 +6018,7 @@ function handleAiToolRequest(senderId, data) {
           scene: { shadow: { enabled: en }, backgroundColor: bg },
           globe: { baseColor: bg },
         });
+        try { postToUI({ action: 'shadowState', enabled: en }); } catch (e) {}
         aiToolReply(senderId, reqId, true, { enabled: en });
         return;
       }
@@ -5995,6 +6064,209 @@ function handleAiToolRequest(senderId, data) {
         flyToAndNotify(hit.lat, hit.lng, { addMarker: false })
           .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { lat: hit.lat, lng: hit.lng }))
           .catch(e => fail(String(e)));
+        return;
+      }
+      case 'setLayerVisible': {
+        const l = aiFindLayer(args.layer);
+        if (!l || !l.id) { fail('layer not found: ' + args.layer); return; }
+        const vis = !!args.visible;
+        const ok = setLayerVisibility(l.id, vis, false);
+        // Keep the layer-list checkboxes in sync without a full re-render.
+        try { postToUI({ action: 'aiLayerState', id: l.id, visible: vis }); } catch (e) {}
+        aiToolReply(senderId, reqId, ok, { id: l.id, title: l.title, visible: vis });
+        return;
+      }
+      case 'addGeoJsonLayer':
+      case 'addTileLayer':
+      case 'add3dTilesLayer': {
+        const type = (name === 'addTileLayer') ? 'tiles' : (name === 'add3dTilesLayer' ? '3dtiles' : 'geojson');
+        const url = String(args.url || '').trim();
+        if (!/^https?:\/\//i.test(url) && !/^data:/i.test(url)) { fail('url must be http(s) or data:'); return; }
+        const zoom = {
+          min: isFinite(Number(args.minLevel)) ? Number(args.minLevel) : null,
+          max: isFinite(Number(args.maxLevel)) ? Number(args.maxLevel) : null
+        };
+        // addXyzLayer registers the id as plugin-added and re-renders the UI.
+        const newId = addXyzLayer(url, String(args.title || ''), type, false, args.visible !== false, zoom);
+        if (!newId) { fail('layers.add failed'); return; }
+        aiToolReply(senderId, reqId, true, { id: newId, title: String(args.title || url) });
+        return;
+      }
+      case 'removeLayer': {
+        const l = aiFindLayer(args._layerId || args.layer);
+        if (!l || !l.id) { fail('layer not found: ' + args.layer); return; }
+        try {
+          if (typeof reearth.layers.delete === 'function') reearth.layers.delete(l.id);
+          else if (typeof reearth.layers.remove === 'function') reearth.layers.remove(l.id);
+          else { fail('layers.delete unavailable'); return; }
+          try { _pluginAddedLayerIds.delete(l.id); } catch (e) {}
+          try { const gi = _pluginAddedGeojsonLayerIds.indexOf(l.id); if (gi >= 0) _pluginAddedGeojsonLayerIds.splice(gi, 1); } catch (e) {}
+          try { safeShowUI('aiToolRequest:removeLayer'); } catch (e) {}
+          aiToolReply(senderId, reqId, true, { id: l.id, title: l.title });
+        } catch (e) { fail(String(e)); }
+        return;
+      }
+      case 'createFlyPath': {
+        const nm = String(args.name || '').trim();
+        if (!nm) { fail('name required'); return; }
+        if (_flyDrawnRouteNames.indexOf(nm) >= 0 || (_flyRoutes || []).some(r => String(r.title) === nm)) {
+          fail('route name already exists: ' + nm); return;
+        }
+        let coords = args.coordinates;
+        if (!Array.isArray(coords)) { fail('coordinates must be an array of [lng,lat,(height)]'); return; }
+        coords = coords
+          .map(c => (Array.isArray(c) && c.length >= 2 && isFinite(Number(c[0])) && isFinite(Number(c[1]))) ? c.slice(0, 3).map(Number) : null)
+          .filter(c => c);
+        if (coords.length < 2) { fail('at least 2 valid coordinates required'); return; }
+        const props = { source: 'ai' };
+        ['speed', 'height', 'pitch'].forEach(k => { if (isFinite(Number(args[k]))) props[k] = Number(args[k]); });
+        if (args.loop !== undefined) props.loop = !!args.loop;
+        if (typeof args.view === 'string' && args.view) props.view = args.view;
+        const g = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: coords } }] };
+        try {
+          if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+            reearth.data.clientStorage.setAsync(FLY_ROUTE_STORAGE_PREFIX + nm, g);
+          } else { fail('clientStorage unavailable'); return; }
+        } catch (e) { fail('storage failed: ' + String(e)); return; }
+        _flyDrawnRouteNames.push(nm);
+        // Re-send drawn names so the route appears in the FLY tab select.
+        try { flyPostInit(); } catch (e) {}
+        aiToolReply(senderId, reqId, true, { name: nm, points: coords.length });
+        return;
+      }
+      case 'deleteFlyPath': {
+        const nm = String(args.name || '');
+        const i = (_flyDrawnRouteNames || []).findIndex(d => String(d).toLowerCase() === nm.toLowerCase());
+        if (i < 0) { fail('drawn route not found: ' + args.name); return; }
+        const real = _flyDrawnRouteNames[i];
+        try {
+          if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.deleteAsync === 'function') {
+            reearth.data.clientStorage.deleteAsync(FLY_ROUTE_STORAGE_PREFIX + real);
+          }
+        } catch (e) {}
+        _flyDrawnRouteNames.splice(i, 1);
+        try { postToUI({ action: 'flyRemoveDrawn', name: real }); } catch (e) {}
+        aiToolReply(senderId, reqId, true, { deleted: real });
+        return;
+      }
+      case 'showPanel': {
+        const panelMap = {
+          layers: 'layers-panel', legend: 'legend-panel', search: 'search-panel',
+          attr: 'attr-panel', cams: 'cams-panel', display: 'settings-panel',
+          settings: 'settings-panel', info: 'info-panel', fly: 'fly-panel',
+          share: 'share-panel', manage: 'manage-panel'
+        };
+        const key = String(args.panel || '').toLowerCase().trim();
+        const panelId = panelMap[key];
+        if (!panelId) { fail('unknown panel: ' + args.panel + ' (layers|legend|search|attr|cams|display|info|fly|share|manage)'); return; }
+        postToUI({ action: 'activateTab', tab: panelId });
+        aiToolReply(senderId, reqId, true, { panel: key });
+        return;
+      }
+      case 'showInfo': {
+        const url = (typeof args.url === 'string') ? args.url.trim() : '';
+        if (url) {
+          if (!/^https?:\/\//i.test(url)) { fail('url must be http(s)'); return; }
+          try { _lastInfoUrl = url; loadInfoUrl(url); } catch (e) {}
+        } else if (_lastInfoUrl) {
+          try { loadInfoUrl(_lastInfoUrl); } catch (e) {}
+        }
+        postToUI({ action: 'activateTab', tab: 'info-panel' });
+        aiToolReply(senderId, reqId, true, { url: url || _lastInfoUrl || null });
+        return;
+      }
+      case 'listLegends':
+        aiToolReply(senderId, reqId, true, (_inspectorLegendItems || []).map(it => ({ group: it.group || 'Default', url: it.url })));
+        return;
+      case 'showFeatureAttributes': {
+        if (!_vectorFeatureIndex) {
+          try { buildVectorFeatureIndexFromLayers(); } catch (e) {}
+        }
+        const idx = _vectorFeatureIndex;
+        if (!idx) { fail('vector index unavailable'); return; }
+        let layerId = '__all__';
+        if (args.layer) {
+          const n = String(args.layer).toLowerCase();
+          const opt = (idx.layerOptions || []).find(o => String(o.title).toLowerCase() === n)
+            || (idx.layerOptions || []).find(o => String(o.title).toLowerCase().indexOf(n) >= 0);
+          if (!opt) { fail('layer not found: ' + args.layer); return; }
+          layerId = opt.id;
+        }
+        const attr = String(args.attribute || '');
+        const val = String(args.value === undefined || args.value === null ? '' : args.value);
+        const hit = aiFindFeature(idx, layerId, attr, val);
+        if (!hit) { fail('feature not found'); return; }
+        const props = aiFeatureProps(hit.src, hit.attr, hit.val) || { [hit.attr]: hit.val };
+        // Reuse the Attr panel's featureSelected flow (auto-opens the Attr tab).
+        try {
+          postToUI({
+            action: 'featureSelected',
+            properties: props,
+            layerId: (layerId !== '__all__') ? layerId : 'ai',
+            featureId: 'ai-feature',
+            attrUrlOpen: _inspectorAttrUrlOpen
+          });
+        } catch (e) {}
+        if (args.fly === false) {
+          aiToolReply(senderId, reqId, true, { properties: props, lat: hit.lat, lng: hit.lng });
+        } else {
+          flyToAndNotify(hit.lat, hit.lng, { addMarker: false })
+            .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { properties: props, lat: hit.lat, lng: hit.lng }))
+            .catch(e => fail(String(e)));
+        }
+        return;
+      }
+      case 'getInspectorText': {
+        let text = '';
+        try {
+          const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+          text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText || '';
+        } catch (e) {}
+        aiToolReply(senderId, reqId, true, { text: (typeof text === 'string') ? text : '' });
+        return;
+      }
+      case 'applyInspectorText': {
+        const newText = (typeof args.text === 'string') ? args.text : '';
+        try {
+          if (reearth.extension && reearth.extension.widget && typeof reearth.extension.widget.setPropertyValue === 'function') {
+            reearth.extension.widget.setPropertyValue('settings', 'inspectorText', newText);
+          }
+          // Skip re-processing the text we just wrote via the inspector poll.
+          _lastInspectorLayersJson = newText;
+          processInspectorText(newText);
+          try { postToUI({ action: 'manageTextApplied' }); } catch (e) {}
+          aiToolReply(senderId, reqId, true, { applied: true });
+        } catch (e) { fail(String(e)); }
+        return;
+      }
+      case 'setDepthTest': {
+        const en = !!args.enabled;
+        const bg = _lastInspectorBackground || '#ffffff';
+        reearth.viewer.overrideProperty({
+          globe: { depthTestAgainstTerrain: en, baseColor: bg },
+        });
+        try { postToUI({ action: 'depthTestState', enabled: en }); } catch (e) {}
+        aiToolReply(senderId, reqId, true, { enabled: en });
+        return;
+      }
+      case 'setGeojsonDrape': {
+        const next = normalizeClassification(args.classification);
+        if (!next) { fail('invalid classification (3dtiles|terrain|both)'); return; }
+        _geojsonClassification = next;
+        try { applyGeojsonDrapeToAll(); } catch (e) {}
+        try { postToUI({ action: 'geojsonDrapeState', classification: next }); } catch (e) {}
+        aiToolReply(senderId, reqId, true, { classification: next });
+        return;
+      }
+      case 'setBackground': {
+        const col = String(args.color || '').trim();
+        if (!/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(col)) { fail('color must be #rgb, #rrggbb or #rrggbbaa'); return; }
+        _lastInspectorBackground = col;
+        reearth.viewer.overrideProperty({
+          globe: { baseColor: col },
+          scene: { backgroundColor: col },
+        });
+        aiToolReply(senderId, reqId, true, { color: col });
         return;
       }
       default:
