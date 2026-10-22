@@ -1,6 +1,7 @@
 # Changelog
 
-## v18.5.0
+## v19.0.0
+- メジャーリリース: AI 対応（Gemini function calling による AI チャット + AI からの全機能操作）および AI による完全自動開発環境の確立を以て V19 とします（v18.5.0 として展開した内容を統合）。
 - 新機能: AI Chat がプラグインの全機能を操作できるようになりました。Gemini function calling のツールを大幅に拡張しています。
     - カメラ/ナビゲーション: `setCamera`（`camera.setView` で即時配置）、`lookAt`（注目点への向き変更、半径 `radius` 必須のため付与）、`zoomIn`/`zoomOut`（Navigation Toolbar 相当）、`flyToCurrentLocation`（ジオロケーション→飛行）、`flyToUrl`（共有 URL/`?lat=..` クエリ解析→飛行）。
     - FLY: `createFlyPath`（座標列から描画ルートを `flyRoute:` ストレージへ作成→即再生可能）、`deleteFlyPath`（描画ルート削除+UI 選択肢から除去）。
