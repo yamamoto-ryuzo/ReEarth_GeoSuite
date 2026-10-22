@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "19.0.1"
+version: "19.1.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Fly ルート飛行、Street View 連携、Terrain/Shadow トグル、Info 表示、Google Earth 連携、AI チャット（Gemini function calling）を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -27,7 +27,7 @@ extensions:
                 属性パネルのURLクリック動作は attrUrlOpen: panel|newtab で設定できます（openUrlInNewTab: true も newtab として有効です）。
                 UI言語は lang: en|ja|zh-CN|zh-TW|ko|es|fr|de|it|pt|ru|nl|pl|uk|tr|ar|hi|id|th|vi で固定できます（lang: auto または未指定でブラウザ言語を自動検出。未対応言語は英語にフォールバック）。
                 飛行ルートは fly_geojson: 名前 | GeoJSON URL または route:名前 | speed=30 | height=0 | pitch=-10 | loop=true | view=camera で定義できます（FLY タブの「描画」で地図上にルートを描くこともできます）。
-                AI チャットは geminiApiKey: あなたのGemini APIキー と geminiModel: モデル名（省略可）で設定できます。キーは公開サイトに置くと漏洩する可能性があります。
+                AI チャットは geminiApiKey: あなたのGemini APIキー と geminiModel: モデル名（省略可）で設定できます。キーは公開サイトに置くと漏洩する可能性があります。サイト側で GEMINI_API_KEY 環境変数が設定されていれば /api/gemini プロキシ経由となりキー不要です。
               type: string
               ui: multiline
               defaultValue: |

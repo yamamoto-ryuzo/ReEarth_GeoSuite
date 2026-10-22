@@ -107,6 +107,9 @@ let _inspectorGeminiModel: string | null = null;
 let _inspectorYahooAppId: string | null = null;
 let _inspectorLang = 'auto';
 
+// Session-only key: kept in extension memory, never written to clientStorage.
+let _sessionGeminiApiKey: string | null = null;
+
 const AI_STORAGE_KEY = 'geminiApiKey';
 const AI_STORAGE_MODEL = 'geminiModel';
 const AI_DEFAULT_MODEL = 'gemini-3.1-flash-lite';
@@ -120,13 +123,13 @@ async function sendConfig(): Promise<void> {
       storedModel = await reearth.data.clientStorage.getAsync(AI_STORAGE_MODEL);
     }
   } catch (e) {}
-  const key = _inspectorGeminiApiKey || (typeof storedKey === 'string' ? storedKey : '');
+  const key = _inspectorGeminiApiKey || _sessionGeminiApiKey || (typeof storedKey === 'string' ? storedKey : '');
   const model = _inspectorGeminiModel || (typeof storedModel === 'string' && storedModel ? storedModel : AI_DEFAULT_MODEL);
   postToUI({
     action: 'aiConfig',
     apiKey: key,
     hasKey: !!key,
-    keySource: _inspectorGeminiApiKey ? 'inspector' : (storedKey ? 'storage' : 'none'),
+    keySource: _inspectorGeminiApiKey ? 'inspector' : (_sessionGeminiApiKey ? 'session' : (storedKey ? 'storage' : 'none')),
     model: model,
     yahooAppId: _inspectorYahooAppId || '',
     lang: _inspectorLang || 'auto'
@@ -464,8 +467,17 @@ try {
         } else if (msg.action === 'aiSetApiKey') {
           const key = (typeof msg.key === 'string') ? msg.key.trim() : '';
           try {
-            if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
-              reearth.data.clientStorage.setAsync(AI_STORAGE_KEY, key);
+            if (msg.persist === false) {
+              // Session-only: keep in extension memory, clear any persisted copy.
+              _sessionGeminiApiKey = key || null;
+              if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+                reearth.data.clientStorage.setAsync(AI_STORAGE_KEY, '');
+              }
+            } else {
+              _sessionGeminiApiKey = null;
+              if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+                reearth.data.clientStorage.setAsync(AI_STORAGE_KEY, key);
+              }
             }
           } catch (e) {}
           sendConfig();
@@ -548,6 +560,7 @@ const html: string = `
   .ai-settings button { border:1px solid #3b7bd4; background:#3b7bd4; color:#fff; border-radius:4px; padding:5px 12px; cursor:pointer; font-size:1em; }
   .ai-key-status { color:#a64; font-size:0.9em; }
   .ai-key-status.ok { color:#4a4; }
+  .ai-key-warn { color:#a33; font-size:0.82em; line-height:1.35; }
   .ai-wrap.minimized .ai-msgs,
   .ai-wrap.minimized .ai-form,
   .ai-wrap.minimized .ai-settings { display:none !important; }
@@ -565,7 +578,9 @@ const html: string = `
     <input id="ai-key" type="password" autocomplete="off" data-i18n-ph="apiKeyPh" placeholder="AIza...">
     <label data-i18n="model">Model</label>
     <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite">
+    <div class="row"><label style="font-weight:400;display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;"><input id="ai-remember" type="checkbox" style="width:auto;margin:0;"><span data-i18n="remember">Save key on this browser</span></label></div>
     <div class="row"><button id="ai-save" data-i18n="save">Save</button><span id="ai-save-msg" style="color:#4a4;"></span></div>
+    <div class="ai-key-warn" data-i18n="keyWarn">Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.</div>
   </div>
   <form id="ai-form" class="ai-form">
     <input id="ai-input" data-i18n-ph="inputPh" placeholder="Ask about the map..." autocomplete="off">
@@ -576,26 +591,26 @@ const html: string = `
 (function(){
   // --- i18n (English base; missing keys fall back to en) ---
   var GEO_I18N = {
-    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)' },
-    ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）' },
-    'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）' },
-    'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）' },
-    ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)' },
-    es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)' },
-    fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)' },
-    de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)' },
-    it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)' },
-    pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)' },
-    ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)' },
-    nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)' },
-    pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)' },
-    uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)' },
-    tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)' },
-    ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)' },
-    hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)' },
-    id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)' },
-    th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)' },
-    vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)' }
+    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser' },
+    ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存' },
+    'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥' },
+    'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰' },
+    ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장' },
+    es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador' },
+    fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur' },
+    de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern' },
+    it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser' },
+    pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador' },
+    ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере' },
+    nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser' },
+    pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce' },
+    uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері' },
+    tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet' },
+    ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح' },
+    hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें' },
+    id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini' },
+    th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้' },
+    vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này' }
   };
   (function(){
     var M = {
@@ -708,6 +723,7 @@ const html: string = `
   var settingsPanel = document.getElementById('ai-settings');
   var keyInput = document.getElementById('ai-key');
   var modelInput = document.getElementById('ai-model');
+  var rememberEl = document.getElementById('ai-remember');
   var keyStatus = document.getElementById('ai-key-status');
   var saveMsg = document.getElementById('ai-save-msg');
 
@@ -764,8 +780,11 @@ const html: string = `
 
   function updateKeyStatus() {
     try {
-      keyStatus.textContent = _apiKey ? t('keySet') : t('noKeySet');
-      keyStatus.className = 'ai-key-status' + (_apiKey ? ' ok' : '');
+      var hasAny = !!(_apiKey || _serverHasKey);
+      keyStatus.textContent = hasAny ? t('keySet') : t('noKeySet');
+      keyStatus.className = 'ai-key-status' + (hasAny ? ' ok' : '');
+      var warnEl = document.querySelector('.ai-key-warn');
+      if (warnEl) warnEl.style.display = (_serverHasKey && !_apiKey) ? 'none' : '';
     } catch (e) {}
   }
 
@@ -948,25 +967,68 @@ const html: string = `
     while (_history.length > MAX) _history.shift();
   }
 
-  function callGemini() {
-    var endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(_model) + ':generateContent?key=' + encodeURIComponent(_apiKey);
-    var maxSteps = 8;
-    var step = 0;
-    function next() {
-      trimHistory();
-      return fetch(endpoint, {
+  // When the hosting site provides a server-side key (GEMINI_API_KEY env on
+  // the Vercel deployment), prefer /api/gemini so no key ever reaches the
+  // browser. Otherwise fall back to the visitor's own key via a direct call.
+  var PROXY_BASE = 'https://re-earth-geo-suite.vercel.app';
+  var _serverKeyChecked = false;
+  var _serverHasKey = false;
+  function probeServerKey() {
+    _serverKeyChecked = true;
+    return fetch(PROXY_BASE + '/api/gemini-env').then(function(res) {
+      return res.ok ? res.json() : {};
+    }).then(function(j) {
+      _serverHasKey = !!(j && j.hasKey);
+      return _serverHasKey;
+    }).catch(function() {
+      _serverHasKey = false;
+      return false;
+    });
+  }
+  function ensureServerKey() {
+    return _serverKeyChecked ? Promise.resolve(_serverHasKey) : probeServerKey();
+  }
+
+  function postGemini(bodyObj) {
+    if (_serverHasKey) {
+      return fetch(PROXY_BASE + '/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-          contents: _history,
-          tools: TOOL_DECLS
-        })
+        body: JSON.stringify({ model: _model, request: bodyObj })
       }).then(function(res) {
         return res.json().then(function(data) {
           if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
           return data;
         });
+      }).catch(function(e) {
+        // Proxy failed (network or quota) — retry once against Google directly
+        // when the visitor has a key of their own.
+        if (_apiKey) { _serverHasKey = false; return postGemini(bodyObj); }
+        throw e;
+      });
+    }
+    var endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(_model) + ':generateContent?key=' + encodeURIComponent(_apiKey);
+    return fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyObj)
+    }).then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+        return data;
+      });
+    });
+  }
+
+  function callGemini() {
+    var maxSteps = 8;
+    var step = 0;
+    function next() {
+      trimHistory();
+      return postGemini({
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+        contents: _history,
+        tools: TOOL_DECLS
       }).then(function(data) {
         var parts = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
         _history.push({ role: 'model', parts: parts });
@@ -1025,7 +1087,13 @@ const html: string = `
     if (!text) return;
     inputEl.value = '';
     addMsg('user', text);
-    if (!_apiKey) { addMsg('sys', t('noKey')); return; }
+    if (!_apiKey && !_serverHasKey) {
+      ensureServerKey().then(function() {
+        if (_serverHasKey || _apiKey) submit(text);
+        else addMsg('sys', t('noKey'));
+      });
+      return;
+    }
     submit(text);
   }
   form.addEventListener('submit', function(ev) { ev.preventDefault(); });
@@ -1051,7 +1119,7 @@ const html: string = `
   document.getElementById('ai-save').addEventListener('click', function(ev) {
     ev.preventDefault();
     var k = (keyInput.value || '').trim();
-    postToParent({ action: 'aiSetApiKey', key: k });
+    postToParent({ action: 'aiSetApiKey', key: k, persist: !!(rememberEl && rememberEl.checked) });
     var m = (modelInput.value || '').trim();
     if (m && m !== _model) postToParent({ action: 'aiSetModel', model: m });
     saveMsg.textContent = t('saved');
@@ -1070,6 +1138,7 @@ const html: string = `
         _keySource = msg.keySource || 'none';
         if (typeof msg.model === 'string' && msg.model) _model = msg.model;
         window._yahooAppId = (typeof msg.yahooAppId === 'string') ? msg.yahooAppId : '';
+        if (rememberEl) rememberEl.checked = (_keySource === 'storage');
         if (_keySource !== 'inspector') keyInput.value = _apiKey;
         modelInput.value = _model;
         updateKeyStatus();
@@ -1089,6 +1158,7 @@ const html: string = `
   // init
   addMsg('sys', t('welcome'));
   updateKeyStatus();
+  probeServerKey().then(function() { try { updateKeyStatus(); } catch (e) {} });
   postToParent({ action: 'aiGetConfig' });
   setTimeout(function() { postToParent({ action: 'aiGetConfig' }); }, 3000);
 })();
