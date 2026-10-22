@@ -1,5 +1,7 @@
 # Re:Earth_GeoSuite (geo_suite)プラグイン
 
+> **🤖 このプロジェクトは AI（Devin / Cognition）による完全自動開発です。** コード記述・ビルド・ブラウザでの動作検証まで AI エージェントが実施しています。詳しくは [AI 開発による自動化](#-ai-開発による自動化ローカル動作検証) を参照してください。
+
 **🌐 プロジェクトサイト**: [https://re-earth-geo-suite.vercel.app/](https://re-earth-geo-suite.vercel.app/)
 
 **📝 Changelog**: [CHANGELOG.md](CHANGELOG.md) ・ **🏪 Marketplace**: https://marketplace.reearth.io/plugins/layers-and-tiles-list
