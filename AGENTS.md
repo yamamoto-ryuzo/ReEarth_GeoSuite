@@ -41,6 +41,12 @@
 - バージョンは `package.json` と `plugin/reearth.yml` の両方に記述します。
 - `CHANGELOG.md` にもリリース内容を記載します。
 
+## 生成 HTML 内 `<script>` のエスケープ罠（重要）
+- 各拡張の UI は TS ソース内のテンプレートリテラル（`` ` ``）に `<style>…<div>…<script>…` を直書きして `reearth.ui.show(html)` で埋め込んでいます。
+- **テンプレートリテラルはバックスラッシュを 1 段食います**: ソースに `\'` `\/` `\s` と書くとランタイム HTML では `'` `/` `s` になり、inline `<script>` の文字列・正規表現リテラルを破壊します（例: `'user\'s'` → `'user's'` で全体が SyntaxError になり UI が完全に無反応になる）。
+- inline script 側に残したいエスケープは `\\'` `\\/` `\\s` のように二重に書いてください。
+- `node workbench/check_inline_scripts.js` で全拡張のランタイム script が構文チェックを通るか一括検証できます（ソースをそのまま `node --check` してもこのバグは検出できません。テンプレートリテラル評価後の文字列を検査する必要があります）。
+
 ## i18n（多言語化）
 - UI は英語ベースの i18n で多言語化されています（v18.2.0〜）。
 - `layers-and-tiles-list.ts` 先頭の `GEO_I18N` 辞書に全言語分のキーを定義し、生成 HTML の `<script>` 内へ `window._GEO_I18N` として JSON 埋め込みしています。
