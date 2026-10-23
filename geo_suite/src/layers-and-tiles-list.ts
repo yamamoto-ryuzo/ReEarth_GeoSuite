@@ -1368,6 +1368,7 @@ function getUI() {
     margin: 3px 0 0 1px;
   }
   #fly-help, #fly-status{ overflow-wrap: anywhere; }
+  #fly-play-btn.fly-dir-on, #fly-back-btn.fly-dir-on{ box-shadow: inset 0 0 0 2px #4a90d9; }
   /* Keep width:100% boxes inside the 300px panel (border/padding would overflow without border-box) */
   .primary-background textarea, .primary-background iframe{ box-sizing: border-box; max-width: 100%; }
   #time-row > div{ min-width: 0; }
@@ -1495,8 +1496,8 @@ function getUI() {
       </label>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px;">
-      <button id="fly-back-btn" class="btn-primary p-8" style="flex:1;font-size:0.85em;white-space:nowrap;" data-i18n="flyBack" data-i18n-title="flyBackHint" data-i18n-aria="flyBackHint">&#9664; Back</button>
-      <button id="fly-play-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyPlay">Play</button>
+      <button id="fly-back-btn" class="btn-primary p-8" style="flex:1;font-size:0.85em;white-space:nowrap;" aria-pressed="false" data-i18n="flyBack" data-i18n-title="flyBackHint" data-i18n-aria="flyBackHint">&#9664; Back</button>
+      <button id="fly-play-btn" class="btn-primary p-8" style="flex:1;" aria-pressed="false" data-i18n="flyPlay">Play</button>
       <button id="fly-pause-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyPause" disabled>Pause</button>
       <button id="fly-stop-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyStop" disabled>Stop</button>
       <button id="fly-reverse-btn" class="btn-primary p-8" style="flex:1;font-size:0.85em;white-space:nowrap;" data-i18n="flyReverse" disabled>Reverse</button>
@@ -2672,7 +2673,7 @@ function getUI() {
               camLng -= (Math.sin(heading) * backDistance) / (111320 * Math.cos(lat * Math.PI / 180));
             }
             flyPost({ action: 'flySetView', lat: camLat, lng: camLng, height: height, heading: heading, pitch: pitch, roll: 0 });
-            if (total > 0) flySetStatus(Math.round(dist / total * 100) + '% / ' + Math.round(total) + 'm');
+            if (total > 0) flySetStatus((fly.dir < 0 ? '◀ ' : '') + Math.round(dist / total * 100) + '% / ' + Math.round(total) + 'm');
           }
 
           function flyTick(ts) {
@@ -2698,10 +2699,24 @@ function getUI() {
 
           function flyUpdateButtons() {
             var play = document.getElementById('fly-play-btn');
+            var back = document.getElementById('fly-back-btn');
             var pause = document.getElementById('fly-pause-btn');
             var stop = document.getElementById('fly-stop-btn');
             var rev = document.getElementById('fly-reverse-btn');
-            if (play) play.disabled = fly.active && !fly.paused;
+            // Direction-aware states (sync with the map double-click toggles):
+            // the button driving the current direction is highlighted; Play
+            // stays enabled during backward playback so it can flip forward.
+            var fwdOn = fly.active && !fly.paused && fly.dir > 0;
+            var backOn = fly.active && !fly.paused && fly.dir < 0;
+            if (play) {
+              play.disabled = fwdOn;
+              play.classList.toggle('fly-dir-on', fwdOn);
+              play.setAttribute('aria-pressed', fwdOn ? 'true' : 'false');
+            }
+            if (back) {
+              back.classList.toggle('fly-dir-on', backOn);
+              back.setAttribute('aria-pressed', backOn ? 'true' : 'false');
+            }
             if (pause) { pause.disabled = !fly.active || fly.paused; }
             if (stop) stop.disabled = !fly.active && !fly.pts;
             if (rev) rev.disabled = !(fly.raw && fly.raw.length >= 2);
@@ -2816,6 +2831,7 @@ function getUI() {
             if (fly.active && !fly.paused) {
               if (fly.dir === dir) { flyPause(); return; }
               fly.dir = dir;
+              flyUpdateButtons();
               return;
             }
             if (fly.active && fly.paused) {
@@ -2880,7 +2896,7 @@ function getUI() {
               }
             });
             var flyPlayBtn = document.getElementById('fly-play-btn');
-            if (flyPlayBtn) flyPlayBtn.addEventListener('click', function() { fly.dir = 1; flyPlay(); });
+            if (flyPlayBtn) flyPlayBtn.addEventListener('click', function() { fly.dir = 1; flyPlay(); flyUpdateButtons(); });
             // ◀ Back: same backward-play toggle as the map right-double-click.
             var flyBackBtn = document.getElementById('fly-back-btn');
             if (flyBackBtn) flyBackBtn.addEventListener('click', function() { flyDblClickToggle(-1); });
