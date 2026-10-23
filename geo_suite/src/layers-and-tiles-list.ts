@@ -73,7 +73,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Speed (km/h)', flyHeightLbl: 'AGL (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'View', flyViewCam: 'Ride', flyViewCenter: 'Aerial',
     flyPreset: 'Preset', flyPresetCustom: 'Custom', flyPresetWalk: 'Walk (h2 s5 p-5)', flyPresetDrive: 'Drive (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Overview (h1000 s300 p-45)', flyReverse: 'Reverse', flyImport: 'Import',
  flyBack: '◀ Back', flyBackHint: 'Play the route backward / pause',
- flyDblHint: 'Map double-click: play/pause · right double-click: play backward',
+ flyDblHint: 'Map double-click: play/pause · right double-click: play backward · wheel: speed',
     flyShowLine: 'Show route', flyLoading: 'Loading route...', flySampling: 'Sampling terrain...', flyDone: 'Finished', flyErr: 'Failed to load route', flyNoRoute: 'No route selected',
     flyViewHint: 'Ride: camera travels on the route looking ahead. Aerial: camera tracks the moving point from behind and above.',
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = ride on the route looking ahead; center (=chase) = aerial tracking of the point from behind/above.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
@@ -102,7 +102,7 @@ const GEO_I18N = {
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '地上高 (m)', flyPitchLbl: 'ピッチ (°)', flyLoop: 'ループ', flyView: '視点', flyViewCam: '搭乗', flyViewCenter: '空撮',
     flyPreset: 'プリセット', flyPresetCustom: 'カスタム', flyPresetWalk: '徒歩 (h2 s5 p-5)', flyPresetDrive: '車載 (h2 s60 p-10)', flyPresetDrone: 'ドローン (h200 s60 p-30)', flyPresetOverview: '広域 (h1000 s300 p-45)', flyReverse: '逆転', flyImport: '取込',
  flyBack: '◀ 逆再生', flyBackHint: 'ルートを逆方向に再生/一時停止',
- flyDblHint: '地図をダブルクリック: 再生/一時停止 · 右ダブルクリック: 逆再生',
+ flyDblHint: '地図をダブルクリック: 再生/一時停止 · 右ダブルクリック: 逆再生 · ホイール: 速度',
     flyShowLine: 'ルートを表示', flyLoading: 'ルート読み込み中...', flySampling: '地形を取得中...', flyDone: '終了', flyErr: 'ルートの読み込みに失敗しました', flyNoRoute: 'ルートが選択されていません',
     flyViewHint: '搭乗: ルート上を進み前方を見る視点。空撮: 後方上空から移動点を追う視点。',
     flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=ルート上を進み前方を見る搭乗視点 / center(=chase)=後方上空から移動点を追う空撮視点。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
@@ -131,7 +131,7 @@ const GEO_I18N = {
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '离地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循环', flyView: '视角', flyViewCam: '搭乘', flyViewCenter: '航拍',
     flyPreset: '预设', flyPresetCustom: '自定义', flyPresetWalk: '步行 (h2 s5 p-5)', flyPresetDrive: '车载 (h2 s60 p-10)', flyPresetDrone: '无人机 (h200 s60 p-30)', flyPresetOverview: '广域 (h1000 s300 p-45)', flyReverse: '反转', flyImport: '导入',
  flyBack: '◀ 逆再生', flyBackHint: 'ルートを逆方向に再生/一時停止',
- flyDblHint: '地図をダブルクリック: 再生/一時停止 · 右ダブルクリック: 逆再生',
+ flyDblHint: '地図をダブルクリック: 再生/一時停止 · 右ダブルクリック: 逆再生 · ホイール: 速度',
     flyShowLine: '显示路线', flyLoading: '正在加载路线...', flySampling: '正在采样地形...', flyDone: '已完成', flyErr: '路线加载失败', flyNoRoute: '未选择路线',
     flyViewHint: '搭乘: 相机沿路线前进并朝向前方。航拍: 相机从后方上空追踪移动点。',
     flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路线前进、朝向前方的搭乘视角 / center(=chase)=从后方上空追踪移动点的航拍视角。<br>参数修改即时生效，飞行中也可调整。<br>或点击"绘制"在地图上画出折线。',
@@ -160,7 +160,7 @@ const GEO_I18N = {
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '離地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循環', flyView: '視角', flyViewCam: '搭乘', flyViewCenter: '空拍',
     flyPreset: '預設', flyPresetCustom: '自訂', flyPresetWalk: '步行 (h2 s5 p-5)', flyPresetDrive: '車載 (h2 s60 p-10)', flyPresetDrone: '無人機 (h200 s60 p-30)', flyPresetOverview: '廣域 (h1000 s300 p-45)', flyReverse: '反轉', flyImport: '匯入',
  flyBack: '◀ 逆再生', flyBackHint: 'ルートを逆方向に再生/一時停止',
- flyDblHint: '地図をダブルクリック: 再生/一時停止 · 右ダブルクリック: 逆再生',
+ flyDblHint: '地図をダブルクリック: 再生/一時停止 · 右ダブルクリック: 逆再生 · ホイール: 速度',
     flyShowLine: '顯示路線', flyLoading: '正在載入路線...', flySampling: '正在取樣地形...', flyDone: '已完成', flyErr: '路線載入失敗', flyNoRoute: '未選擇路線',
     flyViewHint: '搭乘: 相機沿路線前進並朝向前方。空拍: 相機從後方上空追蹤移動點。',
     flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路線前進、朝向前方的搭乘視角 / center(=chase)=從後方上空追蹤移動點的空拍視角。<br>參數修改即時生效，飛行中也可調整。<br>或按「繪製」在地圖上畫出折線。',
@@ -189,7 +189,7 @@ const GEO_I18N = {
     flySpeedLbl: '속도 (km/h)', flyHeightLbl: '지상고 (m)', flyPitchLbl: '피치 (°)', flyLoop: '반복', flyView: '시점', flyViewCam: '탑승', flyViewCenter: '항공',
     flyPreset: '프리셋', flyPresetCustom: '사용자 지정', flyPresetWalk: '도보 (h2 s5 p-5)', flyPresetDrive: '차량 (h2 s60 p-10)', flyPresetDrone: '드론 (h200 s60 p-30)', flyPresetOverview: '광역 (h1000 s300 p-45)', flyReverse: '반전', flyImport: '가져오기',
  flyBack: '◀ 역재생', flyBackHint: '경로를 역방향으로 재생/일시정지',
- flyDblHint: '지도 더블클릭: 재생/일시정지 · 오른쪽 더블클릭: 역재생',
+ flyDblHint: '지도 더블클릭: 재생/일시정지 · 오른쪽 더블클릭: 역재생 · 휘: 속도',
     flyShowLine: '경로 표시', flyLoading: '경로 로드 중...', flySampling: '지형 샘플링 중...', flyDone: '완료', flyErr: '경로 로드 실패', flyNoRoute: '경로가 선택되지 않았습니다',
     flyViewHint: '탑승: 경로 위를 전진하며 전방을 보는 시점. 항공: 후방 상공에서 이동 지점을 추적하는 시점.',
     flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=경로 위를 전진하며 전방을 보는 탑승 시점 / center(=chase)=후방 상공에서 이동 지점을 추적하는 항공 시점.<br>입력값은 재생 중에도 즉시 반영됩니다.<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
@@ -218,7 +218,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Velocidad (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Bucle', flyView: 'Vista', flyViewCam: 'A bordo', flyViewCenter: 'Aérea',
     flyPreset: 'Preajuste', flyPresetCustom: 'Personalizado', flyPresetWalk: 'A pie (h2 s5 p-5)', flyPresetDrive: 'Coche (h2 s60 p-10)', flyPresetDrone: 'Dron (h200 s60 p-30)', flyPresetOverview: 'Panorámica (h1000 s300 p-45)', flyReverse: 'Invertir', flyImport: 'Importar',
  flyBack: '◀ Atrás', flyBackHint: 'Reproducir la ruta hacia atrás / pausar',
- flyDblHint: 'Doble clic en el mapa: reproducir/pausar · doble clic derecho: marcha atrás',
+ flyDblHint: 'Doble clic en el mapa: reproducir/pausar · doble clic derecho: marcha atrás · rueda: velocidad',
     flyShowLine: 'Mostrar ruta', flyLoading: 'Cargando ruta...', flySampling: 'Muestreando terreno...', flyDone: 'Finalizado', flyErr: 'Error al cargar la ruta', flyNoRoute: 'No hay ruta seleccionada',
     flyViewHint: 'A bordo: la cámara avanza por la ruta mirando al frente. Aérea: la cámara sigue el punto en movimiento desde atrás y desde arriba.',
     flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo que recorre la ruta; center (=chase) = vista aérea que sigue el punto desde atrás.<br>Los cambios se aplican de inmediato, incluso en vuelo.<br>O pulse Dibujar y trace una polilínea en el mapa.',
@@ -247,7 +247,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Vitesse (km/h)', flyHeightLbl: 'Hauteur (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Boucle', flyView: 'Vue', flyViewCam: 'Embarquée', flyViewCenter: 'Aérienne',
     flyPreset: 'Préréglage', flyPresetCustom: 'Personnalisé', flyPresetWalk: 'À pied (h2 s5 p-5)', flyPresetDrive: 'Voiture (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Vue large (h1000 s300 p-45)', flyReverse: 'Inverser', flyImport: 'Importer',
  flyBack: '◀ Arrière', flyBackHint: 'Lecture arrière / pause',
- flyDblHint: 'Double-clic sur la carte : lecture/pause · double-clic droit : marche arrière',
+ flyDblHint: 'Double-clic sur la carte : lecture/pause · double-clic droit : marche arrière · molette : vitesse',
     flyShowLine: 'Afficher la route', flyLoading: 'Chargement de la route...', flySampling: 'Échantillonnage du terrain...', flyDone: 'Terminé', flyErr: 'Échec du chargement de la route', flyNoRoute: 'Aucune route sélectionnée',
     flyViewHint: 'Embarquée : la caméra parcourt la route en regardant devant. Aérienne : la caméra suit le point mobile par l’arrière et par le haut.',
     flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vue embarquée qui parcourt la route ; center (=chase) = vue aérienne qui suit le point par l’arrière.<br>Les réglages s’appliquent immédiatement, même en vol.<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
@@ -276,7 +276,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Tempo (km/h)', flyHeightLbl: 'Höhe ü.Gr. (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Schleife', flyView: 'Ansicht', flyViewCam: 'Bord', flyViewCenter: 'Luft',
     flyPreset: 'Voreinstellung', flyPresetCustom: 'Benutzerdef.', flyPresetWalk: 'Zu Fuß (h2 s5 p-5)', flyPresetDrive: 'Auto (h2 s60 p-10)', flyPresetDrone: 'Drohne (h200 s60 p-30)', flyPresetOverview: 'Überblick (h1000 s300 p-45)', flyReverse: 'Umkehren', flyImport: 'Importieren',
  flyBack: '◀ Zurück', flyBackHint: 'Route rückwärts abspielen / pausieren',
- flyDblHint: 'Doppelklick auf die Karte: Start/Pause · Doppel-Rechtsklick: rückwärts',
+ flyDblHint: 'Doppelklick auf die Karte: Start/Pause · Doppel-Rechtsklick: rückwärts · Rad: Tempo',
     flyShowLine: 'Route anzeigen', flyLoading: 'Route wird geladen...', flySampling: 'Gelände wird abgetastet...', flyDone: 'Fertig', flyErr: 'Route konnte nicht geladen werden', flyNoRoute: 'Keine Route ausgewählt',
     flyViewHint: 'Bord: Kamera fährt auf der Route und blickt nach vorn. Luft: Kamera verfolgt den bewegten Punkt von hinten und oben.',
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = Bordansicht auf der Route nach vorn; center (=chase) = Luftansicht, die den Punkt von hinten verfolgt.<br>Änderungen wirken sofort, auch während des Flugs.<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
@@ -305,7 +305,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Velocità (km/h)', flyHeightLbl: 'Quota (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Ciclo', flyView: 'Vista', flyViewCam: 'A bordo', flyViewCenter: 'Aerea',
     flyPreset: 'Predefinito', flyPresetCustom: 'Personalizzato', flyPresetWalk: 'A piedi (h2 s5 p-5)', flyPresetDrive: 'Auto (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Panoramica (h1000 s300 p-45)', flyReverse: 'Inverti', flyImport: 'Importa',
  flyBack: '◀ Indietro', flyBackHint: 'Riproduci in direzione inversa / pausa',
- flyDblHint: 'Doppio clic sulla mappa: riproduci/pausa · doppio clic destro: riavvolgi',
+ flyDblHint: 'Doppio clic sulla mappa: riproduci/pausa · doppio clic destro: riavvolgi · rotella: velocità',
     flyShowLine: 'Mostra percorso', flyLoading: 'Caricamento percorso...', flySampling: 'Campionamento terreno...', flyDone: 'Completato', flyErr: 'Caricamento del percorso non riuscito', flyNoRoute: 'Nessun percorso selezionato',
     flyViewHint: 'A bordo: la camera avanza sul percorso guardando avanti. Aerea: la camera insegue il punto mobile da dietro e dall’alto.',
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo che percorre la rotta; center (=chase) = vista aerea che segue il punto da dietro.<br>Le modifiche si applicano subito, anche in volo.<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
@@ -334,7 +334,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Velocidade (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Vista', flyViewCam: 'A bordo', flyViewCenter: 'Aérea',
     flyPreset: 'Predefinição', flyPresetCustom: 'Personalizado', flyPresetWalk: 'A pé (h2 s5 p-5)', flyPresetDrive: 'Carro (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Panorâmica (h1000 s300 p-45)', flyReverse: 'Inverter', flyImport: 'Importar',
  flyBack: '◀ Recuar', flyBackHint: 'Reproduzir a rota para trás / pausar',
- flyDblHint: 'Duplo clique no mapa: reproduzir/pausar · duplo clique direito: retroceder',
+ flyDblHint: 'Duplo clique no mapa: reproduzir/pausar · duplo clique direito: retroceder · roda: velocidade',
     flyShowLine: 'Mostrar rota', flyLoading: 'Carregando rota...', flySampling: 'Amostrando terreno...', flyDone: 'Concluído', flyErr: 'Falha ao carregar a rota', flyNoRoute: 'Nenhuma rota selecionada',
     flyViewHint: 'A bordo: a câmera avança pela rota olhando à frente. Aérea: a câmera segue o ponto em movimento por trás e por cima.',
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo percorrendo a rota; center (=chase) = vista aérea que segue o ponto por trás.<br>As alterações aplicam-se de imediato, mesmo em voo.<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
@@ -363,7 +363,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Скорость (км/ч)', flyHeightLbl: 'Высота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По кругу', flyView: 'Вид', flyViewCam: 'Борт', flyViewCenter: 'Аэро',
     flyPreset: 'Пресет', flyPresetCustom: 'Свой', flyPresetWalk: 'Пешком (h2 s5 p-5)', flyPresetDrive: 'Авто (h2 s60 p-10)', flyPresetDrone: 'Дрон (h200 s60 p-30)', flyPresetOverview: 'Обзор (h1000 s300 p-45)', flyReverse: 'Обратно', flyImport: 'Импорт',
  flyBack: '◀ Назад', flyBackHint: 'Воспроизвести маршрут назад / пауза',
- flyDblHint: 'Двойной клик по карте: старт/пауза · двойной правый клик: назад',
+ flyDblHint: 'Двойной клик по карте: старт/пауза · двойной правый клик: назад · колесо: скорость',
     flyShowLine: 'Показать маршрут', flyLoading: 'Загрузка маршрута...', flySampling: 'Замер рельефа...', flyDone: 'Завершено', flyErr: 'Не удалось загрузить маршрут', flyNoRoute: 'Маршрут не выбран',
     flyViewHint: 'Борт: камера движется по маршруту и смотрит вперёд. Аэро: камера следит за движущейся точкой сзади и сверху.',
     flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид с борта, движение по маршруту вперёд; center (=chase) = аэровид, слежение за точкой сзади.<br>Изменения применяются сразу, даже во время полёта.<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
@@ -392,7 +392,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Snelheid (km/h)', flyHeightLbl: 'Hoogte (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Herhalen', flyView: 'Weergave', flyViewCam: 'Boord', flyViewCenter: 'Lucht',
     flyPreset: 'Voorinstelling', flyPresetCustom: 'Aangepast', flyPresetWalk: 'Te voet (h2 s5 p-5)', flyPresetDrive: 'Auto (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Overzicht (h1000 s300 p-45)', flyReverse: 'Omkeren', flyImport: 'Importeren',
  flyBack: '◀ Terug', flyBackHint: 'Route achteruit afspelen / pauzeren',
- flyDblHint: 'Dubbelklik op kaart: afspelen/pauze · dubbele rechtermuisklik: achteruit',
+ flyDblHint: 'Dubbelklik op kaart: afspelen/pauze · dubbele rechtermuisklik: achteruit · wiel: snelheid',
     flyShowLine: 'Route tonen', flyLoading: 'Route laden...', flySampling: 'Terrein bemonsteren...', flyDone: 'Voltooid', flyErr: 'Route laden mislukt', flyNoRoute: 'Geen route geselecteerd',
     flyViewHint: 'Boord: camera rijdt op de route en kijkt vooruit. Lucht: camera volgt het bewegende punt van achteren en boven.',
     flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = boordbeeld dat de route aflegt; center (=chase) = luchtbeeld dat het punt van achteren volgt.<br>Wijzigingen gelden direct, ook tijdens de vlucht.<br>Of druk op Tekenen en schets een polylijn op de kaart.',
@@ -421,7 +421,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Prędkość (km/h)', flyHeightLbl: 'Wysokość (m)', flyPitchLbl: 'Pochylenie (°)', flyLoop: 'Pętla', flyView: 'Widok', flyViewCam: 'Pokład', flyViewCenter: 'Lotniczy',
     flyPreset: 'Preset', flyPresetCustom: 'Własne', flyPresetWalk: 'Pieszo (h2 s5 p-5)', flyPresetDrive: 'Samochód (h2 s60 p-10)', flyPresetDrone: 'Dron (h200 s60 p-30)', flyPresetOverview: 'Przegląd (h1000 s300 p-45)', flyReverse: 'Odwróć', flyImport: 'Importuj',
  flyBack: '◀ Wstecz', flyBackHint: 'Odtwarzaj trasę wstecz / pauza',
- flyDblHint: 'Podwójne kliknięcie mapy: odtwarzaj/pauza · podwójne prawe kliknięcie: wstecz',
+ flyDblHint: 'Podwójne kliknięcie mapy: odtwarzaj/pauza · podwójne prawe kliknięcie: wstecz · kółko: prędkość',
     flyShowLine: 'Pokaż trasę', flyLoading: 'Ładowanie trasy...', flySampling: 'Próbkowanie terenu...', flyDone: 'Zakończono', flyErr: 'Nie udało się wczytać trasy', flyNoRoute: 'Nie wybrano trasy',
     flyViewHint: 'Pokład: kamera jedzie po trasie patrząc naprzód. Lotniczy: kamera śledzi poruszający się punkt z tyłu i z góry.',
     flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = widok z pokładu jadący po trasie; center (=chase) = widok lotniczy śledzący punkt z tyłu.<br>Zmiany działają od razu, także w locie.<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
@@ -450,7 +450,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Швидкість (км/год)', flyHeightLbl: 'Висота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По колу', flyView: 'Вигляд', flyViewCam: 'Борт', flyViewCenter: 'Аеро',
     flyPreset: 'Пресет', flyPresetCustom: 'Власний', flyPresetWalk: 'Пішки (h2 s5 p-5)', flyPresetDrive: 'Авто (h2 s60 p-10)', flyPresetDrone: 'Дрон (h200 s60 p-30)', flyPresetOverview: 'Огляд (h1000 s300 p-45)', flyReverse: 'Назад', flyImport: 'Імпорт',
  flyBack: '◀ Назад', flyBackHint: 'Відтворити маршрут назад / пауза',
- flyDblHint: 'Подвійний клік на мапі: старт/пауза · подвійний правий клік: назад',
+ flyDblHint: 'Подвійний клік на мапі: старт/пауза · подвійний правий клік: назад · коліщатко: швидкість',
     flyShowLine: 'Показати маршрут', flyLoading: 'Завантаження маршруту...', flySampling: 'Замір рельєфу...', flyDone: 'Завершено', flyErr: 'Не вдалося завантажити маршрут', flyNoRoute: 'Маршрут не вибрано',
     flyViewHint: 'Борт: камера рухається маршрутом і дивиться вперед. Аеро: камера стежить за рухомою точкою ззаду й згори.',
     flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид з борту, рух маршрутом уперед; center (=chase) = аеровигляд, стеження за точкою ззаду.<br>Зміни застосовуються одразу, навіть у польоті.<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
@@ -479,7 +479,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Hız (km/sa)', flyHeightLbl: 'Yükseklik (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Döngü', flyView: 'Görünüm', flyViewCam: 'Araç içi', flyViewCenter: 'Hava',
     flyPreset: 'Hazır ayar', flyPresetCustom: 'Özel', flyPresetWalk: 'Yürüyüş (h2 s5 p-5)', flyPresetDrive: 'Araç (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Genel bakış (h1000 s300 p-45)', flyReverse: 'Ters çevir', flyImport: 'İçe aktar',
  flyBack: '◀ Geri', flyBackHint: 'Rotayı geriye doğru oynat / duraklat',
- flyDblHint: 'Haritada çift tık: oynat/duraklat · sağ çift tık: geri oynat',
+ flyDblHint: 'Haritada çift tık: oynat/duraklat · sağ çift tık: geri oynat · tekerlek: hız',
     flyShowLine: 'Rotayı göster', flyLoading: 'Rota yükleniyor...', flySampling: 'Arazi örnekleniyor...', flyDone: 'Tamamlandı', flyErr: 'Rota yüklenemedi', flyNoRoute: 'Rota seçilmedi',
     flyViewHint: 'Araç içi: kamera rota üzerinde ilerler ve öne bakar. Hava: kamera hareketli noktayı arkadan ve yukarıdan izler.',
     flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = rotada ilerleyen araç içi görünüm; center (=chase) = noktayı arkadan izleyen hava görünümü.<br>Değişiklikler uçuş sırasında da anında uygulanır.<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
@@ -508,7 +508,7 @@ const GEO_I18N = {
     flySpeedLbl: 'السرعة (كم/س)', flyHeightLbl: 'الارتفاع (م)', flyPitchLbl: 'الميل (°)', flyLoop: 'تكرار', flyView: 'العرض', flyViewCam: 'على متن', flyViewCenter: 'جوّي',
     flyPreset: 'إعداد مسبق', flyPresetCustom: 'مخصص', flyPresetWalk: 'مشي (h2 s5 p-5)', flyPresetDrive: 'سيارة (h2 s60 p-10)', flyPresetDrone: 'درون (h200 s60 p-30)', flyPresetOverview: 'نظرة عامة (h1000 s300 p-45)', flyReverse: 'عكس', flyImport: 'استيراد',
  flyBack: '◀ للخلف', flyBackHint: 'تشغيل المسار للخلف / إيقاف مؤقت',
- flyDblHint: 'نقرة مزدوجة على الخريطة: تشغيل/إيقاف · نقرة يمنى مزدوجة: تشغيل للخلف',
+ flyDblHint: 'نقرة مزدوجة على الخريطة: تشغيل/إيقاف · نقرة يمنى مزدوجة: تشغيل للخلف · عجلة: السرعة',
     flyShowLine: 'إظهار المسار', flyLoading: 'جارٍ تحميل المسار...', flySampling: 'جارٍ قياس التضاريس...', flyDone: 'اكتمل', flyErr: 'فشل تحميل المسار', flyNoRoute: 'لم يتم اختيار مسار',
     flyViewHint: 'على متن: الكاميرا تسير على المسار وتنظر إلى الأمام. جوّي: الكاميرا تتعقب النقطة المتحركة من الخلف والأعلى.',
     flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = منظر على متن المسار يتقدم للأمام؛ center (=chase) = منظر جوّي يتعقب النقطة من الخلف.<br>تُطبَّق التغييرات فورًا حتى أثناء التحليق.<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
@@ -537,7 +537,7 @@ const GEO_I18N = {
     flySpeedLbl: 'गति (km/h)', flyHeightLbl: 'ऊँचाई (m)', flyPitchLbl: 'पिच (°)', flyLoop: 'लूप', flyView: 'दृश्य', flyViewCam: 'सवारी', flyViewCenter: 'हवाई',
     flyPreset: 'प्रीसेट', flyPresetCustom: 'कस्टम', flyPresetWalk: 'पैदल (h2 s5 p-5)', flyPresetDrive: 'वाहन (h2 s60 p-10)', flyPresetDrone: 'ड्रोन (h200 s60 p-30)', flyPresetOverview: 'विस्तृत (h1000 s300 p-45)', flyReverse: 'उलटें', flyImport: 'आयात',
  flyBack: '◀ उल्टा', flyBackHint: 'मार्ग को उल्टा चलाएँ / रोकें',
- flyDblHint: 'मानचित्र पर डबल-क्लिक: चलाएँ/रोकें · दायाँ डबल-क्लिक: उल्टा चलाएँ',
+ flyDblHint: 'मानचित्र पर डबल-क्लिक: चलाएँ/रोकें · दायाँ डबल-क्लिक: उल्टा चलाएँ · व्हील: गति',
     flyShowLine: 'मार्ग दिखाएँ', flyLoading: 'मार्ग लोड हो रहा है...', flySampling: 'भू-आकृति मापी जा रही है...', flyDone: 'पूर्ण', flyErr: 'मार्ग लोड करने में विफल', flyNoRoute: 'कोई मार्ग नहीं चुना गया',
     flyViewHint: 'सवारी: कैमरा मार्ग पर आगे देखते हुए चलता है। हवाई: कैमरा चलते बिंदु को पीछे और ऊपर से ट्रैक करता है।',
     flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = मार्ग पर चलने वाला सवारी दृश्य; center (=chase) = बिंदु को पीछे से ट्रैक करने वाला हवाई दृश्य।<br>बदलाव उड़ान के दौरान भी तुरंत लागू होते हैं।<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
@@ -566,7 +566,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Kecepatan (km/j)', flyHeightLbl: 'Ketinggian (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Tampilan', flyViewCam: 'Menumpang', flyViewCenter: 'Udara',
     flyPreset: 'Preset', flyPresetCustom: 'Kustom', flyPresetWalk: 'Jalan kaki (h2 s5 p-5)', flyPresetDrive: 'Mobil (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Gambaran (h1000 s300 p-45)', flyReverse: 'Balik', flyImport: 'Impor',
  flyBack: '◀ Mundur', flyBackHint: 'Putar rute mundur / jeda',
- flyDblHint: 'Klik ganda peta: putar/jeda · klik kanan ganda: putar mundur',
+ flyDblHint: 'Klik ganda peta: putar/jeda · klik kanan ganda: putar mundur · roda: kecepatan',
     flyShowLine: 'Tampilkan rute', flyLoading: 'Memuat rute...', flySampling: 'Mengambil sampel medan...', flyDone: 'Selesai', flyErr: 'Gagal memuat rute', flyNoRoute: 'Belum ada rute dipilih',
     flyViewHint: 'Menumpang: kamera bergerak di rute menghadap depan. Udara: kamera melacak titik bergerak dari belakang dan atas.',
     flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = tampilan menumpang yang bergerak di rute; center (=chase) = tampilan udara yang melacak titik dari belakang.<br>Perubahan langsung berlaku, bahkan saat terbang.<br>Atau tekan Gambar lalu sketsa polyline di peta.',
@@ -595,7 +595,7 @@ const GEO_I18N = {
     flySpeedLbl: 'ความเร็ว (km/h)', flyHeightLbl: 'ความสูง (m)', flyPitchLbl: 'พิตช์ (°)', flyLoop: 'วนซ้ำ', flyView: 'มุมมอง', flyViewCam: 'นั่งร่วม', flyViewCenter: 'ทางอากาศ',
     flyPreset: 'พรีเซ็ต', flyPresetCustom: 'กำหนดเอง', flyPresetWalk: 'เดิน (h2 s5 p-5)', flyPresetDrive: 'รถยนต์ (h2 s60 p-10)', flyPresetDrone: 'โดรน (h200 s60 p-30)', flyPresetOverview: 'ภาพรวม (h1000 s300 p-45)', flyReverse: 'กลับทาง', flyImport: 'นำเข้า',
  flyBack: '◀ ถอยหลัง', flyBackHint: 'เล่นเส้นทางย้อนหลัง / หยุดชั่วคราว',
- flyDblHint: 'ดับเบิลคลิกแผนที่: เล่น/หยุดชั่วคราว · ดับเบิลคลิกขวา: เล่นย้อนหลัง',
+ flyDblHint: 'ดับเบิลคลิกแผนที่: เล่น/หยุดชั่วคราว · ดับเบิลคลิกขวา: เล่นย้อนหลัง · ล้อ: ความเร็ว',
     flyShowLine: 'แสดงเส้นทาง', flyLoading: 'กำลังโหลดเส้นทาง...', flySampling: 'กำลังสุ่มภูมิประเทศ...', flyDone: 'เสร็จสิ้น', flyErr: 'โหลดเส้นทางไม่สำเร็จ', flyNoRoute: 'ยังไม่ได้เลือกเส้นทาง',
     flyViewHint: 'นั่งร่วม: กล้องเคลื่อนตามเส้นทางมองไปข้างหน้า ทางอากาศ: กล้องติดตามจุดที่เคลื่อนที่จากด้านหลังและด้านบน',
     flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = มุมมองนั่งร่วมเคลื่อนตามเส้นทาง; center (=chase) = มุมมองทางอากาศที่ติดตามจุดจากด้านหลัง<br>ค่าที่แก้ไขมีผลทันที แม้ขณะบิน<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
@@ -624,7 +624,7 @@ const GEO_I18N = {
     flySpeedLbl: 'Tốc độ (km/h)', flyHeightLbl: 'Độ cao (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Lặp lại', flyView: 'Góc nhìn', flyViewCam: 'Đi cùng', flyViewCenter: 'Trên không',
     flyPreset: 'Cài sẵn', flyPresetCustom: 'Tùy chỉnh', flyPresetWalk: 'Đi bộ (h2 s5 p-5)', flyPresetDrive: 'Ô tô (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Tổng quan (h1000 s300 p-45)', flyReverse: 'Đảo chiều', flyImport: 'Nhập',
  flyBack: '◀ Lùi', flyBackHint: 'Phát tuyến theo chiều lùi / tạm dừng',
- flyDblHint: 'Nhấp đúp bản đồ: phát/tạm dừng · nhấp đúp phải: phát lùi',
+ flyDblHint: 'Nhấp đúp bản đồ: phát/tạm dừng · nhấp đúp phải: phát lùi · con lăn: tốc độ',
     flyShowLine: 'Hiện tuyến đường', flyLoading: 'Đang tải tuyến...', flySampling: 'Đang lấy mẫu địa hình...', flyDone: 'Hoàn tất', flyErr: 'Không tải được tuyến', flyNoRoute: 'Chưa chọn tuyến',
     flyViewHint: 'Đi cùng: camera đi trên tuyến nhìn về phía trước. Trên không: camera theo dõi điểm di chuyển từ phía sau và phía trên.',
     flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = góc nhìn đi cùng di chuyển trên tuyến; center (=chase) = góc nhìn trên không theo dõi điểm từ phía sau.<br>Thay đổi áp dụng ngay, kể cả khi đang bay.<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
@@ -2391,6 +2391,8 @@ function getUI() {
                   try { flyDblClickToggle(1); } catch (e) {}
                 } else if (msg.action === 'flyRDblClick') {
                   try { flyDblClickToggle(-1); } catch (e) {}
+                } else if (msg.action === 'flyWheel') {
+                  try { flyWheelAdjust(msg.delta); } catch (e) {}
                 } else if (msg.action === 'aiLayerState') {
                   // Sync a layer checkbox after an ai-chat setLayerVisible call
                   try {
@@ -2720,6 +2722,7 @@ function getUI() {
             if (pause) { pause.disabled = !fly.active || fly.paused; }
             if (stop) stop.disabled = !fly.active && !fly.pts;
             if (rev) rev.disabled = !(fly.raw && fly.raw.length >= 2);
+            try { flySyncZoomLock(); } catch (e) {}
           }
 
           function flyStopAll(finished) {
@@ -2821,6 +2824,20 @@ function getUI() {
             if (hadPath) flyUpdateCam(fly.dist);
           }
 
+          // Wheel-zoom lock (port of kasugai's setMode: while walk mode owns a
+          // route it removes WHEEL from zoomEventTypes so wheel = speed).
+          // reearth.camera.overrideScreenSpaceCameraController reaches the real
+          // Cesium screenSpaceCameraController; the extension applies it.
+          // Locked whenever the FLY panel is open with a route loaded —
+          // right-drag zoom still works, as in kasugai.
+          fly.zoomLocked = null;
+          function flySyncZoomLock() {
+            var want = !!(window._flyPanelOpen && fly.raw && fly.raw.length >= 2);
+            if (want === fly.zoomLocked) return;
+            fly.zoomLocked = want;
+            flyPost({ action: 'flyZoomLock', lock: want });
+          }
+
           // Map double-click playback toggle (port of kasugai
           // toggleFlyPathDirection). Only active while the FLY panel is open
           // so normal map double-clicks (zoom/pick) are unaffected.
@@ -2852,6 +2869,24 @@ function getUI() {
               return;
             }
             flyPlay();
+          }
+
+          // Mouse wheel speed adjust (port of kasugai's walk-mode wheel
+          // handler: ±1 km/h per notch, wheel down = faster). Like kasugai,
+          // wheel zoom itself is removed while a route is loaded (see
+          // flySyncZoomLock), so no zoom-cancel trick is needed here.
+          function flyWheelAdjust(delta) {
+            if (!window._flyPanelOpen) return;
+            if (!(fly.raw && fly.raw.length >= 2)) return;
+            var el = document.getElementById('fly-speed');
+            if (!el) return;
+            var cur = parseFloat(el.value) || 0;
+            // reearth wheel delta is up-positive (inverse of DOM deltaY), so
+            // negate to keep kasugai's convention: wheel down = faster.
+            var next = Math.max(1, cur + (delta > 0 ? -1 : 1));
+            el.value = String(Math.round(next * 10) / 10);
+            flyApplyInputs(false);
+            flySyncPreset();
           }
 
           function flyOnSketchCreated(geojson) {
@@ -3010,6 +3045,7 @@ function getUI() {
             window._flyPanelVisibility = function(visible) {
               try {
                 window._flyPanelOpen = !!visible;
+                try { flySyncZoomLock(); } catch (e) {}
                 if (!visible) { flyPost({ action: 'flyHideRoute' }); return; }
                 if (fly.raw) { flyShowRouteLine(fly.raw); return; }
                 if (fly.geojson) { flyShowRouteLine(flyExtractCoords(fly.geojson)); return; }
@@ -5143,6 +5179,14 @@ try {
       });
     } catch (e) {}
     try {
+      reearth.viewer.on('wheel', function(e) {
+        try {
+          const d = e && typeof e.delta === 'number' ? e.delta : 0;
+          if (d) postToUI({ action: 'flyWheel', delta: d });
+        } catch (err) {}
+      });
+    } catch (e) {}
+    try {
       let _flyLastRightClick = 0;
       reearth.viewer.on('rightClick', function() {
         try {
@@ -5805,6 +5849,20 @@ reearth.extension.on("message", (msg) => {
       else if (msg.action === 'flyHideRoute') {
           try {
               flyHideRouteLayer();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'flyZoomLock') {
+          // Port of kasugai_canvas setMode: while the FLY panel owns a route,
+          // remove WHEEL from zoomEventTypes so wheel = speed (zoom via
+          // right-drag still works). Sent on lock transitions only.
+          try {
+              const cam: any = reearth.camera;
+              if (cam && typeof cam.overrideScreenSpaceCameraController === 'function') {
+                  cam.overrideScreenSpaceCameraController(
+                      msg.lock ? { zoomEventTypes: ['right_drag', 'pinch'] } : {}
+                  );
+              }
           }
           catch (e) { }
       }
