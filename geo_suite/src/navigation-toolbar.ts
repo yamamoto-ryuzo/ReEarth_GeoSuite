@@ -63,8 +63,17 @@ export const html: string = `
         try{
           var d = e && e.data;
           if(!d) return;
-          // support cameraUpdate for compass needle
-          if(d.type === 'cameraUpdate') updateCompass(d.payload && d.payload.heading);
+          // support cameraUpdate for compass needle + 2D label auto-reset
+          if(d.type === 'cameraUpdate') {
+            updateCompass(d.payload && d.payload.heading);
+            var p = d.payload && d.payload.pitch;
+            if (typeof p === 'number' && _viewMode2D && Date.now() > _pitchResetAfter) {
+              var pDeg = Math.abs(p) <= Math.PI ? p * 180 / Math.PI : p;
+              if (pDeg > -80) setTopDownLabel(false);
+            }
+          }
+          // explicit view-mode confirmation from the host
+          if(d.type === 'viewMode' && d.payload) setTopDownLabel(!!d.payload.is2D);
           // support updateCameraFields if it carries heading
           if(d.action === 'updateCameraFields' && d.camera && typeof d.camera.heading === 'number') {
             updateCompass(d.camera.heading);
@@ -125,23 +134,41 @@ export const html: string = `
         }
       } catch (e) {}
 
-      // 2D (top-down) button: request host to move camera to straight top-down
+      // 2D/3D toggle (kasugai top-down-button): "2D" flies to top-down and
+      // remembers the pose, "3D" restores it. The label reverts to 2D on its
+      // own when the user manually tilts away from top-down (see pitch check
+      // in the cameraUpdate handler).
+      var _viewMode2D = false;
+      var _pitchResetAfter = 0; // grace period so the flyTo animation doesn't auto-reset the label
+      function setTopDownLabel(is2D){
+        try{
+          _viewMode2D = !!is2D;
+          var b = document.getElementById('topDownBtn');
+          if (b) b.textContent = _viewMode2D ? '3D' : '2D';
+        }catch(e){}
+      }
       try{
         var topDown = document.getElementById('topDownBtn');
         if(topDown){
           topDown.addEventListener('click', function(){
             try{
-              if (typeof window.parent !== 'undefined' && window.parent && typeof window.parent.postMessage === 'function') {
-                try{
-                  var w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
-                  var h = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
-                  var cx = Math.round(w/2);
-                  var cy = Math.round(h/2);
-                  window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter', screen: { x: cx, y: cy } } }, '*');
-                }catch(e){
-                  window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter' } }, '*');
-                }
+              if (typeof window.parent === 'undefined' || !window.parent || typeof window.parent.postMessage !== 'function') return;
+              if (_viewMode2D) {
+                window.parent.postMessage({ action: 'restoreView' }, '*');
+                setTopDownLabel(false);
+                return;
               }
+              try{
+                var w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
+                var h = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+                var cx = Math.round(w/2);
+                var cy = Math.round(h/2);
+                window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter', screen: { x: cx, y: cy } } }, '*');
+              }catch(e){
+                window.parent.postMessage({ action: 'topDown', payload: { mode: 'screenCenter' } }, '*');
+              }
+              setTopDownLabel(true);
+              _pitchResetAfter = Date.now() + 1500;
             }catch(e){}
           });
         }
@@ -289,6 +316,9 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
 // Last rotate-button target heading in degrees (0,45,90,...), or null before first use
 let _lastRotateTargetDeg: number | null = null;
 
+// Camera pose saved before entering top-down, restored by the "3D" button
+let _savedBefore2D: any = null;
+
 
 export const onMessage = (msg: any): void => {
   (async () => {
@@ -331,8 +361,29 @@ export const onMessage = (msg: any): void => {
       // straight top-down: pitch to -90 degrees and reset roll
       try { target.pitch = -Math.PI / 2; } catch (e) { target.pitch = -1.5707963267948966; }
       try { target.roll = 0; } catch (e) { target.roll = 0; }
+      // Remember the pose so the button can toggle back to 3D (kasugai 2D/3D toggle)
+      try { _savedBefore2D = { lat: cur3.lat, lng: cur3.lng, height: cur3.height, heading: cur3.heading, pitch: cur3.pitch, roll: cur3.roll }; } catch (e) {}
       try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
       try{ postToUI({ type: 'topDownResult', payload: { success: true, lat: target.lat, lng: target.lng } }); }catch(e){}
+    } catch (e) {}
+  }
+
+  // Restore the pose saved before top-down (kasugai 2D→3D toggle).
+  // No saved pose: fall back to a -30° oblique view of the same position.
+  if (msg.action === 'restoreView') {
+    try {
+      const cur = (typeof reearth !== 'undefined' && reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+      let target: any = null;
+      if (_savedBefore2D && typeof _savedBefore2D.lat === 'number' && typeof _savedBefore2D.lng === 'number') {
+        target = _savedBefore2D;
+      } else if (cur && typeof cur.lat === 'number' && typeof cur.lng === 'number') {
+        target = { lat: cur.lat, lng: cur.lng, height: cur.height, heading: cur.heading, pitch: -30 * Math.PI / 180, roll: 0 };
+      }
+      _savedBefore2D = null;
+      if (target) {
+        try { if (reearth && reearth.camera && typeof reearth.camera.flyTo === 'function') reearth.camera.flyTo(target, { duration: 0.8 }); } catch (e) {}
+      }
+      try{ postToUI({ type: 'viewMode', payload: { is2D: false } }); }catch(e){}
     } catch (e) {}
   }
 
@@ -404,7 +455,7 @@ try {
         if (lastHeading !== null && Math.abs(h - lastHeading) < HEADING_EPS) return;
         lastPost = now;
         lastHeading = h;
-        postToUI({ type: 'cameraUpdate', payload: { heading: h } });
+        postToUI({ type: 'cameraUpdate', payload: { heading: h, pitch: camera.pitch } });
       } catch (e) {}
     });
   }
@@ -423,7 +474,7 @@ try {
         if (lastHeading !== null && Math.abs(h - lastHeading) < HEADING_EPS) return;
         lastPost = now;
         lastHeading = h;
-        postToUI({ type: 'cameraUpdate', payload: { heading: h } });
+        postToUI({ type: 'cameraUpdate', payload: { heading: h, pitch: cur.pitch } });
       } catch (e) {}
     });
   }
