@@ -125,6 +125,19 @@ async function main() {
     process.exit(1);
   }
   console.log("widget iframe found");
+
+  // Count routes in the FLY dropdown vs "Fly Route" entries in the LAYERS tab
+  const counts = await widget.evaluate(`(function(){
+    var sel = document.getElementById('fly-route-select');
+    var opts = sel ? Array.prototype.map.call(sel.options, function(o){ return o.value + '|' + o.textContent; }) : [];
+    // LAYERS tab items titled 'Fly Route (geo_suite)'
+    var flyLayers = Array.prototype.filter.call(document.querySelectorAll('.layer-item, li, .layers-list *'), function(el){
+      return el.children.length === 0 && /Fly Route/i.test(el.textContent || '');
+    }).map(function(el){ return el.textContent.trim(); });
+    return JSON.stringify({ routes: opts, flyLayerTexts: flyLayers });
+  })()`);
+  console.log("counts:", counts);
+
   const probe = await widget.evaluate(`(function(){
     return JSON.stringify({
       flyPlay: typeof flyPlay,
@@ -157,28 +170,116 @@ async function main() {
       ],
     },
   });
+  // fly* functions live in a closure; drive the UI through its own
+  // message bus: 'flyDrawn' registers a drawn route, then click Play.
   const setup = await widget.evaluate(`(function(){
     try {
+      var g = ${JSON.stringify(geojson)};
+      window.dispatchEvent(new MessageEvent('message', { data: { action: 'flyDrawn', geojson: g } }));
       var sel = document.getElementById('fly-route-select');
-      flyDrawnCache['__cdp_test'] = ${JSON.stringify(geojson)};
-      flyAddDrawnOption('__cdp_test');
-      sel.value = 'd:__cdp_test';
-      // disable terrain sampling dependency: report caps
-      var caps = JSON.stringify(window._flyCaps||{});
-      flyPlay();
-      return 'playing caps=' + caps + ' status=' + (document.getElementById('fly-status')||{}).textContent;
+      var opt = null;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value.indexOf('d:') === 0) { opt = sel.options[i].value; }
+      }
+      if (!opt) return 'ERR no drawn option added';
+      sel.value = opt;
+      document.getElementById('fly-play-btn').click();
+      return 'playing route=' + opt + ' caps=' + JSON.stringify(window._flyCaps||{}) +
+             ' status=' + (document.getElementById('fly-status')||{}).textContent;
     } catch (e) { return 'ERR ' + e.message; }
   })()`);
   console.log("play:", setup);
 
-  // Observe for ~12s
-  const samples = [];
-  for (let i = 0; i < 12; i++) {
+  // Observe for ~5s
+  for (let i = 0; i < 5; i++) {
     await sleep(1000);
     const st = await widget.evaluate(`(document.getElementById('fly-status')||{}).textContent`).catch(() => "?");
     const n = await top.evaluate(`window._flyMsgs.length`).catch(() => -1);
-    samples.push({ i, status: st, msgs: n });
     console.log(`t=${i + 1}s status="${st}" flySetView_msgs=${n}`);
+  }
+
+  // Pause -> messages should stop
+  await widget.evaluate(`document.getElementById('fly-pause-btn').click(); 'paused'`);
+  const nBeforePause = await top.evaluate(`window._flyMsgs.length`);
+  await sleep(1500);
+  const nAfterPause = await top.evaluate(`window._flyMsgs.length`);
+  console.log(`pause: msgs ${nBeforePause} -> ${nAfterPause} ${nAfterPause === nBeforePause ? "OK" : "STILL RUNNING"}`);
+
+  // Resume -> messages should continue
+  await widget.evaluate(`document.getElementById('fly-play-btn').click(); 'resumed'`);
+  await sleep(1500);
+  const nAfterResume = await top.evaluate(`window._flyMsgs.length`);
+  console.log(`resume: msgs ${nAfterPause} -> ${nAfterResume} ${nAfterResume > nAfterPause ? "OK" : "NOT RESUMED"}`);
+
+  // Stop -> messages should stop, status cleared
+  await widget.evaluate(`document.getElementById('fly-stop-btn').click(); 'stopped'`);
+  const nBeforeStop = await top.evaluate(`window._flyMsgs.length`);
+  await sleep(1500);
+  const nAfterStop = await top.evaluate(`window._flyMsgs.length`);
+  const stAfterStop = await widget.evaluate(`(document.getElementById('fly-status')||{}).textContent`).catch(() => "?");
+  console.log(`stop: msgs ${nBeforeStop} -> ${nAfterStop} ${nAfterStop === nBeforeStop ? "OK" : "STILL RUNNING"} status="${stAfterStop}"`);
+
+  // Restart from stopped state -> should play again from 0%
+  await widget.evaluate(`document.getElementById('fly-play-btn').click(); 'replay'`);
+  await sleep(2000);
+  const nAfterReplay = await top.evaluate(`window._flyMsgs.length`);
+  const stAfterReplay = await widget.evaluate(`(document.getElementById('fly-status')||{}).textContent`).catch(() => "?");
+  console.log(`replay: msgs ${nAfterStop} -> ${nAfterReplay} ${nAfterReplay > nAfterStop ? "OK" : "NOT REPLAYING"} status="${stAfterReplay}"`);
+
+  // Count "Fly Route" layer entries visible in the LAYERS tab DOM
+  const layerCount = await widget.evaluate(`(function(){
+    var names = Array.prototype.map.call(document.querySelectorAll('.layer-name'), function(el){ return el.textContent.trim(); });
+    return JSON.stringify({ fly: names.filter(function(n){ return /Fly Route/i.test(n); }), total: names.length });
+  })()`);
+  console.log("LAYERS tab fly-route entries (pre-rerender):", layerCount);
+
+  // Force a full UI re-render via applyInspectorText (keeps current text),
+  // then verify the transient Fly Route layer does NOT appear in LAYERS.
+  await widget.evaluate(`(function(){
+    window.__mgmtDone = false;
+    window.addEventListener('message', function h(e) {
+      var d = e.data;
+      if (d && d.action === 'manageText') {
+        window.removeEventListener('message', h);
+        var ta = document.getElementById('manage-inspector-text');
+        window.parent.postMessage({ action: 'applyInspectorText', text: ta ? ta.value : '' }, '*');
+        window.__mgmtDone = true;
+      }
+    });
+    window.parent.postMessage({ action: 'manageTextRequest' }, '*');
+    'sent';
+  })()`);
+  await sleep(4000); // wait for re-render (iframe reload)
+
+  // The widget iframe may have been recreated; re-locate it
+  let widget2 = null;
+  for (let i = 0; i < 20; i++) {
+    targets = await getJson("/json/list");
+    for (const t of targets) {
+      if ((t.type !== "iframe" && t.type !== "page") || t.id === page.id) continue;
+      try {
+        const c = cdp(t.webSocketDebuggerUrl);
+        await Promise.race([c.ready, sleep(1500).then(() => { throw new Error("ws open timeout"); })]);
+        await c.send("Runtime.enable");
+        const has = await Promise.race([
+          c.evaluate(`!!document.getElementById('fly-play-btn') && !!document.querySelector('.layer-name')`),
+          sleep(2500).then(() => false),
+        ]).catch(() => false);
+        if (has) { widget2 = c; break; }
+        c.ws.close();
+      } catch (e) {}
+    }
+    if (widget2) break;
+    await sleep(500);
+  }
+  if (widget2) {
+    const layerCount2 = await widget2.evaluate(`(function(){
+      var names = Array.prototype.map.call(document.querySelectorAll('.layer-name'), function(el){ return el.textContent.trim(); });
+      return JSON.stringify({ fly: names.filter(function(n){ return /Fly Route/i.test(n); }), total: names.length });
+    })()`);
+    console.log("LAYERS tab fly-route entries (post-rerender):", layerCount2);
+  } else {
+    console.log("could not re-locate widget after re-render");
   }
 
   const msgs = await top.evaluate(`window._flyMsgs`);

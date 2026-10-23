@@ -646,6 +646,11 @@ function getUI() {
         return;
       }
     } catch (e) {}
+    // The fly-route preview line is transient visualization, not a user-managed
+    // layer — keep it out of the layer list (also covers stale/orphan ids by title)
+    try {
+      if (layer && (layer.id === _flyRouteLayerId || layer.title === FLY_ROUTE_LAYER_TITLE)) return;
+    } catch (e) {}
     if (_pluginAddedLayerIds.has(layer.id)) {
       userLayers.push(layer);
     } else {
