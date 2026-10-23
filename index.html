@@ -336,7 +336,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>✈️ Fly モード（ルート飛行）</h3>
-                        <p><code>fly_geojson:</code> 行で GeoJSON ルートを定義し、タブバーの ✈️ ボタンで Fly パネルを開いてルートに沿ったカメラ飛行を再生できます。速度・対地高度・ピッチ・ループ・POV/追従視点の切替に対応し、地形追従（AGL）も可能です。「描画」ボタンで地図上にポリラインを描いてルートを保存することもできます。</p>
+                        <p><code>fly_geojson:</code> 行で GeoJSON ルートを定義し、タブバーの ✈️ ボタンで Fly パネルを開いてルートに沿ったカメラ飛行を再生できます。速度・対地高度・ピッチ・ループ・搭乗/空撮視点の切替に対応し、地形追従（AGL）も可能です。「描画」ボタンで地図上にポリラインを描いてルートを保存することもできます。</p>
                     </div>
                     <div class="feature-card">
                         <h3>🌐 Google Earth 連携</h3>
@@ -405,7 +405,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>info:</strong> 情報タブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
-                        <li><strong>fly_geojson:</strong> Fly パネル（タブバーの ✈️ ボタン）に登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は Fly パネルで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
+                        <li><strong>fly_geojson:</strong> Fly パネル（タブバーの ✈️ ボタン）に登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>（camera=ルート上を進む搭乗視点、<code>pov</code>/<code>ride</code> 等の別名も可。center=後方上空から追う空撮視点、<code>chase</code>/<code>follow</code>/<code>aerial</code> 等の別名も可）・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は Fly パネルで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
                         <li><strong>attrUrlOpen:</strong> 属性パネル内のURLクリック動作を切り替えます。<code>panel</code> / <code>newtab</code> を指定できます。既定は <code>newtab</code> です。</li>
                         <li><strong>geminiApiKey:</strong> / <strong>geminiModel:</strong> AI チャットウィジェットで使う Gemini API キーとモデル名（省略可）を指定します。キーは AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄または ⚙ 設定からも入力できます（優先順: AI Chat Inspector 欄 &gt; 設定テキストの <code>geminiApiKey:</code> 行 &gt; セッション入力 &gt; ブラウザ保存）。注意: Inspector に書いたキーは公開サイトでは全訪問者に配信されます。公開サイトではサーバーサイドプロキシ（環境変数 <code>GEMINI_API_KEY</code> → <code>/api/gemini</code>）の利用を推奨します。</li>
                     </ul>
@@ -503,8 +503,8 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                         <li>プラグイン UI のタブバーにある <strong>✈️ ボタン</strong>で Fly パネルを開きます。</li>
                         <li>ルートは <code>fly_geojson:</code> 行で定義したもの、または <strong>「描画」ボタン</strong>で地図上にポリラインを描いて保存したもの（<code>route:名前</code>）をドロップダウンから選択します。</li>
                         <li><strong>「ルートを表示」</strong>で選択中のルートを黄色ラインでプレビューできます（一時的な可視化のため、レイヤー一覧には表示されません）。</li>
-                        <li>速度（km/h、負値で逆再生）・対地高度（m）・ピッチ・視点（POV/追従）・ループを調整し、<strong>▶ 再生</strong>で飛行開始。<strong>⏸ 一時停止</strong>／<strong>■ 停止</strong>で制御します。</li>
-                        <li>「GeoJSON」ボタンで選択ルートの GeoJSON をコピーできます。</li>
+                        <li>速度（km/h、負値で逆再生）・対地高度（m）・ピッチ・視点（搭乗/空撮）・ループを調整し、<strong>▶ 再生</strong>で飛行開始。<strong>⏸ 一時停止</strong>／<strong>■ 停止</strong>で制御します。入力値は再生中でも即時に反映されます。</li>
+                        <li>「GeoJSON」ボタンで選択ルートの GeoJSON を <code>&lt;ルート名&gt;.geojson</code> としてダウンロードできます。</li>
                     </ol>
                     <p style="margin-top:8px; color:#666;">※ 描画機能（スケッチ）や地形サンプリングは、利用している Re:Earth 環境のプラグイン API が対応している場合のみ有効です。非対応環境では該当ボタンが無効表示になります。</p>
                 </div>
