@@ -734,6 +734,8 @@ const html: string = `
   var _reqSeq = 0;
   var _pendingTools = {};
   var _busy = false;
+  var _userToggledMin = false;
+  var _configReceived = false;
 
   function postToParent(m) {
     try { if (window.parent) window.parent.postMessage(m, '*'); } catch (e) {}
@@ -1103,6 +1105,8 @@ const html: string = `
   });
 
   document.getElementById('ai-settings-btn').addEventListener('click', function() {
+    var root = document.querySelector('.ai-wrap');
+    if (root && root.classList.contains('minimized')) { _userToggledMin = true; setMinimized(false); }
     settingsPanel.classList.toggle('open');
   });
   document.getElementById('ai-clear-btn').addEventListener('click', function() {
@@ -1110,11 +1114,24 @@ const html: string = `
     msgsEl.innerHTML = '';
     addMsg('sys', t('cleared'));
   });
-  document.getElementById('ai-min-btn').addEventListener('click', function() {
+  function setMinimized(min) {
     var root = document.querySelector('.ai-wrap');
-    var minimized = root.classList.toggle('minimized');
-    this.setAttribute('data-i18n-title', minimized ? 'restore' : 'minimize');
-    this.title = t(minimized ? 'restore' : 'minimize');
+    var btn = document.getElementById('ai-min-btn');
+    if (!root) return;
+    if (min) root.classList.add('minimized'); else root.classList.remove('minimized');
+    if (btn) {
+      btn.setAttribute('data-i18n-title', min ? 'restore' : 'minimize');
+      btn.title = t(min ? 'restore' : 'minimize');
+    }
+  }
+  function autoMinimize() {
+    if (_userToggledMin || !_configReceived || !_serverKeyChecked) return;
+    setMinimized(!(_apiKey || _serverHasKey));
+  }
+  document.getElementById('ai-min-btn').addEventListener('click', function() {
+    _userToggledMin = true;
+    var root = document.querySelector('.ai-wrap');
+    setMinimized(!(root && root.classList.contains('minimized')));
   });
   document.getElementById('ai-save').addEventListener('click', function(ev) {
     ev.preventDefault();
@@ -1142,6 +1159,8 @@ const html: string = `
         if (_keySource !== 'inspector') keyInput.value = _apiKey;
         modelInput.value = _model;
         updateKeyStatus();
+        _configReceived = true;
+        autoMinimize();
         if (msg.lang) {
           window._GEO_LANG_CONF = String(msg.lang);
           var nl = resolveLang();
@@ -1158,7 +1177,7 @@ const html: string = `
   // init
   addMsg('sys', t('welcome'));
   updateKeyStatus();
-  probeServerKey().then(function() { try { updateKeyStatus(); } catch (e) {} });
+  probeServerKey().then(function() { try { updateKeyStatus(); autoMinimize(); } catch (e) {} });
   postToParent({ action: 'aiGetConfig' });
   setTimeout(function() { postToParent({ action: 'aiGetConfig' }); }, 3000);
 })();
