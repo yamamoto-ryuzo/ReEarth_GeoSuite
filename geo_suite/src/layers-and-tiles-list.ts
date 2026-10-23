@@ -71,7 +71,8 @@ const GEO_I18N = {
     flyPlay: 'Play', flyPause: 'Pause', flyStop: 'Stop', flyRestart: 'Restart',
     flySpeedLbl: 'Speed (km/h)', flyHeightLbl: 'AGL (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'View', flyViewCam: 'POV', flyViewCenter: 'Follow',
     flyShowLine: 'Show route', flyLoading: 'Loading route...', flySampling: 'Sampling terrain...', flyDone: 'Finished', flyErr: 'Failed to load route', flyNoRoute: 'No route selected',
-    flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Or press Draw and sketch a polyline on the map.',
+    flyViewHint: 'POV: camera rides on the route looking ahead. Follow: camera chases the route from behind and above.',
+    flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = ride on the route (POV); center = chase from behind.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
     svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save'
   },
   ja: {
@@ -96,7 +97,8 @@ const GEO_I18N = {
     flyPlay: '再生', flyPause: '一時停止', flyStop: '停止', flyRestart: '最初から',
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '地上高 (m)', flyPitchLbl: 'ピッチ (°)', flyLoop: 'ループ', flyView: '視点', flyViewCam: '一人称', flyViewCenter: '追随',
     flyShowLine: 'ルートを表示', flyLoading: 'ルート読み込み中...', flySampling: '地形を取得中...', flyDone: '終了', flyErr: 'ルートの読み込みに失敗しました', flyNoRoute: 'ルートが選択されていません',
-    flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>または「描画」ボタンで地図上にポリラインを描きます。',
+    flyViewHint: '一人称: ルート上を前方へ進む視点。追随: 後方・上空からルートを追いかける視点。',
+    flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera=ルート上を進む一人称 / center=後方からの追随。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
     svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存'
   },
   'zh-CN': {
@@ -121,7 +123,8 @@ const GEO_I18N = {
     flyPlay: '播放', flyPause: '暂停', flyStop: '停止', flyRestart: '重新开始',
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '离地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循环', flyView: '视角', flyViewCam: '第一人称', flyViewCenter: '跟随',
     flyShowLine: '显示路线', flyLoading: '正在加载路线...', flySampling: '正在采样地形...', flyDone: '已完成', flyErr: '路线加载失败', flyNoRoute: '未选择路线',
-    flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>或点击"绘制"在地图上画出折线。',
+    flyViewHint: '第一人称: 相机沿路线向前飞行。跟随: 相机从后方和上方追踪路线。',
+    flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera=沿路线第一人称 / center=后方跟随。<br>参数修改即时生效，飞行中也可调整。<br>或点击"绘制"在地图上画出折线。',
     svOpen: '街景', captureBtn: '截图', capturedHint: '右键点击图片保存'
   },
   'zh-TW': {
@@ -146,7 +149,8 @@ const GEO_I18N = {
     flyPlay: '播放', flyPause: '暫停', flyStop: '停止', flyRestart: '重新開始',
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '離地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循環', flyView: '視角', flyViewCam: '第一人稱', flyViewCenter: '跟隨',
     flyShowLine: '顯示路線', flyLoading: '正在載入路線...', flySampling: '正在取樣地形...', flyDone: '已完成', flyErr: '路線載入失敗', flyNoRoute: '未選擇路線',
-    flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>或按「繪製」在地圖上畫出折線。',
+    flyViewHint: '第一人稱: 相機沿路線向前飛行。跟隨: 相機從後方和上方追蹤路線。',
+    flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera=沿路線第一人稱 / center=後方跟隨。<br>參數修改即時生效，飛行中也可調整。<br>或按「繪製」在地圖上畫出折線。',
     svOpen: '街景', captureBtn: '截圖', capturedHint: '在圖片上按右鍵儲存'
   },
   ko: {
@@ -171,7 +175,8 @@ const GEO_I18N = {
     flyPlay: '재생', flyPause: '일시정지', flyStop: '정지', flyRestart: '처음부터',
     flySpeedLbl: '속도 (km/h)', flyHeightLbl: '지상고 (m)', flyPitchLbl: '피치 (°)', flyLoop: '반복', flyView: '시점', flyViewCam: '1인칭', flyViewCenter: '추적',
     flyShowLine: '경로 표시', flyLoading: '경로 로드 중...', flySampling: '지형 샘플링 중...', flyDone: '완료', flyErr: '경로 로드 실패', flyNoRoute: '경로가 선택되지 않았습니다',
-    flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
+    flyViewHint: '1인칭: 경로 위를 전진하는 시점. 추적: 후방·상공에서 경로를 따라가는 시점.',
+    flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera=경로 위 1인칭 / center=후방 추적.<br>입력값은 재생 중에도 즉시 반영됩니다.<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
     svOpen: '스트리트 뷰', captureBtn: '캡처', capturedHint: '이미지를 우클릭해 저장'
   },
   es: {
@@ -196,7 +201,8 @@ const GEO_I18N = {
     flyPlay: 'Reproducir', flyPause: 'Pausa', flyStop: 'Detener', flyRestart: 'Reiniciar',
     flySpeedLbl: 'Velocidad (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Bucle', flyView: 'Vista', flyViewCam: 'POV', flyViewCenter: 'Seguir',
     flyShowLine: 'Mostrar ruta', flyLoading: 'Cargando ruta...', flySampling: 'Muestreando terreno...', flyDone: 'Finalizado', flyErr: 'Error al cargar la ruta', flyNoRoute: 'No hay ruta seleccionada',
-    flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>O pulse Dibujar y trace una polilínea en el mapa.',
+    flyViewHint: 'POV: la cámara viaja sobre la ruta mirando al frente. Seguir: la cámara la persigue desde atrás y arriba.',
+    flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = recorrer la ruta (POV); center = perseguir desde atrás.<br>Los cambios se aplican de inmediato, incluso en vuelo.<br>O pulse Dibujar y trace una polilínea en el mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clic derecho en la imagen para guardar'
   },
   fr: {
@@ -221,7 +227,8 @@ const GEO_I18N = {
     flyPlay: 'Lecture', flyPause: 'Pause', flyStop: 'Arrêter', flyRestart: 'Recommencer',
     flySpeedLbl: 'Vitesse (km/h)', flyHeightLbl: 'Hauteur (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Boucle', flyView: 'Vue', flyViewCam: 'POV', flyViewCenter: 'Suivi',
     flyShowLine: 'Afficher la route', flyLoading: 'Chargement de la route...', flySampling: 'Échantillonnage du terrain...', flyDone: 'Terminé', flyErr: 'Échec du chargement de la route', flyNoRoute: 'Aucune route sélectionnée',
-    flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
+    flyViewHint: 'POV : la caméra parcourt la route en regardant devant. Suivi : la caméra la poursuit par l’arrière et par le haut.',
+    flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = parcourir la route (POV) ; center = poursuite par l’arrière.<br>Les réglages s’appliquent immédiatement, même en vol.<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
     svOpen: 'Street View', captureBtn: 'Capturer', capturedHint: 'Clic droit sur l\u2019image pour enregistrer'
   },
   de: {
@@ -246,7 +253,8 @@ const GEO_I18N = {
     flyPlay: 'Abspielen', flyPause: 'Pause', flyStop: 'Stopp', flyRestart: 'Neustart',
     flySpeedLbl: 'Tempo (km/h)', flyHeightLbl: 'Höhe ü.Gr. (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Schleife', flyView: 'Ansicht', flyViewCam: 'EGO', flyViewCenter: 'Verfolgen',
     flyShowLine: 'Route anzeigen', flyLoading: 'Route wird geladen...', flySampling: 'Gelände wird abgetastet...', flyDone: 'Fertig', flyErr: 'Route konnte nicht geladen werden', flyNoRoute: 'Keine Route ausgewählt',
-    flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
+    flyViewHint: 'EGO: Kamera fliegt auf der Route nach vorn. Verfolgen: Kamera folgt der Route von hinten und oben.',
+    flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = auf der Route fliegen (EGO); center = Verfolgung von hinten.<br>Änderungen wirken sofort, auch während des Flugs.<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
     svOpen: 'Street View', captureBtn: 'Aufnehmen', capturedHint: 'Bild per Rechtsklick speichern'
   },
   it: {
@@ -271,7 +279,8 @@ const GEO_I18N = {
     flyPlay: 'Riproduci', flyPause: 'Pausa', flyStop: 'Ferma', flyRestart: 'Riavvia',
     flySpeedLbl: 'Velocità (km/h)', flyHeightLbl: 'Quota (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Ciclo', flyView: 'Vista', flyViewCam: 'POV', flyViewCenter: 'Segui',
     flyShowLine: 'Mostra percorso', flyLoading: 'Caricamento percorso...', flySampling: 'Campionamento terreno...', flyDone: 'Completato', flyErr: 'Caricamento del percorso non riuscito', flyNoRoute: 'Nessun percorso selezionato',
-    flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
+    flyViewHint: 'POV: la camera viaggia sul percorso guardando avanti. Segui: la camera lo insegue da dietro e dall’alto.',
+    flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = percorrere la rotta (POV); center = inseguimento da dietro.<br>Le modifiche si applicano subito, anche in volo.<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
     svOpen: 'Street View', captureBtn: 'Cattura', capturedHint: 'Tasto destro sull\u2019immagine per salvare'
   },
   pt: {
@@ -296,7 +305,8 @@ const GEO_I18N = {
     flyPlay: 'Reproduzir', flyPause: 'Pausar', flyStop: 'Parar', flyRestart: 'Reiniciar',
     flySpeedLbl: 'Velocidade (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Vista', flyViewCam: 'POV', flyViewCenter: 'Seguir',
     flyShowLine: 'Mostrar rota', flyLoading: 'Carregando rota...', flySampling: 'Amostrando terreno...', flyDone: 'Concluído', flyErr: 'Falha ao carregar a rota', flyNoRoute: 'Nenhuma rota selecionada',
-    flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
+    flyViewHint: 'POV: a câmera percorre a rota olhando à frente. Seguir: a câmera a persegue por trás e por cima.',
+    flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = percorrer a rota (POV); center = perseguir por trás.<br>As alterações aplicam-se de imediato, mesmo em voo.<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clique com o botão direito na imagem para salvar'
   },
   ru: {
@@ -321,7 +331,8 @@ const GEO_I18N = {
     flyPlay: 'Старт', flyPause: 'Пауза', flyStop: 'Стоп', flyRestart: 'Сначала',
     flySpeedLbl: 'Скорость (км/ч)', flyHeightLbl: 'Высота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По кругу', flyView: 'Вид', flyViewCam: 'От 1-го лица', flyViewCenter: 'Слежение',
     flyShowLine: 'Показать маршрут', flyLoading: 'Загрузка маршрута...', flySampling: 'Замер рельефа...', flyDone: 'Завершено', flyErr: 'Не удалось загрузить маршрут', flyNoRoute: 'Маршрут не выбран',
-    flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
+    flyViewHint: 'От 1-го лица: камера движется по маршруту вперёд. Слежение: камера следует сзади и сверху.',
+    flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = полёт по маршруту (1-е лицо); center = слежение сзади.<br>Изменения применяются сразу, даже во время полёта.<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
     svOpen: 'Просмотр улиц', captureBtn: 'Снимок', capturedHint: 'Щёлкните изображение правой кнопкой, чтобы сохранить'
   },
   nl: {
@@ -346,7 +357,8 @@ const GEO_I18N = {
     flyPlay: 'Afspelen', flyPause: 'Pauze', flyStop: 'Stop', flyRestart: 'Opnieuw',
     flySpeedLbl: 'Snelheid (km/h)', flyHeightLbl: 'Hoogte (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Herhalen', flyView: 'Weergave', flyViewCam: 'POV', flyViewCenter: 'Volgen',
     flyShowLine: 'Route tonen', flyLoading: 'Route laden...', flySampling: 'Terrein bemonsteren...', flyDone: 'Voltooid', flyErr: 'Route laden mislukt', flyNoRoute: 'Geen route geselecteerd',
-    flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Of druk op Tekenen en schets een polylijn op de kaart.',
+    flyViewHint: 'POV: camera vliegt op de route vooruit. Volgen: camera achtervolgt de route van achteren en boven.',
+    flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = op de route vliegen (POV); center = achtervolgen.<br>Wijzigingen gelden direct, ook tijdens de vlucht.<br>Of druk op Tekenen en schets een polylijn op de kaart.',
     svOpen: 'Street View', captureBtn: 'Vastleggen', capturedHint: 'Rechtermuisknop op afbeelding om op te slaan'
   },
   pl: {
@@ -371,7 +383,8 @@ const GEO_I18N = {
     flyPlay: 'Odtwórz', flyPause: 'Pauza', flyStop: 'Stop', flyRestart: 'Od początku',
     flySpeedLbl: 'Prędkość (km/h)', flyHeightLbl: 'Wysokość (m)', flyPitchLbl: 'Pochylenie (°)', flyLoop: 'Pętla', flyView: 'Widok', flyViewCam: 'POV', flyViewCenter: 'Śledzenie',
     flyShowLine: 'Pokaż trasę', flyLoading: 'Ładowanie trasy...', flySampling: 'Próbkowanie terenu...', flyDone: 'Zakończono', flyErr: 'Nie udało się wczytać trasy', flyNoRoute: 'Nie wybrano trasy',
-    flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
+    flyViewHint: 'POV: kamera porusza się po trasie patrząc naprzód. Śledzenie: kamera podąża za trasą z tyłu i z góry.',
+    flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = lot po trasie (POV); center = śledzenie z tyłu.<br>Zmiany działają od razu, także w locie.<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
     svOpen: 'Street View', captureBtn: 'Zrzut', capturedHint: 'Kliknij obraz prawym przyciskiem, aby zapisać'
   },
   uk: {
@@ -396,7 +409,8 @@ const GEO_I18N = {
     flyPlay: 'Старт', flyPause: 'Пауза', flyStop: 'Стоп', flyRestart: 'Спочатку',
     flySpeedLbl: 'Швидкість (км/год)', flyHeightLbl: 'Висота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По колу', flyView: 'Вигляд', flyViewCam: 'Від 1-ї особи', flyViewCenter: 'Стеження',
     flyShowLine: 'Показати маршрут', flyLoading: 'Завантаження маршруту...', flySampling: 'Замір рельєфу...', flyDone: 'Завершено', flyErr: 'Не вдалося завантажити маршрут', flyNoRoute: 'Маршрут не вибрано',
-    flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
+    flyViewHint: 'Від 1-ї особи: камера рухається маршрутом уперед. Стеження: камера переслідує ззаду й згори.',
+    flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = політ маршрутом (1-а особа); center = стеження ззаду.<br>Зміни застосовуються одразу, навіть у польоті.<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
     svOpen: 'Перегляд вулиць', captureBtn: 'Знімок', capturedHint: 'Клацніть зображення правою кнопкою, щоб зберегти'
   },
   tr: {
@@ -421,7 +435,8 @@ const GEO_I18N = {
     flyPlay: 'Oynat', flyPause: 'Duraklat', flyStop: 'Durdur', flyRestart: 'Yeniden',
     flySpeedLbl: 'Hız (km/sa)', flyHeightLbl: 'Yükseklik (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Döngü', flyView: 'Görünüm', flyViewCam: 'POV', flyViewCenter: 'Takip',
     flyShowLine: 'Rotayı göster', flyLoading: 'Rota yükleniyor...', flySampling: 'Arazi örnekleniyor...', flyDone: 'Tamamlandı', flyErr: 'Rota yüklenemedi', flyNoRoute: 'Rota seçilmedi',
-    flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
+    flyViewHint: 'POV: kamera rota üzerinde ileri bakar. Takip: kamera rotayı arkadan ve yukarıdan izler.',
+    flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = rota üzerinde uçuş (POV); center = arkadan takip.<br>Değişiklikler uçuş sırasında da anında uygulanır.<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
     svOpen: 'Sokak Görünümü', captureBtn: 'Yakala', capturedHint: 'Kaydetmek için görüntüye sağ tıklayın'
   },
   ar: {
@@ -446,7 +461,8 @@ const GEO_I18N = {
     flyPlay: 'تشغيل', flyPause: 'إيقاف مؤقت', flyStop: 'إيقاف', flyRestart: 'إعادة البدء',
     flySpeedLbl: 'السرعة (كم/س)', flyHeightLbl: 'الارتفاع (م)', flyPitchLbl: 'الميل (°)', flyLoop: 'تكرار', flyView: 'العرض', flyViewCam: 'منظور أول', flyViewCenter: 'تتبّع',
     flyShowLine: 'إظهار المسار', flyLoading: 'جارٍ تحميل المسار...', flySampling: 'جارٍ قياس التضاريس...', flyDone: 'اكتمل', flyErr: 'فشل تحميل المسار', flyNoRoute: 'لم يتم اختيار مسار',
-    flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
+    flyViewHint: 'منظور أول: الكاميرا تتحرك على المسار نحو الأمام. تتبّع: الكاميرا تلاحقه من الخلف والأعلى.',
+    flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = الطيران على المسار (منظور أول)؛ center = التتبع من الخلف.<br>تُطبَّق التغييرات فورًا حتى أثناء التحليق.<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
     svOpen: 'التجوّل الافتراضي', captureBtn: 'لقطة', capturedHint: 'انقر بزر الفأرة الأيمن على الصورة للحفظ'
   },
   hi: {
@@ -471,7 +487,8 @@ const GEO_I18N = {
     flyPlay: 'चलाएँ', flyPause: 'रोकें', flyStop: 'बंद करें', flyRestart: 'पुनः आरंभ',
     flySpeedLbl: 'गति (km/h)', flyHeightLbl: 'ऊँचाई (m)', flyPitchLbl: 'पिच (°)', flyLoop: 'लूप', flyView: 'दृश्य', flyViewCam: 'POV', flyViewCenter: 'अनुसरण',
     flyShowLine: 'मार्ग दिखाएँ', flyLoading: 'मार्ग लोड हो रहा है...', flySampling: 'भू-आकृति मापी जा रही है...', flyDone: 'पूर्ण', flyErr: 'मार्ग लोड करने में विफल', flyNoRoute: 'कोई मार्ग नहीं चुना गया',
-    flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
+    flyViewHint: 'POV: कैमरा मार्ग पर आगे देखते हुए चलता है। अनुसरण: कैमरा पीछे और ऊपर से मार्ग का पीछा करता है।',
+    flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = मार्ग पर उड़ान (POV); center = पीछे से अनुसरण।<br>बदलाव उड़ान के दौरान भी तुरंत लागू होते हैं।<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
     svOpen: 'स्ट्रीट व्यू', captureBtn: 'कैप्चर', capturedHint: 'सहेजने के लिए छवि पर राइट-क्लिक करें'
   },
   id: {
@@ -496,7 +513,8 @@ const GEO_I18N = {
     flyPlay: 'Putar', flyPause: 'Jeda', flyStop: 'Berhenti', flyRestart: 'Mulai ulang',
     flySpeedLbl: 'Kecepatan (km/j)', flyHeightLbl: 'Ketinggian (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Tampilan', flyViewCam: 'POV', flyViewCenter: 'Ikuti',
     flyShowLine: 'Tampilkan rute', flyLoading: 'Memuat rute...', flySampling: 'Mengambil sampel medan...', flyDone: 'Selesai', flyErr: 'Gagal memuat rute', flyNoRoute: 'Belum ada rute dipilih',
-    flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Atau tekan Gambar lalu sketsa polyline di peta.',
+    flyViewHint: 'POV: kamera berjalan di rute menghadap depan. Ikuti: kamera mengejar rute dari belakang dan atas.',
+    flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = terbang di rute (POV); center = mengejar dari belakang.<br>Perubahan langsung berlaku, bahkan saat terbang.<br>Atau tekan Gambar lalu sketsa polyline di peta.',
     svOpen: 'Street View', captureBtn: 'Tangkap', capturedHint: 'Klik kanan gambar untuk menyimpan'
   },
   th: {
@@ -521,7 +539,8 @@ const GEO_I18N = {
     flyPlay: 'เล่น', flyPause: 'หยุดชั่วคราว', flyStop: 'หยุด', flyRestart: 'เริ่มใหม่',
     flySpeedLbl: 'ความเร็ว (km/h)', flyHeightLbl: 'ความสูง (m)', flyPitchLbl: 'พิตช์ (°)', flyLoop: 'วนซ้ำ', flyView: 'มุมมอง', flyViewCam: 'POV', flyViewCenter: 'ติดตาม',
     flyShowLine: 'แสดงเส้นทาง', flyLoading: 'กำลังโหลดเส้นทาง...', flySampling: 'กำลังสุ่มภูมิประเทศ...', flyDone: 'เสร็จสิ้น', flyErr: 'โหลดเส้นทางไม่สำเร็จ', flyNoRoute: 'ยังไม่ได้เลือกเส้นทาง',
-    flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
+    flyViewHint: 'POV: กล้องเคลื่อนตามเส้นทางมองไปข้างหน้า ติดตาม: กล้องไล่ตามเส้นทางจากด้านหลังและด้านบน',
+    flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = บินตามเส้นทาง (POV); center = ไล่ตามจากด้านหลัง<br>ค่าที่แก้ไขมีผลทันที แม้ขณะบิน<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
     svOpen: 'Street View', captureBtn: 'จับภาพ', capturedHint: 'คลิกขวาที่ภาพเพื่อบันทึก'
   },
   vi: {
@@ -546,7 +565,8 @@ const GEO_I18N = {
     flyPlay: 'Phát', flyPause: 'Tạm dừng', flyStop: 'Dừng', flyRestart: 'Chơi lại',
     flySpeedLbl: 'Tốc độ (km/h)', flyHeightLbl: 'Độ cao (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Lặp lại', flyView: 'Góc nhìn', flyViewCam: 'POV', flyViewCenter: 'Theo dõi',
     flyShowLine: 'Hiện tuyến đường', flyLoading: 'Đang tải tuyến...', flySampling: 'Đang lấy mẫu địa hình...', flyDone: 'Hoàn tất', flyErr: 'Không tải được tuyến', flyNoRoute: 'Chưa chọn tuyến',
-    flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
+    flyViewHint: 'POV: camera đi trên tuyến nhìn về phía trước. Theo dõi: camera bám theo tuyến từ phía sau và phía trên.',
+    flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = bay theo tuyến (POV); center = bám theo phía sau.<br>Thay đổi áp dụng ngay, kể cả khi đang bay.<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
     svOpen: 'Street View', captureBtn: 'Chụp', capturedHint: 'Nhấp chuột phải vào ảnh để lưu'
   }
 };
@@ -1421,7 +1441,7 @@ function getUI() {
       <div class="fly-cell"><label data-i18n="flyHeightLbl">AGL (m)</label><input type="number" step="any" id="fly-height" value="0"></div>
       <div class="fly-cell"><label data-i18n="flyPitchLbl">Pitch (°)</label><input type="number" step="any" id="fly-pitch" value="-10"></div>
       <div class="fly-cell"><label data-i18n="flyView">View</label>
-        <select id="fly-view">
+        <select id="fly-view" data-i18n-title="flyViewHint" title="POV: camera rides on the route looking ahead. Follow: camera chases the route from behind and above.">
           <option value="camera" data-i18n="flyViewCam">POV</option>
           <option value="center" data-i18n="flyViewCenter">Follow</option>
         </select>
@@ -1429,7 +1449,7 @@ function getUI() {
       <div class="fly-cell"><label data-i18n="flyLoop">Loop</label><input type="checkbox" id="fly-loop"></div>
     </div>
     <div id="fly-status" class="text-sm" style="color:#666;min-height:1.2em;">&nbsp;</div>
-    <div id="fly-help" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;" data-i18n-html="flyHelp">fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Or press Draw and sketch a polyline on the map.</div>
+    <div id="fly-help" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;" data-i18n-html="flyHelp">fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera = ride on the route (POV); center = chase from behind.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.</div>
     <textarea id="fly-geojson-out" style="display:none;width:100%;height:120px;font-size:0.75em;border:1px solid #ccc;border-radius:4px;" readonly></textarea>
   </div>
 
@@ -1772,6 +1792,7 @@ function getUI() {
               } catch(e) {}
             }
           });
+          try { if (typeof window._flyPanelVisibility === 'function') window._flyPanelVisibility(target === 'fly-panel'); } catch(e) {}
         };
         const clearActionBtns = () => {
           try { (actionBtns || []).forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); }); } catch(e) {}
@@ -1805,6 +1826,7 @@ function getUI() {
                   this.textContent = '+';
                   this.title = t('restore');
                 }
+                try { if (typeof window._flyPanelVisibility === 'function') window._flyPanelVisibility(pressed && window._activeTabId === 'fly-panel'); } catch(e) {}
                 return;
               }
               const target = this.getAttribute('data-target');
@@ -2152,6 +2174,8 @@ function getUI() {
                         const el = document.getElementById(id);
                         if (el) el.style.display = (id === 'attr-panel') ? '' : 'none';
                       });
+                      try { window._activeTabId = 'attr-panel'; } catch(e) {}
+                      try { if (typeof window._flyPanelVisibility === 'function') window._flyPanelVisibility(false); } catch(e) {}
                     } catch(e) {}
                   }
                 } else if (msg.action === 'requestVectorFeatureData') {
@@ -2277,6 +2301,11 @@ function getUI() {
                       }
                       if (target !== null) {
                         sel.value = target;
+                        sel.dispatchEvent(new Event('change'));
+                        try {
+                          const flyTab = document.querySelector('.tab-bar [data-target="fly-panel"]');
+                          if (flyTab) flyTab.click();
+                        } catch (e) {}
                         flyPlay();
                       }
                     }
@@ -2308,13 +2337,53 @@ function getUI() {
           var fly = {
             pts: null, dists: null, dist: 0,
             props: { speed: 30, height: 0, pitch: -10, loop: false, view: 'camera', absolute: false },
-            active: false, paused: false, raf: null, lastTs: 0
+            active: false, paused: false, raf: null, lastTs: 0,
+            inputsDirty: false
           };
 
           function flyPost(m) { try { if (window.parent) window.parent.postMessage(m, '*'); } catch (e) {} }
           function flySetStatus(s) { var el = document.getElementById('fly-status'); if (el) el.textContent = s; }
           function flyNum(id, def) { var el = document.getElementById(id); var v = el ? parseFloat(el.value) : NaN; return isFinite(v) ? v : def; }
           function flySetVal(id, v) { var el = document.getElementById(id); if (el && isFinite(v)) el.value = v; }
+
+          // Input fields <-> fly.props. The fields are the single source of truth:
+          // route defaults are written into them on selection, user edits apply live.
+          function flyReadInputs() {
+            var loopEl = document.getElementById('fly-loop');
+            var viewEl = document.getElementById('fly-view');
+            return {
+              speed: flyNum('fly-speed', 30),
+              height: flyNum('fly-height', 0),
+              pitch: flyNum('fly-pitch', -10),
+              loop: !!(loopEl && loopEl.checked),
+              view: (viewEl && viewEl.value === 'center') ? 'center' : 'camera'
+            };
+          }
+          function flyWriteInputs(p) {
+            if (!p) return;
+            if (isFinite(p.speed)) flySetVal('fly-speed', p.speed);
+            if (isFinite(p.height)) flySetVal('fly-height', p.height);
+            if (isFinite(p.pitch)) flySetVal('fly-pitch', p.pitch);
+            var loopEl = document.getElementById('fly-loop');
+            var viewEl = document.getElementById('fly-view');
+            if (loopEl && p.loop !== undefined) loopEl.checked = !!p.loop;
+            if (viewEl && (p.view === 'center' || p.view === 'camera')) viewEl.value = p.view;
+          }
+          // User edited a field: mark dirty and apply to the running flight.
+          // Number fields are debounced so typing "100" doesn't jump 1→10→100.
+          var _flyApplyTimer = null;
+          function flyApplyInputs(immediate) {
+            fly.inputsDirty = true;
+            var apply = function() {
+              var abs = fly.props && fly.props.absolute;
+              fly.props = flyReadInputs();
+              fly.props.absolute = !!abs;
+              if (fly.pts && fly.dists) flyUpdateCam(fly.dist || 0);
+            };
+            if (immediate) { if (_flyApplyTimer) { clearTimeout(_flyApplyTimer); _flyApplyTimer = null; } apply(); return; }
+            if (_flyApplyTimer) clearTimeout(_flyApplyTimer);
+            _flyApplyTimer = setTimeout(apply, 250);
+          }
 
           function flyAddDrawnOption(name) {
             var sel = document.getElementById('fly-route-select'); if (!sel || !name) return;
@@ -2479,7 +2548,11 @@ function getUI() {
             var lng = a.longitude + (b.longitude - a.longitude) * tSeg;
             var alt = a.altitude + (b.altitude - a.altitude) * tSeg;
             var terr = (a.terrain || 0) + (((b.terrain || 0) - (a.terrain || 0)) * tSeg);
-            var height = alt + (fly.props.absolute ? 0 : terr) + fly.props.height;
+            // In follow (center) view the camera is pulled back behind the point;
+            // give it a minimum AGL so it never ends up inside the terrain.
+            var effHeight = fly.props.height;
+            if (fly.props.view === 'center' && effHeight < 30) effHeight = 30;
+            var height = alt + (fly.props.absolute ? 0 : terr) + effHeight;
             var heading = flyBearing(a, b);
             if (nextIdx + 1 < path.length) {
               var nb = flyBearing(path[nextIdx], path[nextIdx + 1]);
@@ -2492,7 +2565,8 @@ function getUI() {
             var pitch = pitchDeg * Math.PI / 180;
             var camLat = lat, camLng = lng;
             if (fly.props.view === 'center') {
-              var backDistance = fly.props.height > 0 ? fly.props.height / Math.tan(-pitch) : 0;
+              var backDistance = effHeight / Math.tan(-pitch);
+              if (!isFinite(backDistance) || backDistance < 0) backDistance = 60;
               camLat -= (Math.cos(heading) * backDistance) / 111320;
               camLng -= (Math.sin(heading) * backDistance) / (111320 * Math.cos(lat * Math.PI / 180));
             }
@@ -2556,23 +2630,12 @@ function getUI() {
             if (!spec) { flySetStatus(t('flyNoRoute')); return; }
             flySetStatus(t('flyLoading'));
             flyLoadRoute(spec).then(function(res) {
-              // properties.fly overrides inspector/UI defaults → reflect into inputs
+              // Route defaults (inspector spec + geojson properties.fly) are
+              // defaults only — applied unless the user edited the fields.
               var p = res.props || {};
-              if (isFinite(p.speed)) flySetVal('fly-speed', p.speed);
-              if (isFinite(p.height)) flySetVal('fly-height', p.height);
-              if (isFinite(p.pitch)) flySetVal('fly-pitch', p.pitch);
-              var loopEl = document.getElementById('fly-loop');
-              var viewEl = document.getElementById('fly-view');
-              if (loopEl && p.loop !== undefined) loopEl.checked = !!p.loop;
-              if (viewEl && p.view) viewEl.value = p.view;
-              fly.props = {
-                speed: flyNum('fly-speed', 30),
-                height: flyNum('fly-height', 0),
-                pitch: flyNum('fly-pitch', -10),
-                loop: !!(loopEl && loopEl.checked),
-                view: (viewEl && viewEl.value === 'center') ? 'center' : 'camera',
-                absolute: !!p.absolute
-              };
+              if (!fly.inputsDirty) flyWriteInputs(p);
+              fly.props = flyReadInputs();
+              fly.props.absolute = !!p.absolute;
               fly.geojson = res.geojson;
               var built = flyBuildPath(res.raw);
               fly.pts = built.points; fly.dists = built.distances; fly.dist = 0;
@@ -2610,7 +2673,7 @@ function getUI() {
               flyAddDrawnOption(name);
               flyPost({ action: 'flySaveRoute', name: name, geojson: g });
               var sel = document.getElementById('fly-route-select');
-              if (sel) { sel.value = 'd:' + name; }
+              if (sel) { sel.value = 'd:' + name; sel.dispatchEvent(new Event('change')); }
               var del = document.getElementById('fly-delete-btn'); if (del) del.disabled = false;
               flySetStatus(name);
             } catch (e) {}
@@ -2621,18 +2684,16 @@ function getUI() {
             var flySel = document.getElementById('fly-route-select');
             if (flySel) flySel.addEventListener('change', function() {
               flyStopAll(false);
+              fly.inputsDirty = false;
               var spec = flyResolveSpec();
-              if (spec && !spec.drawn) {
-                flySetVal('fly-speed', spec.speed); flySetVal('fly-height', spec.height); flySetVal('fly-pitch', spec.pitch);
-                var loopEl = document.getElementById('fly-loop'); if (loopEl) loopEl.checked = !!spec.loop;
-                var viewEl = document.getElementById('fly-view'); if (viewEl) viewEl.value = spec.view === 'center' ? 'center' : 'camera';
-              }
+              if (spec && !spec.drawn) flyWriteInputs(spec);
               var del = document.getElementById('fly-delete-btn'); if (del) del.disabled = !(spec && spec.drawn);
               fly.pts = null; fly.dists = null;
               // Preview the route line immediately
               if (spec) {
                 flyLoadRoute(spec).then(function(res) {
                   fly.geojson = res.geojson;
+                  if (!fly.inputsDirty) flyWriteInputs(res.props);
                   flyShowRouteLine(res.raw);
                   var copyBtn = document.getElementById('fly-copygeo-btn'); if (copyBtn) copyBtn.disabled = false;
                 }).catch(function() { flySetStatus(t('flyErr')); });
@@ -2677,6 +2738,39 @@ function getUI() {
               if (fly.geojson) { flyShowRouteLine(flyExtractCoords(fly.geojson)); }
               else flyPost({ action: 'flyHideRoute' });
             });
+            // Parameter fields apply live — also mid-flight (speed on next tick,
+            // height/pitch/view refresh the camera immediately).
+            ['fly-speed','fly-height','fly-pitch'].forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) el.addEventListener('input', function() { flyApplyInputs(false); });
+            });
+            var flyViewSel = document.getElementById('fly-view');
+            if (flyViewSel) flyViewSel.addEventListener('change', function() { flyApplyInputs(true); });
+            var flyLoopChk = document.getElementById('fly-loop');
+            if (flyLoopChk) flyLoopChk.addEventListener('change', function() { flyApplyInputs(true); });
+            // The route line belongs to this panel: it is hidden when the panel
+            // closes (other tab / minimize) and restored on reopen while the
+            // "Show route" toggle is on.
+            window._flyPanelVisibility = function(visible) {
+              try {
+                if (!visible) { flyPost({ action: 'flyHideRoute' }); return; }
+                if (fly.geojson) { flyShowRouteLine(flyExtractCoords(fly.geojson)); return; }
+                var spec = flyResolveSpec();
+                if (spec) {
+                  flyLoadRoute(spec).then(function(res) {
+                    fly.geojson = res.geojson;
+                    if (!fly.inputsDirty) flyWriteInputs(res.props);
+                    flyShowRouteLine(res.raw);
+                    var copyBtn = document.getElementById('fly-copygeo-btn'); if (copyBtn) copyBtn.disabled = false;
+                  }).catch(function() {});
+                }
+              } catch (e) {}
+            };
+            // Reflect the initially selected route's defaults into the fields
+            try {
+              var spec0 = flyResolveSpec();
+              if (spec0 && !spec0.drawn) flyWriteInputs(spec0);
+            } catch (e) {}
             var svBtn = document.getElementById('open-streetview-btn');
             if (svBtn) svBtn.addEventListener('click', function() { flyPost({ action: 'openStreetView' }); });
             var capBtn = document.getElementById('viewer-capture-btn');

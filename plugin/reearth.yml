@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "19.1.0"
+version: "19.3.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Fly ルート飛行、Street View 連携、Terrain/Shadow トグル、Info 表示、Google Earth 連携、AI チャット（Gemini function calling）を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -27,7 +27,7 @@ extensions:
                 属性パネルのURLクリック動作は attrUrlOpen: panel|newtab で設定できます（openUrlInNewTab: true も newtab として有効です）。
                 UI言語は lang: en|ja|zh-CN|zh-TW|ko|es|fr|de|it|pt|ru|nl|pl|uk|tr|ar|hi|id|th|vi で固定できます（lang: auto または未指定でブラウザ言語を自動検出。未対応言語は英語にフォールバック）。
                 飛行ルートは fly_geojson: 名前 | GeoJSON URL または route:名前 | speed=30 | height=0 | pitch=-10 | loop=true | view=camera で定義できます（FLY タブの「描画」で地図上にルートを描くこともできます）。
-                AI チャットは geminiApiKey: あなたのGemini APIキー と geminiModel: モデル名（省略可）で設定できます。キーは公開サイトに置くと漏洩する可能性があります。サイト側で GEMINI_API_KEY 環境変数が設定されていれば /api/gemini プロキシ経由となりキー不要です。
+                AI チャットは geminiApiKey: あなたのGemini APIキー と geminiModel: モデル名（省略可）で設定できます（AI Chat ウィジェット側のインスペクター欄でも設定可能で、そちらが優先されます）。キーは公開サイトに置くと漏洩する可能性があります。サイト側で GEMINI_API_KEY 環境変数が設定されていれば /api/gemini プロキシ経由となりキー不要です。
               type: string
               ui: multiline
               defaultValue: |
@@ -83,3 +83,20 @@ extensions:
         zone: outer
         section: right
         area: bottom
+    schema:
+      version: 2
+      groups:
+        - id: settings
+          title: "AI チャット設定"
+          fields:
+            - id: geminiApiKey
+              title: "Gemini APIキー"
+              description: |
+                【セキュリティ注意】ここに入力したキーは Re:Earth プロジェクトに保存され、公開サイトでは全訪問者のブラウザに平文で配信されます（DevTools・通信内容で閲覧可能＝事実上公開）。盗用されるとあなたのクォータ・請求が第三者に消費されます。
+                安全な順: ①サイト側の GEMINI_API_KEY 環境変数 + /api/gemini プロキシ（キーがブラウザに届かない・最推奨）→ ②各利用者がチャット設定（歯車）から自分のキーを入力 → ③この欄 / inspectorText の geminiApiKey:（公開サイトでは非推奨）。
+                設定する場合は必ず Google Cloud でキーに API 制限（Generative Language API のみ）と日次クォータ上限を掛けてください。
+              type: string
+            - id: geminiModel
+              title: "Gemini モデル"
+              description: "使用する Gemini モデル名（空欄時は既定のモデル）"
+              type: string
