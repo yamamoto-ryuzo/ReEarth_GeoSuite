@@ -74,3 +74,17 @@
 - Re:Earth Visualizer の UI iframe は `allow-same-origin` なしのサンドボックスのため、親ページの URL 本体（`https://...` 部分）を取得できません。
 - SHARE タブの「Generate Link」は完全な URL を生成せず、常に `?lat=...&lng=...` 形式のクエリ文字列のみを出力します。
 - `reearth.viewer.viewport` API は `query`（`?` 以降のパラメータ）のみを提供し、URL 全体は提供しません。
+
+## DuckDB-Wasm の実行ホスト（重要）
+- `duckdb:` レイヤーのクエリは **basemap-widget の UI iframe 内で実行される**。理由: レイヤーパネルの iframe は `safeShowUI`（`ui.show` の再呼出し）のたびに破棄・再生成されるため、そこに置くと wasm インスタンス（`window._ddbModule`）がレイヤー追加のたびに失われ、初期化（wasm インスタンス化 + httpfs/spatial/parquet 拡張ロード）が毎回発生していた。basemap-widget は `ui.show` を初期化時に一度だけ呼ぶため iframe が永続し、インスタンスが温存される（計測: 初回 ~17s → 2回目以降 ~3-10s。旧構成では 13-22s が毎回発生）。
+- メッセージ経路: パネル `ddbPost` → `reearth.extension.postMessage(basemap-widget, {action:'ddbExec',...})` → basemap 拡張が `postToUI({action:'ddbLoad',...})` で自分の iframe へ転送 → iframe が `ddbAck`（受理即時）/`ddbResult`（完了時）を返し、basemap 拡張が送信元へ `extensionMessage` で返送 → パネルの `handleDdbResult` が処理。
+- **フォールバック**: パネルは `ddbExec` 送信後 3 秒以内に `ddbAck` が来なければホスト iframe 消失（widget 非表示等）とみなし、自分の iframe で `ddbLoad` を再実行する（`layers-and-tiles-list.ts` の `ddbPost`/`_ddbHostDead`）。パネル iframe 側にも同一の `ddbLoad` ハンドラを残してあるので、両者を同期して変更すること。
+- `window._ddbModule` は Promise キャッシュ（初期化失敗時は null に戻る）。iframe 側の DuckDB コードは `basemap-widget.ts` と `layers-and-tiles-list.ts` に2か所ある（WKB デコーダ `vecWkbToGeoJson` も同様）。
+- **ブラウザ再起動・再訪では DuckDB アセットは必ず再ダウンロードされる**（実測: 再起動後 16.9s ≈ コールド）。プラグイン UI iframe は `allow-same-origin` なしサンドボックス（opaque origin）のため、HTTP キャッシュは同一ドキュメント内の再 fetch すら全バイト再転送され、CacheStorage/localStorage/IndexedDB/ServiceWorker はアクセス自体が SecurityError。KASUGAI の Service Worker + CacheStorage 方式は構造上移植不可。拡張側 `clientStorage` への wasm バイナリ保存は容量・メッセージ橋の制約から実用性が低い。「セッション毎に1回 ~15s 初期化、その後は warm」が現状の最適。
+
+## Workbench の resize script 注入バグ（重要）
+- Workbench は iframe HTML の `</body>` 直前に `_zushi_resize` スクリプトを挿入するが、**JS 文字列リテラル内の `'</body></html>'` にも誤マッチ**しスクリプト中間へ注入 → 注入された `</script>` で script 要素が早期終了し iframe が無反応になる。
+- 対策: 生成 HTML の JS 文字列内には生の `</body>`/`</script>` を書かず `'<\/body><\/html>'` のようにエスケープする。
+
+## QuickJS 拡張コンテキストには setTimeout が無い
+- 拡張側での遅延は `waitViaUiTimer(ms)`（UI iframe がブラウザ `setTimeout` を実行し `timerDone` で返送）を使うこと。直接 `setTimeout` を書くと ReferenceError。

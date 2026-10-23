@@ -1,5 +1,19 @@
 # Changelog
 
+## v19.5.0
+- 新機能: kasugai_canvas からの機能移植（A グループ＋ベクトルフォーマット群）。
+    - Street View: `googleMapsApiKey:` 設定時は Street View Static metadata API でパノラマを検証し、確認した `pano_id` 付き URL を開きます（outdoor 優先・失敗時は従来の viewpoint URL にフォールバック）。
+    - Google 検索プロバイダ: Search タブに `google` を追加。Geocoding + Places Text Search を並列実行・重複除去してマージします。
+    - AI ツール追加: `searchPlaces`（Google Places 検索）、`vectorSearch`（読込済みベクトルレイヤーの属性・値検索）、`setFlySettings`（fly ルートの速度/AGL/pitch/loop/view を即時反映＋`properties.fly` へ永続化）、`buildShareUrl`（任意視点のパーマリンククエリ生成）、`showReport`（Markdown レポートのモーダル表示＋ダウンロード/コピー）。
+    - FlatGeobuf: `flatgeobuf:`/`fgb:` インスペクタ構文と AI ツール `addFlatGeobufLayer`。パネル iframe で `flatgeobuf` ESM を遅延 import → `deserialize()` でストリームデコード → GeoJSON レイヤーとして追加。
+    - GeoParquet: `parquet:`/`geoparquet:` 構文と AI ツール `addParquetLayer`。`hyparquet`+`hyparquet-compressors` を遅延 import → `asyncBufferFromUrl`（Range 対応）→ `parquetReadObjects`。geo メタデータの `primary_column` 優先でジオメトリ列を検出し、WKB は自前デコーダ（EWKB/Z/M/SRID 対応）で GeoJSON 化。
+    - DuckDB-Wasm クエリレイヤー: `duckdb:` 構文と AI ツール `addDuckDbLayer`。`where=`/`limit=`/`columns=`/`format=`/`geom=`/`lon=`/`lat=`/`covering=`/`bbox=auto` の SQL プッシュダウンを実装。GeoParquet 1.1 の `covering.bbox` を `parquet_kv_metadata` から自動検出し、行グループ min/max 統計で非該当ブロックの転送自体をスキップ（部分読込）。`bbox=auto` は `reearth.camera.viewport` 連動でカメラ停止後に再クエリ → `layers.override` で差替え。
+- 改善: DuckDB-Wasm の実行を basemap-widget の永続 iframe に移しました。レイヤーパネル iframe は `safeShowUI` のたびに再生成されるため旧構成では wasm インスタンスが毎回失われていました（計測: 13–22s が毎回発生 → 初回 ~17s 以降 3–9s に改善）。ホスト未応答時は 3 秒でパネル iframe へフォールバックします。
+- ドキュメント: `duckdb-persistence.html` を追加。DuckDB 永続化の検証結果（セッション内再利用・ブラウザ再起動時の再ダウンロード不可避の実測根拠）、フォーマット別使いどころ比較（GeoJSON/FGB/Parquet/DuckDB）、sandbox 環境制約の記録をまとめています。
+- 修正: AI Chat iframe の生成 HTML 内 JS 文字列 `'</body></html>'` に Workbench の `_zushi_resize` 注入が誤マッチしスクリプトが早期終了する問題を `'<\/body><\/html>'` エスケープで解消。AI Chat の i18n 辞書を拡張側へ移し `aiConfig.i18n` で配信する構成に変更（iframe テンプレートを ~21KB 削減）。
+- その他: QuickJS に `setTimeout` が無い制約に合わせ、カメラ移動デバウンスを `waitViaUiTimer` 委譲＋遅延購読で実装。sandbox iframe では HTTP キャッシュ・CacheStorage・localStorage・IndexedDB・ServiceWorker が全て不可（opaque origin）であることを実測確認し、上流へ reearth/reearth-visualizer#2497 として機能要望を登録。
+- 検証: `tsc --noEmit` 0 エラー / inline script チェック全通過 / Workbench AI テスト 44/44 全パス（`addFlatGeobufLayer`、`addParquetLayer`、`addDuckDbLayer` の追加・削除を含む、コンソールエラーなし）。
+
 ## v19.4.0
 - 新機能: FLY タブにプリセット選択を追加しました（kasugai_canvas の Fly モードから移植）。速度・地上高・ピッチの組み合わせを「徒歩 (h2 s5 p-5)」「車載 (h2 s60 p-10)」「ドローン (h200 s60 p-30)」「広域 (h1000 s300 p-45)」からワンクリックで適用でき、再生中でも即時に反映されます。数値を手動で編集すると自動的に「カスタム」表示になり、入力値がプリセットと一致した場合はそのプリセット名が選択されます。
 - 新機能: FLY タブに「逆転」ボタンを追加しました。読み込み済みルートの起終点を入れ替えて逆方向に飛行できます。進行度はミラーされるため、再生中・一時停止中に押してもカメラ位置を保ったまま反転します（再生前のプレビュー状態でも有効で、そのまま Play すると逆方向で再生されます）。

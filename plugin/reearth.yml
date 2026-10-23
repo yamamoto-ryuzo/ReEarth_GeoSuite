@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "19.4.0"
+version: "19.5.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Fly ルート飛行、Street View 連携、Terrain/Shadow トグル、Info 表示、Google Earth 連携、AI チャット（Gemini function calling）を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
@@ -27,6 +27,9 @@ extensions:
                 属性パネルのURLクリック動作は attrUrlOpen: panel|newtab で設定できます（openUrlInNewTab: true も newtab として有効です）。
                 UI言語は lang: en|ja|zh-CN|zh-TW|ko|es|fr|de|it|pt|ru|nl|pl|uk|tr|ar|hi|id|th|vi で固定できます（lang: auto または未指定でブラウザ言語を自動検出。未対応言語は英語にフォールバック）。
                 飛行ルートは fly_geojson: 名前 | GeoJSON URL または route:名前 | speed=30 | height=0 | pitch=-10 | loop=true | view=camera|center で定義できます（camera=ルート上を進み前方を見る搭乗視点、center=後方上空から移動点を追う空撮視点。pov/chase 等の別名も可。FLY タブの「描画」で地図上にルートを描くこともできます）。
+                FlatGeobuf は flatgeobuf: 名前 | .fgb URL | on/off | classification で読み込めます（fgb: でも可。GeoJSON レイヤーとして追加され属性検索・属性パネルも利用可能）。
+                GeoParquet は parquet: 名前 | .parquet URL | on/off | classification で読み込めます（geoparquet: でも可。同様に GeoJSON レイヤーとして追加）。
+                巨大ファイル向けに duckdb: 名前 | URL | where=.. | limit=.. | format=parquet|csv|json | geom=.. | lon=.. | lat=.. | columns=a,b | covering=xmin,xmax,ymin,ymax | bbox=auto|off | on/off も使えます（DuckDB-Wasm で SQL 絞り込み後に追加。bbox=auto が既定で表示範囲連動の部分読込になり、covering bbox 列がある GeoParquet は行グループ単位で読み飛ばします）。
                 AI チャットは geminiApiKey: あなたのGemini APIキー と geminiModel: モデル名（省略可）で設定できます（AI Chat ウィジェット側のインスペクター欄でも設定可能で、そちらが優先されます）。キーは公開サイトに置くと漏洩する可能性があります。サイト側で GEMINI_API_KEY 環境変数が設定されていれば /api/gemini プロキシ経由となりキー不要です。
               type: string
               ui: multiline

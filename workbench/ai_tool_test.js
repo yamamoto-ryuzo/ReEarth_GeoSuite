@@ -346,6 +346,59 @@ async function main() {
     const r = await callTool("showFeatureAttributes", { attribute: "N03_004", value: "千代田区", fly: false }, 20000);
     return JSON.stringify(r).slice(0, 160);
   });
+  await test("vectorSearch", async () => {
+    const r = await callTool("vectorSearch", { query: "千代田区", limit: 5 }, 20000);
+    if (r && r.error) return JSON.stringify(r);
+    return `count=${r && r.count} first=${JSON.stringify(r && r.results && r.results[0]).slice(0, 80)}`;
+  });
+  await test("setFlySettings", async () => {
+    const r0 = await callTool("createFlyPath", { name: "ai-route-s", coordinates: [[139.7, 35.68], [139.75, 35.65], [139.8, 35.66]] });
+    if (r0 && r0.error) return "create: " + JSON.stringify(r0);
+    const r = await callTool("setFlySettings", { name: "ai-route-s", speed: 400, agl: 120, pitch: -20, loop: true, view: "center" });
+    await sleep(700);
+    const vals = panel ? await evalPanel(`(function(){var g=function(id){var e=document.getElementById(id);return e?e.value:null};var l=document.getElementById('fly-loop');var v=document.getElementById('fly-view');return JSON.stringify({speed:g('fly-speed'),h:g('fly-height'),p:g('fly-pitch'),loop:l?l.checked:null,view:v?v.value:null});})()`) : null;
+    await callTool("deleteFlyPath", { name: "ai-route-s" });
+    return `applied=${JSON.stringify(r && r.applied)} ui=${vals}`;
+  });
+  // buildShareUrl / showReport / searchPlaces are iframe-local tools — the
+  // Gemini loop routes them through executeTool, not aiToolCall.
+  await test("buildShareUrl", async () => {
+    const r = await ai.evalJs(`window.__aiExecuteTool("buildShareUrl", { lat: 35.68, lng: 139.75, height: 500, pitch: -45 })`);
+    return has(r, "query") ? r.query : JSON.stringify(r);
+  });
+  await test("showReport", async () => {
+    const r = await ai.evalJs(`window.__aiExecuteTool("showReport", { title: "T", markdown: "# Hi\\n- a" })`);
+    const m = await ai.evalJs("!!document.getElementById('ai-report-modal')");
+    await ai.evalJs("var b=document.getElementById('ai-report-modal'); if(b) b.remove(); 'done'");
+    return `ok=${r && r.ok} modal=${m}`;
+  });
+  await test("searchPlaces (no key -> clear error)", async () => {
+    const r = await ai.evalJs(`window.__aiExecuteTool("searchPlaces", { query: "東京タワー" })`);
+    return r && r.error && /googleMapsApiKey/i.test(r.error) ? "err-as-expected: " + String(r.error).slice(0, 60) : JSON.stringify(r).slice(0, 120);
+  });
+  await test("addFlatGeobufLayer+removeLayer", async () => {
+    const r1 = await callTool("addFlatGeobufLayer", { title: "AI-fgb", url: "https://flatgeobuf.org/test/data/countries.fgb", limit: 500 }, 30000);
+    if (!r1 || r1.error || !r1.id) return "add: " + JSON.stringify(r1).slice(0, 200);
+    const r2 = await callTool("removeLayer", { layer: "AI-fgb" });
+    return (r2 && !r2.error) ? `added ${r1.id} features=${r1.features} + removed` : "remove: " + JSON.stringify(r2);
+  });
+  await test("addParquetLayer+removeLayer", async () => {
+    const r1 = await callTool("addParquetLayer", { title: "AI-pq", url: "https://raw.githubusercontent.com/opengeospatial/geoparquet/main/examples/example.parquet" }, 30000);
+    if (!r1 || r1.error || !r1.id) return "add: " + JSON.stringify(r1).slice(0, 200);
+    const r2 = await callTool("removeLayer", { layer: "AI-pq" });
+    return (r2 && !r2.error) ? `added ${r1.id} features=${r1.features} + removed` : "remove: " + JSON.stringify(r2);
+  });
+  await test("addDuckDbLayer+removeLayer", async () => {
+    // First call also pays the DuckDB-Wasm CDN download, so allow extra time.
+    const r1 = await callTool("addDuckDbLayer", { title: "AI-ddb", url: "https://raw.githubusercontent.com/opengeospatial/geoparquet/main/examples/example.parquet", format: "parquet", where: "pop_est>0", limit: 2, bbox: false }, 120000);
+    if (!r1 || r1.error || !r1.id) return "add: " + JSON.stringify(r1).slice(0, 200);
+    const r2 = await callTool("removeLayer", { layer: "AI-ddb" });
+    return (r2 && !r2.error) ? `added ${r1.id} features=${r1.features} + removed` : "remove: " + JSON.stringify(r2);
+  });
+  await test("openStreetView (no key -> plain url)", async () => {
+    const r = await callTool("openStreetView", {}, 15000);
+    return (r && r.url) ? `url ok verified=${r.verified} status=${r.status}` : JSON.stringify(r);
+  });
 
   // ---------- misc ----------
   await test("captureView", async () => { const r = await callTool("captureView", {}, 20000); return (r && r.dataUrl && r.dataUrl.indexOf("data:image") === 0) ? "png " + r.dataUrl.length + "b" : JSON.stringify(r); });

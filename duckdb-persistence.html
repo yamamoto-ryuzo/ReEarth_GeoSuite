@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckDB-Wasm 永続化検証 — GeoSuite 開発メモ</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 36px 30px;
+        }
+        header h1 { font-size: 1.8em; margin-bottom: 8px; }
+        header p { opacity: 0.9; font-size: 0.95em; }
+        .content { padding: 32px 36px; }
+        section { margin-bottom: 36px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.35em;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid #667eea;
+        }
+        h3 { color: #555; font-size: 1.1em; margin: 18px 0 8px; }
+        p { margin-bottom: 10px; }
+        ul { margin: 8px 0 14px 24px; }
+        li { margin-bottom: 6px; }
+        code {
+            background: #f0f0f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #2d2d3d;
+            color: #e8e8f0;
+            padding: 14px 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            margin: 10px 0 14px;
+            line-height: 1.5;
+        }
+        pre code { background: none; padding: 0; color: inherit; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 16px;
+            font-size: 0.92em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th { background: #f5f5fa; }
+        .ok { color: #1a7f37; font-weight: bold; }
+        .ng { color: #c62828; font-weight: bold; }
+        .warn { color: #b26a00; font-weight: bold; }
+        .box {
+            border-left: 4px solid #667eea;
+            background: #f6f6fc;
+            padding: 12px 16px;
+            margin: 12px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .box.warn-box { border-left-color: #e6a23c; background: #fdf6ec; }
+        .box.err-box { border-left-color: #c62828; background: #fdecea; }
+        .box.ok-box { border-left-color: #1a7f37; background: #eefaf1; }
+        .muted { color: #777; font-size: 0.88em; }
+        footer {
+            padding: 16px 36px;
+            background: #f5f5fa;
+            color: #888;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>DuckDB-Wasm 永続化検証レポート</h1>
+        <p>GeoSuite プラグイン — 読み込みタイミング・セッション内再利用・ブラウザ再起動時の挙動（実測）</p>
+    </header>
+    <div class="content">
+
+        <section>
+            <h2>1. 概要</h2>
+            <p><code>duckdb:</code> レイヤーが利用する DuckDB-Wasm について、以下を検証・修正した。</p>
+            <ul>
+                <li>本当に必要時（初回クエリ時）に遅延ロードされるか</li>
+                <li>一度ロードした後、再ダウンロード・再初期化なしに継続利用できるか</li>
+                <li>ブラウザ再起動・再訪問時にキャッシュが生きるか</li>
+            </ul>
+            <div class="box ok-box">
+                <strong>結論</strong>:
+                セッション内では「初回のみ ~15–17s の初期化、以後 warm（~3–9s）で継続利用」を実現した。
+                ただしブラウザ再起動・再訪では <strong>アセットは必ず再ダウンロードされる</strong>。
+                これは Re:Earth プラグイン iframe のサンドボックス制約（opaque origin）によるもので、アプリ側では回避不可能。
+            </div>
+        </section>
+
+        <section>
+            <h2>2. 発見した問題</h2>
+            <h3>2.1 パネル iframe はレイヤー追加のたびに破棄される</h3>
+            <p>
+                DuckDB-Wasm は当初 <code>layers-and-tiles-list</code> の UI iframe 内でロードしていた。
+                しかし <code>addGeoJsonValueLayer()</code> が無条件に <code>safeShowUI()</code>
+                （<code>reearth.ui.show(getUI(), {extended:true})</code>）を呼ぶため、
+                <strong>レイヤー追加のたびに iframe が再生成され <code>window._ddbModule</code>
+                （DuckDB インスタンス）が破棄されていた</strong>。
+            </p>
+            <h3>2.2 旧構成の計測値</h3>
+            <table>
+                <tr><th>呼び出し</th><th>所要時間</th><th>状態</th></tr>
+                <tr><td>1回目（cold）</td><td>18.7s</td><td>wasm DL + 初期化</td></tr>
+                <tr><td>2回目（iframe 再生成後）</td><td>22.1s</td><td class="ng">再初期化発生</td></tr>
+                <tr><td>3回目</td><td>13.4s</td><td class="ng">再初期化発生</td></tr>
+            </table>
+            <p class="muted">
+                jsDelivr は <code>cache-control: immutable, max-age=31536000</code> を返すが、
+                サンドボックス iframe では HTTP キャッシュが効かず（後述）、wasm インスタンス化 +
+                httpfs/spatial/parquet 拡張の INSTALL/LOAD が毎回フルに走っていた。
+            </p>
+        </section>
+
+        <section>
+            <h2>3. 実装： 永続ホストへの移行</h2>
+            <p>
+                DuckDB の実行を <strong>basemap-widget の UI iframe</strong> に移した。
+                この widget は <code>ui.show()</code> を初期化時に一度だけ呼ぶため iframe が永続し、
+                パネルの再描画（<code>safeShowUI</code>）をまたいでインスタンスが生存する。
+            </p>
+            <pre><code>パネル ddbPost ── extensionMessage(ddbExec) ──&gt; basemap 拡張
+                                                └ postToUI(ddbLoad) → 永続 iframe (wasm 実行)
+                    &lt;── extensionMessage(ddbAck / ddbResult) ──
+                                     ↓
+                            パネル handleDdbResult</code></pre>
+            <ul>
+                <li><code>ddbAck</code>: ホスト iframe がクエリを受理した即時応答</li>
+                <li><code>ddbResult</code>: クエリ完了時の GeoJSON / エラー返送</li>
+                <li><strong>フォールバック</strong>: <code>ddbAck</code> が 3 秒以内に来なければ
+                    （widget 非表示等でホスト iframe 不在）パネル自身の iframe で実行。
+                    パネル側にも同一の <code>ddbLoad</code> ハンドラを温存している</li>
+                <li><code>window._ddbModule</code> は Promise キャッシュ。初期化失敗時は null に戻り再試行可能</li>
+            </ul>
+            <p class="muted">
+                変更ファイル: <code>geo_suite/src/basemap-widget.ts</code>（ddbExec 中継・ddbLoad 実行・ddbAck/ddbResult 返送）、
+                <code>geo_suite/src/layers-and-tiles-list.ts</code>（ddbPost ホスト優先＋フォールバック、handleDdbResult、ddbAck/ddbResult 受信）
+            </p>
+        </section>
+
+        <section>
+            <h2>4. セッション内の実測（修正後）</h2>
+            <table>
+                <tr><th>確認項目</th><th>結果</th></tr>
+                <tr><td>初回クエリ前</td><td><code>window._ddbModule</code> = undefined → <span class="ok">遅延ロード確認</span></td></tr>
+                <tr><td>1回目（cold）</td><td>17.7s — wasm DL + 初期化 + 拡張ロード</td></tr>
+                <tr><td>2回目（パネル再描画後）</td><td>9.5s — <span class="ok">同一インスタンス</span>（リモート parquet 取得+クエリのみ）</td></tr>
+                <tr><td>3回目</td><td>3.1s — 同上</td></tr>
+            </table>
+            <ul>
+                <li>basemap iframe の CDP ターゲット ID は全工程で不変（iframe 再生成なし）</li>
+                <li><code>_ddbModule</code> にタグを付けて確認 → パネル再生成をまたいで同一オブジェクトを維持</li>
+                <li>wasm 再初期化・再ダウンロードは発生しない</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>5. ブラウザ再起動・再訪の検証</h2>
+            <h3>5.1 実測</h3>
+            <table>
+                <tr><th>セッション</th><th>所要時間</th><th>解釈</th></tr>
+                <tr><td>A（新規プロファイル）</td><td>15.3s</td><td>コールド</td></tr>
+                <tr><td>B（再起動・同一プロファイル）</td><td>16.9s</td><td class="ng">コールドと同等 — キャッシュ未利用</td></tr>
+            </table>
+            <h3>5.2 原因の特定（CDP 実測）</h3>
+            <ul>
+                <li>同一 iframe・同一セッション内で同一 URL を 2 回 fetch →
+                    2回目も <code>transferSize=4456</code>（全バイト再転送）。<strong>HTTP キャッシュが機能しない</strong></li>
+                <li><code>caches.open()</code> →
+                    <code>SecurityError: Cache storage is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag</code></li>
+                <li>iframe 属性: <code>sandbox="allow-scripts allow-downloads allow-popups"</code>
+                    — <code>allow-same-origin</code> が無く opaque origin になる</li>
+            </ul>
+            <div class="box err-box">
+                opaque origin のため <strong>HTTP キャッシュ・CacheStorage・localStorage・IndexedDB・
+                Service Worker のすべてが利用不可</strong>。KASUGAI Canvas の
+                <code>sw-duckdb.js</code>（Service Worker + CacheStorage で wasm を永続キャッシュ）方式は
+                構造上移植できない。
+            </div>
+        </section>
+
+        <section>
+            <h2>6. 回避策の検討</h2>
+            <table>
+                <tr><th>案</th><th>判定</th><th>理由</th></tr>
+                <tr><td>HTTP キャッシュ依存</td><td class="ng">不可</td><td>opaque origin で無効（実測）</td></tr>
+                <tr><td>Service Worker + CacheStorage（KASUGAI 方式）</td><td class="ng">不可</td><td>sandbox で SecurityError</td></tr>
+                <tr><td>拡張側 <code>clientStorage</code> に wasm バイナリ保存→次回注入</td><td class="warn">理論上可能だが非推奨</td><td>wasm+worker+拡張で ~6–8MB → base64 ~10MB 超。localStorage 系上限・メッセージ橋のバイナリ転送制約あり</td></tr>
+                <tr><td>永続 iframe ホスト（basemap-widget）</td><td class="ok">採用</td><td>セッション内の再初期化を排除（本実装）</td></tr>
+            </table>
+        </section>
+
+        <section>
+            <h2>7. フォーマット別の使いどころ（GeoJSON / FlatGeobuf / GeoParquet / duckdb:）</h2>
+            <p>
+                GeoSuite にはベクトルデータの読込経路が4種類ある。利用者視点で
+                「ファイルサイズ」「ダウンロード→描画の速さ」「選び方の目安」をまとめる。
+            </p>
+
+            <h3>7.1 フォーマット特性</h3>
+            <table>
+                <tr><th>構文</th><th>実体</th><th>圧縮</th><th>読込単位</th><th>備考</th></tr>
+                <tr>
+                    <td><code>geojson:</code></td><td>テキスト (JSON)</td><td>なし</td>
+                    <td>全量</td><td>標準フォーマット。どのツールでも出力できる</td>
+                </tr>
+                <tr>
+                    <td><code>flatgeobuf:</code> / <code>fgb:</code></td><td>バイナリ＋空間インデックス</td><td>なし</td>
+                    <td>全量（本実装）</td><td>本来は index による bbox 読みも可能な規格だが、現実装は全件デコード</td>
+                </tr>
+                <tr>
+                    <td><code>parquet:</code> / <code>geoparquet:</code></td><td>カラムナー (Parquet)</td><td>snappy 等</td>
+                    <td>全行・全列（hyparquet）</td><td>Range 対応だが実質全件読み。属性列が多いほど圧縮が効く</td>
+                </tr>
+                <tr>
+                    <td><code>duckdb:</code></td><td>同上 (Parquet 等)</td><td>同上</td>
+                    <td class="ok">行グループ単位の部分読込</td><td><code>where=</code>/<code>limit=</code>/<code>columns=</code>/<code>bbox=auto</code> を SQL プッシュダウン。covering.bbox で非該当行グループは転送自体が発生しない</td>
+                </tr>
+            </table>
+
+            <h3>7.2 ファイルサイズの比較（実測 + 目安）</h3>
+            <table>
+                <tr><th>データセット</th><th>GeoJSON</th><th>FlatGeobuf</th><th>GeoParquet</th></tr>
+                <tr>
+                    <td>countries（179地物・実測）</td>
+                    <td>258 KB（100%）</td>
+                    <td>205 KB（<strong>約80%</strong>）</td>
+                    <td>〜（別データのため未計測）</td>
+                </tr>
+                <tr><td colspan="4" class="muted">
+                    一般的な目安: FlatGeobuf ≈ GeoJSON の 70–90%、GeoParquet(snappy) ≈ GeoJSON の 30–60%。
+                    属性列が多い・座標が単純（点群など）ほど Parquet の列圧縮が効く。
+                    逆に地物数が少ない小さいファイルでは、Parquet のフッタ/メタデータの固定オーバーヘッドが効き
+                    <strong>GeoJSON より大きくなることもある</strong>（例: 5地物の example.parquet = 28KB）。
+                </td></tr>
+            </table>
+            <p><strong>ファイルサイズが小さい順の目安</strong>: GeoParquet &lt; FlatGeobuf &lt; GeoJSON（中〜大ファイルの場合）</p>
+
+            <h3>7.3 ダウンロード→描画までの速さ</h3>
+            <h4>小さいファイル（~数MB 以下）</h4>
+            <table>
+                <tr><th>経路</th><th>構成</th><th>実測（countries 205KB, 179地物）</th></tr>
+                <tr><td><code>geojson:</code></td><td>DL + JSON.parse のみ</td><td class="ok">最速（デコーダ不要、~0.5s）</td></tr>
+                <tr><td><code>fgb:</code> / <code>parquet:</code></td><td>DL + デコーダ import + デコード</td><td>DL 494ms + <strong>モジュールロード 1.6s</strong> + デコード 31ms<br><span class="muted">モジュールは初回のみ。以後はデコードのみで速い</span></td></tr>
+                <tr><td><code>duckdb:</code></td><td>DL + wasm 初期化 + クエリ</td><td class="warn">wasm 初期化 ~15s（セッション1回目のみ）が支配的 → 小さいファイルでは割に合わない</td></tr>
+            </table>
+            <p><strong>小さいファイルでは <code>geojson:</code> が最速</strong>。バイナリ系はモジュールロード分だけ初回に負ける。</p>
+
+            <h4>大きいファイル（~50–100MB 以上・属性多数・表示範囲で絞れる）</h4>
+            <table>
+                <tr><th>経路</th><th>転送量</th><th>描画まで</th></tr>
+                <tr><td><code>geojson:</code></td><td>全量（100%）</td><td class="ng">最悪 — 全量DL + JSON.parse がメインスレッドをブロック</td></tr>
+                <tr><td><code>fgb:</code></td><td>~70–90%</td><td>ストリームデコードだが全件転送は必要</td></tr>
+                <tr><td><code>parquet:</code></td><td>~30–60%</td><td>転送量は減るが全行デコード</td></tr>
+                <tr><td><code>duckdb:</code></td><td class="ok">該当行グループのみ（桁違いに小さいことも）</td><td class="ok">where/bbox 絞込み後の少量転送 + wasm は2回目以降 warm</td></tr>
+            </table>
+            <p>
+                巨大ファイルかつ「表示範囲だけ欲しい」「条件で絞りたい」用途では
+                <strong><code>duckdb:</code> が圧倒的に速い</strong>。
+                15s の初期化はセッションに1回だけなので、複数の duckdb レイヤーや
+                <code>bbox=auto</code> のカメラ連動再クエリを使うほど元が取れる。
+            </p>
+
+            <h3>7.4 選び方の目安</h3>
+            <table>
+                <tr><th>ファイルサイズ / 用途</th><th>推奨</th><th>理由</th></tr>
+                <tr><td>〜10MB 程度</td><td><code>geojson:</code> または <code>fgb:</code></td><td>デコード基盤なしで最速。手軽さ優先</td></tr>
+                <tr><td>~10–50MB</td><td><code>fgb:</code> / <code>parquet:</code></td><td>転送量削減が効いてくる。属性が多いなら parquet</td></tr>
+                <tr><td>~50MB 以上、または表示範囲・条件で絞って使う</td><td><code>duckdb:</code></td><td>部分読込で転送量を最小化。15s 初期化を回収できる</td></tr>
+                <tr><td>属性で検索・集計したい（<code>where=</code>）</td><td><code>duckdb:</code></td><td>SQL プッシュダウンは duckdb 経路のみ</td></tr>
+                <tr><td>複数レイヤーをまとめてクエリする</td><td><code>duckdb:</code></td><td>wasm 初期化はセッション1回で使い回せる</td></tr>
+            </table>
+
+            <h3>7.5 その他の留意点</h3>
+            <ul>
+                <li><strong>変換</strong>: GeoJSON → FlatGeobuf / GeoParquet は QGIS・ogr2ogr・geopandas 等で変換可能</li>
+                <li><strong>属性が多いデータ</strong>: カラムナーの Parquet が圧倒的に有利。<code>duckdb:</code> の <code>columns=</code> で必要列だけ取り込める</li>
+                <li><strong>全量読込系はメモリ常駐</strong>: geojson/fgb/parquet 経路は FeatureCollection を丸ごとメモリに持つ。
+                    巨大データを「一部だけ表示」するなら <code>duckdb:</code> 一択</li>
+                <li><strong>GeoParquet 1.1 の covering.bbox 付きファイルが理想</strong>:
+                    <code>duckdb:</code> で自動検出され、行グループスキップ＋表示範囲連動が最大効果を発揮する。
+                    無い場合は <code>covering=xmin,xmax,ymin,ymax</code> 列指定か、空間フィルタ無しの where/limit のみになる</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>8. 関連する環境制約・今回の発見</h2>
+            <p>調査過程で判明した、プラグイン開発上の重要な制約を記録しておく。</p>
+
+            <h3>8.1 上流への機能要望（Issue 登録済み）</h3>
+            <div class="box">
+                <strong><a href="https://github.com/reearth/reearth-visualizer/issues/2497">reearth-visualizer#2497</a></strong>
+                — プラグイン UI iframe が opaque origin で HTTP キャッシュ・CacheStorage・localStorage・
+                IndexedDB・Service Worker・SharedArrayBuffer が全て使えない件を feature request として登録。
+                提案: (1) iframe を実オリジン URL から配信、(2) 拡張ブリッジ経由のバイナリ対応キャッシュ API、
+                (3) COOP/COEP opt-in による COI 解放。WASM 系プラグイン（DuckDB/GDAL/ML/タイルデコーダ）や
+                COI 必須の Cesium 最新機能が使えない現状の抜本解決を狙う。
+            </div>
+
+            <h3>8.2 QuickJS 拡張コンテキストには <code>setTimeout</code> が無い</h3>
+            <p>
+                拡張側（QuickJS サンドボックス）で遅延処理が必要な場合は、既存のタイマー委譲機構を使うこと:
+                <code>waitViaUiTimer(ms)</code> → UI iframe がブラウザの <code>setTimeout</code> を実行 →
+                <code>timerDone</code> で拡張へ返送。拡張側で直接 <code>setTimeout</code> を書くと
+                ReferenceError になる（DuckDB のカメラデバウンスで実際に踏んだ）。
+            </p>
+
+            <h3>8.3 Workbench の resize script 注入バグ</h3>
+            <p>
+                Workbench が iframe HTML の <code>&lt;/body&gt;</code> 直前に <code>_zushi_resize</code> スクリプトを
+                挿入する際、<strong>JS 文字列リテラル内の <code>'&lt;/body&gt;&lt;/html&gt;'</code> に誤マッチ</strong>し、
+                スクリプトの中間へ注入される → 注入された <code>&lt;/script&gt;</code> で script 要素が早期終了し、
+                iframe の JS が途中で切れて無反応になる。<br>
+                <strong>対策</strong>: 生成 HTML の JS 文字列リテラル内には生の <code>&lt;/body&gt;</code>/<code>&lt;/script&gt;</code> を
+                書かず <code>'&lt;\/body&gt;&lt;\/html&gt;'</code> のようにスラッシュをエスケープする（ai-chat.ts で修正済み）。
+            </p>
+
+            <h3>8.4 サンドボックスでも動作するもの</h3>
+            <ul>
+                <li><strong>blob URL Worker は生成可能</strong> — DuckDB-Wasm のワーカー起動が通る</li>
+                <li><code>crossOriginIsolated=false</code> でも DuckDB は <code>eh</code>（非スレッド）バンドルで動作。
+                    httpfs / spatial / parquet 拡張も全て INSTALL/LOAD 成功</li>
+                <li>ESM 動的 <code>import()</code>（jsDelivr CDN）は制限なく使える</li>
+            </ul>
+            <p class="muted">
+                つまり「重い WASM が動くか」は問題ないが「永続化できない」ことが根本的な制約。
+            </p>
+        </section>
+
+        <section>
+            <h2>9. 結論</h2>
+            <div class="box">
+                <strong>現状の最適構成</strong> — 再訪時は最初の1回だけ ~15s の初期化待ち、
+                以後はセッション内でインスタンスを使い回す。
+                修正前はレイヤー追加のたびに 13–22s の再初期化が発生していたため、
+                セッションあたりの初期化回数が「毎回」→「1回」に改善された。
+            </div>
+            <p class="muted">
+                検証: <code>tsc --noEmit</code> 0 エラー / inline script チェック全通過 /
+                Workbench AI テスト 44/44 全パス（コンソールエラーなし）
+            </p>
+        </section>
+
+    </div>
+    <footer>
+        GeoSuite Plugin — DuckDB-Wasm 永続化検証 / 2026-10-24
+    </footer>
+</div>
+</body>
+</html>

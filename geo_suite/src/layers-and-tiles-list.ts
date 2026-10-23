@@ -25,6 +25,7 @@ let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector text (forwarded to ai-chat widget)
 let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
+let _inspectorGoogleMapsApiKey = null; // optional googleMapsApiKey read from inspector text (Google Places search / Street View pano verification)
 let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
@@ -59,7 +60,7 @@ const GEO_I18N = {
     shareReadUrl:'Move to current URL parameters', urlLoadFlyTo:'Load URL & FlyTo', loading:'Loading...',
     shareFlyCurrentLabel:'Move from current location', flyToCurrentLoc:'Fly to Current Location', getting:'Getting...', restored:'Restored!', noLatLng:'No Lat/Lng', noParams:'No Params', imported:'Imported!',
     vectorSearch:'Vector Search', allSelect:'All', selectValue:'Select value', fly:'Fly', textSearchPh:'Search by text', searchGo:'Search', updateVector:'Update vector data', attrValueList:'Attributes & Values', attrsLoaded:'Loaded {n} attributes', noAttrVector:'No vector layers with attributes', noMatch:'No match',
-    addrSearch:'Address Search', providerGsi:'GSI', searchPh:'Enter search keyword', searching:'Searching...', noResults:'No results', searchFailCors:'Search failed. Check your network (CORS).', appIdMissing:'yahooAppId is not set. Add the following line to the plugin inspector:', appIdSample:'yahooAppId: your Yahoo AppID', searchFailAppId:'Search failed. Check the AppID setting and network (CORS).', yahooWarn:'Note: yahooAppId may be exposed. Do not use on public sites.', manageSecretWarn:'Note: geminiApiKey: and yahooAppId: written here are saved with the project and published to all site visitors.',
+    addrSearch:'Address Search', providerGsi:'GSI', searchPh:'Enter search keyword', searching:'Searching...', noResults:'No results', searchFailCors:'Search failed. Check your network (CORS).', appIdMissing:'yahooAppId is not set. Add the following line to the plugin inspector:', appIdSample:'yahooAppId: your Yahoo AppID', searchFailAppId:'Search failed. Check the AppID setting and network (CORS).', yahooWarn:'Note: yahooAppId may be exposed. Do not use on public sites.', googleWarn:'Note: googleMapsApiKey may be exposed. Do not use on public sites.', googleKeyMissing:'googleMapsApiKey is not set. Add the following line to the plugin inspector:', googleKeySample:'googleMapsApiKey: your Google Maps API key', manageSecretWarn:'Note: geminiApiKey: and yahooAppId: written here are saved with the project and published to all site visitors.',
     camsTitle:'Camera Presets', camHelp:'cam:Title|Lat|Lng<br>cam:Title|Lat|Lng|h=Height(m)<br>cam:Title|Lat|Lng|h=Height|d=Heading&deg;|p=Pitch&deg;<br><br>Ex: cam:Tokyo Station|35.6812|139.7671<br>Ex: cam:Mt. Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Unspecified parameters keep the current camera settings', currentCamera:'Current Camera', positionLabel:'Position', hprLabel:'Heading/Pitch/Roll', flyToTitle:'Fly to {v}',
     terrain:'Terrain', shadow:'Shadow', depthTest:'Depth Test', on:'ON', off:'OFF', geojsonDrape:'GeoJSON 3D Drape',
     start:'Start', stop:'Stop', current:'Current', apply:'Apply', sentCurrent:'Sent (current set)', sent:'Sent', sendFailed:'Send failed',
@@ -88,7 +89,7 @@ const GEO_I18N = {
     shareReadUrl:'現在のURLパラメータを読み取って移動', urlLoadFlyTo:'URL読込 & FlyTo', loading:'読込中...',
     shareFlyCurrentLabel:'現在位置から移動', flyToCurrentLoc:'現在位置から FlyTo', getting:'取得中...', restored:'復元しました!', noLatLng:'緯度経度なし', noParams:'パラメータなし', imported:'インポートしました!',
     vectorSearch:'ベクトル検索', allSelect:'全選択', selectValue:'値を選択', fly:'移動', textSearchPh:'文字で検索', searchGo:'検索', updateVector:'ベクトルデータを更新', attrValueList:'属性・値一覧', attrsLoaded:'{n} 属性を読み込みました', noAttrVector:'属性付きベクトルがありません', noMatch:'該当なし',
-    addrSearch:'住所検索', providerGsi:'地理院', searchPh:'検索ワードを入力', searching:'検索中...', noResults:'結果なし', searchFailCors:'検索に失敗しました。ネットワーク（CORS）を確認してください。', appIdMissing:'AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：', appIdSample:'yahooAppId: あなたのYahoo AppID', searchFailAppId:'検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。', yahooWarn:'注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。', manageSecretWarn:'注意：ここに書いた geminiApiKey: や yahooAppId: はプロジェクトに保存され、公開サイトの全訪問者に配布されます。',
+    addrSearch:'住所検索', providerGsi:'地理院', searchPh:'検索ワードを入力', searching:'検索中...', noResults:'結果なし', searchFailCors:'検索に失敗しました。ネットワーク（CORS）を確認してください。', appIdMissing:'AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：', appIdSample:'yahooAppId: あなたのYahoo AppID', searchFailAppId:'検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。', yahooWarn:'注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。', googleWarn:'注意: googleMapsApiKeyは漏洩する可能性があります。公開サイトでは使用しないでください。', googleKeyMissing:'googleMapsApiKeyが設定されていません。プラグインのインスペクターに次の行を追加してください：', googleKeySample:'googleMapsApiKey: あなたのGoogle Maps APIキー', manageSecretWarn:'注意：ここに書いた geminiApiKey: や yahooAppId: はプロジェクトに保存され、公開サイトの全訪問者に配布されます。',
     camsTitle:'カメラプリセット', camHelp:'cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位&deg;|p=傾き&deg;<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持', currentCamera:'現在のカメラ', positionLabel:'位置', hprLabel:'方位/傾き/回転', flyToTitle:'{v} へ移動',
     terrain:'地形', shadow:'影', depthTest:'深度テスト', on:'ON', off:'OFF', geojsonDrape:'GeoJSON 3D ドレープ',
     start:'開始', stop:'終了', current:'現在', apply:'適用', sentCurrent:'送信しました（現在時刻設定済）', sent:'送信しました', sendFailed:'送信に失敗しました',
@@ -117,7 +118,7 @@ const GEO_I18N = {
     shareReadUrl:'读取当前URL参数并移动', urlLoadFlyTo:'加载URL并飞行', loading:'加载中...',
     shareFlyCurrentLabel:'从当前位置移动', flyToCurrentLoc:'飞往当前位置', getting:'获取中...', restored:'已恢复！', noLatLng:'无经纬度', noParams:'无参数', imported:'已导入！',
     vectorSearch:'矢量搜索', allSelect:'全选', selectValue:'选择值', fly:'飞行', textSearchPh:'按文字搜索', searchGo:'搜索', updateVector:'更新矢量数据', attrValueList:'属性与值列表', attrsLoaded:'已加载 {n} 个属性', noAttrVector:'没有带属性的矢量图层', noMatch:'无匹配',
-    addrSearch:'地址搜索', providerGsi:'地理院', searchPh:'输入搜索关键词', searching:'搜索中...', noResults:'无结果', searchFailCors:'搜索失败。请检查网络（CORS）。', appIdMissing:'未设置 AppID。请在插件检查器中添加以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜索失败。请检查 AppID 设置和网络（CORS）。', yahooWarn:'注意：yahooAppId 可能会泄露。请勿在公开网站上使用。', manageSecretWarn:'注意：在此填写的 geminiApiKey: 和 yahooAppId: 会随项目保存并发布给所有站点访问者。',
+    addrSearch:'地址搜索', providerGsi:'地理院', searchPh:'输入搜索关键词', searching:'搜索中...', noResults:'无结果', searchFailCors:'搜索失败。请检查网络（CORS）。', appIdMissing:'未设置 AppID。请在插件检查器中添加以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜索失败。请检查 AppID 设置和网络（CORS）。', yahooWarn:'注意：yahooAppId 可能会泄露。请勿在公开网站上使用。', googleWarn:'注意：googleMapsApiKey 可能会泄露。请勿在公开网站上使用。', googleKeyMissing:'未设置 googleMapsApiKey。请在插件检查器中添加以下行：', googleKeySample:'googleMapsApiKey: 您的 Google Maps API 密钥', manageSecretWarn:'注意：在此填写的 geminiApiKey: 和 yahooAppId: 会随项目保存并发布给所有站点访问者。',
     camsTitle:'相机预设', camHelp:'cam:标题|纬度|经度<br>cam:标题|纬度|经度|h=高度m<br>cam:标题|纬度|经度|h=高度|d=方位&deg;|p=俯仰&deg;<br><br>例: cam:东京站|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定的参数将保持当前相机设置', currentCamera:'当前相机', positionLabel:'位置', hprLabel:'航向/俯仰/横滚', flyToTitle:'飞往 {v}',
     terrain:'地形', shadow:'阴影', depthTest:'深度测试', on:'开', off:'关', geojsonDrape:'GeoJSON 3D 贴地',
     start:'开始', stop:'结束', current:'当前', apply:'应用', sentCurrent:'已发送（已设置当前时间）', sent:'已发送', sendFailed:'发送失败',
@@ -146,7 +147,7 @@ const GEO_I18N = {
     shareReadUrl:'讀取目前 URL 參數並移動', urlLoadFlyTo:'載入 URL 並飛行', loading:'載入中...',
     shareFlyCurrentLabel:'從目前位置移動', flyToCurrentLoc:'飛往目前位置', getting:'取得中...', restored:'已還原！', noLatLng:'無經緯度', noParams:'無參數', imported:'已匯入！',
     vectorSearch:'向量搜尋', allSelect:'全選', selectValue:'選擇值', fly:'飛行', textSearchPh:'按文字搜尋', searchGo:'搜尋', updateVector:'更新向量資料', attrValueList:'屬性與值清單', attrsLoaded:'已載入 {n} 個屬性', noAttrVector:'沒有含屬性的向量圖層', noMatch:'無符合項目',
-    addrSearch:'地址搜尋', providerGsi:'地理院', searchPh:'輸入搜尋關鍵字', searching:'搜尋中...', noResults:'無結果', searchFailCors:'搜尋失敗。請檢查網路（CORS）。', appIdMissing:'未設定 AppID。請在外掛檢查器中新增以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜尋失敗。請檢查 AppID 設定與網路（CORS）。', yahooWarn:'注意：yahooAppId 可能會外洩。請勿在公開網站上使用。', manageSecretWarn:'注意：在此填寫的 geminiApiKey: 和 yahooAppId: 會隨專案儲存並發布給所有網站訪客。',
+    addrSearch:'地址搜尋', providerGsi:'地理院', searchPh:'輸入搜尋關鍵字', searching:'搜尋中...', noResults:'無結果', searchFailCors:'搜尋失敗。請檢查網路（CORS）。', appIdMissing:'未設定 AppID。請在外掛檢查器中新增以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜尋失敗。請檢查 AppID 設定與網路（CORS）。', yahooWarn:'注意：yahooAppId 可能會外洩。請勿在公開網站上使用。', googleWarn:'注意：googleMapsApiKey 可能會外洩。請勿在公開網站上使用。', googleKeyMissing:'未設定 googleMapsApiKey。請在外掛檢查器中新增以下行：', googleKeySample:'googleMapsApiKey: 您的 Google Maps API 金鑰', manageSecretWarn:'注意：在此填寫的 geminiApiKey: 和 yahooAppId: 會隨專案儲存並發布給所有網站訪客。',
     camsTitle:'相機預設', camHelp:'cam:標題|緯度|經度<br>cam:標題|緯度|經度|h=高度m<br>cam:標題|緯度|經度|h=高度|d=方位&deg;|p=俯仰&deg;<br><br>例: cam:東京車站|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定的參數將維持目前相機設定', currentCamera:'目前相機', positionLabel:'位置', hprLabel:'航向/俯仰/橫滾', flyToTitle:'飛往 {v}',
     terrain:'地形', shadow:'陰影', depthTest:'深度測試', on:'開', off:'關', geojsonDrape:'GeoJSON 3D 貼地',
     start:'開始', stop:'結束', current:'目前', apply:'套用', sentCurrent:'已傳送（已設定目前時間）', sent:'已傳送', sendFailed:'傳送失敗',
@@ -175,7 +176,7 @@ const GEO_I18N = {
     shareReadUrl:'현재 URL 파라미터로 이동', urlLoadFlyTo:'URL 불러오기 & 이동', loading:'불러오는 중...',
     shareFlyCurrentLabel:'현재 위치에서 이동', flyToCurrentLoc:'현재 위치로 이동', getting:'가져오는 중...', restored:'복원됨!', noLatLng:'위경도 없음', noParams:'파라미터 없음', imported:'가져옴!',
     vectorSearch:'벡터 검색', allSelect:'전체 선택', selectValue:'값 선택', fly:'이동', textSearchPh:'텍스트로 검색', searchGo:'검색', updateVector:'벡터 데이터 업데이트', attrValueList:'속성·값 목록', attrsLoaded:'{n}개 속성을 불러왔습니다', noAttrVector:'속성이 있는 벡터 레이어가 없습니다', noMatch:'일치 없음',
-    addrSearch:'주소 검색', providerGsi:'지리원', searchPh:'검색어 입력', searching:'검색 중...', noResults:'결과 없음', searchFailCors:'검색에 실패했습니다. 네트워크(CORS)를 확인하세요.', appIdMissing:'AppID가 설정되어 있지 않습니다. 플러그인 인스펙터에 다음 줄을 추가하세요:', appIdSample:'yahooAppId: Yahoo AppID 입력', searchFailAppId:'검색에 실패했습니다. AppID 설정과 네트워크(CORS)를 확인하세요.', yahooWarn:'주의: yahooAppId가 노출될 수 있습니다. 공개 사이트에서는 사용하지 마세요.', manageSecretWarn:'주의: 여기에 입력한 geminiApiKey: 및 yahooAppId: 는 프로젝트와 함께 저장되어 공개 사이트의 모든 방문자에게 배포됩니다.',
+    addrSearch:'주소 검색', providerGsi:'지리원', searchPh:'검색어 입력', searching:'검색 중...', noResults:'결과 없음', searchFailCors:'검색에 실패했습니다. 네트워크(CORS)를 확인하세요.', appIdMissing:'AppID가 설정되어 있지 않습니다. 플러그인 인스펙터에 다음 줄을 추가하세요:', appIdSample:'yahooAppId: Yahoo AppID 입력', searchFailAppId:'검색에 실패했습니다. AppID 설정과 네트워크(CORS)를 확인하세요.', yahooWarn:'주의: yahooAppId가 노출될 수 있습니다. 공개 사이트에서는 사용하지 마세요.', googleWarn:'주의: googleMapsApiKey가 노출될 수 있습니다. 공개 사이트에서는 사용하지 마세요.', googleKeyMissing:'googleMapsApiKey가 설정되어 있지 않습니다. 플러그인 인스펙터에 다음 줄을 추가하세요:', googleKeySample:'googleMapsApiKey: Google Maps API 키 입력', manageSecretWarn:'주의: 여기에 입력한 geminiApiKey: 및 yahooAppId: 는 프로젝트와 함께 저장되어 공개 사이트의 모든 방문자에게 배포됩니다.',
     camsTitle:'카메라 프리셋', camHelp:'cam:제목|위도|경도<br>cam:제목|위도|경도|h=고도m<br>cam:제목|위도|경도|h=고도|d=방위&deg;|p=기울기&deg;<br><br>예: cam:도쿄역|35.6812|139.7671<br>예: cam:후지산|35.3606|138.7274|h=5000|p=-30<br><br>지정하지 않은 파라미터는 현재 카메라 설정을 유지', currentCamera:'현재 카메라', positionLabel:'위치', hprLabel:'방위/기울기/회전', flyToTitle:'{v}(으)로 이동',
     terrain:'지형', shadow:'그림자', depthTest:'깊이 테스트', on:'켜기', off:'끄기', geojsonDrape:'GeoJSON 3D 드레이프',
     start:'시작', stop:'종료', current:'현재', apply:'적용', sentCurrent:'전송됨(현재 시간 설정)', sent:'전송됨', sendFailed:'전송 실패',
@@ -204,7 +205,7 @@ const GEO_I18N = {
     shareReadUrl:'Ir a los parámetros de la URL actual', urlLoadFlyTo:'Cargar URL y volar', loading:'Cargando...',
     shareFlyCurrentLabel:'Mover desde la ubicación actual', flyToCurrentLoc:'Volar a la ubicación actual', getting:'Obteniendo...', restored:'¡Restaurado!', noLatLng:'Sin lat/lng', noParams:'Sin parámetros', imported:'¡Importado!',
     vectorSearch:'Búsqueda vectorial', allSelect:'Todo', selectValue:'Seleccionar valor', fly:'Volar', textSearchPh:'Buscar por texto', searchGo:'Buscar', updateVector:'Actualizar datos vectoriales', attrValueList:'Atributos y valores', attrsLoaded:'{n} atributos cargados', noAttrVector:'No hay capas vectoriales con atributos', noMatch:'Sin coincidencias',
-    addrSearch:'Búsqueda de direcciones', providerGsi:'GSI', searchPh:'Introduce palabra clave', searching:'Buscando...', noResults:'Sin resultados', searchFailCors:'Búsqueda fallida. Revisa la red (CORS).', appIdMissing:'AppID no configurado. Añade la siguiente línea al inspector del plugin:', appIdSample:'yahooAppId: tu AppID de Yahoo', searchFailAppId:'Búsqueda fallida. Revisa el AppID y la red (CORS).', yahooWarn:'Nota: yahooAppId puede quedar expuesto. No usar en sitios públicos.', manageSecretWarn:'Nota: geminiApiKey: y yahooAppId: escritos aquí se guardan con el proyecto y se publican a todos los visitantes del sitio.',
+    addrSearch:'Búsqueda de direcciones', providerGsi:'GSI', searchPh:'Introduce palabra clave', searching:'Buscando...', noResults:'Sin resultados', searchFailCors:'Búsqueda fallida. Revisa la red (CORS).', appIdMissing:'AppID no configurado. Añade la siguiente línea al inspector del plugin:', appIdSample:'yahooAppId: tu AppID de Yahoo', searchFailAppId:'Búsqueda fallida. Revisa el AppID y la red (CORS).', yahooWarn:'Nota: yahooAppId puede quedar expuesto. No usar en sitios públicos.', googleWarn:'Nota: googleMapsApiKey puede quedar expuesto. No usar en sitios públicos.', googleKeyMissing:'googleMapsApiKey no configurado. Añade la siguiente línea al inspector del plugin:', googleKeySample:'googleMapsApiKey: tu clave de API de Google Maps', manageSecretWarn:'Nota: geminiApiKey: y yahooAppId: escritos aquí se guardan con el proyecto y se publican a todos los visitantes del sitio.',
     camsTitle:'Preajustes de cámara', camHelp:'cam:Título|Lat|Lng<br>cam:Título|Lat|Lng|h=Altura(m)<br>cam:Título|Lat|Lng|h=Altura|d=Rumbo&deg;|p=Inclinación&deg;<br><br>Ej: cam:Estación de Tokio|35.6812|139.7671<br>Ej: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Los parámetros no especificados mantienen la cámara actual', currentCamera:'Cámara actual', positionLabel:'Posición', hprLabel:'Rumbo/Inclinación/Balance', flyToTitle:'Volar a {v}',
     terrain:'Terreno', shadow:'Sombra', depthTest:'Prueba de profundidad', on:'SÍ', off:'NO', geojsonDrape:'Drapeado 3D GeoJSON',
     start:'Inicio', stop:'Fin', current:'Actual', apply:'Aplicar', sentCurrent:'Enviado (actual fijado)', sent:'Enviado', sendFailed:'Error al enviar',
@@ -233,7 +234,7 @@ const GEO_I18N = {
     shareReadUrl:'Aller aux paramètres de l’URL actuelle', urlLoadFlyTo:'Charger l’URL et voler', loading:'Chargement...',
     shareFlyCurrentLabel:'Déplacer depuis la position actuelle', flyToCurrentLoc:'Vol vers la position actuelle', getting:'Obtention...', restored:'Restauré !', noLatLng:'Pas de lat/lng', noParams:'Pas de paramètres', imported:'Importé !',
     vectorSearch:'Recherche vectorielle', allSelect:'Tout', selectValue:'Choisir une valeur', fly:'Voler', textSearchPh:'Recherche par texte', searchGo:'Rechercher', updateVector:'Mettre à jour les données vectorielles', attrValueList:'Attributs et valeurs', attrsLoaded:'{n} attributs chargés', noAttrVector:'Aucune couche vectorielle avec attributs', noMatch:'Aucun résultat',
-    addrSearch:'Recherche d’adresse', providerGsi:'GSI', searchPh:'Saisir un mot-clé', searching:'Recherche...', noResults:'Aucun résultat', searchFailCors:'Échec de la recherche. Vérifiez le réseau (CORS).', appIdMissing:'AppID non défini. Ajoutez la ligne suivante à l’inspecteur du plugin :', appIdSample:'yahooAppId : votre AppID Yahoo', searchFailAppId:'Échec de la recherche. Vérifiez l’AppID et le réseau (CORS).', yahooWarn:'Note : yahooAppId peut être exposé. Ne pas utiliser sur des sites publics.', manageSecretWarn:'Note : les lignes geminiApiKey: et yahooAppId: écrites ici sont enregistrées avec le projet et publiées à tous les visiteurs du site.',
+    addrSearch:'Recherche d’adresse', providerGsi:'GSI', searchPh:'Saisir un mot-clé', searching:'Recherche...', noResults:'Aucun résultat', searchFailCors:'Échec de la recherche. Vérifiez le réseau (CORS).', appIdMissing:'AppID non défini. Ajoutez la ligne suivante à l’inspecteur du plugin :', appIdSample:'yahooAppId : votre AppID Yahoo', searchFailAppId:'Échec de la recherche. Vérifiez l’AppID et le réseau (CORS).', yahooWarn:'Note : yahooAppId peut être exposé. Ne pas utiliser sur des sites publics.', googleWarn:'Note : googleMapsApiKey peut être exposé. Ne pas utiliser sur des sites publics.', googleKeyMissing:'googleMapsApiKey non défini. Ajoutez la ligne suivante à l’inspecteur du plugin :', googleKeySample:'googleMapsApiKey : votre clé API Google Maps', manageSecretWarn:'Note : les lignes geminiApiKey: et yahooAppId: écrites ici sont enregistrées avec le projet et publiées à tous les visiteurs du site.',
     camsTitle:'Préréglages caméra', camHelp:'cam:Titre|Lat|Lng<br>cam:Titre|Lat|Lng|h=Altitude(m)<br>cam:Titre|Lat|Lng|h=Altitude|d=Cap&deg;|p=Inclinaison&deg;<br><br>Ex : cam:Gare de Tokyo|35.6812|139.7671<br>Ex : cam:Mont Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Les paramètres non spécifiés conservent les réglages actuels', currentCamera:'Caméra actuelle', positionLabel:'Position', hprLabel:'Cap/Inclinaison/Roulis', flyToTitle:'Vol vers {v}',
     terrain:'Terrain', shadow:'Ombre', depthTest:'Test de profondeur', on:'OUI', off:'NON', geojsonDrape:'Drapé 3D GeoJSON',
     start:'Début', stop:'Fin', current:'Actuel', apply:'Appliquer', sentCurrent:'Envoyé (actuel défini)', sent:'Envoyé', sendFailed:'Échec de l’envoi',
@@ -262,7 +263,7 @@ const GEO_I18N = {
     shareReadUrl:'Zu aktuellen URL-Parametern wechseln', urlLoadFlyTo:'URL laden & anfliegen', loading:'Laden...',
     shareFlyCurrentLabel:'Vom aktuellen Standort bewegen', flyToCurrentLoc:'Zum aktuellen Standort fliegen', getting:'Abrufen...', restored:'Wiederhergestellt!', noLatLng:'Kein Lat/Lng', noParams:'Keine Parameter', imported:'Importiert!',
     vectorSearch:'Vektorsuche', allSelect:'Alle', selectValue:'Wert wählen', fly:'Fliegen', textSearchPh:'Nach Text suchen', searchGo:'Suchen', updateVector:'Vektordaten aktualisieren', attrValueList:'Attribute & Werte', attrsLoaded:'{n} Attribute geladen', noAttrVector:'Keine Vektor-Layer mit Attributen', noMatch:'Kein Treffer',
-    addrSearch:'Adresssuche', providerGsi:'GSI', searchPh:'Suchbegriff eingeben', searching:'Suche...', noResults:'Keine Ergebnisse', searchFailCors:'Suche fehlgeschlagen. Netzwerk (CORS) prüfen.', appIdMissing:'AppID nicht gesetzt. Fügen Sie folgende Zeile im Plugin-Inspektor hinzu:', appIdSample:'yahooAppId: Ihre Yahoo-AppID', searchFailAppId:'Suche fehlgeschlagen. AppID und Netzwerk (CORS) prüfen.', yahooWarn:'Hinweis: yahooAppId könnte offengelegt werden. Nicht auf öffentlichen Seiten verwenden.', manageSecretWarn:'Hinweis: Hier eingetragene geminiApiKey: und yahooAppId: werden mit dem Projekt gespeichert und an alle Besucher der Site veröffentlicht.',
+    addrSearch:'Adresssuche', providerGsi:'GSI', searchPh:'Suchbegriff eingeben', searching:'Suche...', noResults:'Keine Ergebnisse', searchFailCors:'Suche fehlgeschlagen. Netzwerk (CORS) prüfen.', appIdMissing:'AppID nicht gesetzt. Fügen Sie folgende Zeile im Plugin-Inspektor hinzu:', appIdSample:'yahooAppId: Ihre Yahoo-AppID', searchFailAppId:'Suche fehlgeschlagen. AppID und Netzwerk (CORS) prüfen.', yahooWarn:'Hinweis: yahooAppId könnte offengelegt werden. Nicht auf öffentlichen Seiten verwenden.', googleWarn:'Hinweis: googleMapsApiKey könnte offengelegt werden. Nicht auf öffentlichen Seiten verwenden.', googleKeyMissing:'googleMapsApiKey nicht gesetzt. Fügen Sie folgende Zeile im Plugin-Inspektor hinzu:', googleKeySample:'googleMapsApiKey: Ihr Google-Maps-API-Schlüssel', manageSecretWarn:'Hinweis: Hier eingetragene geminiApiKey: und yahooAppId: werden mit dem Projekt gespeichert und an alle Besucher der Site veröffentlicht.',
     camsTitle:'Kamera-Voreinstellungen', camHelp:'cam:Titel|Lat|Lng<br>cam:Titel|Lat|Lng|h=Höhe(m)<br>cam:Titel|Lat|Lng|h=Höhe|d=Kurs&deg;|p=Neigung&deg;<br><br>Bsp.: cam:Bahnhof Tokio|35.6812|139.7671<br>Bsp.: cam:Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Nicht angegebene Parameter behalten die aktuellen Kameraeinstellungen', currentCamera:'Aktuelle Kamera', positionLabel:'Position', hprLabel:'Kurs/Neigung/Roll', flyToTitle:'Flug zu {v}',
     terrain:'Gelände', shadow:'Schatten', depthTest:'Tiefentest', on:'EIN', off:'AUS', geojsonDrape:'GeoJSON-3D-Drape',
     start:'Start', stop:'Ende', current:'Aktuell', apply:'Anwenden', sentCurrent:'Gesendet (aktuell gesetzt)', sent:'Gesendet', sendFailed:'Senden fehlgeschlagen',
@@ -291,7 +292,7 @@ const GEO_I18N = {
     shareReadUrl:'Vai ai parametri URL correnti', urlLoadFlyTo:'Carica URL e vola', loading:'Caricamento...',
     shareFlyCurrentLabel:'Sposta dalla posizione corrente', flyToCurrentLoc:'Vola alla posizione corrente', getting:'Recupero...', restored:'Ripristinato!', noLatLng:'Nessun lat/lng', noParams:'Nessun parametro', imported:'Importato!',
     vectorSearch:'Ricerca vettoriale', allSelect:'Tutto', selectValue:'Seleziona valore', fly:'Vola', textSearchPh:'Cerca per testo', searchGo:'Cerca', updateVector:'Aggiorna dati vettoriali', attrValueList:'Attributi e valori', attrsLoaded:'{n} attributi caricati', noAttrVector:'Nessun layer vettoriale con attributi', noMatch:'Nessuna corrispondenza',
-    addrSearch:'Ricerca indirizzi', providerGsi:'GSI', searchPh:'Inserisci parola chiave', searching:'Ricerca...', noResults:'Nessun risultato', searchFailCors:'Ricerca fallita. Controlla la rete (CORS).', appIdMissing:'AppID non configurato. Aggiungi la riga seguente nell’ispettore del plugin:', appIdSample:'yahooAppId: il tuo AppID Yahoo', searchFailAppId:'Ricerca fallita. Controlla AppID e rete (CORS).', yahooWarn:'Nota: yahooAppId potrebbe essere esposto. Non usare su siti pubblici.', manageSecretWarn:'Nota: geminiApiKey: e yahooAppId: scritti qui vengono salvati con il progetto e pubblicati a tutti i visitatori del sito.',
+    addrSearch:'Ricerca indirizzi', providerGsi:'GSI', searchPh:'Inserisci parola chiave', searching:'Ricerca...', noResults:'Nessun risultato', searchFailCors:'Ricerca fallita. Controlla la rete (CORS).', appIdMissing:'AppID non configurato. Aggiungi la riga seguente nell’ispettore del plugin:', appIdSample:'yahooAppId: il tuo AppID Yahoo', searchFailAppId:'Ricerca fallita. Controlla AppID e rete (CORS).', yahooWarn:'Nota: yahooAppId potrebbe essere esposto. Non usare su siti pubblici.', googleWarn:'Nota: googleMapsApiKey potrebbe essere esposto. Non usare su siti pubblici.', googleKeyMissing:'googleMapsApiKey non configurato. Aggiungi la riga seguente nell’ispettore del plugin:', googleKeySample:'googleMapsApiKey: la tua chiave API di Google Maps', manageSecretWarn:'Nota: geminiApiKey: e yahooAppId: scritti qui vengono salvati con il progetto e pubblicati a tutti i visitatori del sito.',
     camsTitle:'Preset camera', camHelp:'cam:Titolo|Lat|Lng<br>cam:Titolo|Lat|Lng|h=Altezza(m)<br>cam:Titolo|Lat|Lng|h=Altezza|d=Direzione&deg;|p=Inclinazione&deg;<br><br>Es: cam:Stazione di Tokyo|35.6812|139.7671<br>Es: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>I parametri non specificati mantengono le impostazioni attuali', currentCamera:'Camera corrente', positionLabel:'Posizione', hprLabel:'Direzione/Inclinazione/Rollio', flyToTitle:'Vola a {v}',
     terrain:'Terreno', shadow:'Ombra', depthTest:'Test profondità', on:'SÌ', off:'NO', geojsonDrape:'Drappeggio 3D GeoJSON',
     start:'Inizio', stop:'Fine', current:'Corrente', apply:'Applica', sentCurrent:'Inviato (corrente impostato)', sent:'Inviato', sendFailed:'Invio fallito',
@@ -320,7 +321,7 @@ const GEO_I18N = {
     shareReadUrl:'Ir para os parâmetros da URL atual', urlLoadFlyTo:'Carregar URL e voar', loading:'Carregando...',
     shareFlyCurrentLabel:'Mover da localização atual', flyToCurrentLoc:'Voar para localização atual', getting:'Obtendo...', restored:'Restaurado!', noLatLng:'Sem lat/lng', noParams:'Sem parâmetros', imported:'Importado!',
     vectorSearch:'Busca vetorial', allSelect:'Todos', selectValue:'Selecionar valor', fly:'Voar', textSearchPh:'Buscar por texto', searchGo:'Buscar', updateVector:'Atualizar dados vetoriais', attrValueList:'Atributos e valores', attrsLoaded:'{n} atributos carregados', noAttrVector:'Nenhuma camada vetorial com atributos', noMatch:'Sem correspondência',
-    addrSearch:'Busca de endereço', providerGsi:'GSI', searchPh:'Digite a palavra-chave', searching:'Buscando...', noResults:'Sem resultados', searchFailCors:'Falha na busca. Verifique a rede (CORS).', appIdMissing:'AppID não configurado. Adicione a linha a seguir ao inspetor do plugin:', appIdSample:'yahooAppId: seu AppID do Yahoo', searchFailAppId:'Falha na busca. Verifique o AppID e a rede (CORS).', yahooWarn:'Nota: o yahooAppId pode ser exposto. Não use em sites públicos.', manageSecretWarn:'Nota: geminiApiKey: e yahooAppId: escritos aqui são guardados com o projeto e publicados para todos os visitantes do site.',
+    addrSearch:'Busca de endereço', providerGsi:'GSI', searchPh:'Digite a palavra-chave', searching:'Buscando...', noResults:'Sem resultados', searchFailCors:'Falha na busca. Verifique a rede (CORS).', appIdMissing:'AppID não configurado. Adicione a linha a seguir ao inspetor do plugin:', appIdSample:'yahooAppId: seu AppID do Yahoo', searchFailAppId:'Falha na busca. Verifique o AppID e a rede (CORS).', yahooWarn:'Nota: o yahooAppId pode ser exposto. Não use em sites públicos.', googleWarn:'Nota: o googleMapsApiKey pode ser exposto. Não use em sites públicos.', googleKeyMissing:'googleMapsApiKey não configurado. Adicione a linha a seguir ao inspetor do plugin:', googleKeySample:'googleMapsApiKey: sua chave de API do Google Maps', manageSecretWarn:'Nota: geminiApiKey: e yahooAppId: escritos aqui são guardados com o projeto e publicados para todos os visitantes do site.',
     camsTitle:'Predefinições de câmera', camHelp:'cam:Título|Lat|Lng<br>cam:Título|Lat|Lng|h=Altura(m)<br>cam:Título|Lat|Lng|h=Altura|d=Direção&deg;|p=Inclinação&deg;<br><br>Ex: cam:Estação de Tóquio|35.6812|139.7671<br>Ex: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Parâmetros não especificados mantêm as configurações atuais', currentCamera:'Câmera atual', positionLabel:'Posição', hprLabel:'Direção/Inclinação/Rolagem', flyToTitle:'Voar para {v}',
     terrain:'Terreno', shadow:'Sombra', depthTest:'Teste de profundidade', on:'SIM', off:'NÃO', geojsonDrape:'Drapeado 3D GeoJSON',
     start:'Início', stop:'Fim', current:'Atual', apply:'Aplicar', sentCurrent:'Enviado (atual definido)', sent:'Enviado', sendFailed:'Falha ao enviar',
@@ -349,7 +350,7 @@ const GEO_I18N = {
     shareReadUrl:'Перейти к параметрам текущего URL', urlLoadFlyTo:'Загрузить URL и перейти', loading:'Загрузка...',
     shareFlyCurrentLabel:'Переместиться от текущего положения', flyToCurrentLoc:'К текущему положению', getting:'Получение...', restored:'Восстановлено!', noLatLng:'Нет координат', noParams:'Нет параметров', imported:'Импортировано!',
     vectorSearch:'Векторный поиск', allSelect:'Все', selectValue:'Выберите значение', fly:'Перейти', textSearchPh:'Поиск по тексту', searchGo:'Поиск', updateVector:'Обновить векторные данные', attrValueList:'Атрибуты и значения', attrsLoaded:'Загружено атрибутов: {n}', noAttrVector:'Нет векторных слоёв с атрибутами', noMatch:'Нет совпадений',
-    addrSearch:'Поиск адреса', providerGsi:'GSI', searchPh:'Введите ключевое слово', searching:'Поиск...', noResults:'Нет результатов', searchFailCors:'Поиск не удался. Проверьте сеть (CORS).', appIdMissing:'AppID не задан. Добавьте следующую строку в инспектор плагина:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Поиск не удался. Проверьте AppID и сеть (CORS).', yahooWarn:'Внимание: yahooAppId может быть раскрыт. Не используйте на публичных сайтах.', manageSecretWarn:'Примечание: указанные здесь geminiApiKey: и yahooAppId: сохраняются в проекте и публикуются для всех посетителей сайта.',
+    addrSearch:'Поиск адреса', providerGsi:'GSI', searchPh:'Введите ключевое слово', searching:'Поиск...', noResults:'Нет результатов', searchFailCors:'Поиск не удался. Проверьте сеть (CORS).', appIdMissing:'AppID не задан. Добавьте следующую строку в инспектор плагина:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Поиск не удался. Проверьте AppID и сеть (CORS).', yahooWarn:'Внимание: yahooAppId может быть раскрыт. Не используйте на публичных сайтах.', googleWarn:'Внимание: googleMapsApiKey может быть раскрыт. Не используйте на публичных сайтах.', googleKeyMissing:'googleMapsApiKey не задан. Добавьте следующую строку в инспектор плагина:', googleKeySample:'googleMapsApiKey: ваш ключ API Google Maps', manageSecretWarn:'Примечание: указанные здесь geminiApiKey: и yahooAppId: сохраняются в проекте и публикуются для всех посетителей сайта.',
     camsTitle:'Предустановки камеры', camHelp:'cam:Название|Широта|Долгота<br>cam:Название|Широта|Долгота|h=Высота(м)<br>cam:Название|Широта|Долгота|h=Высота|d=Азимут&deg;|p=Наклон&deg;<br><br>Пример: cam:Токийский вокзал|35.6812|139.7671<br>Пример: cam:Фудзи|35.3606|138.7274|h=5000|p=-30<br><br>Неуказанные параметры сохраняют текущие настройки камеры', currentCamera:'Текущая камера', positionLabel:'Позиция', hprLabel:'Азимут/Наклон/Крен', flyToTitle:'Перейти к {v}',
     terrain:'Рельеф', shadow:'Тень', depthTest:'Тест глубины', on:'ВКЛ', off:'ВЫКЛ', geojsonDrape:'3D-драпировка GeoJSON',
     start:'Начало', stop:'Конец', current:'Текущее', apply:'Применить', sentCurrent:'Отправлено (текущее задано)', sent:'Отправлено', sendFailed:'Ошибка отправки',
@@ -378,7 +379,7 @@ const GEO_I18N = {
     shareReadUrl:'Naar huidige URL-parameters gaan', urlLoadFlyTo:'URL laden & heen vliegen', loading:'Laden...',
     shareFlyCurrentLabel:'Vanaf huidige locatie verplaatsen', flyToCurrentLoc:'Naar huidige locatie vliegen', getting:'Ophalen...', restored:'Hersteld!', noLatLng:'Geen lat/lng', noParams:'Geen parameters', imported:'Geïmporteerd!',
     vectorSearch:'Vectorzoeking', allSelect:'Alles', selectValue:'Kies waarde', fly:'Vliegen', textSearchPh:'Op tekst zoeken', searchGo:'Zoeken', updateVector:'Vectorgegevens bijwerken', attrValueList:'Attributen & waarden', attrsLoaded:'{n} attributen geladen', noAttrVector:'Geen vectorlagen met attributen', noMatch:'Geen overeenkomst',
-    addrSearch:'Adres zoeken', providerGsi:'GSI', searchPh:'Voer zoekterm in', searching:'Zoeken...', noResults:'Geen resultaten', searchFailCors:'Zoeken mislukt. Controleer netwerk (CORS).', appIdMissing:'AppID niet ingesteld. Voeg de volgende regel toe aan de plugin-inspector:', appIdSample:'yahooAppId: uw Yahoo AppID', searchFailAppId:'Zoeken mislukt. Controleer AppID en netwerk (CORS).', yahooWarn:'Let op: yahooAppId kan zichtbaar worden. Niet gebruiken op openbare sites.', manageSecretWarn:'Let op: hier ingevoerde geminiApiKey: en yahooAppId: worden met het project opgeslagen en aan alle sitebezoekers gepubliceerd.',
+    addrSearch:'Adres zoeken', providerGsi:'GSI', searchPh:'Voer zoekterm in', searching:'Zoeken...', noResults:'Geen resultaten', searchFailCors:'Zoeken mislukt. Controleer netwerk (CORS).', appIdMissing:'AppID niet ingesteld. Voeg de volgende regel toe aan de plugin-inspector:', appIdSample:'yahooAppId: uw Yahoo AppID', searchFailAppId:'Zoeken mislukt. Controleer AppID en netwerk (CORS).', yahooWarn:'Let op: yahooAppId kan zichtbaar worden. Niet gebruiken op openbare sites.', googleWarn:'Let op: googleMapsApiKey kan zichtbaar worden. Niet gebruiken op openbare sites.', googleKeyMissing:'googleMapsApiKey niet ingesteld. Voeg de volgende regel toe aan de plugin-inspector:', googleKeySample:'googleMapsApiKey: uw Google Maps API-sleutel', manageSecretWarn:'Let op: hier ingevoerde geminiApiKey: en yahooAppId: worden met het project opgeslagen en aan alle sitebezoekers gepubliceerd.',
     camsTitle:'Camera-presets', camHelp:'cam:Titel|Lat|Lng<br>cam:Titel|Lat|Lng|h=Hoogte(m)<br>cam:Titel|Lat|Lng|h=Hoogte|d=Richting&deg;|p=Helling&deg;<br><br>Bijv: cam:Station Tokio|35.6812|139.7671<br>Bijv: cam:Mount Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Niet-opgegeven parameters behouden de huidige camera-instellingen', currentCamera:'Huidige camera', positionLabel:'Positie', hprLabel:'Richting/Helling/Rol', flyToTitle:'Vlieg naar {v}',
     terrain:'Terrein', shadow:'Schaduw', depthTest:'Dieptetest', on:'AAN', off:'UIT', geojsonDrape:'GeoJSON 3D-drape',
     start:'Start', stop:'Einde', current:'Huidig', apply:'Toepassen', sentCurrent:'Verzonden (huidig ingesteld)', sent:'Verzonden', sendFailed:'Verzenden mislukt',
@@ -407,7 +408,7 @@ const GEO_I18N = {
     shareReadUrl:'Przejdź do parametrów bieżącego URL', urlLoadFlyTo:'Wczytaj URL i leć', loading:'Wczytywanie...',
     shareFlyCurrentLabel:'Przenieś z bieżącej lokalizacji', flyToCurrentLoc:'Leć do bieżącej lokalizacji', getting:'Pobieranie...', restored:'Przywrócono!', noLatLng:'Brak lat/lng', noParams:'Brak parametrów', imported:'Zaimportowano!',
     vectorSearch:'Wyszukiwanie wektorowe', allSelect:'Wszystkie', selectValue:'Wybierz wartość', fly:'Leć', textSearchPh:'Szukaj po tekście', searchGo:'Szukaj', updateVector:'Aktualizuj dane wektorowe', attrValueList:'Atrybuty i wartości', attrsLoaded:'Wczytano {n} atrybutów', noAttrVector:'Brak warstw wektorowych z atrybutami', noMatch:'Brak dopasowań',
-    addrSearch:'Wyszukiwanie adresu', providerGsi:'GSI', searchPh:'Wpisz słowo kluczowe', searching:'Wyszukiwanie...', noResults:'Brak wyników', searchFailCors:'Wyszukiwanie nie powiodło się. Sprawdź sieć (CORS).', appIdMissing:'AppID nie jest ustawione. Dodaj następujący wiersz do inspektora wtyczki:', appIdSample:'yahooAppId: Twój AppID Yahoo', searchFailAppId:'Wyszukiwanie nie powiodło się. Sprawdź AppID i sieć (CORS).', yahooWarn:'Uwaga: yahooAppId może zostać ujawnione. Nie używaj na publicznych stronach.', manageSecretWarn:'Uwaga: wpisane tu geminiApiKey: i yahooAppId: są zapisywane w projekcie i publikowane wszystkim odwiedzającym stronę.',
+    addrSearch:'Wyszukiwanie adresu', providerGsi:'GSI', searchPh:'Wpisz słowo kluczowe', searching:'Wyszukiwanie...', noResults:'Brak wyników', searchFailCors:'Wyszukiwanie nie powiodło się. Sprawdź sieć (CORS).', appIdMissing:'AppID nie jest ustawione. Dodaj następujący wiersz do inspektora wtyczki:', appIdSample:'yahooAppId: Twój AppID Yahoo', searchFailAppId:'Wyszukiwanie nie powiodło się. Sprawdź AppID i sieć (CORS).', yahooWarn:'Uwaga: yahooAppId może zostać ujawnione. Nie używaj na publicznych stronach.', googleWarn:'Uwaga: googleMapsApiKey może zostać ujawnione. Nie używaj na publicznych stronach.', googleKeyMissing:'googleMapsApiKey nie jest ustawione. Dodaj następujący wiersz do inspektora wtyczki:', googleKeySample:'googleMapsApiKey: Twój klucz API Google Maps', manageSecretWarn:'Uwaga: wpisane tu geminiApiKey: i yahooAppId: są zapisywane w projekcie i publikowane wszystkim odwiedzającym stronę.',
     camsTitle:'Presety kamery', camHelp:'cam:Tytuł|Szer.|Dług.<br>cam:Tytuł|Szer.|Dług.|h=Wysokość(m)<br>cam:Tytuł|Szer.|Dług.|h=Wysokość|d=Kierunek&deg;|p=Nachylenie&deg;<br><br>Przykład: cam:Stacja Tokio|35.6812|139.7671<br>Przykład: cam:Góra Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Nieokreślone parametry zachowują bieżące ustawienia kamery', currentCamera:'Bieżąca kamera', positionLabel:'Pozycja', hprLabel:'Kierunek/Nachylenie/Przechylenie', flyToTitle:'Leć do {v}',
     terrain:'Teren', shadow:'Cień', depthTest:'Test głębi', on:'WŁ.', off:'WYŁ.', geojsonDrape:'Drapowanie 3D GeoJSON',
     start:'Start', stop:'Koniec', current:'Bieżący', apply:'Zastosuj', sentCurrent:'Wysłano (bieżący ustawiony)', sent:'Wysłano', sendFailed:'Wysyłanie nie powiodło się',
@@ -436,7 +437,7 @@ const GEO_I18N = {
     shareReadUrl:'Перейти до параметрів поточного URL', urlLoadFlyTo:'Завантажити URL і летіти', loading:'Завантаження...',
     shareFlyCurrentLabel:'Переміститися з поточного місця', flyToCurrentLoc:'Летіти до поточного місця', getting:'Отримання...', restored:'Відновлено!', noLatLng:'Немає координат', noParams:'Немає параметрів', imported:'Імпортовано!',
     vectorSearch:'Векторний пошук', allSelect:'Усі', selectValue:'Оберіть значення', fly:'Летіти', textSearchPh:'Пошук за текстом', searchGo:'Пошук', updateVector:'Оновити векторні дані', attrValueList:'Атрибути та значення', attrsLoaded:'Завантажено {n} атрибутів', noAttrVector:'Немає векторних шарів з атрибутами', noMatch:'Немає збігів',
-    addrSearch:'Пошук адреси', providerGsi:'GSI', searchPh:'Введіть ключове слово', searching:'Пошук...', noResults:'Немає результатів', searchFailCors:'Пошук не вдався. Перевірте мережу (CORS).', appIdMissing:'AppID не задано. Додайте наступний рядок в інспектор плагіна:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Пошук не вдався. Перевірте AppID та мережу (CORS).', yahooWarn:'Увага: yahooAppId може бути розкрито. Не використовуйте на публічних сайтах.', manageSecretWarn:'Примітка: вказані тут geminiApiKey: і yahooAppId: зберігаються в проєкті й публікуються всім відвідувачам сайту.',
+    addrSearch:'Пошук адреси', providerGsi:'GSI', searchPh:'Введіть ключове слово', searching:'Пошук...', noResults:'Немає результатів', searchFailCors:'Пошук не вдався. Перевірте мережу (CORS).', appIdMissing:'AppID не задано. Додайте наступний рядок в інспектор плагіна:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Пошук не вдався. Перевірте AppID та мережу (CORS).', yahooWarn:'Увага: yahooAppId може бути розкрито. Не використовуйте на публічних сайтах.', googleWarn:'Увага: googleMapsApiKey може бути розкрито. Не використовуйте на публічних сайтах.', googleKeyMissing:'googleMapsApiKey не задано. Додайте наступний рядок в інспектор плагіна:', googleKeySample:'googleMapsApiKey: ваш ключ API Google Maps', manageSecretWarn:'Примітка: вказані тут geminiApiKey: і yahooAppId: зберігаються в проєкті й публікуються всім відвідувачам сайту.',
     camsTitle:'Пресети камери', camHelp:'cam:Назва|Широта|Довгота<br>cam:Назва|Широта|Довгота|h=Висота(м)<br>cam:Назва|Широта|Довгота|h=Висота|d=Азимут&deg;|p=Нахил&deg;<br><br>Приклад: cam:Токійський вокзал|35.6812|139.7671<br>Приклад: cam:Фудзі|35.3606|138.7274|h=5000|p=-30<br><br>Невказані параметри зберігають поточні налаштування камери', currentCamera:'Поточна камера', positionLabel:'Позиція', hprLabel:'Азимут/Нахил/Крен', flyToTitle:'Летіти до {v}',
     terrain:'Рельєф', shadow:'Тінь', depthTest:'Тест глибини', on:'УВІМК', off:'ВИМК', geojsonDrape:'3D-драпірування GeoJSON',
     start:'Початок', stop:'Кінець', current:'Поточний', apply:'Застосувати', sentCurrent:'Надіслано (поточний задано)', sent:'Надіслано', sendFailed:'Помилка надсилання',
@@ -465,7 +466,7 @@ const GEO_I18N = {
     shareReadUrl:'Geçerli URL parametrelerine git', urlLoadFlyTo:'URL yükle ve uç', loading:'Yükleniyor...',
     shareFlyCurrentLabel:'Geçerli konumdan hareket et', flyToCurrentLoc:'Geçerli konuma uç', getting:'Alınıyor...', restored:'Geri yüklendi!', noLatLng:'Enlem/boylam yok', noParams:'Parametre yok', imported:'İçe aktarıldı!',
     vectorSearch:'Vektör arama', allSelect:'Tümü', selectValue:'Değer seç', fly:'Uç', textSearchPh:'Metne göre ara', searchGo:'Ara', updateVector:'Vektör verilerini güncelle', attrValueList:'Öznitelikler ve değerler', attrsLoaded:'{n} öznitelik yüklendi', noAttrVector:'Öznitelikli vektör katmanı yok', noMatch:'Eşleşme yok',
-    addrSearch:'Adres arama', providerGsi:'GSI', searchPh:'Anahtar kelime girin', searching:'Aranıyor...', noResults:'Sonuç yok', searchFailCors:'Arama başarısız. Ağı (CORS) kontrol edin.', appIdMissing:'AppID ayarlanmadı. Plugin denetçisine şu satırı ekleyin:', appIdSample:'yahooAppId: Yahoo AppID’niz', searchFailAppId:'Arama başarısız. AppID ve ağı (CORS) kontrol edin.', yahooWarn:'Not: yahooAppId ifşa olabilir. Herkese açık sitelerde kullanmayın.', manageSecretWarn:'Not: buraya yazılan geminiApiKey: ve yahooAppId: proje ile birlikte kaydedilir ve sitenin tüm ziyaretçilerine yayınlanır.',
+    addrSearch:'Adres arama', providerGsi:'GSI', searchPh:'Anahtar kelime girin', searching:'Aranıyor...', noResults:'Sonuç yok', searchFailCors:'Arama başarısız. Ağı (CORS) kontrol edin.', appIdMissing:'AppID ayarlanmadı. Plugin denetçisine şu satırı ekleyin:', appIdSample:'yahooAppId: Yahoo AppID’niz', searchFailAppId:'Arama başarısız. AppID ve ağı (CORS) kontrol edin.', yahooWarn:'Not: yahooAppId ifşa olabilir. Herkese açık sitelerde kullanmayın.', googleWarn:'Not: googleMapsApiKey ifşa olabilir. Herkese açık sitelerde kullanmayın.', googleKeyMissing:'googleMapsApiKey ayarlanmadı. Plugin denetçisine şu satırı ekleyin:', googleKeySample:'googleMapsApiKey: Google Maps API anahtarınız', manageSecretWarn:'Not: buraya yazılan geminiApiKey: ve yahooAppId: proje ile birlikte kaydedilir ve sitenin tüm ziyaretçilerine yayınlanır.',
     camsTitle:'Kamera önayarları', camHelp:'cam:Başlık|Enlem|Boylam<br>cam:Başlık|Enlem|Boylam|h=Yükseklik(m)<br>cam:Başlık|Enlem|Boylam|h=Yükseklik|d=Yön&deg;|p=Eğim&deg;<br><br>Örn: cam:Tokyo İstasyonu|35.6812|139.7671<br>Örn: cam:Fuji Dağı|35.3606|138.7274|h=5000|p=-30<br><br>Belirtilmeyen parametreler geçerli kamera ayarlarını korur', currentCamera:'Geçerli kamera', positionLabel:'Konum', hprLabel:'Yön/Eğim/Yatış', flyToTitle:'{v} konumuna uç',
     terrain:'Arazi', shadow:'Gölge', depthTest:'Derinlik testi', on:'AÇIK', off:'KAPALI', geojsonDrape:'GeoJSON 3D Kaplama',
     start:'Başlangıç', stop:'Bitiş', current:'Geçerli', apply:'Uygula', sentCurrent:'Gönderildi (geçerli ayarlı)', sent:'Gönderildi', sendFailed:'Gönderim başarısız',
@@ -494,7 +495,7 @@ const GEO_I18N = {
     shareReadUrl:'الانتقال إلى معلمات URL الحالية', urlLoadFlyTo:'تحميل URL والانتقال', loading:'جارٍ التحميل...',
     shareFlyCurrentLabel:'التحرك من الموقع الحالي', flyToCurrentLoc:'الانتقال إلى الموقع الحالي', getting:'جارٍ الجلب...', restored:'تمت الاستعادة!', noLatLng:'لا توجد إحداثيات', noParams:'لا توجد معلمات', imported:'تم الاستيراد!',
     vectorSearch:'بحث متجهي', allSelect:'الكل', selectValue:'اختر قيمة', fly:'انتقال', textSearchPh:'بحث بالنص', searchGo:'بحث', updateVector:'تحديث البيانات المتجهية', attrValueList:'الخصائص والقيم', attrsLoaded:'تم تحميل {n} خاصية', noAttrVector:'لا توجد طبقات متجهية بخصائص', noMatch:'لا تطابق',
-    addrSearch:'بحث العنوان', providerGsi:'GSI', searchPh:'أدخل كلمة البحث', searching:'جارٍ البحث...', noResults:'لا نتائج', searchFailCors:'فشل البحث. تحقق من الشبكة (CORS).', appIdMissing:'AppID غير مضبوط. أضف السطر التالي إلى مفتش الإضافة:', appIdSample:'yahooAppId: مُعرّف Yahoo الخاص بك', searchFailAppId:'فشل البحث. تحقق من AppID والشبكة (CORS).', yahooWarn:'ملاحظة: قد يتم كشف yahooAppId. لا تستخدمه في المواقع العامة.', manageSecretWarn:'ملاحظة: ما تكتبه هنا من geminiApiKey: و yahooAppId: يُحفظ مع المشروع ويُنشر لجميع زوّار الموقع.',
+    addrSearch:'بحث العنوان', providerGsi:'GSI', searchPh:'أدخل كلمة البحث', searching:'جارٍ البحث...', noResults:'لا نتائج', searchFailCors:'فشل البحث. تحقق من الشبكة (CORS).', appIdMissing:'AppID غير مضبوط. أضف السطر التالي إلى مفتش الإضافة:', appIdSample:'yahooAppId: مُعرّف Yahoo الخاص بك', searchFailAppId:'فشل البحث. تحقق من AppID والشبكة (CORS).', yahooWarn:'ملاحظة: قد يتم كشف yahooAppId. لا تستخدمه في المواقع العامة.', googleWarn:'ملاحظة: قد يتم كشف googleMapsApiKey. لا تستخدمه في المواقع العامة.', googleKeyMissing:'لم يتم تعيين googleMapsApiKey. أضف السطر التالي إلى مفتش الإضافة:', googleKeySample:'googleMapsApiKey: مفتاح Google Maps API الخاص بك', manageSecretWarn:'ملاحظة: ما تكتبه هنا من geminiApiKey: و yahooAppId: يُحفظ مع المشروع ويُنشر لجميع زوّار الموقع.',
     camsTitle:'إعدادات الكاميرا المسبقة', camHelp:'cam:العنوان|خط العرض|خط الطول<br>cam:العنوان|خط العرض|خط الطول|h=الارتفاع(م)<br>cam:العنوان|خط العرض|خط الطول|h=الارتفاع|d=الاتجاه&deg;|p=الميل&deg;<br><br>مثال: cam:محطة طوكيو|35.6812|139.7671<br>مثال: cam:جبل فوجي|35.3606|138.7274|h=5000|p=-30<br><br>المعلمات غير المحددة تحتفظ بإعدادات الكاميرا الحالية', currentCamera:'الكاميرا الحالية', positionLabel:'الموقع', hprLabel:'الاتجاه/الميل/الدوران', flyToTitle:'الانتقال إلى {v}',
     terrain:'التضاريس', shadow:'الظل', depthTest:'اختبار العمق', on:'تشغيل', off:'إيقاف', geojsonDrape:'إسقاط GeoJSON ثلاثي الأبعاد',
     start:'البداية', stop:'النهاية', current:'الحالي', apply:'تطبيق', sentCurrent:'تم الإرسال (تم تعيين الحالي)', sent:'تم الإرسال', sendFailed:'فشل الإرسال',
@@ -523,7 +524,7 @@ const GEO_I18N = {
     shareReadUrl:'वर्तमान URL पैरामीटर पर जाएँ', urlLoadFlyTo:'URL लोड करें और जाएँ', loading:'लोड हो रहा है...',
     shareFlyCurrentLabel:'वर्तमान स्थान से जाएँ', flyToCurrentLoc:'वर्तमान स्थान पर जाएँ', getting:'प्राप्त हो रहा है...', restored:'पुनर्स्थापित!', noLatLng:'अक्षांश/देशांतर नहीं', noParams:'कोई पैरामीटर नहीं', imported:'आयातित!',
     vectorSearch:'वेक्टर खोज', allSelect:'सभी', selectValue:'मान चुनें', fly:'जाएँ', textSearchPh:'टेक्स्ट से खोजें', searchGo:'खोज', updateVector:'वेक्टर डेटा अपडेट करें', attrValueList:'विशेषताएँ और मान', attrsLoaded:'{n} विशेषताएँ लोड हुईं', noAttrVector:'विशेषताओं वाली कोई वेक्टर लेयर नहीं', noMatch:'कोई मिलान नहीं',
-    addrSearch:'पता खोज', providerGsi:'GSI', searchPh:'खोज शब्द दर्ज करें', searching:'खोजा जा रहा है...', noResults:'कोई परिणाम नहीं', searchFailCors:'खोज विफल। नेटवर्क (CORS) जाँचें।', appIdMissing:'AppID सेट नहीं है। प्लगइन इंस्पेक्टर में यह पंक्ति जोड़ें:', appIdSample:'yahooAppId: आपकी Yahoo AppID', searchFailAppId:'खोज विफल। AppID और नेटवर्क (CORS) जाँचें।', yahooWarn:'नोट: yahooAppId उजागर हो सकती है। सार्वजनिक साइटों पर उपयोग न करें।', manageSecretWarn:'नोट: यहाँ लिखी गई geminiApiKey: और yahooAppId: परियोजना के साथ सहेजी जाती हैं और साइट के सभी आगंतुकों को प्रकाशित होती हैं।',
+    addrSearch:'पता खोज', providerGsi:'GSI', searchPh:'खोज शब्द दर्ज करें', searching:'खोजा जा रहा है...', noResults:'कोई परिणाम नहीं', searchFailCors:'खोज विफल। नेटवर्क (CORS) जाँचें।', appIdMissing:'AppID सेट नहीं है। प्लगइन इंस्पेक्टर में यह पंक्ति जोड़ें:', appIdSample:'yahooAppId: आपकी Yahoo AppID', searchFailAppId:'खोज विफल। AppID और नेटवर्क (CORS) जाँचें।', yahooWarn:'नोट: yahooAppId उजागर हो सकती है। सार्वजनिक साइटों पर उपयोग न करें।', googleWarn:'नोट: googleMapsApiKey उजागर हो सकती है। सार्वजनिक साइटों पर उपयोग न करें।', googleKeyMissing:'googleMapsApiKey सेट नहीं है। प्लगइन इंस्पेक्टर में यह पंक्ति जोड़ें:', googleKeySample:'googleMapsApiKey: आपकी Google Maps API कुंजी', manageSecretWarn:'नोट: यहाँ लिखी गई geminiApiKey: और yahooAppId: परियोजना के साथ सहेजी जाती हैं और साइट के सभी आगंतुकों को प्रकाशित होती हैं।',
     camsTitle:'कैमरा प्रीसेट', camHelp:'cam:शीर्षक|अक्षांश|देशांतर<br>cam:शीर्षक|अक्षांश|देशांतर|h=ऊँचाई(m)<br>cam:शीर्षक|अक्षांश|देशांतर|h=ऊँचाई|d=दिशा&deg;|p=झुकाव&deg;<br><br>उदा: cam:टोक्यो स्टेशन|35.6812|139.7671<br>उदा: cam:फ़ूजी पर्वत|35.3606|138.7274|h=5000|p=-30<br><br>अनिर्दिष्ट पैरामीटर वर्तमान कैमरा सेटिंग बनाए रखते हैं', currentCamera:'वर्तमान कैमरा', positionLabel:'स्थिति', hprLabel:'दिशा/झुकाव/रोल', flyToTitle:'{v} पर जाएँ',
     terrain:'भू-आकृति', shadow:'छाया', depthTest:'गहराई परीक्षण', on:'चालू', off:'बंद', geojsonDrape:'GeoJSON 3D ड्रेप',
     start:'प्रारंभ', stop:'समाप्त', current:'वर्तमान', apply:'लागू करें', sentCurrent:'भेजा गया (वर्तमान सेट)', sent:'भेजा गया', sendFailed:'भेजना विफल',
@@ -552,7 +553,7 @@ const GEO_I18N = {
     shareReadUrl:'Pindah ke parameter URL saat ini', urlLoadFlyTo:'Muat URL & Terbang', loading:'Memuat...',
     shareFlyCurrentLabel:'Pindah dari lokasi saat ini', flyToCurrentLoc:'Terbang ke lokasi saat ini', getting:'Mengambil...', restored:'Dipulihkan!', noLatLng:'Tanpa lat/lng', noParams:'Tanpa parameter', imported:'Diimpor!',
     vectorSearch:'Pencarian vektor', allSelect:'Semua', selectValue:'Pilih nilai', fly:'Terbang', textSearchPh:'Cari teks', searchGo:'Cari', updateVector:'Perbarui data vektor', attrValueList:'Atribut & nilai', attrsLoaded:'{n} atribut dimuat', noAttrVector:'Tidak ada lapisan vektor beratribut', noMatch:'Tidak cocok',
-    addrSearch:'Pencarian alamat', providerGsi:'GSI', searchPh:'Masukkan kata kunci', searching:'Mencari...', noResults:'Tidak ada hasil', searchFailCors:'Pencarian gagal. Periksa jaringan (CORS).', appIdMissing:'AppID belum diatur. Tambahkan baris berikut ke inspektur plugin:', appIdSample:'yahooAppId: AppID Yahoo Anda', searchFailAppId:'Pencarian gagal. Periksa AppID dan jaringan (CORS).', yahooWarn:'Catatan: yahooAppId dapat terekspos. Jangan gunakan di situs publik.', manageSecretWarn:'Catatan: geminiApiKey: dan yahooAppId: yang ditulis di sini disimpan bersama proyek dan dipublikasikan ke semua pengunjung situs.',
+    addrSearch:'Pencarian alamat', providerGsi:'GSI', searchPh:'Masukkan kata kunci', searching:'Mencari...', noResults:'Tidak ada hasil', searchFailCors:'Pencarian gagal. Periksa jaringan (CORS).', appIdMissing:'AppID belum diatur. Tambahkan baris berikut ke inspektur plugin:', appIdSample:'yahooAppId: AppID Yahoo Anda', searchFailAppId:'Pencarian gagal. Periksa AppID dan jaringan (CORS).', yahooWarn:'Catatan: yahooAppId dapat terekspos. Jangan gunakan di situs publik.', googleWarn:'Catatan: googleMapsApiKey dapat terekspos. Jangan gunakan di situs publik.', googleKeyMissing:'googleMapsApiKey belum diatur. Tambahkan baris berikut ke inspektur plugin:', googleKeySample:'googleMapsApiKey: kunci API Google Maps Anda', manageSecretWarn:'Catatan: geminiApiKey: dan yahooAppId: yang ditulis di sini disimpan bersama proyek dan dipublikasikan ke semua pengunjung situs.',
     camsTitle:'Preset kamera', camHelp:'cam:Judul|Lintang|Bujur<br>cam:Judul|Lintang|Bujur|h=Ketinggian(m)<br>cam:Judul|Lintang|Bujur|h=Ketinggian|d=Arah&deg;|p=Kemiringan&deg;<br><br>Cth: cam:Stasiun Tokyo|35.6812|139.7671<br>Cth: cam:Gunung Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Parameter yang tidak diisi mempertahankan pengaturan kamera saat ini', currentCamera:'Kamera saat ini', positionLabel:'Posisi', hprLabel:'Arah/Kemiringan/Roll', flyToTitle:'Terbang ke {v}',
     terrain:'Medan', shadow:'Bayangan', depthTest:'Uji kedalaman', on:'AKTIF', off:'MATI', geojsonDrape:'Drape 3D GeoJSON',
     start:'Mulai', stop:'Selesai', current:'Saat ini', apply:'Terapkan', sentCurrent:'Terkirim (saat ini diatur)', sent:'Terkirim', sendFailed:'Gagal mengirim',
@@ -581,7 +582,7 @@ const GEO_I18N = {
     shareReadUrl:'ไปยังพารามิเตอร์ URL ปัจจุบัน', urlLoadFlyTo:'โหลด URL และบินไป', loading:'กำลังโหลด...',
     shareFlyCurrentLabel:'ย้ายจากตำแหน่งปัจจุบัน', flyToCurrentLoc:'บินไปตำแหน่งปัจจุบัน', getting:'กำลังดึงข้อมูล...', restored:'คืนค่าแล้ว!', noLatLng:'ไม่มีละติจูด/ลองจิจูด', noParams:'ไม่มีพารามิเตอร์', imported:'นำเข้าแล้ว!',
     vectorSearch:'ค้นหาเวกเตอร์', allSelect:'ทั้งหมด', selectValue:'เลือกค่า', fly:'บินไป', textSearchPh:'ค้นหาด้วยข้อความ', searchGo:'ค้นหา', updateVector:'อัปเดตข้อมูลเวกเตอร์', attrValueList:'คุณลักษณะและค่า', attrsLoaded:'โหลด {n} คุณลักษณะแล้ว', noAttrVector:'ไม่มีเลเยอร์เวกเตอร์ที่มีคุณลักษณะ', noMatch:'ไม่พบ',
-    addrSearch:'ค้นหาที่อยู่', providerGsi:'GSI', searchPh:'ป้อนคำค้นหา', searching:'กำลังค้นหา...', noResults:'ไม่มีผลลัพธ์', searchFailCors:'ค้นหาล้มเหลว ตรวจสอบเครือข่าย (CORS)', appIdMissing:'ยังไม่ได้ตั้ง AppID เพิ่มบรรทัดต่อไปนี้ในอินสเปกเตอร์ของปลั๊กอิน:', appIdSample:'yahooAppId: AppID Yahoo ของคุณ', searchFailAppId:'ค้นหาล้มเหลว ตรวจสอบ AppID และเครือข่าย (CORS)', yahooWarn:'หมายเหตุ: yahooAppId อาจรั่วไหลได้ อย่าใช้บนเว็บไซต์สาธารณะ', manageSecretWarn:'หมายเหตุ: geminiApiKey: และ yahooAppId: ที่เขียนที่นี่จะถูกบันทึกพร้อมโปรเจกต์และเผยแพร่ให้ผู้เยี่ยมชมไซต์ทุกคน',
+    addrSearch:'ค้นหาที่อยู่', providerGsi:'GSI', searchPh:'ป้อนคำค้นหา', searching:'กำลังค้นหา...', noResults:'ไม่มีผลลัพธ์', searchFailCors:'ค้นหาล้มเหลว ตรวจสอบเครือข่าย (CORS)', appIdMissing:'ยังไม่ได้ตั้ง AppID เพิ่มบรรทัดต่อไปนี้ในอินสเปกเตอร์ของปลั๊กอิน:', appIdSample:'yahooAppId: AppID Yahoo ของคุณ', searchFailAppId:'ค้นหาล้มเหลว ตรวจสอบ AppID และเครือข่าย (CORS)', yahooWarn:'หมายเหตุ: yahooAppId อาจรั่วไหลได้ อย่าใช้บนเว็บไซต์สาธารณะ', googleWarn:'หมายเหตุ: googleMapsApiKey อาจรั่วไหลได้ อย่าใช้บนเว็บไซต์สาธารณะ', googleKeyMissing:'ยังไม่ได้ตั้ง googleMapsApiKey เพิ่มบรรทัดต่อไปนี้ในอินสเปกเตอร์ของปลั๊กอิน:', googleKeySample:'googleMapsApiKey: คีย์ API Google Maps ของคุณ', manageSecretWarn:'หมายเหตุ: geminiApiKey: และ yahooAppId: ที่เขียนที่นี่จะถูกบันทึกพร้อมโปรเจกต์และเผยแพร่ให้ผู้เยี่ยมชมไซต์ทุกคน',
     camsTitle:'พรีเซ็ตกล้อง', camHelp:'cam:ชื่อ|ละติจูด|ลองจิจูด<br>cam:ชื่อ|ละติจูด|ลองจิจูด|h=ความสูง(m)<br>cam:ชื่อ|ละติจูด|ลองจิจูด|h=ความสูง|d=ทิศ&deg;|p=ความเอียง&deg;<br><br>ตัวอย่าง: cam:สถานีโตเกียว|35.6812|139.7671<br>ตัวอย่าง: cam:ภูเขาไฟฟูจิ|35.3606|138.7274|h=5000|p=-30<br><br>พารามิเตอร์ที่ไม่ระบุจะใช้การตั้งค่ากล้องปัจจุบัน', currentCamera:'กล้องปัจจุบัน', positionLabel:'ตำแหน่ง', hprLabel:'ทิศ/ความเอียง/มุมกลิ้ง', flyToTitle:'บินไป {v}',
     terrain:'ภูมิประเทศ', shadow:'เงา', depthTest:'ทดสอบความลึก', on:'เปิด', off:'ปิด', geojsonDrape:'การวาง GeoJSON 3D',
     start:'เริ่ม', stop:'สิ้นสุด', current:'ปัจจุบัน', apply:'ใช้', sentCurrent:'ส่งแล้ว (ตั้งค่าปัจจุบัน)', sent:'ส่งแล้ว', sendFailed:'ส่งไม่สำเร็จ',
@@ -610,7 +611,7 @@ const GEO_I18N = {
     shareReadUrl:'Đến tham số URL hiện tại', urlLoadFlyTo:'Tải URL & bay tới', loading:'Đang tải...',
     shareFlyCurrentLabel:'Di chuyển từ vị trí hiện tại', flyToCurrentLoc:'Bay tới vị trí hiện tại', getting:'Đang lấy...', restored:'Đã khôi phục!', noLatLng:'Không có lat/lng', noParams:'Không có tham số', imported:'Đã nhập!',
     vectorSearch:'Tìm kiếm vector', allSelect:'Tất cả', selectValue:'Chọn giá trị', fly:'Bay', textSearchPh:'Tìm theo văn bản', searchGo:'Tìm', updateVector:'Cập nhật dữ liệu vector', attrValueList:'Thuộc tính & giá trị', attrsLoaded:'Đã tải {n} thuộc tính', noAttrVector:'Không có lớp vector có thuộc tính', noMatch:'Không khớp',
-    addrSearch:'Tìm địa chỉ', providerGsi:'GSI', searchPh:'Nhập từ khóa', searching:'Đang tìm...', noResults:'Không có kết quả', searchFailCors:'Tìm kiếm thất bại. Kiểm tra mạng (CORS).', appIdMissing:'Chưa đặt AppID. Thêm dòng sau vào inspector của plugin:', appIdSample:'yahooAppId: AppID Yahoo của bạn', searchFailAppId:'Tìm kiếm thất bại. Kiểm tra AppID và mạng (CORS).', yahooWarn:'Lưu ý: yahooAppId có thể bị lộ. Không dùng trên trang công khai.', manageSecretWarn:'Lưu ý: geminiApiKey: và yahooAppId: viết ở đây được lưu cùng dự án và công khai tới mọi khách truy cập trang.',
+    addrSearch:'Tìm địa chỉ', providerGsi:'GSI', searchPh:'Nhập từ khóa', searching:'Đang tìm...', noResults:'Không có kết quả', searchFailCors:'Tìm kiếm thất bại. Kiểm tra mạng (CORS).', appIdMissing:'Chưa đặt AppID. Thêm dòng sau vào inspector của plugin:', appIdSample:'yahooAppId: AppID Yahoo của bạn', searchFailAppId:'Tìm kiếm thất bại. Kiểm tra AppID và mạng (CORS).', yahooWarn:'Lưu ý: yahooAppId có thể bị lộ. Không dùng trên trang công khai.', googleWarn:'Lưu ý: googleMapsApiKey có thể bị lộ. Không dùng trên trang công khai.', googleKeyMissing:'Chưa đặt googleMapsApiKey. Thêm dòng sau vào inspector của plugin:', googleKeySample:'googleMapsApiKey: khóa API Google Maps của bạn', manageSecretWarn:'Lưu ý: geminiApiKey: và yahooAppId: viết ở đây được lưu cùng dự án và công khai tới mọi khách truy cập trang.',
     camsTitle:'Preset camera', camHelp:'cam:Tiêu đề|Vĩ độ|Kinh độ<br>cam:Tiêu đề|Vĩ độ|Kinh độ|h=Độ cao(m)<br>cam:Tiêu đề|Vĩ độ|Kinh độ|h=Độ cao|d=Hướng&deg;|p=Nghiêng&deg;<br><br>VD: cam:Ga Tokyo|35.6812|139.7671<br>VD: cam:Núi Phú Sĩ|35.3606|138.7274|h=5000|p=-30<br><br>Tham số không chỉ định sẽ giữ cài đặt camera hiện tại', currentCamera:'Camera hiện tại', positionLabel:'Vị trí', hprLabel:'Hướng/Nghiêng/Cuộn', flyToTitle:'Bay tới {v}',
     terrain:'Địa hình', shadow:'Bóng', depthTest:'Kiểm tra độ sâu', on:'BẬT', off:'TẮT', geojsonDrape:'Drape 3D GeoJSON',
     start:'Bắt đầu', stop:'Kết thúc', current:'Hiện tại', apply:'Áp dụng', sentCurrent:'Đã gửi (đặt hiện tại)', sent:'Đã gửi', sendFailed:'Gửi thất bại',
@@ -1561,6 +1562,7 @@ function getUI() {
       <select id="search-provider" style="border:1px solid #ccc;border-radius:4px;padding:6px;font-size:0.9em;background:#fff;flex:0 0 auto;">
         <option value="gsi" selected data-i18n="providerGsi">GSI</option>
         <option value="yahoo">Yahoo</option>
+        <option value="google">Google</option>
       </select>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
@@ -1571,6 +1573,7 @@ function getUI() {
       <ul id="search-results-list" style="list-style:none;padding:0;margin:0;"></ul>
     </div>
     <div id="search-yahoo-warning" style="font-size:0.9em;color:#a33;margin-top:8px;" data-i18n="yahooWarn">Note: yahooAppId may be exposed. Do not use on public sites.</div>
+    <div id="search-google-warning" style="font-size:0.9em;color:#a33;margin-top:8px;display:none;" data-i18n="googleWarn">Note: googleMapsApiKey may be exposed. Do not use on public sites.</div>
   </div>
 
   <div id="layers-panel">
@@ -1807,6 +1810,7 @@ function getUI() {
 
   // Inject inspector-provided AppID into UI (only source of AppID)
   try { window._yahooAppId = ${JSON.stringify(_inspectorYahooAppId || '')}; } catch(e) {}
+  try { window._googleMapsApiKey = ${JSON.stringify(_inspectorGoogleMapsApiKey || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
       // Apply translations (data-i18n attributes + status labels)
@@ -2078,6 +2082,51 @@ function getUI() {
                 });
               }
             } catch(e) {}
+
+            // WKB(ISO/EWKB) -> GeoJSON geometry (port of kasugai vector-decode.js).
+            // Shared by the pqLoad (GeoParquet) and ddbLoad (DuckDB-Wasm) decoders.
+            var vecWkbToGeoJson = function(bytes) {
+              if (!bytes || !bytes.byteLength) return null;
+              var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+              var pos = 0;
+              var readGeometry = function() {
+                var littleEndian = view.getUint8(pos) === 1; pos += 1;
+                var raw = view.getUint32(pos, littleEndian); pos += 4;
+                var base = raw & 0xffff;
+                var hasZ = (raw & 0x80000000) !== 0;
+                var hasM = (raw & 0x40000000) !== 0;
+                var hasSrid = (raw & 0x20000000) !== 0;
+                if (!hasZ && !hasM && raw >= 1000) {
+                  var variant = Math.floor(raw / 1000);
+                  hasZ = variant === 1 || variant === 3;
+                  hasM = variant === 2 || variant === 3;
+                  base = raw % 1000;
+                }
+                if (hasSrid) pos += 4;
+                var count = function() { var n = view.getUint32(pos, littleEndian); pos += 4; return n; };
+                var point = function() {
+                  var c = [view.getFloat64(pos, littleEndian), view.getFloat64(pos + 8, littleEndian)];
+                  pos += 16;
+                  if (hasZ) { c.push(view.getFloat64(pos, littleEndian)); pos += 8; }
+                  if (hasM) pos += 8;
+                  return c;
+                };
+                var points = function() { var a = new Array(count()); for (var i = 0; i < a.length; i++) a[i] = point(); return a; };
+                var rings = function() { var a = new Array(count()); for (var i = 0; i < a.length; i++) a[i] = points(); return a; };
+                var children = function() { var a = new Array(count()); for (var i = 0; i < a.length; i++) a[i] = readGeometry(); return a; };
+                switch (base) {
+                  case 1: return { type: 'Point', coordinates: point() };
+                  case 2: return { type: 'LineString', coordinates: points() };
+                  case 3: return { type: 'Polygon', coordinates: rings() };
+                  case 4: return { type: 'MultiPoint', coordinates: children().map(function(g) { return g && g.coordinates; }) };
+                  case 5: return { type: 'MultiLineString', coordinates: children().map(function(g) { return g && g.coordinates; }) };
+                  case 6: return { type: 'MultiPolygon', coordinates: children().map(function(g) { return g && g.coordinates; }) };
+                  case 7: return { type: 'GeometryCollection', geometries: children().filter(Boolean) };
+                  default: return null;
+                }
+              };
+              try { return readGeometry(); } catch (e) { return null; }
+            };
 
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
@@ -2402,6 +2451,400 @@ function getUI() {
                 } else if (msg.action === 'flyRemoveDrawn') {
                   // Drop a deleted drawn route from the FLY tab select (ai-chat deleteFlyPath)
                   try { flyRemoveDrawnOption(msg.name); } catch (e) {}
+                } else if (msg.action === 'flySetSettings') {
+                  // ai-chat setFlySettings: select the target route (if named)
+                  // and write the values into the FLY fields — they apply live,
+                  // even mid-flight (same path as user edits).
+                  try {
+                    const sel = document.getElementById('fly-route-select');
+                    const s = msg.settings || {};
+                    let target = null;
+                    if (msg.drawn) target = 'd:' + msg.drawn;
+                    else if (msg.idx !== null && msg.idx !== undefined) target = 'i:' + msg.idx;
+                    if (sel && target && sel.value !== target) {
+                      let exists = false;
+                      for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].value === target) { exists = true; break; } }
+                      if (exists) {
+                        sel.value = target;
+                        sel.dispatchEvent(new Event('change'));
+                        // The async route-load writes route defaults only when
+                        // inputsDirty is false — mark dirty so our settings are
+                        // not overwritten when the load resolves.
+                        fly.inputsDirty = true;
+                      }
+                    }
+                    // Drop the cached GeoJSON so a re-select picks up the
+                    // persisted properties.fly defaults.
+                    if (msg.drawn) { try { delete flyDrawnCache[msg.drawn]; } catch (e) {} }
+                    flyWriteInputs(s);
+                    flyApplyInputs(true);
+                  } catch (e) {}
+                } else if (msg.action === 'svVerify') {
+                  // Street View metadata check (kasugai port): prefer outdoor
+                  // panoramas and embed the confirmed pano_id so the user does
+                  // not land on a dark/indoor/removed panorama.
+                  (function() {
+                    const lat = Number(msg.lat), lng = Number(msg.lng);
+                    const plain = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + lat + ',' + lng;
+                    const done = function(url, verified, status) {
+                      try { parent.postMessage({ action: 'svResult', svId: msg.svId, url: url, verified: verified, status: status }, '*'); } catch (e) {}
+                    };
+                    const key = String(window._googleMapsApiKey || '').trim();
+                    if (!key || !isFinite(lat) || !isFinite(lng)) { done(plain, false, 'NO_KEY'); return; }
+                    const meta = function(source) {
+                      return fetch('https://maps.googleapis.com/maps/api/streetview/metadata?location=' + lat + ',' + lng + '&key=' + encodeURIComponent(key) + (source ? '&source=' + source : ''), { mode: 'cors' })
+                        .then(function(res) { return res.json().catch(function() { return null; }); });
+                    };
+                    meta('outdoor').then(function(data) {
+                      if (data && data.status === 'OK') return data;
+                      return meta('');
+                    }).then(function(data) {
+                      if (data && data.status === 'OK') {
+                        const plat = Number(data.location && data.location.lat), plng = Number(data.location && data.location.lng);
+                        const vp = (isFinite(plat) && isFinite(plng)) ? (plat + ',' + plng) : (lat + ',' + lng);
+                        done('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + vp + (data.pano_id ? '&panoid=' + encodeURIComponent(data.pano_id) : ''), true, 'OK');
+                      } else {
+                        done(plain, false, (data && data.status) || 'NOT_FOUND');
+                      }
+                    }).catch(function() { done(plain, false, 'FETCH_FAILED'); });
+                  })();
+                } else if (msg.action === 'placesSearch') {
+                  // searchPlaces AI tool: run the shared Google hybrid search
+                  // and post the raw items back for the extension to relay.
+                  (function() {
+                    const key = String(window._googleMapsApiKey || '').trim();
+                    const limit = Math.max(1, Math.min(20, Number(msg.limit) || 10));
+                    const reply = function(payload) {
+                      try { parent.postMessage({ action: 'placesResult', psId: msg.psId, result: payload }, '*'); } catch (e) {}
+                    };
+                    if (!key) { reply({ error: 'googleMapsApiKey not set (add "googleMapsApiKey: ..." to the plugin inspector)' }); return; }
+                    if (typeof window.googlePlacesSearchRaw !== 'function') { reply({ error: 'search unavailable' }); return; }
+                    window.googlePlacesSearchRaw(key, msg.query, function(items, err) {
+                      if (err) { reply({ error: 'google search failed: ' + String(err && err.message || err) }); return; }
+                      reply({ results: (items || []).slice(0, limit), provider: 'google' });
+                    });
+                  })();
+                } else if (msg.action === 'fgbLoad') {
+                  // FlatGeobuf decode (kasugai port): the official JS reader is
+                  // lazy-imported from CDN, the response body is streamed into
+                  // deserialize() and collected as a FeatureCollection which the
+                  // extension adds as a normal GeoJSON layer.
+                  (function() {
+                    var reply = function(geojson, error) {
+                      try { parent.postMessage({ action: 'fgbResult', vecId: msg.vecId, geojson: geojson, error: error }, '*'); } catch (e) {}
+                    };
+                    try {
+                      if (!window._fgbModule) {
+                        window._fgbModule = import('https://cdn.jsdelivr.net/npm/flatgeobuf@4.4.0/lib/mjs/geojson.js/+esm');
+                      }
+                      window._fgbModule.then(function(mod) {
+                        return fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                          if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                          if (!res.body) throw new Error('empty response body');
+                          var features = [];
+                          var limit = Math.max(1, Number(msg.limit) || 200000);
+                          var iter = mod.deserialize(res.body);
+                          var readNext = function() {
+                            return iter.next().then(function(r) {
+                              if (r.done || features.length >= limit) return { type: 'FeatureCollection', features: features };
+                              var f = r.value;
+                              if (f && f.geometry) features.push(f);
+                              return readNext();
+                            });
+                          };
+                          return readNext();
+                        });
+                      }).then(function(fc) {
+                        // Make the payload JSON-safe for the sandbox bridge
+                        // (BigInt and friends cannot cross it).
+                        try {
+                          fc = JSON.parse(JSON.stringify(fc, function(k, v) {
+                            return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
+                          }));
+                        } catch (e) {}
+                        reply(fc, null);
+                      }).catch(function(e) { reply(null, String(e && e.message || e)); });
+                    } catch (e) { reply(null, String(e)); }
+                  })();
+                } else if (msg.action === 'pqLoad') {
+                  // GeoParquet decode (kasugai port): hyparquet + compressors
+                  // are lazy-imported from CDN, rows are read as objects and
+                  // the geometry column (geo metadata primary_column, or a
+                  // WKB/GeoJSON-valued column) is turned into GeoJSON features.
+                  (function() {
+                    var reply = function(geojson, error) {
+                      try { parent.postMessage({ action: 'pqResult', vecId: msg.vecId, geojson: geojson, error: error }, '*'); } catch (e) {}
+                    };
+                    var wkbToGeoJson = vecWkbToGeoJson;
+                    try {
+                      if (!window._pqModule) {
+                        window._pqModule = Promise.all([
+                          import('https://cdn.jsdelivr.net/npm/hyparquet@1.30.1/+esm'),
+                          import('https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm')
+                        ]).then(function(mods) {
+                          var hp = mods[0], hc = mods[1];
+                          return {
+                            parquetReadObjects: hp.parquetReadObjects,
+                            parquetMetadata: hp.parquetMetadataAsync || hp.parquetMetadata,
+                            asyncBufferFromUrl: hp.asyncBufferFromUrl,
+                            compressors: hc.compressors
+                          };
+                        });
+                      }
+                      window._pqModule.then(function(mod) {
+                        var fileP;
+                        try { fileP = mod.asyncBufferFromUrl({ url: msg.url }); } catch (e) { fileP = Promise.reject(e); }
+                        return fileP.catch(function() {
+                          return fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                            if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                            return res.arrayBuffer();
+                          });
+                        }).then(function(file) {
+                          return mod.parquetReadObjects({ file: file, compressors: mod.compressors }).then(function(rows) {
+                            return Promise.resolve(mod.parquetMetadata ? mod.parquetMetadata(file) : null).then(function(meta) {
+                              return { rows: rows || [], meta: meta };
+                            });
+                          });
+                        });
+                      }).then(function(r0) {
+                        var rows = r0.rows;
+                        var features = [];
+                        if (!rows.length) return reply({ type: 'FeatureCollection', features: [] }, null);
+                        // Geometry column: geo metadata primary_column first,
+                        // else 'geometry', else first WKB/GeoJSON-valued column.
+                        var geomColumn = null;
+                        try {
+                          var kv = r0.meta && (r0.meta.key_value_metadata || r0.meta.metadata || []);
+                          var entry = Array.isArray(kv) ? kv.find(function(it) { return it && it.key === 'geo'; }) : (kv instanceof Map ? { value: kv.get('geo') } : null);
+                          var rawGeo = entry && entry.value;
+                          var geoText = rawGeo instanceof Uint8Array ? new TextDecoder().decode(rawGeo) : rawGeo;
+                          var geo = geoText ? JSON.parse(geoText) : null;
+                          if (geo && geo.primary_column) geomColumn = geo.primary_column;
+                        } catch (e) {}
+                        var isGeom = function(v) {
+                          return v instanceof Uint8Array || (v && typeof v === 'object' && typeof v.type === 'string' && ('coordinates' in v || 'geometries' in v));
+                        };
+                        var firstRow = rows[0];
+                        if (!geomColumn || !(geomColumn in firstRow)) {
+                          geomColumn = ('geometry' in firstRow) ? 'geometry' : Object.keys(firstRow).find(function(k) { return isGeom(firstRow[k]); });
+                        }
+                        if (!geomColumn) throw new Error('geometry column not found');
+                        var limit = Math.max(1, Number(msg.limit) || 200000);
+                        for (var i = 0; i < rows.length && features.length < limit; i++) {
+                          var row = rows[i];
+                          var value = row[geomColumn];
+                          // Native GEOMETRY columns arrive pre-decoded; WKB columns we decode.
+                          var geometry = value instanceof Uint8Array ? wkbToGeoJson(value) : (isGeom(value) ? value : null);
+                          if (!geometry) continue;
+                          var properties = {};
+                          var keys = Object.keys(row);
+                          for (var j = 0; j < keys.length; j++) { if (keys[j] !== geomColumn) properties[keys[j]] = row[keys[j]]; }
+                          features.push({ type: 'Feature', geometry: geometry, properties: properties });
+                        }
+                        var fc = { type: 'FeatureCollection', features: features };
+                        // JSON-safe for the sandbox bridge (parquet int64
+                        // columns arrive as BigInt which cannot cross it).
+                        try {
+                          fc = JSON.parse(JSON.stringify(fc, function(k, v) {
+                            return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
+                          }));
+                        } catch (e) {}
+                        reply(fc, null);
+                      }).then(function() {}, function(e) { reply(null, String(e && e.message || e)); });
+                    } catch (e) { reply(null, String(e)); }
+                  })();
+                } else if (msg.action === 'ddbLoad') {
+                  // DuckDB-Wasm query path (kasugai duckdb: port). SQL pushdown
+                  // (where/limit/columns) and covering-bbox predicates prune
+                  // Parquet row groups over HTTP Range requests, so only the
+                  // matching part of the file is transferred.
+                  (function() {
+                    var reply = function(geojson, error) {
+                      try {
+                        if (geojson) {
+                          geojson = JSON.parse(JSON.stringify(geojson, function(k, v) {
+                            return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
+                          }));
+                        }
+                        parent.postMessage({ action: 'ddbResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error }, '*');
+                      } catch (e) {}
+                    };
+                    var qi = function(n) { return '"' + String(n).replace(/"/g, '""') + '"'; };
+                    var ql = function(v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
+                    var boundsSql = function(b) {
+                      if (!b || !b.ranges || !b.ranges.length) return null;
+                      var env = function(r) { return 'ST_MakeEnvelope(' + Number(r.west) + ',' + Number(b.south) + ',' + Number(r.east) + ',' + Number(b.north) + ')'; };
+                      return b.ranges.length === 1 ? env(b.ranges[0]) : 'ST_Union(' + env(b.ranges[0]) + ', ' + env(b.ranges[1]) + ')';
+                    };
+                    try {
+                      if (!window._ddbModule) {
+                        var loading = import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm').then(function(duckdb) {
+                          return duckdb.selectBundle(duckdb.getJsDelivrBundles()).then(function(bundle) {
+                            var workerUrl = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(bundle.mainWorker) + ');'], { type: 'text/javascript' }));
+                            var worker = new Worker(workerUrl);
+                            var logger = duckdb.VoidLogger ? new duckdb.VoidLogger() : new duckdb.ConsoleLogger();
+                            var db = new duckdb.AsyncDuckDB(logger, worker);
+                            return db.instantiate(bundle.mainModule, bundle.pthreadWorker).then(function() {
+                              try { URL.revokeObjectURL(workerUrl); } catch (e) {}
+                              return db.connect();
+                            }).then(function(conn) {
+                              var st = { conn: conn, spatial: false };
+                              return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
+                                .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
+                                .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
+                                .then(function() { return st; });
+                            });
+                          });
+                        });
+                        loading.catch(function() { if (window._ddbModule === loading) window._ddbModule = null; });
+                        window._ddbModule = loading;
+                      }
+                      window._ddbModule.then(function(st) {
+                        var conn = st.conn, spatial = st.spatial;
+                        var format = String(msg.format || '').toLowerCase();
+                        var literal = ql(msg.url);
+                        var isParquet = format === 'parquet' || (!format && /\\.parquet([?#]|$)/i.test(msg.url || ''));
+                        var source = format === 'parquet' ? 'read_parquet(' + literal + ')'
+                          : (format === 'csv' || format === 'tsv') ? 'read_csv_auto(' + literal + ')'
+                          : (format === 'json' || format === 'geojson') ? 'read_json_auto(' + literal + ')'
+                          : literal; // replacement scan infers reader from the extension
+                        var ctx = {};
+                        return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
+                          ctx.columns = table.toArray().map(function(row) {
+                            var p = (typeof row.toJSON === 'function') ? row.toJSON() : row;
+                            return { name: String(p.column_name), type: String(p.column_type || '').toUpperCase() };
+                          });
+                          var geomCol = null;
+                          if (msg.geom) {
+                            geomCol = ctx.columns.filter(function(c) { return c.name === msg.geom; })[0] || null;
+                            if (!geomCol) throw new Error('geom= column not found: ' + msg.geom);
+                          } else {
+                            geomCol = ctx.columns.filter(function(c) { return c.type.indexOf('GEOMETRY') >= 0 || c.type.indexOf('WKB') >= 0; })[0]
+                              || ctx.columns.filter(function(c) { return /^(geometry|geom|wkb|the_geom)$/i.test(c.name); })[0]
+                              || ctx.columns.filter(function(c) { return c.type === 'BLOB' || c.type === 'BINARY'; })[0]
+                              || null;
+                          }
+                          ctx.geomCol = geomCol;
+                          ctx.lonlat = null;
+                          if (!geomCol) {
+                            var findCol = function(explicit, re) {
+                              if (explicit) {
+                                if (!ctx.columns.some(function(c) { return c.name === explicit; })) throw new Error('column not found: ' + explicit);
+                                return explicit;
+                              }
+                              var c = ctx.columns.filter(function(c) { return re.test(c.name); })[0];
+                              return c ? c.name : null;
+                            };
+                            var lon = findCol(msg.lon, /^(lon|lng|longitude)$/i);
+                            var lat = findCol(msg.lat, /^(lat|latitude)$/i);
+                            if ((lon || lat) && !(lon && lat)) throw new Error('lon/lat columns could not be resolved (specify lon= and lat=)');
+                            if (lon && lat) ctx.lonlat = { lon: lon, lat: lat };
+                          }
+                          if (!geomCol && !ctx.lonlat) throw new Error('geometry column not found (use geom= or lon=/lat=)');
+                          // covering bbox columns: covering= > geo metadata > conventional names
+                          ctx.covering = null;
+                          if (msg.bounds && Array.isArray(msg.covering) && msg.covering.length === 4) {
+                            ctx.covering = { refs: { xmin: qi(msg.covering[0]), xmax: qi(msg.covering[1]), ymin: qi(msg.covering[2]), ymax: qi(msg.covering[3]) }, exclude: msg.covering.slice() };
+                            return null;
+                          }
+                          if (msg.bounds && isParquet) {
+                            return conn.query("SELECT key, value FROM parquet_kv_metadata(" + literal + ") WHERE key = 'geo'").then(function(t2) {
+                              try {
+                                var row = t2.toArray()[0];
+                                var raw = row && (typeof row.toJSON === 'function' ? row.toJSON() : row).value;
+                                var text = (typeof raw === 'string') ? raw : new TextDecoder().decode(raw instanceof Uint8Array ? raw : new Uint8Array(raw));
+                                var geo = JSON.parse(text);
+                                var cov = geo && geo.columns && geo.columns[geo.primary_column] && geo.columns[geo.primary_column].covering && geo.columns[geo.primary_column].covering.bbox;
+                                if (cov && cov.xmin && cov.xmax && cov.ymin && cov.ymax) {
+                                  var ref = function(p) { return Array.isArray(p) && p.length ? p.map(qi).join('.') : null; };
+                                  var refs = { xmin: ref(cov.xmin), xmax: ref(cov.xmax), ymin: ref(cov.ymin), ymax: ref(cov.ymax) };
+                                  if (refs.xmin && refs.xmax && refs.ymin && refs.ymax) {
+                                    ctx.covering = { refs: refs, exclude: [cov.xmin[0], cov.xmax[0], cov.ymin[0], cov.ymax[0]] };
+                                  }
+                                }
+                              } catch (e) {}
+                            }).catch(function() {});
+                          }
+                          return null;
+                        }).then(function() {
+                          if (msg.bounds && !ctx.covering) {
+                            var fc = function(n) { var c = ctx.columns.filter(function(c) { return c.name.toLowerCase() === n; })[0]; return c ? c.name : null; };
+                            var n = { xmin: fc('xmin'), xmax: fc('xmax'), ymin: fc('ymin'), ymax: fc('ymax') };
+                            if (n.xmin && n.xmax && n.ymin && n.ymax) {
+                              ctx.covering = { refs: { xmin: qi(n.xmin), xmax: qi(n.xmax), ymin: qi(n.ymin), ymax: qi(n.ymax) }, exclude: [] };
+                            }
+                          }
+                          var geomExpr = null;
+                          if (ctx.geomCol) {
+                            var gname = qi(ctx.geomCol.name);
+                            var cast = ctx.geomCol.type.indexOf('GEOMETRY') >= 0 ? gname
+                              : (ctx.geomCol.type === 'BLOB' || ctx.geomCol.type === 'BINARY' || ctx.geomCol.type.indexOf('WKB') >= 0) ? 'TRY(ST_GeomFromWKB(' + gname + '))'
+                              : 'COALESCE(TRY(ST_GeomFromText(' + gname + ')), TRY(ST_GeomFromGeoJSON(' + gname + ')))';
+                            ctx.geomCast = cast;
+                            geomExpr = spatial ? ('ST_AsWKB(' + cast + ') AS "__geom__"') : (gname + ' AS "__geom__"');
+                          }
+                          var selCols = null;
+                          if (Array.isArray(msg.columns) && msg.columns.length) {
+                            var missingCols = msg.columns.filter(function(n) { return !ctx.columns.some(function(c) { return c.name === n; }); });
+                            if (missingCols.length) throw new Error('columns= not found: ' + missingCols.join(','));
+                            selCols = msg.columns.map(qi).join(', ');
+                          }
+                          var excludeList = [];
+                          if (ctx.geomCol) excludeList.push(ctx.geomCol.name);
+                          if (ctx.covering) excludeList = excludeList.concat(ctx.covering.exclude);
+                          var select = ctx.geomCol
+                            ? (selCols ? 'SELECT ' + selCols + ', ' + geomExpr : 'SELECT * EXCLUDE (' + excludeList.map(qi).join(', ') + '), ' + geomExpr)
+                            : 'SELECT *';
+                          var preds = [];
+                          if (msg.where) preds.push('(' + msg.where + ')');
+                          var envSql = boundsSql(msg.bounds);
+                          if (envSql) {
+                            if (ctx.covering) {
+                              var b = msg.bounds;
+                              var lonPred = b.ranges.map(function(r) {
+                                return '(' + ctx.covering.refs.xmax + ' >= ' + Number(r.west) + ' AND ' + ctx.covering.refs.xmin + ' <= ' + Number(r.east) + ')';
+                              }).join(' OR ');
+                              preds.push('((' + lonPred + ') AND ' + ctx.covering.refs.ymax + ' >= ' + Number(b.south) + ' AND ' + ctx.covering.refs.ymin + ' <= ' + Number(b.north) + ')');
+                            }
+                            var operand = ctx.geomCol ? (spatial ? ctx.geomCast : null)
+                              : (spatial && ctx.lonlat ? 'ST_Point(' + qi(ctx.lonlat.lon) + ', ' + qi(ctx.lonlat.lat) + ')' : null);
+                            if (operand) preds.push('ST_Intersects(' + operand + ', ' + envSql + ')');
+                          }
+                          var sql = select + ' FROM ' + source;
+                          if (preds.length) sql += ' WHERE ' + preds.join(' AND ');
+                          var lim = Math.floor(Number(msg.limit) || 0);
+                          if (lim > 0) sql += ' LIMIT ' + lim;
+                          return conn.query(sql).then(function(table) {
+                            var fields = table.schema.fields.map(function(f) { return f.name; });
+                            var geomKey = fields.indexOf('__geom__') >= 0 ? '__geom__' : null;
+                            var features = [];
+                            var rows = table.toArray();
+                            for (var i = 0; i < rows.length; i++) {
+                              var row = rows[i];
+                              var geometry = null;
+                              if (geomKey) {
+                                var v = row[geomKey];
+                                if (v instanceof Uint8Array) geometry = vecWkbToGeoJson(v);
+                                else if (v && typeof v === 'object' && typeof v.type === 'string' && ('coordinates' in v || 'geometries' in v)) geometry = v;
+                                else if (typeof v === 'string' && v.trim().charAt(0) === '{') {
+                                  try { var g = JSON.parse(v); geometry = g && typeof g.type === 'string' ? g : null; } catch (e) {}
+                                }
+                              }
+                              if (!geometry && ctx.lonlat) {
+                                var x = Number(row[ctx.lonlat.lon]), y = Number(row[ctx.lonlat.lat]);
+                                if (isFinite(x) && isFinite(y)) geometry = { type: 'Point', coordinates: [x, y] };
+                              }
+                              if (!geometry) continue;
+                              var props = {};
+                              for (var j = 0; j < fields.length; j++) { if (fields[j] !== geomKey) props[fields[j]] = row[fields[j]]; }
+                              features.push({ type: 'Feature', geometry: geometry, properties: props });
+                            }
+                            return { type: 'FeatureCollection', features: features };
+                          });
+                        });
+                      }).then(function(fc) { reply(fc, null); }, function(e) { reply(null, String(e && e.message || e)); });
+                    } catch (e) { reply(null, String(e)); }
+                  })();
                 }
               } catch (e) {}
             });
@@ -3854,29 +4297,29 @@ function getUI() {
         const searchBtn = document.getElementById('search-btn');
         const searchProvider = document.getElementById('search-provider');
         const searchYahooWarning = document.getElementById('search-yahoo-warning');
+        const searchGoogleWarning = document.getElementById('search-google-warning');
         const resultsList = document.getElementById('search-results-list');
 
-        // Select provider based on Yahoo API availability
+        // Select provider based on Yahoo/Google API key availability
         try {
           if (searchProvider) {
             const rawId = String(window._yahooAppId || '').trim().replace(/^"+|"+$/g, '');
             const hasYahoo = rawId.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawId) && !/あなた/.test(rawId);
+            const rawGKey = String(window._googleMapsApiKey || '').trim().replace(/^"+|"+$/g, '');
+            const hasGoogle = rawGKey.length > 0 && !/^(YOUR_APP_ID|undefined|null)$/i.test(rawGKey) && !/あなた/.test(rawGKey);
             const yahooOpt = searchProvider.querySelector('option[value="yahoo"]');
-            if (hasYahoo) {
-              searchProvider.value = 'yahoo';
-              if (yahooOpt) yahooOpt.disabled = false;
-            } else {
-              searchProvider.value = 'gsi';
-              if (yahooOpt) yahooOpt.disabled = true;
-            }
-            if (searchYahooWarning) {
-              searchYahooWarning.style.display = (searchProvider.value === 'yahoo') ? '' : 'none';
-            }
-            searchProvider.addEventListener('change', () => {
-              if (searchYahooWarning) {
-                searchYahooWarning.style.display = (searchProvider.value === 'yahoo') ? '' : 'none';
-              }
-            });
+            const googleOpt = searchProvider.querySelector('option[value="google"]');
+            if (yahooOpt) yahooOpt.disabled = !hasYahoo;
+            if (googleOpt) googleOpt.disabled = !hasGoogle;
+            if (hasYahoo) searchProvider.value = 'yahoo';
+            else if (hasGoogle) searchProvider.value = 'google';
+            else searchProvider.value = 'gsi';
+            const syncWarn = () => {
+              if (searchYahooWarning) searchYahooWarning.style.display = (searchProvider.value === 'yahoo') ? '' : 'none';
+              if (searchGoogleWarning) searchGoogleWarning.style.display = (searchProvider.value === 'google') ? '' : 'none';
+            };
+            syncWarn();
+            searchProvider.addEventListener('change', syncWarn);
           }
         } catch (e) { console.error('search provider init failed', e); }
 
@@ -3952,6 +4395,52 @@ function getUI() {
           });
         };
 
+        // Shared Google hybrid search used by the Search tab and the
+        // searchPlaces AI tool (reached via window.* because the message
+        // listener lives in a different scope). cb(items, err): items use
+        // {name,address,coordinates:"lng,lat"} matching renderSearchResults.
+        window.googlePlacesSearchRaw = function(gKey, q, cb) {
+          const lang = (typeof GEO_LANG === 'string' && GEO_LANG) ? GEO_LANG.split('-')[0] : 'en';
+          const geocodeP = fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(String(q || '').trim()) + '&key=' + encodeURIComponent(gKey) + '&language=' + encodeURIComponent(lang), { mode: 'cors' })
+            .then(function(res) { return res.json().catch(function() { return null; }); })
+            .then(function(data) {
+              if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS')) throw new Error((data && data.error_message) || (data && data.status) || 'geocode failed');
+              return (data.results || []).map(function(item) {
+                return { title: item.formatted_address || '', address: item.formatted_address || '', latitude: Number(item.geometry && item.geometry.location && item.geometry.location.lat), longitude: Number(item.geometry && item.geometry.location && item.geometry.location.lng) };
+              });
+            });
+          const placesP = fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': gKey, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location' },
+            body: JSON.stringify({ textQuery: String(q || '').trim(), languageCode: lang, pageSize: 10 })
+          }).then(function(res) { return res.json().then(function(data) { if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status)); return data; }); })
+            .then(function(data) {
+              return ((data && data.places) || []).map(function(place) {
+                return { title: (place.displayName && place.displayName.text) || '', address: place.formattedAddress || '', latitude: Number(place.location && place.location.latitude), longitude: Number(place.location && place.location.longitude) };
+              });
+            });
+          Promise.allSettled([geocodeP, placesP]).then(function(settled) {
+            const merged = [];
+            if (settled[0].status === 'fulfilled') merged.push.apply(merged, settled[0].value);
+            if (settled[1].status === 'fulfilled') merged.push.apply(merged, settled[1].value);
+            if (!merged.length) {
+              const err = (settled[0].status === 'rejected' && settled[0].reason) || (settled[1].status === 'rejected' && settled[1].reason);
+              cb(null, err || new Error('no results'));
+              return;
+            }
+            const seen = {};
+            const items = [];
+            merged.forEach(function(item) {
+              if (!isFinite(item.latitude) || !isFinite(item.longitude)) return;
+              const k = Math.round(item.latitude * 1e4) + ',' + Math.round(item.longitude * 1e4);
+              if (seen[k]) return;
+              seen[k] = true;
+              items.push({ name: item.title, address: item.address, coordinates: item.longitude + ',' + item.latitude });
+            });
+            cb(items, null);
+          }).catch(function(e) { cb(null, e); });
+        };
+
         const performSearch = async (q) => {
           if (!q || !q.trim()) { renderSearchResults([]); return; }
           const provider = searchProvider ? String(searchProvider.value || 'gsi') : 'gsi';
@@ -3977,6 +4466,32 @@ function getUI() {
             } catch (e) {
               try { console.error('GSI search failed', e); } catch(_) {}
               if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">' + t('searchFailCors') + '</li>';
+            }
+            return;
+          }
+
+          if (provider === 'google') {
+            // Google hybrid search (port of kasugai_canvas): Geocoding
+            // (address-oriented) + Places Text Search (POI/keyword-oriented)
+            // run in parallel and are merged with ~11m deduplication.
+            const gKey = String(window._googleMapsApiKey || '').trim();
+            if (!gKey) {
+              resultsList.innerHTML = '<li style="padding:8px;color:#a00;">' + t('googleKeyMissing') + '<div style="margin-top:6px;padding:6px;background:#fff;color:#111;border-radius:4px;font-family:monospace;display:inline-block;">' + t('googleKeySample') + '</div></li>';
+              return;
+            }
+            try {
+              resultsList.innerHTML = '<li style="padding:8px;color:#666;">' + t('searching') + '</li>';
+              window.googlePlacesSearchRaw(gKey, q, function(items, err) {
+                if (err) {
+                  try { console.error('Google search failed', err); } catch(_) {}
+                  if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">' + t('searchFailAppId') + '</li>';
+                  return;
+                }
+                renderSearchResults(items);
+              });
+            } catch (e) {
+              try { console.error('Google search failed', e); } catch(_) {}
+              if (resultsList) resultsList.innerHTML = '<li style="padding:8px;color:#900;">' + t('searchFailAppId') + '</li>';
             }
             return;
           }
@@ -5423,9 +5938,243 @@ async function flySampleTerrain(reqId, pts) {
     }
     postToUI({ action: 'flySampleResult', reqId: reqId, heights: heights });
 }
+// Pending Street View verifications: svId -> { senderId, reqId } (AI tool) or
+// true (UI button). The UI iframe does the metadata fetch (the sandbox cannot).
+let _svSeq = 0;
+const _svPending = {};
+
+// Pending Google Places searches for the searchPlaces AI tool:
+// psId -> { senderId, reqId }. The UI iframe does the fetch (the sandbox cannot).
+let _psSeq = 0;
+const _placesPending = {};
+
+// Pending FlatGeobuf/GeoParquet decodes: fgId|pqId ->
+// {url,title,visible,classification,pending}. The UI iframe fetches + decodes
+// (CDN module); we add a GeoJSON layer on reply.
+let _fgSeq = 0;
+const _fgPending = {};
+let _pqSeq = 0;
+const _pqPending = {};
+
+function loadFlatGeobufLayer(url, title, visible, classification, limit, pending) {
+    loadVectorViaIframe('fgbLoad', 'fg', _fgPending, url, title, visible, classification, limit, pending, () => 'fg' + (++_fgSeq));
+}
+function loadParquetLayer(url, title, visible, classification, limit, pending) {
+    loadVectorViaIframe('pqLoad', 'pq', _pqPending, url, title, visible, classification, limit, pending, () => 'pq' + (++_pqSeq));
+}
+function loadVectorViaIframe(action, prefix, pendMap, url, title, visible, classification, limit, pending, nextId) {
+    if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'url required' });
+        return;
+    }
+    const id = nextId();
+    pendMap[id] = { url: url, title: title, visible: visible, classification: classification, pending: pending || null };
+    try { postToUI({ action: action, vecId: id, url: url, limit: limit }); }
+    catch (e) {
+        delete pendMap[id];
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: String(e) });
+    }
+}
+
+// DuckDB-Wasm query layers (kasugai duckdb: port). The UI iframe runs the
+// query; _ddbPending tracks in-flight requests and _ddbLayers tracks added
+// bbox=auto layers so camera moves can re-query and override the layer data.
+let _ddbSeq = 0;
+const _ddbPending = {};
+const _ddbLayers = {};
+
+// Normalized viewport bounds for the iframe's ST_MakeEnvelope SQL
+// (antimeridian crossings become two ranges).
+function getViewportRanges() {
+    try {
+        const vp = (reearth.camera && reearth.camera.viewport) ? reearth.camera.viewport : null;
+        if (!vp || typeof vp.west !== 'number' || typeof vp.east !== 'number') return null;
+        const norm = (d) => { const lon = ((d + 180) % 360 + 360) % 360 - 180; return lon === -180 ? 180 : lon; };
+        const west = norm(vp.west), east = norm(vp.east);
+        const south = Math.max(-89.9, Math.min(89.9, vp.south));
+        const north = Math.max(-89.9, Math.min(89.9, vp.north));
+        if (!(north > south)) return null;
+        const ranges = (west === east) ? [{ west: -180, east: 180 }]
+            : (west < east) ? [{ west: west, east: east }]
+            : [{ west: west, east: 180 }, { west: -180, east: east }];
+        return { ranges: ranges, south: south, north: north };
+    } catch (e) { return null; }
+}
+
+// The basemap-widget iframe is long-lived (its ui.show runs once), so its
+// DuckDB-Wasm instance survives panel re-renders. Prefer it as the query
+// host; fall back to our own iframe when it does not acknowledge.
+let _ddbHostId = null;
+let _ddbHostDead = false;
+function findExtensionInstanceId(extensionId) {
+    try {
+        const list = (reearth && reearth.extension && reearth.extension.list) || [];
+        const t = list.find((ex) => ex && ex.extensionId === extensionId);
+        return t ? t.id : null;
+    } catch (e) { return null; }
+}
+function ddbPost(vecId, spec, layerId) {
+    const payload = {
+        vecId: vecId, layerId: layerId || null,
+        url: spec.url, format: spec.format || null, where: spec.where || null,
+        limit: spec.limit || null, geom: spec.geom || null, lon: spec.lon || null, lat: spec.lat || null,
+        columns: spec.columns || null, covering: spec.covering || null,
+        bounds: spec.bboxAuto ? getViewportRanges() : null
+    };
+    let hosted = false;
+    if (!_ddbHostDead) {
+        try {
+            const hostId = _ddbHostId || findExtensionInstanceId('basemap-widget');
+            if (hostId) {
+                _ddbHostId = hostId;
+                reearth.extension.postMessage(hostId, Object.assign({ action: 'ddbExec' }, payload));
+                hosted = true;
+            } else {
+                _ddbHostDead = true;
+            }
+        } catch (e) {}
+    }
+    if (hosted) {
+        // No ack within 3s means the host iframe is gone (widget hidden) —
+        // run the query in our own iframe instead.
+        waitViaUiTimer(3000).then(() => {
+            const p = _ddbPending[vecId];
+            if (p && !p.hostAck) {
+                _ddbHostDead = true;
+                try { postToUI(Object.assign({ action: 'ddbLoad' }, payload)); } catch (e) {}
+            }
+        });
+    } else {
+        try { postToUI(Object.assign({ action: 'ddbLoad' }, payload)); } catch (e) {}
+    }
+}
+
+function loadDuckDbLayer(spec, pending) {
+    if (!spec || !spec.url || !/^https?:\/\//.test(spec.url)) {
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'url required' });
+        return;
+    }
+    const id = 'dd' + (++_ddbSeq);
+    _ddbPending[id] = { kind: 'add', spec: spec, pending: pending || null };
+    try { ddbPost(id, spec, null); }
+    catch (e) {
+        delete _ddbPending[id];
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: String(e) });
+    }
+}
+
+function refreshDuckDbLayer(layerId, spec) {
+    const id = 'dd' + (++_ddbSeq);
+    spec.req = id; // stale-response guard: only the latest query result is applied
+    _ddbPending[id] = { kind: 'refresh', layerId: layerId };
+    try { ddbPost(id, spec, layerId); }
+    catch (e) { delete _ddbPending[id]; }
+}
+
+// Trailing debounce via the UI iframe timer (the QuickJS sandbox has no
+// setTimeout): each camera move bumps the generation; only the last wait
+// actually refreshes.
+let _ddbMoveGen = 0;
+function scheduleDuckDbRefresh() {
+    const gen = ++_ddbMoveGen;
+    waitViaUiTimer(600).then(() => {
+        if (gen !== _ddbMoveGen) return;
+        for (const layerId of Object.keys(_ddbLayers)) {
+            const spec = _ddbLayers[layerId];
+            let lyr = null;
+            try { lyr = (reearth.layers.findById && typeof reearth.layers.findById === 'function') ? reearth.layers.findById(layerId) : null; } catch (e) {}
+            if (!lyr) { delete _ddbLayers[layerId]; continue; }
+            if (lyr.visible === false) continue;
+            refreshDuckDbLayer(layerId, spec);
+        }
+    });
+}
+// camera.on('move') is subscribed lazily on the first bbox=auto layer so
+// sessions without query layers never touch the camera event.
+let _ddbMoveSubscribed = false;
+function ensureDuckDbMoveSubscription() {
+    if (_ddbMoveSubscribed) return;
+    _ddbMoveSubscribed = true;
+    try {
+        if (reearth.camera && typeof reearth.camera.on === 'function') {
+            reearth.camera.on('move', () => {
+                try { if (Object.keys(_ddbLayers).length) scheduleDuckDbRefresh(); } catch (e) {}
+            });
+        }
+    } catch (e) {}
+}
+
+// A DuckDB query finished — either add a new layer (kind 'add') or override
+// an existing bbox=auto layer's data (kind 'refresh'). Reached via the UI
+// message channel (own iframe) or extensionMessage (basemap-widget host).
+function handleDdbResult(msg) {
+    const p = _ddbPending[msg.vecId];
+    if (p === undefined) return;
+    delete _ddbPending[msg.vecId];
+    if (msg.error || !msg.geojson) {
+        try { sendError('[duckdb] query failed:', msg.error); } catch (e) {}
+        if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
+        return;
+    }
+    if (p.kind === 'refresh') {
+        const spec = _ddbLayers[msg.layerId];
+        if (spec && spec.req === msg.vecId) {
+            try { reearth.layers.override(msg.layerId, { data: { type: 'geojson', value: msg.geojson } }); }
+            catch (e) { try { sendError('[duckdb] data override failed', e); } catch (e2) {} }
+        }
+        return;
+    }
+    const s = p.spec;
+    const title = s.title || ('DuckDB: ' + s.url);
+    const newId = addGeoJsonValueLayer(msg.geojson, title, s.visible !== false, s.classification, 'DuckDB: ' + s.url);
+    if (newId && s.bboxAuto) {
+        _ddbLayers[newId] = {
+            url: s.url, format: s.format, where: s.where, limit: s.limit,
+            geom: s.geom, lon: s.lon, lat: s.lat, columns: s.columns,
+            covering: s.covering, bboxAuto: true
+        };
+        ensureDuckDbMoveSubscription();
+    }
+    if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: title, features: (msg.geojson.features || []).length });
+}
+
+// Add a GeoJSON layer from an in-memory FeatureCollection (same default
+// styling as addXyzLayer's url-based geojson branch).
+function addGeoJsonValueLayer(fc, title, visible, classification, label) {
+    try {
+        const geoClass = normalizeClassification(classification) || _geojsonClassification;
+        const layer = {
+            type: "simple",
+            title: title || label || 'GeoJSON layer',
+            visible: true,
+            data: { type: "geojson", value: fc },
+            marker: { pointColor: "#3388ff", pointSize: 10 },
+            polyline: { strokeColor: "#3388ff", strokeWidth: 2, clampToGround: true, classificationType: geoClass },
+            polygon: { fillColor: "#3388ff44", strokeColor: "#3388ff", strokeWidth: 2, heightReference: "clamp", classificationType: geoClass }
+        };
+        const newId = reearth.layers.add(layer);
+        if (newId) {
+            _pluginAddedLayerIds.add(newId);
+            if (_pluginAddedGeojsonLayerIds.indexOf(newId) === -1) _pluginAddedGeojsonLayerIds.push(newId);
+            if (visible === false) _layersPendingHide.add(newId);
+            try { safeShowUI('addGeoJsonValueLayer'); } catch (e) {}
+        }
+        return newId || null;
+    } catch (e) {
+        try { sendError('[addGeoJsonValueLayer] error:', e); } catch (_) {}
+        return null;
+    }
+}
+
 // Open Google Street View at the point the camera is looking at (globe
 // intersection preferred, camera position as fallback).
-function openStreetViewFromCamera() {
+// When googleMapsApiKey is set, the UI iframe first verifies the nearest
+// panorama via Street View Static metadata (free): outdoor panos are preferred
+// and the confirmed pano_id is embedded in the URL so the user does not land on
+// a dark/indoor/removed panorama (port of kasugai_canvas openStreetView).
+// Without a key, falls back to the plain viewpoint URL (previous behavior).
+// `pending` is { senderId, reqId } when invoked from the AI tool.
+function openStreetViewFromCamera(pending) {
     try {
         let lat = null, lng = null;
         try {
@@ -5448,15 +6197,28 @@ function openStreetViewFromCamera() {
             }
             catch (e) { }
         }
-        if (isFinite(lat) && isFinite(lng)) {
-            reearth.viewer.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + lat + ',' + lng);
+        if (!(isFinite(lat) && isFinite(lng))) {
+            if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'camera position unavailable' });
+            return;
         }
+        const plainUrl = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + lat + ',' + lng;
+        if (_inspectorGoogleMapsApiKey) {
+            const svId = 'sv' + (++_svSeq);
+            _svPending[svId] = pending || true;
+            try { postToUI({ action: 'svVerify', svId: svId, lat: lat, lng: lng }); } catch (e) {}
+            // The UI always answers svResult (key missing/fetch failure included),
+            // and the sandbox has no timers — no fallback timeout needed.
+            return;
+        }
+        try { reearth.viewer.open(plainUrl); } catch (e) {}
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, true, { url: plainUrl, verified: false, status: 'NO_KEY' });
     }
     catch (e) {
         try {
             sendError('[openStreetView] error:', e);
         }
         catch (_) { }
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: String(e) });
     }
 }
 // Capture the current view as PNG and hand the data URL to the UI for display.
@@ -5919,6 +6681,55 @@ reearth.extension.on("message", (msg) => {
           }
           catch (e) { }
       }
+      else if (msg.action === 'svResult') {
+          // UI iframe finished the Street View metadata lookup — open the URL
+          // it built (verified panoid URL, or the plain viewpoint fallback).
+          try {
+              const p = _svPending[msg.svId];
+              if (p !== undefined) delete _svPending[msg.svId];
+              const url = (typeof msg.url === 'string' && msg.url) ? msg.url : null;
+              if (url) { try { reearth.viewer.open(url); } catch (e) {} }
+              if (p && p.senderId) aiToolReply(p.senderId, p.reqId, !!url, { url: url, verified: !!msg.verified, status: String(msg.status || '') });
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'placesResult') {
+          // UI iframe finished the Google hybrid search — relay to the AI tool.
+          try {
+              const p = _placesPending[msg.psId];
+              if (p !== undefined) delete _placesPending[msg.psId];
+              const res = (msg.result && typeof msg.result === 'object') ? msg.result : { error: 'no result' };
+              if (p && p.senderId) aiToolReply(p.senderId, p.reqId, !res.error, res);
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'fgbResult' || msg.action === 'pqResult') {
+          // UI iframe finished decoding a FlatGeobuf/GeoParquet file — add it
+          // as a GeoJSON layer and resolve any pending AI tool call.
+          try {
+              const isPq = (msg.action === 'pqResult');
+              const pendMap = isPq ? _pqPending : _fgPending;
+              const label = isPq ? 'GeoParquet' : 'FlatGeobuf';
+              const p = pendMap[msg.vecId];
+              if (p !== undefined) delete pendMap[msg.vecId];
+              if (p) {
+                  if (msg.error || !msg.geojson) {
+                      try { sendError('[' + label + '] decode failed:', msg.error); } catch (e) {}
+                      if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'decode failed') });
+                  } else {
+                      const title = p.title || (label + ': ' + p.url);
+                      const newId = addGeoJsonValueLayer(msg.geojson, title, p.visible !== false, p.classification, label + ': ' + p.url);
+                      if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: title, features: (msg.geojson.features || []).length });
+                  }
+              }
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'ddbResult') {
+          // DuckDB query result from our own iframe (the host route replies
+          // via extensionMessage instead).
+          try { handleDdbResult(msg); } catch (e) {}
+      }
       else if (msg.action === 'viewerCapture') {
           try {
               viewerCapture();
@@ -6075,6 +6886,17 @@ try {
     reearth.extension.on('extensionMessage', (msg) => {
       try {
         const data = (msg && msg.data !== undefined) ? msg.data : msg;
+        if (data && data.action === 'ddbAck') {
+          // The basemap-widget host iframe accepted the query — suppress the
+          // fallback that would re-run it in our own iframe.
+          try { const p = _ddbPending[data.vecId]; if (p) p.hostAck = true; } catch (e) {}
+          return;
+        }
+        if (data && data.action === 'ddbResult') {
+          try { const p = _ddbPending[data.vecId]; if (p) p.hostAck = true; } catch (e) {}
+          try { handleDdbResult(data); } catch (e) {}
+          return;
+        }
         if (data && data.action === 'requestBaseList') {
           const targetId = msg.sender || null;
           if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
@@ -6106,7 +6928,8 @@ try {
                 lang: _inspectorLang || 'auto',
                 geminiApiKey: _inspectorGeminiApiKey || '',
                 geminiModel: _inspectorGeminiModel || '',
-                yahooAppId: _inspectorYahooAppId || ''
+                yahooAppId: _inspectorYahooAppId || '',
+                googleMapsApiKey: _inspectorGoogleMapsApiKey || ''
               });
             } catch (e) {}
           }
@@ -6512,8 +7335,7 @@ function handleAiToolRequest(senderId, data) {
         return;
       }
       case 'openStreetView':
-        openStreetViewFromCamera();
-        aiToolReply(senderId, reqId, true, {});
+        openStreetViewFromCamera({ senderId: senderId, reqId: reqId });
         return;
       case 'flyToFeature': {
         if (!_vectorFeatureIndex) {
@@ -6611,7 +7433,11 @@ function handleAiToolRequest(senderId, data) {
         ['speed', 'height', 'pitch'].forEach(k => { if (isFinite(Number(args[k]))) props[k] = Number(args[k]); });
         if (args.loop !== undefined) props.loop = !!args.loop;
         if (typeof args.view === 'string' && args.view) props.view = args.view;
-        const g = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: coords } }] };
+        // Route defaults must live at FeatureCollection.properties.fly — that is
+        // what flyApplyProps reads when the route is loaded back.
+        const flyProps = {};
+        ['speed', 'height', 'pitch', 'loop', 'view'].forEach(k => { if (props[k] !== undefined) flyProps[k] = props[k]; });
+        const g = { type: 'FeatureCollection', properties: { fly: flyProps }, features: [{ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: coords } }] };
         try {
           if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
             reearth.data.clientStorage.setAsync(FLY_ROUTE_STORAGE_PREFIX + nm, g);
@@ -6636,6 +7462,150 @@ function handleAiToolRequest(senderId, data) {
         _flyDrawnRouteNames.splice(i, 1);
         try { postToUI({ action: 'flyRemoveDrawn', name: real }); } catch (e) {}
         aiToolReply(senderId, reqId, true, { deleted: real });
+        return;
+      }
+      case 'vectorSearch': {
+        // Text search over the vector feature index (port of kasugai's
+        // vectorSearch tool). Returns attribute/value hits with lat/lng so the
+        // AI can flyTo or open the Attr panel afterwards.
+        if (!_vectorFeatureIndex) {
+          try { buildVectorFeatureIndexFromLayers(); } catch (e) {}
+        }
+        const idx = _vectorFeatureIndex;
+        if (!idx) { fail('vector index unavailable'); return; }
+        const q = String(args.query || '').trim().toLowerCase();
+        if (!q) { fail('query required'); return; }
+        const limit = Math.max(1, Math.min(50, Number(args.limit) || 10));
+        const attrFilter = (typeof args.attribute === 'string' && args.attribute.trim()) ? args.attribute.trim().toLowerCase() : null;
+        const results = [];
+        const scan = (src, layerTitle) => {
+          if (!src || !src.featureByAttr) return;
+          for (const a of Object.keys(src.featureByAttr)) {
+            if (attrFilter && a.toLowerCase().indexOf(attrFilter) < 0) continue;
+            const bucket = src.featureByAttr[a];
+            for (const v of Object.keys(bucket)) {
+              if (results.length >= limit) return;
+              if ((String(v) + ' ' + String(a)).toLowerCase().indexOf(q) < 0) continue;
+              const hit = bucket[v];
+              results.push({ layer: layerTitle, attribute: a, value: v, lat: hit && hit.lat, lng: hit && hit.lng });
+            }
+          }
+        };
+        if (args.layer) {
+          const n = String(args.layer).toLowerCase();
+          const opt = (idx.layerOptions || []).find(o => String(o.title).toLowerCase() === n)
+            || (idx.layerOptions || []).find(o => String(o.title).toLowerCase().indexOf(n) >= 0);
+          if (!opt) { fail('layer not found: ' + args.layer); return; }
+          const src = idx.layers && idx.layers[opt.id];
+          scan(src, (src && src.title) || opt.title || opt.id);
+        } else {
+          for (const o of (idx.layerOptions || [])) {
+            if (results.length >= limit) break;
+            const src = idx.layers && idx.layers[o.id];
+            scan(src, (src && src.title) || o.title || o.id);
+          }
+        }
+        aiToolReply(senderId, reqId, true, { results: results, count: results.length });
+        return;
+      }
+      case 'searchPlaces': {
+        // Google hybrid search (Geocoding + Places Text Search) — the UI
+        // iframe performs the fetch because the sandbox has no network.
+        const q = String(args.query || '').trim();
+        if (!q) { fail('query required'); return; }
+        if (!_inspectorGoogleMapsApiKey) { fail('googleMapsApiKey not set (add "googleMapsApiKey: ..." to the plugin inspector)'); return; }
+        const psId = 'ps' + (++_psSeq);
+        _placesPending[psId] = { senderId: senderId, reqId: reqId };
+        try { postToUI({ action: 'placesSearch', psId: psId, query: q, limit: args.limit }); }
+        catch (e) {
+          delete _placesPending[psId];
+          fail(String(e));
+        }
+        return;
+      }
+      case 'addFlatGeobufLayer': {
+        // Decode a .fgb file into a GeoJSON layer (UI iframe does the fetch +
+        // decode; the reply arrives via 'fgbResult').
+        const url = String(args.url || '').trim();
+        if (!/^https?:\/\//.test(url)) { fail('url required'); return; }
+        loadFlatGeobufLayer(url, String(args.title || ''), args.visible !== false, null, args.limit, { senderId: senderId, reqId: reqId });
+        return;
+      }
+      case 'addParquetLayer': {
+        // Decode a GeoParquet file into a GeoJSON layer (UI iframe does the
+        // fetch + hyparquet decode; the reply arrives via 'pqResult').
+        const url = String(args.url || '').trim();
+        if (!/^https?:\/\//.test(url)) { fail('url required'); return; }
+        loadParquetLayer(url, String(args.title || ''), args.visible !== false, null, args.limit, { senderId: senderId, reqId: reqId });
+        return;
+      }
+      case 'addDuckDbLayer': {
+        // SQL-pushdown query layer via DuckDB-Wasm in the UI iframe (partial
+        // loading: where/limit/columns + covering bbox row-group skipping).
+        const url = String(args.url || '').trim();
+        if (!/^https?:\/\//.test(url)) { fail('url required'); return; }
+        const toArr = (v) => Array.isArray(v) ? v.map(String) : (v ? String(v).split(',').map(s => s.trim()).filter(Boolean) : null);
+        const spec = {
+            url: url, title: String(args.title || ''), visible: args.visible !== false,
+            where: args.where ? String(args.where) : null,
+            limit: (Number.isFinite(Number(args.limit)) && Number(args.limit) > 0) ? Math.floor(Number(args.limit)) : null,
+            geom: args.geom ? String(args.geom) : null,
+            lon: args.lon ? String(args.lon) : null, lat: args.lat ? String(args.lat) : null,
+            format: args.format ? String(args.format) : null,
+            columns: toArr(args.columns), covering: toArr(args.covering),
+            bboxAuto: (args.bbox === undefined || args.bbox === null) ? true : !!args.bbox
+        };
+        loadDuckDbLayer(spec, { senderId: senderId, reqId: reqId });
+        return;
+      }
+      case 'setFlySettings': {
+        // Change speed/AGL/pitch/loop/view of a fly route (port of kasugai's
+        // setFlySettings). `agl` is an alias of `height` (above ground level).
+        const settings = {};
+        if (isFinite(Number(args.speed))) settings.speed = Number(args.speed);
+        if (isFinite(Number(args.height))) settings.height = Number(args.height);
+        if (isFinite(Number(args.agl))) settings.height = Number(args.agl);
+        if (isFinite(Number(args.pitch))) settings.pitch = Number(args.pitch);
+        if (args.loop !== undefined && args.loop !== null) settings.loop = !!args.loop;
+        if (typeof args.view === 'string' && args.view) {
+          settings.view = /^(center|chase|follow|3rd|third|aerial)$/i.test(args.view) ? 'center' : 'camera';
+        }
+        if (!Object.keys(settings).length) { fail('no settings given (speed|height|agl|pitch|loop|view)'); return; }
+        let idx = null, drawn = null;
+        const nm = (args.name !== undefined && args.name !== null && String(args.name).trim()) ? String(args.name).toLowerCase() : null;
+        if (nm) {
+          let j = (_flyRoutes || []).findIndex(r => String(r.title).toLowerCase() === nm);
+          if (j < 0) j = (_flyRoutes || []).findIndex(r => String(r.title).toLowerCase().indexOf(nm) >= 0);
+          if (j >= 0) idx = j;
+          else {
+            const d = (_flyDrawnRouteNames || []).find(x => String(x).toLowerCase() === nm)
+              || (_flyDrawnRouteNames || []).find(x => String(x).toLowerCase().indexOf(nm) >= 0);
+            if (d) drawn = d;
+          }
+          if (idx === null && !drawn) { fail('fly path not found: ' + args.name); return; }
+        }
+        // The FLY panel fields are the single source of truth — the UI applies
+        // these into the inputs and the running flight immediately.
+        try { postToUI({ action: 'flySetSettings', idx: idx, drawn: drawn, settings: settings }); } catch (e) {}
+        // Persist drawn-route defaults into the stored GeoJSON (properties.fly)
+        // so the new values survive a reload.
+        if (drawn) {
+          try {
+            (async () => {
+              try {
+                const key = FLY_ROUTE_STORAGE_PREFIX + drawn;
+                const g = await reearth.data.clientStorage.getAsync(key);
+                if (g) {
+                  const obj = (typeof g === 'string') ? JSON.parse(g) : g;
+                  obj.properties = obj.properties || {};
+                  obj.properties.fly = Object.assign({}, obj.properties.fly || {}, settings);
+                  await reearth.data.clientStorage.setAsync(key, obj);
+                }
+              } catch (e) {}
+            })();
+          } catch (e) {}
+        }
+        aiToolReply(senderId, reqId, true, { name: drawn || (idx !== null && _flyRoutes[idx] ? _flyRoutes[idx].title : null), applied: settings });
         return;
       }
       case 'showPanel': {
@@ -6845,6 +7815,7 @@ function processInspectorText(text) {
   const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
   // reset inspector-sourced yahooAppId each time we parse inspector text
   try { _inspectorYahooAppId = null; } catch(e) {}
+  try { _inspectorGoogleMapsApiKey = null; } catch(e) {}
   try { _inspectorGeminiApiKey = null; } catch(e) {}
   try { _inspectorGeminiModel = null; } catch(e) {}
   _systemLayerSettings = [];
@@ -6959,6 +7930,20 @@ function processInspectorText(text) {
         if (val) {
           _inspectorYahooAppId = val;
           try { sendLog('[processInspectorText] found inspector yahooAppId'); } catch(e){}
+        }
+      } catch(e){}
+      nonCamLines.push(line);
+      return;
+    }
+
+    // Google Maps Platform key for Places search and Street View pano
+    // verification: "googleMapsApiKey: KEY" (same exposure caveat as yahooAppId).
+    if (/^googlemapsapikey\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        if (val) {
+          _inspectorGoogleMapsApiKey = val;
+          try { sendLog('[processInspectorText] found inspector googleMapsApiKey'); } catch(e){}
         }
       } catch(e){}
       nonCamLines.push(line);
@@ -7188,6 +8173,101 @@ function processInspectorText(text) {
         if (geoStr.startsWith('http')) url = geoStr;
       }
       if (url) tiles.push({ url, title, type: 'geojson', visible, classification });
+      nonCamLines.push(line);
+      return;
+    }
+
+    // FlatGeobuf (decoded to GeoJSON in the UI iframe via CDN module, then
+    // added through the normal geojson layer path).
+    // Syntax: flatgeobuf: title | url | on/off | classification
+    if (lowerLine.startsWith('flatgeobuf:') || lowerLine.startsWith('fgb:')) {
+      const fgbStr = line.substring(line.indexOf(':') + 1).trim();
+      let url = null;
+      let title = null;
+      let visible = true;
+      let classification = null;
+      if (fgbStr.indexOf('|') !== -1) {
+        const parts = fgbStr.split('|').map(p => p.trim());
+        visible = extractVisible(parts);
+        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        if (parts.length > 3 && parts[3]) classification = normalizeClassification(parts[3]);
+      } else {
+        if (fgbStr.startsWith('http')) url = fgbStr;
+      }
+      if (url) tiles.push({ url, title, type: 'flatgeobuf', visible, classification });
+      nonCamLines.push(line);
+      return;
+    }
+
+    // GeoParquet (decoded to GeoJSON in the UI iframe via CDN hyparquet, then
+    // added through the normal geojson layer path).
+    // Syntax: parquet: title | url | on/off | classification
+    if (lowerLine.startsWith('parquet:') || lowerLine.startsWith('geoparquet:')) {
+      const pqStr = line.substring(line.indexOf(':') + 1).trim();
+      let url = null;
+      let title = null;
+      let visible = true;
+      let classification = null;
+      if (pqStr.indexOf('|') !== -1) {
+        const parts = pqStr.split('|').map(p => p.trim());
+        visible = extractVisible(parts);
+        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        if (parts.length > 3 && parts[3]) classification = normalizeClassification(parts[3]);
+      } else {
+        if (pqStr.startsWith('http')) url = pqStr;
+      }
+      if (url) tiles.push({ url, title, type: 'parquet', visible, classification });
+      nonCamLines.push(line);
+      return;
+    }
+
+    // DuckDB-Wasm query layer (kasugai duckdb: port). SQL pushdown and
+    // covering-bbox predicates enable Parquet row-group skipping over HTTP
+    // Range requests — partial loading for large files. bbox=auto (default)
+    // re-queries on camera move.
+    // Syntax: duckdb: 名前 | URL | where=.. | limit=.. | format=parquet|csv|json |
+    //         geom=.. | lon=.. | lat=.. | columns=a,b | covering=xmin,xmax,ymin,ymax |
+    //         bbox=auto|off | on/off | classification
+    if (lowerLine.startsWith('duckdb:')) {
+      const ddStr = line.substring(line.indexOf(':') + 1).trim();
+      const parts = ddStr.split('|').map(p => p.trim());
+      const title = parts[0] || null;
+      const url = (parts[1] && /^https?:\/\//.test(parts[1])) ? parts[1] : null;
+      let visible = true;
+      let classification = null;
+      const opt = {};
+      for (let i = 2; i < parts.length; i++) {
+        const part = parts[i];
+        if (!part) continue;
+        const eq = part.indexOf('=');
+        if (eq < 0) {
+          if (/^(off|false)$/i.test(part)) visible = false;
+          else if (/^(on|true)$/i.test(part)) visible = true;
+          else classification = normalizeClassification(part) || classification;
+          continue;
+        }
+        const key = part.slice(0, eq).trim().toLowerCase();
+        const raw = part.slice(eq + 1).trim();
+        if (!raw) continue;
+        if (key === 'where') opt.where = raw;
+        else if (key === 'geom' || key === 'geometry') opt.geom = raw;
+        else if (key === 'lon' || key === 'lng') opt.lon = raw;
+        else if (key === 'lat') opt.lat = raw;
+        else if (key === 'format') opt.format = raw;
+        else if (key === 'columns' || key === 'cols') opt.columns = raw.split(',').map(s => s.trim()).filter(Boolean);
+        else if (key === 'covering') opt.covering = raw.split(',').map(s => s.trim()).filter(Boolean);
+        else if (key === 'bbox') {
+          if (/^(auto|on|true|view|viewport)$/i.test(raw)) opt.bboxAuto = true;
+          else if (/^(off|none|false|static|manual)$/i.test(raw)) opt.bboxAuto = false;
+        }
+        else if (key === 'limit' && Number.isInteger(Number(raw)) && Number(raw) > 0) opt.limit = Math.floor(Number(raw));
+        else if (key === 'classification' || key === 'class') classification = normalizeClassification(raw) || classification;
+      }
+      // Viewport-linked partial loading is the default; bbox=off disables it.
+      if (opt.bboxAuto === undefined) opt.bboxAuto = true;
+      if (url) tiles.push({ url, title, type: 'duckdb', visible, classification, ddb: opt });
       nonCamLines.push(line);
       return;
     }
@@ -7513,6 +8593,30 @@ function addXyzLayersFromArray(items) {
     const dup = existing.find(l => l && l.data && l.data.url && (l.data.url === encoded || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded) !== -1)));
     if (dup) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
+      continue;
+    }
+    if (type === 'flatgeobuf' || type === 'parquet') {
+      // Decoded-to-geojson layers carry data.value (no data.url) so the
+      // url-based dup check above cannot see them — dedupe on the resolved
+      // title instead.
+      const vecLabel = (type === 'parquet') ? 'GeoParquet' : 'FlatGeobuf';
+      const vecTitle = t || (vecLabel + ': ' + u);
+      if (existing.find(l => l && l.title === vecTitle)) {
+        try { sendLog('[addXyzLayersFromArray] skip duplicate ' + type + ':', u); } catch(e){}
+        continue;
+      }
+      if (type === 'parquet') loadParquetLayer(u, vecTitle, visible, it.classification, it.limit, null);
+      else loadFlatGeobufLayer(u, vecTitle, visible, it.classification, it.limit, null);
+      continue;
+    }
+    if (type === 'duckdb') {
+      const ddTitle = t || ('DuckDB: ' + u);
+      if (existing.find(l => l && l.title === ddTitle)) {
+        try { sendLog('[addXyzLayersFromArray] skip duplicate duckdb:', u); } catch(e){}
+        continue;
+      }
+      const spec = Object.assign({ url: u, title: ddTitle, visible: visible, classification: it.classification }, it.ddb || {});
+      loadDuckDbLayer(spec, null);
       continue;
     }
     addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution, it.classification);

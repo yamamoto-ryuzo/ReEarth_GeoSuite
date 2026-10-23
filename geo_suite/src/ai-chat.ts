@@ -85,6 +85,7 @@ const PANEL_TOOLS = [
   'listFlyPaths', 'playFlyPath', 'stopFly',
   'setTerrain', 'setShadow',
   'openStreetView', 'flyToFeature',
+  'vectorSearch', 'setFlySettings', 'searchPlaces', 'addFlatGeobufLayer', 'addParquetLayer', 'addDuckDbLayer',
   'setLayerVisible', 'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer',
   'createFlyPath', 'deleteFlyPath',
   'showPanel', 'showInfo', 'listLegends', 'showFeatureAttributes',
@@ -105,6 +106,7 @@ const _aiAddedLayerIds = new Set();
 let _inspectorGeminiApiKey: string | null = null;
 let _inspectorGeminiModel: string | null = null;
 let _inspectorYahooAppId: string | null = null;
+let _inspectorGoogleMapsApiKey: string | null = null;
 let _inspectorLang = 'auto';
 
 // Session-only key: kept in extension memory, never written to clientStorage.
@@ -144,6 +146,8 @@ async function sendConfig(): Promise<void> {
     keySource: inspectorKey ? 'inspector' : (_sessionGeminiApiKey ? 'session' : (storedKey ? 'storage' : 'none')),
     model: model,
     yahooAppId: _inspectorYahooAppId || '',
+    googleMapsApiKey: _inspectorGoogleMapsApiKey || '',
+    i18n: AI_I18N,
     lang: _inspectorLang || 'auto'
   });
 }
@@ -341,6 +345,21 @@ function aiShareUrl(): any {
   return { ok: true, query: '?' + params.join('&') };
 }
 
+// Permalink query for an arbitrary viewpoint (port of kasugai buildShareUrl).
+// The plugin cannot read the page URL, so only the query part is produced —
+// same convention as getShareUrl.
+function aiBuildShareUrl(args: any): any {
+  const lat = Number(args && args.lat);
+  const lng = Number(args && args.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return { error: 'lat/lng required' };
+  const params: string[] = ['lat=' + lat, 'lng=' + lng];
+  ['height', 'heading', 'pitch'].forEach((k) => {
+    const v = Number(args[k]);
+    if (isFinite(v)) params.push(k + '=' + v);
+  });
+  return { ok: true, query: '?' + params.join('&'), note: 'append this query to the site URL; opening ?lat=..&lng=.. restores the view' };
+}
+
 function aiSetCamera(args: any): any {
   const lat = Number(args && args.lat);
   const lng = Number(args && args.lng);
@@ -423,6 +442,7 @@ async function execLocalTool(name: string, args: any): Promise<any> {
       case 'removeLayer': return aiRemoveLayer(args);
       case 'captureView': return aiCaptureView();
       case 'getShareUrl': return aiShareUrl();
+      case 'buildShareUrl': return aiBuildShareUrl(args);
       case 'setCamera': return aiSetCamera(args);
       case 'lookAt': return aiLookAt(args);
       case 'zoomIn': return aiZoom(args, 'in');
@@ -520,7 +540,7 @@ try {
             const r = data.result;
             if (meta && meta.name === 'removeLayer') {
               if (r && !r.error && r.id) _aiAddedLayerIds.delete(r.id);
-            } else if (meta && (meta.name === 'addGeoJsonLayer' || meta.name === 'addTileLayer' || meta.name === 'add3dTilesLayer')) {
+            } else if (meta && (meta.name === 'addGeoJsonLayer' || meta.name === 'addTileLayer' || meta.name === 'add3dTilesLayer' || meta.name === 'addFlatGeobufLayer' || meta.name === 'addParquetLayer' || meta.name === 'addDuckDbLayer')) {
               if (r && r.id) _aiAddedLayerIds.add(r.id);
             }
           } catch (e) {}
@@ -529,6 +549,7 @@ try {
           _inspectorGeminiApiKey = (typeof data.geminiApiKey === 'string' && data.geminiApiKey) ? data.geminiApiKey : null;
           _inspectorGeminiModel = (typeof data.geminiModel === 'string' && data.geminiModel) ? data.geminiModel : null;
           _inspectorYahooAppId = (typeof data.yahooAppId === 'string' && data.yahooAppId) ? data.yahooAppId : null;
+          _inspectorGoogleMapsApiKey = (typeof data.googleMapsApiKey === 'string' && data.googleMapsApiKey) ? data.googleMapsApiKey : null;
           _inspectorLang = (typeof data.lang === 'string' && data.lang) ? data.lang : 'auto';
           sendConfig();
         } else if (data.action === 'lang') {
@@ -544,6 +565,31 @@ try {
 try { postToLayerPanel({ action: 'requestAiConfig' }); } catch (e) {}
 
 // ---------- chat UI (runs in the widget iframe) ----------
+
+// iframe i18n dictionary — delivered via aiConfig.i18n (kept out of the
+// html template because the widget html transport truncates at ~54.3KB).
+const AI_I18N: any = {
+  en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:'Minimize', restore:'Restore' },
+  ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存', keySrc:'キーの出所' , minimize:'最小化', restore:'元に戻す' },
+  'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥', keySrc:'密钥来源' , minimize:'最小化', restore:'还原' },
+  'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰', keySrc:'金鑰來源' , minimize:'最小化', restore:'還原' },
+  ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장', keySrc:'키 출처' , minimize:'최소화', restore:'복원' },
+  es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador', keySrc:'Origen de la clave' , minimize:'Minimizar', restore:'Restaurar' },
+  fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur', keySrc:'Source de la clé' , minimize:'Réduire', restore:'Restaurer' },
+  de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern', keySrc:'Schlüsselquelle' , minimize:'Minimieren', restore:'Wiederherstellen' },
+  it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser', keySrc:'Origine della chiave' , minimize:'Riduci', restore:'Ripristina' },
+  pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador', keySrc:'Origem da chave' , minimize:'Minimizar', restore:'Restaurar' },
+  ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере', keySrc:'Источник ключа' , minimize:'Свернуть', restore:'Восстановить' },
+  nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser', keySrc:'Sleutelbron' , minimize:'Minimaliseren', restore:'Herstellen' },
+  pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce', keySrc:'Źródło klucza' , minimize:'Minimalizuj', restore:'Przywróć' },
+  uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері', keySrc:'Джерело ключа' , minimize:'Згорнути', restore:'Відновити' },
+  tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet', keySrc:'Anahtar kaynağı' , minimize:'Küçült', restore:'Geri yükle' },
+  ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح', keySrc:'مصدر المفتاح' , minimize:'تصغير', restore:'استعادة' },
+  hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें', keySrc:'कुंजी स्रोत' , minimize:'छोटा करें', restore:'पुनर्स्थापित' },
+  id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini', keySrc:'Sumber kunci' , minimize:'Minimalkan', restore:'Pulihkan' },
+  th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้', keySrc:'แหล่งที่มาของคีย์' , minimize:'ย่อ', restore:'คืนค่า' },
+  vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này', keySrc:'Nguồn khóa' , minimize:'Thu nhỏ', restore:'Khôi phục' },
+};
 
 const html: string = `
 <style>
@@ -605,37 +651,8 @@ const html: string = `
 (function(){
   // --- i18n (English base; missing keys fall back to en) ---
   var GEO_I18N = {
-    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' },
-    ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存', keySrc:'キーの出所' },
-    'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥', keySrc:'密钥来源' },
-    'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰', keySrc:'金鑰來源' },
-    ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장', keySrc:'키 출처' },
-    es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador', keySrc:'Origen de la clave' },
-    fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur', keySrc:'Source de la clé' },
-    de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern', keySrc:'Schlüsselquelle' },
-    it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser', keySrc:'Origine della chiave' },
-    pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador', keySrc:'Origem da chave' },
-    ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере', keySrc:'Источник ключа' },
-    nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser', keySrc:'Sleutelbron' },
-    pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce', keySrc:'Źródło klucza' },
-    uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері', keySrc:'Джерело ключа' },
-    tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet', keySrc:'Anahtar kaynağı' },
-    ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح', keySrc:'مصدر المفتاح' },
-    hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें', keySrc:'कुंजी स्रोत' },
-    id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini', keySrc:'Sumber kunci' },
-    th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้', keySrc:'แหล่งที่มาของคีย์' },
-    vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này', keySrc:'Nguồn khóa' }
+    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore" }
   };
-  (function(){
-    var M = {
-      en:['Minimize','Restore'], ja:['最小化','元に戻す'], 'zh-CN':['最小化','还原'], 'zh-TW':['最小化','還原'],
-      ko:['최소화','복원'], es:['Minimizar','Restaurar'], fr:['Réduire','Restaurer'], de:['Minimieren','Wiederherstellen'],
-      it:['Riduci','Ripristina'], pt:['Minimizar','Restaurar'], ru:['Свернуть','Восстановить'], nl:['Minimaliseren','Herstellen'],
-      pl:['Minimalizuj','Przywróć'], uk:['Згорнути','Відновити'], tr:['Küçült','Geri yükle'], ar:['تصغير','استعادة'],
-      hi:['छोटा करें','पुनर्स्थापित'], id:['Minimalkan','Pulihkan'], th:['ย่อ','คืนค่า'], vi:['Thu nhỏ','Khôi phục']
-    };
-    for (var k in M) { if (GEO_I18N[k]) { GEO_I18N[k].minimize = M[k][0]; GEO_I18N[k].restore = M[k][1]; } }
-  })();
   var GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
   var GEO_LANG = 'en';
   function resolveLang() {
@@ -677,6 +694,8 @@ const html: string = `
     { name:'getCamera', description:'Get the current camera position/orientation', parameters:{ type:'OBJECT', properties:{} } },
     { name:'flyTo', description:'Fly the camera to a location. lat/lng in degrees, height in meters, heading/pitch in degrees (-90 = straight down). Omit height/heading/pitch to keep current values.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'}, duration:{type:'NUMBER', description:'flight seconds'} }, required:['lat','lng'] } },
     { name:'searchLocation', description:'Search for a place or address by keyword (Japan GSI geocoding by default; provider "yahoo" uses Yahoo Local Search, "auto" tries Yahoo then GSI). Returns candidate names with lat/lng — call flyTo afterwards to move.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, limit:{type:'NUMBER'}, provider:{type:'STRING', description:'gsi (default) | yahoo | auto'} }, required:['query'] } },
+    { name:'searchPlaces', description:'Search places/POIs worldwide via Google (Geocoding + Places Text Search, merged). Requires googleMapsApiKey in the plugin inspector. Returns names, addresses and lat/lng — call flyTo afterwards to move.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, limit:{type:'NUMBER'} }, required:['query'] } },
+    { name:'vectorSearch', description:'Search loaded vector layer attributes by text (optionally filtered to one layer/attribute). Returns matching attribute/value hits with lat/lng — call flyTo or showFeatureAttributes afterwards.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, layer:{type:'STRING'}, attribute:{type:'STRING'}, limit:{type:'NUMBER'} }, required:['query'] } },
     { name:'listLayers', description:'List map layers (id, title, type, visible)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'setLayerVisible', description:'Show or hide a layer by title or id', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'}, visible:{type:'BOOLEAN'} }, required:['layer','visible'] } },
     { name:'focusLayer', description:'Fly the camera to a layer extent', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'} }, required:['layer'] } },
@@ -697,6 +716,11 @@ const html: string = `
     { name:'flyToFeature', description:'Fly to a vector feature whose attribute matches a value (optionally within a named layer)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'} }, required:['attribute','value'] } },
     { name:'captureView', description:'Capture a screenshot of the current map view', parameters:{ type:'OBJECT', properties:{} } },
     { name:'getShareUrl', description:'Get a permalink query string (?lat=...&lng=...) for the current view', parameters:{ type:'OBJECT', properties:{} } },
+    { name:'addFlatGeobufLayer', description:'Add a FlatGeobuf (.fgb) vector layer by URL — decoded to GeoJSON in the browser and styled like a geojson layer.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'}, title:{type:'STRING'}, visible:{type:'BOOLEAN'}, limit:{type:'NUMBER', description:'max features (default 200000)'} }, required:['url'] } },
+    { name:'addParquetLayer', description:'Add a GeoParquet (.parquet) vector layer by URL — decoded to GeoJSON in the browser and styled like a geojson layer.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'}, title:{type:'STRING'}, visible:{type:'BOOLEAN'}, limit:{type:'NUMBER', description:'max features (default 200000)'} }, required:['url'] } },
+    { name:'addDuckDbLayer', description:'Add a query layer backed by DuckDB-Wasm — SQL pushdown (where/limit/columns) and covering-bbox row-group skipping enable partial loading of large remote files (parquet/csv/json). bbox=auto re-queries on camera move.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'}, title:{type:'STRING'}, visible:{type:'BOOLEAN'}, where:{type:'STRING', description:'SQL WHERE predicate'}, limit:{type:'NUMBER'}, format:{type:'STRING', description:'parquet|csv|tsv|json (default: by extension)'}, geom:{type:'STRING'}, lon:{type:'STRING'}, lat:{type:'STRING'}, columns:{type:'STRING', description:'comma-separated column names to read'}, bbox:{type:'BOOLEAN', description:'viewport-linked partial loading (default true)'} }, required:['url'] } },
+    { name:'buildShareUrl', description:'Build a permalink query string for an arbitrary viewpoint (e.g. to embed section links in a report). lat/lng required; height meters, heading/pitch degrees optional.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'} }, required:['lat','lng'] } },
+    { name:'showReport', description:'Show a Markdown or HTML report in a modal overlay (with download/copy actions). Use after gathering data to present a document to the user.', parameters:{ type:'OBJECT', properties:{ title:{type:'STRING'}, markdown:{type:'STRING'}, html:{type:'STRING'} } } },
     { name:'setCamera', description:'Instantly place the camera (no animation). lat/lng in degrees, height in meters, heading/pitch/roll in degrees.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'}, roll:{type:'NUMBER'} }, required:['lat','lng'] } },
     { name:'lookAt', description:'Aim the camera at a target point. range = distance in meters, instant = no animation.', parameters:{ type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'}, height:{type:'NUMBER'}, heading:{type:'NUMBER'}, pitch:{type:'NUMBER'}, range:{type:'NUMBER'}, duration:{type:'NUMBER'}, instant:{type:'BOOLEAN'} }, required:['lat','lng'] } },
     { name:'zoomIn', description:'Zoom in by a factor (default 2)', parameters:{ type:'OBJECT', properties:{ amount:{type:'NUMBER'} } } },
@@ -706,6 +730,7 @@ const html: string = `
     { name:'flyToUrl', description:'Parse a shared map URL or a "?lat=..&lng=.." query string and fly the camera there', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'} }, required:['url'] } },
     { name:'createFlyPath', description:'Create a named fly route from coordinates [[lng,lat,(height)],...]. Saved as a drawn route and playable via playFlyPath.', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, coordinates:{type:'ARRAY', items:{type:'ARRAY', items:{type:'NUMBER'}}}, speed:{type:'NUMBER'}, height:{type:'NUMBER'}, pitch:{type:'NUMBER'}, loop:{type:'BOOLEAN'}, view:{type:'STRING'} }, required:['name','coordinates'] } },
     { name:'deleteFlyPath', description:'Delete a drawn fly route by name (inspector-defined routes cannot be deleted)', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'} }, required:['name'] } },
+    { name:'setFlySettings', description:'Change fly route playback settings. name targets a route (default: currently selected). speed km/h, height/agl meters above ground, pitch degrees (negative looks down), loop boolean, view "camera" (first person) or "center" (follow). Applies live to a running flight.', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, speed:{type:'NUMBER'}, height:{type:'NUMBER'}, agl:{type:'NUMBER'}, pitch:{type:'NUMBER'}, loop:{type:'BOOLEAN'}, view:{type:'STRING'} } } },
     { name:'showPanel', description:'Open a panel in the Layers widget. panel: layers|legend|search|attr|cams|display|info|fly|share|manage', parameters:{ type:'OBJECT', properties:{ panel:{type:'STRING'} }, required:['panel'] } },
     { name:'showInfo', description:'Load a URL into the Info tab iframe and open the tab. Without url, opens the current Info tab.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'} } } },
     { name:'listLegends', description:'List legend images defined in the plugin inspector', parameters:{ type:'OBJECT', properties:{} } },
@@ -715,10 +740,10 @@ const html: string = `
     { name:'setDepthTest', description:'Enable or disable depth test against terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'setGeojsonDrape', description:'Set how GeoJSON layers drape: 3dtiles | terrain | both', parameters:{ type:'OBJECT', properties:{ classification:{type:'STRING'} }, required:['classification'] } },
     { name:'setBackground', description:'Set the globe/scene background color as #rgb, #rrggbb or #rrggbbaa', parameters:{ type:'OBJECT', properties:{ color:{type:'STRING'} }, required:['color'] } },
-    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, removeLayer, searchLocation, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, listFlyPaths, openStreetView, openUrl, getShareUrl, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
+    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
 
-  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','listFlyPaths','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground'];
+  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','setFlySettings','listFlyPaths','vectorSearch','searchPlaces','buildShareUrl','addFlatGeobufLayer','addParquetLayer','addDuckDbLayer','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground'];
 
   var SYSTEM_INSTRUCTION = [
     'You are an AI assistant embedded inside a Re:Earth 3D GIS map viewer (geo_suite plugin).',
@@ -902,6 +927,93 @@ const html: string = `
     return toolSearchGsi(args);
   }
 
+  // Markdown-lite renderer (port of kasugai renderMarkdownLite): escapes HTML
+  // first, then applies headings/bold/italic/code/links/lists.
+  function renderMarkdownLite(md) {
+    var esc = String(md || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    var lines = esc.split(/\\r\\n|\\r|\\n/);
+    var out = [], inList = false, inCode = false;
+    var BT = String.fromCharCode(96); // backtick (a literal one would end the html template)
+    function inline(s) {
+      return s.replace(new RegExp(BT + '([^' + BT + ']+)' + BT, 'g'), '<code>$1</code>')
+        .replace(/\\*\\*([^*]+)\\*\\*/g, '<b>$1</b>')
+        .replace(/\\[([^\\]]+)\\]\\((https?:[^)\\s]+)\\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#3b7bd4;">$1</a>');
+    }
+    lines.forEach(function(ln) {
+      if (ln.replace(/^\\s*/, '').indexOf(BT + BT + BT) === 0) {
+        if (inCode) { out.push('</code></pre>'); inCode = false; }
+        else { if (inList) { out.push('</ul>'); inList = false; } out.push('<pre style="background:#f5f5f7;padding:8px;border-radius:6px;overflow:auto;font-size:0.78em;"><code>'); inCode = true; }
+        return;
+      }
+      if (inCode) { out.push(ln + '\\n'); return; }
+      var h = ln.match(/^(#{1,4})\\s+(.*)$/);
+      if (h) { if (inList) { out.push('</ul>'); inList = false; } var lv = h[1].length; out.push('<div style="font-weight:700;font-size:' + (lv <= 1 ? '1.05em' : '0.95em') + ';margin:' + (lv <= 1 ? '8px' : '6px') + ' 0 4px;">' + inline(h[2]) + '</div>'); return; }
+      var li = ln.match(/^\\s*[-*]\\s+(.*)$/);
+      if (li) { if (!inList) { out.push('<ul style="margin:2px 0 6px;padding-left:18px;">'); inList = true; } out.push('<li>' + inline(li[1]) + '</li>'); return; }
+      if (inList) { out.push('</ul>'); inList = false; }
+      if (/^\\s*$/.test(ln)) { out.push('<div style="height:6px;"></div>'); return; }
+      if (/^\\s*>/.test(ln)) { out.push('<div style="border-left:3px solid #ccc;padding-left:8px;color:#555;margin:4px 0;">' + inline(ln.replace(/^\\s*>\\s?/, '')) + '</div>'); return; }
+      out.push('<div>' + inline(ln) + '</div>');
+    });
+    if (inList) out.push('</ul>');
+    if (inCode) out.push('</code></pre>');
+    return out.join('');
+  }
+
+  // Report modal (port of kasugai showReport): markdown/html overlay with
+  // download + copy. The iframe sandbox may block downloads — clipboard copy
+  // and an always-visible body are the fallback.
+  function toolShowReport(args) {
+    return new Promise(function(resolve) {
+      try {
+        var title = String((args && args.title) || 'Report');
+        var md = (args && typeof args.markdown === 'string') ? args.markdown : null;
+        var raw = (args && typeof args.html === 'string') ? args.html : null;
+        if (md === null && raw === null) { resolve({ error: 'markdown or html required' }); return; }
+        var old = document.getElementById('ai-report-modal'); if (old) old.remove();
+        var wrap = document.createElement('div');
+        wrap.id = 'ai-report-modal';
+        wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        var box = document.createElement('div');
+        box.style.cssText = 'background:#fff;width:92%;max-height:88%;border-radius:8px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.35);';
+        var head = document.createElement('div');
+        head.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid #e3e3e3;background:#f7f9fc;';
+        var ttl = document.createElement('div');
+        ttl.textContent = title;
+        ttl.style.cssText = 'flex:1;font-weight:600;font-size:0.85em;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        head.appendChild(ttl);
+        function mkBtn(label, fn) {
+          var b = document.createElement('button');
+          b.textContent = label;
+          b.style.cssText = 'border:1px solid #ccc;background:#fff;border-radius:4px;padding:2px 8px;font-size:0.8em;cursor:pointer;';
+          b.addEventListener('click', fn);
+          head.appendChild(b);
+          return b;
+        }
+        var body = document.createElement('div');
+        body.style.cssText = 'padding:10px;overflow:auto;font-size:0.85em;line-height:1.5;color:#222;';
+        body.innerHTML = (raw !== null) ? raw : renderMarkdownLite(md);
+        var plain = (md !== null) ? md : body.textContent || '';
+        mkBtn('\\u2B07', function() {
+          try {
+            var blob = new Blob([(md !== null) ? md : ('<!DOCTYPE html><html><body>' + (raw || '') + '<\\/body><\\/html>')], { type: (md !== null) ? 'text/markdown' : 'text/html' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = (title || 'report').replace(/[^\\w.-]+/g, '_') + ((md !== null) ? '.md' : '.html');
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function() { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 5000);
+          } catch (e) { try { navigator.clipboard.writeText(plain); } catch (_) {} }
+        });
+        mkBtn('\\u2398', function() { try { navigator.clipboard.writeText(plain); } catch (e) { try { window.getSelection().selectAllChildren(body); } catch (_) {} } });
+        mkBtn('\\u00D7', function() { wrap.remove(); resolve({ ok: true, title: title, closed: true }); });
+        wrap.appendChild(box); box.appendChild(head); box.appendChild(body);
+        wrap.addEventListener('click', function(ev) { if (ev.target === wrap) { wrap.remove(); resolve({ ok: true, title: title, closed: true }); } });
+        document.body.appendChild(wrap);
+        resolve({ ok: true, title: title, format: (md !== null) ? 'markdown' : 'html', chars: plain.length });
+      } catch (e) { resolve({ error: 'showReport failed: ' + String(e) }); }
+    });
+  }
+
   function toolFlyToCurrentLocation() {
     return new Promise(function(resolve) {
       if (!navigator.geolocation) { resolve({ error: 'geolocation unavailable in this context' }); return; }
@@ -939,6 +1051,7 @@ const html: string = `
       api[n] = function(args) { return callHostTool(n, args || {}); };
     });
     api.searchLocation = function(a) { return toolSearchLocation(typeof a === 'string' ? { query: a } : a); };
+    api.showReport = function(a) { return toolShowReport(a || {}); };
     api.flyToUrl = function(a) { return toolFlyToUrl(typeof a === 'string' ? { url: a } : a); };
     api.flyToCurrentLocation = function() { return toolFlyToCurrentLocation(); };
     return api;
@@ -973,6 +1086,7 @@ const html: string = `
 
   function executeTool(name, args) {
     if (name === 'searchLocation') return toolSearchLocation(args);
+    if (name === 'showReport') return toolShowReport(args);
     if (name === 'flyToUrl') return toolFlyToUrl(args);
     if (name === 'flyToCurrentLocation') return toolFlyToCurrentLocation();
     if (name === 'runCode') return toolRunCode(args);
@@ -1173,6 +1287,11 @@ const html: string = `
         _keySource = msg.keySource || 'none';
         if (typeof msg.model === 'string' && msg.model) _model = msg.model;
         window._yahooAppId = (typeof msg.yahooAppId === 'string') ? msg.yahooAppId : '';
+        window._googleMapsApiKey = (typeof msg.googleMapsApiKey === 'string') ? msg.googleMapsApiKey : '';
+        if (msg.i18n && typeof msg.i18n === 'object') {
+          for (var lk in msg.i18n) { try { GEO_I18N[lk] = msg.i18n[lk]; } catch (e) {} }
+          applyI18n(); updateKeyStatus();
+        }
         if (rememberEl) rememberEl.checked = (_keySource === 'storage');
         if (_keySource !== 'inspector') keyInput.value = _apiKey;
         modelInput.value = _model;
@@ -1193,6 +1312,7 @@ const html: string = `
   });
 
   // init
+  try { window.__aiExecuteTool = executeTool; } catch (e) {} // debug/test handle (same convention as window._fly)
   addMsg('sys', t('welcome'));
   updateKeyStatus();
   probeServerKey().then(function() { try { updateKeyStatus(); autoMinimize(); } catch (e) {} });

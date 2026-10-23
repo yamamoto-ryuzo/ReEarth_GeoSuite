@@ -344,6 +344,50 @@ const html: string = `
         });
       }
 
+      // WKB(ISO/EWKB) -> GeoJSON geometry (shared decoder; kasugai vector-decode.js port)
+      var vecWkbToGeoJson = function(bytes) {
+        if (!bytes || !bytes.byteLength) return null;
+        var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        var pos = 0;
+        var readGeometry = function() {
+          var littleEndian = view.getUint8(pos) === 1; pos += 1;
+          var raw = view.getUint32(pos, littleEndian); pos += 4;
+          var base = raw & 0xffff;
+          var hasZ = (raw & 0x80000000) !== 0;
+          var hasM = (raw & 0x40000000) !== 0;
+          var hasSrid = (raw & 0x20000000) !== 0;
+          if (!hasZ && !hasM && raw >= 1000) {
+            var variant = Math.floor(raw / 1000);
+            hasZ = variant === 1 || variant === 3;
+            hasM = variant === 2 || variant === 3;
+            base = raw % 1000;
+          }
+          if (hasSrid) pos += 4;
+          var count = function() { var n = view.getUint32(pos, littleEndian); pos += 4; return n; };
+          var point = function() {
+            var c = [view.getFloat64(pos, littleEndian), view.getFloat64(pos + 8, littleEndian)];
+            pos += 16;
+            if (hasZ) { c.push(view.getFloat64(pos, littleEndian)); pos += 8; }
+            if (hasM) pos += 8;
+            return c;
+          };
+          var points = function() { var a = new Array(count()); for (var i = 0; i < a.length; i++) a[i] = point(); return a; };
+          var rings = function() { var a = new Array(count()); for (var i = 0; i < a.length; i++) a[i] = points(); return a; };
+          var children = function() { var a = new Array(count()); for (var i = 0; i < a.length; i++) a[i] = readGeometry(); return a; };
+          switch (base) {
+            case 1: return { type: 'Point', coordinates: point() };
+            case 2: return { type: 'LineString', coordinates: points() };
+            case 3: return { type: 'Polygon', coordinates: rings() };
+            case 4: return { type: 'MultiPoint', coordinates: children().map(function(g) { return g && g.coordinates; }) };
+            case 5: return { type: 'MultiLineString', coordinates: children().map(function(g) { return g && g.coordinates; }) };
+            case 6: return { type: 'MultiPolygon', coordinates: children().map(function(g) { return g && g.coordinates; }) };
+            case 7: return { type: 'GeometryCollection', geometries: children().filter(Boolean) };
+            default: return null;
+          }
+        };
+        try { return readGeometry(); } catch (e) { return null; }
+      };
+
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data;
@@ -356,6 +400,198 @@ const html: string = `
               GEO_LANG = resolveLang();
               applyI18n();
             } catch (e) {}
+          } else if (msg.action === 'ddbLoad') {
+            // DuckDB-Wasm query host. This iframe persists across panel
+            // re-renders, so the wasm instance stays warm between queries
+            // (unlike the layer panel iframe which is recreated by ui.show).
+            (function() {
+              try { postToParent({ action: 'ddbAck', vecId: msg.vecId }); } catch (e) {}
+              var reply = function(geojson, error) {
+                try {
+                  if (geojson) {
+                    geojson = JSON.parse(JSON.stringify(geojson, function(k, v) {
+                      return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
+                    }));
+                  }
+                  postToParent({ action: 'ddbResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error });
+                } catch (e) {}
+              };
+              var qi = function(n) { return '"' + String(n).replace(/"/g, '""') + '"'; };
+              var ql = function(v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
+              var boundsSql = function(b) {
+                if (!b || !b.ranges || !b.ranges.length) return null;
+                var env = function(r) { return 'ST_MakeEnvelope(' + Number(r.west) + ',' + Number(b.south) + ',' + Number(r.east) + ',' + Number(b.north) + ')'; };
+                return b.ranges.length === 1 ? env(b.ranges[0]) : 'ST_Union(' + env(b.ranges[0]) + ', ' + env(b.ranges[1]) + ')';
+              };
+              try {
+                if (!window._ddbModule) {
+                  var loading = import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm').then(function(duckdb) {
+                    return duckdb.selectBundle(duckdb.getJsDelivrBundles()).then(function(bundle) {
+                      var workerUrl = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(bundle.mainWorker) + ');'], { type: 'text/javascript' }));
+                      var worker = new Worker(workerUrl);
+                      var logger = duckdb.VoidLogger ? new duckdb.VoidLogger() : new duckdb.ConsoleLogger();
+                      var db = new duckdb.AsyncDuckDB(logger, worker);
+                      return db.instantiate(bundle.mainModule, bundle.pthreadWorker).then(function() {
+                        try { URL.revokeObjectURL(workerUrl); } catch (e) {}
+                        return db.connect();
+                      }).then(function(conn) {
+                        var st = { conn: conn, spatial: false };
+                        return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
+                          .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
+                          .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
+                          .then(function() { return st; });
+                      });
+                    });
+                  });
+                  loading.catch(function() { if (window._ddbModule === loading) window._ddbModule = null; });
+                  window._ddbModule = loading;
+                }
+                window._ddbModule.then(function(st) {
+                  var conn = st.conn, spatial = st.spatial;
+                  var format = String(msg.format || '').toLowerCase();
+                  var literal = ql(msg.url);
+                  var isParquet = format === 'parquet' || (!format && /\\.parquet([?#]|$)/i.test(msg.url || ''));
+                  var source = format === 'parquet' ? 'read_parquet(' + literal + ')'
+                    : (format === 'csv' || format === 'tsv') ? 'read_csv_auto(' + literal + ')'
+                    : (format === 'json' || format === 'geojson') ? 'read_json_auto(' + literal + ')'
+                    : literal; // replacement scan infers reader from the extension
+                  var ctx = {};
+                  return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
+                    ctx.columns = table.toArray().map(function(row) {
+                      var p = (typeof row.toJSON === 'function') ? row.toJSON() : row;
+                      return { name: String(p.column_name), type: String(p.column_type || '').toUpperCase() };
+                    });
+                    var geomCol = null;
+                    if (msg.geom) {
+                      geomCol = ctx.columns.filter(function(c) { return c.name === msg.geom; })[0] || null;
+                      if (!geomCol) throw new Error('geom= column not found: ' + msg.geom);
+                    } else {
+                      geomCol = ctx.columns.filter(function(c) { return c.type.indexOf('GEOMETRY') >= 0 || c.type.indexOf('WKB') >= 0; })[0]
+                        || ctx.columns.filter(function(c) { return /^(geometry|geom|wkb|the_geom)$/i.test(c.name); })[0]
+                        || ctx.columns.filter(function(c) { return c.type === 'BLOB' || c.type === 'BINARY'; })[0]
+                        || null;
+                    }
+                    ctx.geomCol = geomCol;
+                    ctx.lonlat = null;
+                    if (!geomCol) {
+                      var findCol = function(explicit, re) {
+                        if (explicit) {
+                          if (!ctx.columns.some(function(c) { return c.name === explicit; })) throw new Error('column not found: ' + explicit);
+                          return explicit;
+                        }
+                        var c = ctx.columns.filter(function(c) { return re.test(c.name); })[0];
+                        return c ? c.name : null;
+                      };
+                      var lon = findCol(msg.lon, /^(lon|lng|longitude)$/i);
+                      var lat = findCol(msg.lat, /^(lat|latitude)$/i);
+                      if ((lon || lat) && !(lon && lat)) throw new Error('lon/lat columns could not be resolved (specify lon= and lat=)');
+                      if (lon && lat) ctx.lonlat = { lon: lon, lat: lat };
+                    }
+                    if (!geomCol && !ctx.lonlat) throw new Error('geometry column not found (use geom= or lon=/lat=)');
+                    // covering bbox columns: covering= > geo metadata > conventional names
+                    ctx.covering = null;
+                    if (msg.bounds && Array.isArray(msg.covering) && msg.covering.length === 4) {
+                      ctx.covering = { refs: { xmin: qi(msg.covering[0]), xmax: qi(msg.covering[1]), ymin: qi(msg.covering[2]), ymax: qi(msg.covering[3]) }, exclude: msg.covering.slice() };
+                      return null;
+                    }
+                    if (msg.bounds && isParquet) {
+                      return conn.query("SELECT key, value FROM parquet_kv_metadata(" + literal + ") WHERE key = 'geo'").then(function(t2) {
+                        try {
+                          var row = t2.toArray()[0];
+                          var raw = row && (typeof row.toJSON === 'function' ? row.toJSON() : row).value;
+                          var text = (typeof raw === 'string') ? raw : new TextDecoder().decode(raw instanceof Uint8Array ? raw : new Uint8Array(raw));
+                          var geo = JSON.parse(text);
+                          var cov = geo && geo.columns && geo.columns[geo.primary_column] && geo.columns[geo.primary_column].covering && geo.columns[geo.primary_column].covering.bbox;
+                          if (cov && cov.xmin && cov.xmax && cov.ymin && cov.ymax) {
+                            var ref = function(p) { return Array.isArray(p) && p.length ? p.map(qi).join('.') : null; };
+                            var refs = { xmin: ref(cov.xmin), xmax: ref(cov.xmax), ymin: ref(cov.ymin), ymax: ref(cov.ymax) };
+                            if (refs.xmin && refs.xmax && refs.ymin && refs.ymax) {
+                              ctx.covering = { refs: refs, exclude: [cov.xmin[0], cov.xmax[0], cov.ymin[0], cov.ymax[0]] };
+                            }
+                          }
+                        } catch (e) {}
+                      }).catch(function() {});
+                    }
+                    return null;
+                  }).then(function() {
+                    if (msg.bounds && !ctx.covering) {
+                      var fc = function(n) { var c = ctx.columns.filter(function(c) { return c.name.toLowerCase() === n; })[0]; return c ? c.name : null; };
+                      var n = { xmin: fc('xmin'), xmax: fc('xmax'), ymin: fc('ymin'), ymax: fc('ymax') };
+                      if (n.xmin && n.xmax && n.ymin && n.ymax) {
+                        ctx.covering = { refs: { xmin: qi(n.xmin), xmax: qi(n.xmax), ymin: qi(n.ymin), ymax: qi(n.ymax) }, exclude: [] };
+                      }
+                    }
+                    var geomExpr = null;
+                    if (ctx.geomCol) {
+                      var gname = qi(ctx.geomCol.name);
+                      var cast = ctx.geomCol.type.indexOf('GEOMETRY') >= 0 ? gname
+                        : (ctx.geomCol.type === 'BLOB' || ctx.geomCol.type === 'BINARY' || ctx.geomCol.type.indexOf('WKB') >= 0) ? 'TRY(ST_GeomFromWKB(' + gname + '))'
+                        : 'COALESCE(TRY(ST_GeomFromText(' + gname + ')), TRY(ST_GeomFromGeoJSON(' + gname + ')))';
+                      ctx.geomCast = cast;
+                      geomExpr = spatial ? ('ST_AsWKB(' + cast + ') AS "__geom__"') : (gname + ' AS "__geom__"');
+                    }
+                    var selCols = null;
+                    if (Array.isArray(msg.columns) && msg.columns.length) {
+                      var missingCols = msg.columns.filter(function(n) { return !ctx.columns.some(function(c) { return c.name === n; }); });
+                      if (missingCols.length) throw new Error('columns= not found: ' + missingCols.join(','));
+                      selCols = msg.columns.map(qi).join(', ');
+                    }
+                    var excludeList = [];
+                    if (ctx.geomCol) excludeList.push(ctx.geomCol.name);
+                    if (ctx.covering) excludeList = excludeList.concat(ctx.covering.exclude);
+                    var select = ctx.geomCol
+                      ? (selCols ? 'SELECT ' + selCols + ', ' + geomExpr : 'SELECT * EXCLUDE (' + excludeList.map(qi).join(', ') + '), ' + geomExpr)
+                      : 'SELECT *';
+                    var preds = [];
+                    if (msg.where) preds.push('(' + msg.where + ')');
+                    var envSql = boundsSql(msg.bounds);
+                    if (envSql) {
+                      if (ctx.covering) {
+                        var b = msg.bounds;
+                        var lonPred = b.ranges.map(function(r) {
+                          return '(' + ctx.covering.refs.xmax + ' >= ' + Number(r.west) + ' AND ' + ctx.covering.refs.xmin + ' <= ' + Number(r.east) + ')';
+                        }).join(' OR ');
+                        preds.push('((' + lonPred + ') AND ' + ctx.covering.refs.ymax + ' >= ' + Number(b.south) + ' AND ' + ctx.covering.refs.ymin + ' <= ' + Number(b.north) + ')');
+                      }
+                      var operand = ctx.geomCol ? (spatial ? ctx.geomCast : null)
+                        : (spatial && ctx.lonlat ? 'ST_Point(' + qi(ctx.lonlat.lon) + ', ' + qi(ctx.lonlat.lat) + ')' : null);
+                      if (operand) preds.push('ST_Intersects(' + operand + ', ' + envSql + ')');
+                    }
+                    var sql = select + ' FROM ' + source;
+                    if (preds.length) sql += ' WHERE ' + preds.join(' AND ');
+                    var lim = Math.floor(Number(msg.limit) || 0);
+                    if (lim > 0) sql += ' LIMIT ' + lim;
+                    return conn.query(sql).then(function(table) {
+                      var fields = table.schema.fields.map(function(f) { return f.name; });
+                      var geomKey = fields.indexOf('__geom__') >= 0 ? '__geom__' : null;
+                      var features = [];
+                      var rows = table.toArray();
+                      for (var i = 0; i < rows.length; i++) {
+                        var row = rows[i];
+                        var geometry = null;
+                        if (geomKey) {
+                          var v = row[geomKey];
+                          if (v instanceof Uint8Array) geometry = vecWkbToGeoJson(v);
+                          else if (v && typeof v === 'object' && typeof v.type === 'string' && ('coordinates' in v || 'geometries' in v)) geometry = v;
+                          else if (typeof v === 'string' && v.trim().charAt(0) === '{') {
+                            try { var g = JSON.parse(v); geometry = g && typeof g.type === 'string' ? g : null; } catch (e) {}
+                          }
+                        }
+                        if (!geometry && ctx.lonlat) {
+                          var x = Number(row[ctx.lonlat.lon]), y = Number(row[ctx.lonlat.lat]);
+                          if (isFinite(x) && isFinite(y)) geometry = { type: 'Point', coordinates: [x, y] };
+                        }
+                        if (!geometry) continue;
+                        var props = {};
+                        for (var j = 0; j < fields.length; j++) { if (fields[j] !== geomKey) props[fields[j]] = row[fields[j]]; }
+                        features.push({ type: 'Feature', geometry: geometry, properties: props });
+                      }
+                      return { type: 'FeatureCollection', features: features };
+                    });
+                  });
+                }).then(function(fc) { reply(fc, null); }, function(e) { reply(null, String(e && e.message || e)); });
+              } catch (e) { reply(null, String(e)); }
+            })();
           }
         } catch(e) {}
       });
@@ -422,11 +658,29 @@ function openGoogleEarthInNewWindow(): void {
   }
 }
 
+// DuckDB query host routing: vecId -> requesting extension id. Replies
+// (ddbAck/ddbResult) from the UI iframe are forwarded to that extension.
+const _ddbSenders: { [key: string]: string } = {};
+function ddbReplyToSender(vecId: string, payload: any, forget: boolean): void {
+  try {
+    const targetId = _ddbSenders[vecId];
+    if (!targetId) return;
+    if (forget) { try { delete _ddbSenders[vecId]; } catch (e) {} }
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(targetId, payload);
+    }
+  } catch (e) {}
+}
+
 try {
   if (typeof reearth !== 'undefined' && reearth && reearth.extension && typeof reearth.extension.on === 'function') {
     reearth.extension.on('message', (msg: any) => {
       try {
         if (!msg || !msg.action) return;
+        if (msg.action === 'ddbAck' || msg.action === 'ddbResult') {
+          try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, layerId: msg.layerId || null, geojson: msg.geojson || null, error: msg.error || null }, msg.action === 'ddbResult'); } catch (e) {}
+          return;
+        }
         if (msg.action === 'requestBasemaps') {
           sendBasemapsToUI();
         } else if (msg.action === 'selectBasemap') {
@@ -460,6 +714,19 @@ try {
         } else if (data.action === 'lang') {
           // Language override forwarded from the layer panel (inspector "lang:" line)
           try { postToUI({ action: 'lang', lang: data.lang || 'auto' }); } catch (e) {}
+        } else if (data.action === 'ddbExec') {
+          // DuckDB-Wasm query request from the layer panel. This widget's iframe
+          // is long-lived (ui.show runs once), so the wasm instance stays warm —
+          // unlike the panel iframe which is recreated on every ui.show.
+          try {
+            if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
+            postToUI({
+              action: 'ddbLoad', vecId: data.vecId, layerId: data.layerId || null,
+              url: data.url, format: data.format || null, where: data.where || null,
+              limit: data.limit || null, geom: data.geom || null, lon: data.lon || null, lat: data.lat || null,
+              columns: data.columns || null, covering: data.covering || null, bounds: data.bounds || null
+            });
+          } catch (e) {}
         } else if (data.action === 'requestBaseList') {
           // If asked by layer panel (unexpected direction), respond with current list
           _layerPanelId = msg.sender || _layerPanelId;
