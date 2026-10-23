@@ -1247,6 +1247,48 @@ function getUI() {
     font-size: 0.85em;
   }
 
+  /* Fly route settings: label above input, 3 columns — fits within 300px panel */
+  .fly-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .fly-grid .fly-cell{
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .fly-grid .fly-cell label{
+    flex: 1;
+    font-size: 0.72em;
+    color: #555;
+    line-height: 1.3;
+  }
+  .fly-grid .fly-cell input[type="number"],
+  .fly-grid .fly-cell select{
+    width: 100%;
+    min-width: 0;
+    height: 22px;
+    padding: 1px 3px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 0.85em;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  .fly-grid .fly-cell input[type="checkbox"]{
+    margin: 3px 0 0 1px;
+  }
+  #fly-help, #fly-status{ overflow-wrap: anywhere; }
+  /* Keep width:100% boxes inside the 300px panel (border/padding would overflow without border-box) */
+  .primary-background textarea, .primary-background iframe{ box-sizing: border-box; max-width: 100%; }
+  #time-row > div{ min-width: 0; }
+  #time-row input[type="datetime-local"]{ flex: 1; min-width: 0; max-width: 100%; box-sizing: border-box; }
+  /* GeoJSON drape row: let the status label wrap so label + select fit the row */
+  #geojson-drape-status{ white-space: normal; min-width: 0; }
+
   /* Terrain row: compact, text left, toggle right */
   .terrain-row{
     display: flex;
@@ -1255,12 +1297,11 @@ function getUI() {
     padding: 4px 8px;
     min-height: 28px;
     justify-content: space-between;
+    flex-wrap: nowrap;
   }
-  .terrain-row .text-md{ font-size: 14px; margin: 0; }
   .terrain-row .text-md{ font-size: 14px; margin: 0; flex: 0 1 auto; white-space: nowrap; }
   .toggle { margin-left: 8px; display: inline-flex; align-items: center; gap:6px; white-space: nowrap; }
   .toggle input { width: auto; margin: 0; vertical-align: middle; }
-  .terrain-row{ display:flex; align-items:center; gap:8px; padding:4px 8px; min-height:28px; justify-content:space-between; flex-wrap:nowrap; }
   /* prevent long labels or external CSS forcing block layout */
   .terrain-row .text-md, .toggle { display:inline-flex; align-items:center; }
 
@@ -1370,17 +1411,17 @@ function getUI() {
       <button id="fly-pause-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyPause" disabled>Pause</button>
       <button id="fly-stop-btn" class="btn-primary p-8" style="flex:1;" data-i18n="flyStop" disabled>Stop</button>
     </div>
-    <div class="cam-grid" style="margin-bottom:6px;">
-      <div class="cam-cell"><label data-i18n="flySpeedLbl">Speed (km/h)</label><input type="number" step="any" id="fly-speed" value="30"></div>
-      <div class="cam-cell"><label data-i18n="flyHeightLbl">AGL (m)</label><input type="number" step="any" id="fly-height" value="0"></div>
-      <div class="cam-cell"><label data-i18n="flyPitchLbl">Pitch (°)</label><input type="number" step="any" id="fly-pitch" value="-10"></div>
-      <div class="cam-cell"><label data-i18n="flyView">View</label>
-        <select id="fly-view" style="width:100%;padding:2px;border:1px solid #ccc;border-radius:4px;font-size:0.9em;background:#fff;">
+    <div class="fly-grid" style="margin-bottom:6px;">
+      <div class="fly-cell"><label data-i18n="flySpeedLbl">Speed (km/h)</label><input type="number" step="any" id="fly-speed" value="30"></div>
+      <div class="fly-cell"><label data-i18n="flyHeightLbl">AGL (m)</label><input type="number" step="any" id="fly-height" value="0"></div>
+      <div class="fly-cell"><label data-i18n="flyPitchLbl">Pitch (°)</label><input type="number" step="any" id="fly-pitch" value="-10"></div>
+      <div class="fly-cell"><label data-i18n="flyView">View</label>
+        <select id="fly-view">
           <option value="camera" data-i18n="flyViewCam">POV</option>
           <option value="center" data-i18n="flyViewCenter">Follow</option>
         </select>
       </div>
-      <div class="cam-cell"><label data-i18n="flyLoop">Loop</label><input type="checkbox" id="fly-loop" style="margin-top:4px;"></div>
+      <div class="fly-cell"><label data-i18n="flyLoop">Loop</label><input type="checkbox" id="fly-loop"></div>
     </div>
     <div id="fly-status" class="text-sm" style="color:#666;min-height:1.2em;">&nbsp;</div>
     <div id="fly-help" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;" data-i18n-html="flyHelp">fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera<br>Or press Draw and sketch a polyline on the map.</div>
