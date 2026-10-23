@@ -6,7 +6,7 @@
     - 速度・地上高・ピッチ・視点・ループの入力値は即時反映になりました（数値入力は 250ms デバウンス、再生中・一時停止中も有効）。従来は Play 押下時にのみ読み込まれ、しかもインスペクタ行 / GeoJSON `properties.fly` の値で入力が毎回上書きされていたため手入力が実質無効でした。ルート既定値はルート選択時のみ反映され、一度でも編集した後はユーザー入力が優先されます。
     - 視点（View）の説明を改善: POV/Follow 表記を分かりやすい「搭乗（Ride）」/「空撮（Aerial）」に変更し、意味をセレクトのツールチップとヘルプに追記（全20言語 `flyViewHint` / `flyHelp`）。インスペクタの `view=` 指定は `camera`(=pov/fpv/first/ride) と `center`(=chase/follow/3rd/aerial) のエイリアスを受け付けます（`properties.fly.view` も同様）。
     - Follow（center）視点で地上高が小さいときカメラが地形に埋まる退化ケースを修正（最低 30m のフォロー高度を確保）。
-    - GeoJSON ボタンは textarea 表示＋クリップボードコピーから `<ルート名>.geojson` の直接ダウンロードに変更しました（表示用 textarea は廃止）。
+    - 「保存」ボタン（旧 GeoJSON ボタン）で選択ルートの GeoJSON を `<ルート名>.geojson` として直接ダウンロードできるようになりました（従来の textarea 表示＋クリップボードコピーは廃止）。
     - AI チャットの playFlyPath でルート再生するとき FLY パネルが自動で開くようになりました。
 - 検証: `workbench/check_inline_scripts.js` に mock-sandbox フォールバックを追加し、`legendInnerHtml` 等の外部変数参照で eval が失敗していた layers-and-tiles-list.ts の生成スクリプトも構文検証できるようになりました。
 
