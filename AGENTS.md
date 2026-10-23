@@ -40,6 +40,7 @@
 ## バージョン管理
 - バージョンは `package.json` と `plugin/reearth.yml` の両方に記述します。
 - `CHANGELOG.md` にもリリース内容を記載します。
+- **index.html の主な機能カード枚数 ＝ メジャーバージョン** に揃えます（AI チャット=V19 / FLY=V20 / DuckDB-Wasm=V21）。新しいカードを追加するリリースではメジャーバージョンを上げてください。
 
 ## 生成 HTML 内 `<script>` のエスケープ罠（重要）
 - 各拡張の UI は TS ソース内のテンプレートリテラル（`` ` ``）に `<style>…<div>…<script>…` を直書きして `reearth.ui.show(html)` で埋め込んでいます。

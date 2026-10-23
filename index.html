@@ -296,7 +296,11 @@
                     </div>
                     <div class="feature-card">
                         <h3>🗺️ レイヤー追加・管理</h3>
-                        <p>XYZタイル、3D Tiles、GeoJSONをInspectorからURL指定で簡単に追加・管理できます。</p>
+                        <p>XYZタイル、3D Tiles、GeoJSONに加え、FlatGeobuf・GeoParquetをInspectorからURL指定で簡単に追加・管理できます（GeoJSONレイヤーとして追加され、属性検索・属性パネルも利用可能）。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🦆 DuckDB-Wasm クエリレイヤー</h3>
+                        <p><code>duckdb:</code> 行で巨大な GeoParquet / CSV / JSON をブラウザ内の DuckDB-Wasm で SQL 絞り込みしてから追加します。<a href="#duckdb-load-note" class="github-link" style="font-size:0.9em;">初回読み込み時間の注意 &rarr;</a></p>
                     </div>
                     <div class="feature-card">
                         <h3>📑 レイヤー一覧UI</h3>
@@ -360,7 +364,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>🤖 AI チャット</h3>
-                        <p>Gemini の function calling で地図を自然言語操作できるチャットウィジェットです。「東京駅に飛んで」「○○レイヤーを隠して」などの指示で、カメラ移動・地名検索・レイヤー操作・カメラプリセット・ベースマップ切替・Fly ルート再生・Terrain/Shadow・Street View・スクリーンショットなどを実行します。<code>runCode</code> ツールで複数ステップの処理も可能です。Gemini API キー（BYO）はウィジェットの ⚙ 設定または Inspector の <code>geminiApiKey:</code> 行で指定します。ホスティング側で Vercel 環境変数 <code>GEMINI_API_KEY</code> を設定すると <code>/api/gemini</code> プロキシ経由になり、ブラウザにキーを配らずに利用できます。</p>
+                        <p>Gemini の function calling で地図を自然言語操作できるチャットウィジェットです。<a href="#ai-chat-detail" class="github-link" style="font-size:0.9em;">詳細・APIキー設定方法 &rarr;</a></p>
                     </div>
                 </div>
             </section>
@@ -389,7 +393,11 @@ base: 地理院タイル 全国最新写真 | https://cyberjapandata.gsi.go.jp/x
 base: OpenStreetMap | https://tile.openstreetmap.org/{z}/{x}/{y}.png | OpenStreetMap contributors | max=19
 3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json | off
 geojson: 東京都/行政区域 | https://assets.cms.reearth.io/assets/ef/b1d062-e44b-4a19-8ebe-5fafeeba05f2/%E8%A1%8C%E6%94%BF%E5%8C%BA%E5%9F%9F.geojson | on | terrain
+flatgeobuf: 地名データ | https://example.com/chimei.fgb | on | terrain
+parquet: 建物データ | https://example.com/bldg.parquet | off
+duckdb: 大規模POI | https://example.com/poi.parquet | where=city='千代田区' | limit=5000 | covering=xmin,xmax,ymin,ymax | bbox=auto
 background: #ffffff
+lang: auto
 info: https://re-earth-geo-suite.vercel.app/ryu.html
 cam:東京駅|35.653108|139.761449|h=2200.6|p=-30
 fly_geojson: 東京都心ルート | https://example.com/route.geojson | speed=30 | height=100 | pitch=-10 | loop=true | view=camera
@@ -402,16 +410,21 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>max=</strong>/<strong>min=</strong>/<strong>zoom=</strong>: XYZ タイルのズームレベル制限を指定します。例: <code>max=18</code>、<code>zoom=2-18</code>。地理院タイルや OpenStreetMap には既知の最大ズームを自動で適用します。</li>
                         <li><strong>3dtiles:</strong> 3D Tilesレイヤです。</li>
                         <li><strong>geojson:</strong> GeoJSONレイヤです。末尾に <code>| terrain</code> / <code>| 3dtiles</code> / <code>| both</code> を追加すると、3D タイルへのドレープ方法を指定できます（既定は「表示」タブのドロップダウン準拠）。</li>
+                        <li><strong>flatgeobuf:</strong> / <strong>fgb:</strong> FlatGeobuf レイヤです。<code>flatgeobuf: 名前 | .fgb URL | on/off | classification</code> の形式で、ブラウザ内で GeoJSON にデコードして追加します（属性検索・属性パネルも利用可能）。<code>classification</code> には <code>terrain</code> / <code>3dtiles</code> / <code>both</code> を指定できます。</li>
+                        <li><strong>parquet:</strong> / <strong>geoparquet:</strong> GeoParquet レイヤです。形式は flatgeobuf と同じ <code>parquet: 名前 | .parquet URL | on/off | classification</code> で、ブラウザ内で GeoJSON にデコードして追加します。</li>
+                        <li><strong>duckdb:</strong> 巨大ファイル向けの DuckDB-Wasm クエリレイヤです。<code>duckdb: 名前 | URL | オプション…</code> の形式で、SQL 絞り込み後に GeoJSON レイヤーとして追加します。オプション: <code>where=…</code>（SQL 条件）・<code>limit=…</code>・<code>format=parquet|csv|json</code>・<code>geom=…</code>（ジオメトリ列名）・<code>lon=…</code>/<code>lat=…</code>（経度/緯度列名）・<code>columns=a,b</code>・<code>covering=xmin,xmax,ymin,ymax</code>（covering bbox 列名。指定すると行グループ単位で読み飛ばし）・<code>bbox=auto|off</code>（既定 <code>auto</code>：カメラ移動に連動して表示範囲だけ再クエリする部分読込）・<code>on/off</code>・<code>classification</code>。注意: セッション最初のクエリ時に wasm 初期化で約15秒かかります（<a href="#duckdb-load-note">下記注意事項</a>参照）。</li>
+                        <li><strong>lang:</strong> プラグイン UI の言語を固定します。<code>lang: en|ja|zh-CN|zh-TW|ko|es|fr|de|it|pt|ru|nl|pl|uk|tr|ar|hi|id|th|vi</code>。<code>lang: auto</code> または未指定でブラウザ言語を自動検出し、未対応言語は英語にフォールバックします。</li>
                         <li><strong>info:</strong> 情報タブに表示するWebページのURLを指定します。</li>
                         <li><strong>cam:</strong> カメラプリセットを指定します。<code>cam:タイトル|緯度|経度</code> が最小形式で、オプションとして <code>|h=高度m|d=方位°|p=傾き°</code> を追加できます。</li>
                         <li><strong>legend:</strong> 凡例画像のURLを指定します。</li>
                         <li><strong>fly_geojson:</strong> Fly パネル（タブバーの ✈️ ボタン）に登録する飛行ルートを指定します。<code>fly_geojson: 名前 | GeoJSON URL または route:名前</code> が基本形式で、オプションとして <code>speed=km/h</code>（負値で逆再生）・<code>height=対地高度m</code>・<code>pitch=°</code>・<code>loop=true/false</code>・<code>view=camera|center</code>（camera=ルート上を進む搭乗視点、<code>pov</code>/<code>ride</code> 等の別名も可。center=後方上空から追う空撮視点、<code>chase</code>/<code>follow</code>/<code>aerial</code> 等の別名も可）・<code>step=サンプリング間隔m</code> を追加できます。GeoJSON の <code>properties.fly</code> に同名オプションを書くこともでき、<code>heightReference: "MSL"</code> で絶対高度ルートにできます。<code>route:名前</code> は Fly パネルで描画・保存したルートを参照します。末尾に <code>| off</code> で無効化。</li>
                         <li><strong>attrUrlOpen:</strong> 属性パネル内のURLクリック動作を切り替えます。<code>panel</code> / <code>newtab</code> を指定できます。既定は <code>newtab</code> です。</li>
+                        <li><strong>行プレフィックスの別名:</strong> <code>tile:</code> = <code>xyz:</code>、<code>3d-tiles:</code> = <code>3dtiles:</code>、<code>preset:</code> = <code>layer:</code>、<code>bg:</code> = <code>background:</code>、<code>fgb:</code> = <code>flatgeobuf:</code>、<code>geoparquet:</code> = <code>parquet:</code> として解釈されます。</li>
                         <li><strong>geminiApiKey:</strong> / <strong>geminiModel:</strong> AI チャットウィジェットで使う Gemini API キーとモデル名（省略可）を指定します。キーは AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄または ⚙ 設定からも入力できます（優先順: AI Chat Inspector 欄 &gt; 設定テキストの <code>geminiApiKey:</code> 行 &gt; セッション入力 &gt; ブラウザ保存）。注意: Inspector に書いたキーは公開サイトでは全訪問者に配信されます。公開サイトではサーバーサイドプロキシ（環境変数 <code>GEMINI_API_KEY</code> → <code>/api/gemini</code>）の利用を推奨します。</li>
                     </ul>
                 </div>
 
-                <div class="security-note">
+                <div id="gemini-security" class="security-note">
                     <h3>🔐 Gemini APIキーのセキュリティ状況</h3>
                     <p>AI チャットの APIキーは設定経路ごとに公開範囲が異なります。<strong>ブラウザに届くキーは全て DevTools・通信内容（<code>?key=...</code> の URL）で閲覧可能＝事実上公開</strong>です。盗用されるとあなたのクォータ・請求が第三者に消費されます。</p>
                     <table>
@@ -509,6 +522,16 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                     <p style="margin-top:8px; color:#666;">※ 描画機能（スケッチ）や地形サンプリングは、利用している Re:Earth 環境のプラグイン API が対応している場合のみ有効です。非対応環境では該当ボタンが無効表示になります。</p>
                 </div>
 
+                <div id="ai-chat-detail" class="install-steps" style="margin-bottom:14px;">
+                    <h3>🤖 AI チャットの詳細</h3>
+                    <p>Gemini の function calling で地図を自然言語操作できるチャットウィジェットです。「東京駅に飛んで」「○○レイヤーを隠して」などの指示で、カメラ移動・地名検索・レイヤー操作・カメラプリセット・ベースマップ切替・Fly ルート再生・Terrain/Shadow・Street View・スクリーンショットなどを実行します。<code>runCode</code> ツールで複数ステップの処理も可能です。</p>
+                    <ul>
+                        <li><strong>API キー（BYO）の指定経路</strong>: ウィジェットの ⚙ 設定 / AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄 / Inspector 設定テキストの <code>geminiApiKey:</code> 行。優先順は「AI Chat Inspector 欄 &gt; 設定テキスト &gt; セッション入力 &gt; ブラウザ保存」です。</li>
+                        <li><strong>サーバーサイドプロキシ（推奨）</strong>: ホスティング側で Vercel 環境変数 <code>GEMINI_API_KEY</code> を設定すると <code>/api/gemini</code> プロキシ経由になり、ブラウザにキーを配らずに利用できます。</li>
+                        <li><strong>セキュリティ</strong>: Inspector に書いたキーは公開サイトの全訪問者に平文配信されます。公開範囲の比較表は <a href="#gemini-security">Gemini APIキーのセキュリティ状況</a> を参照してください。</li>
+                    </ul>
+                </div>
+
                 <div  id="system-layer-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:8px;">
                     <h3>⚠️ 注意事項</h3>
                     <div>
@@ -528,12 +551,38 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                     </div>
                 </div>
 
+                <div id="duckdb-load-note" class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0; margin-top:12px;">
+                    <h3>⚠️ duckdb: レイヤーの初回読み込み時間</h3>
+                    <div>
+                        <p style="color:#333;">
+                            <code>duckdb:</code> レイヤーは初回クエリ時に DuckDB-Wasm（wasm + worker + httpfs/spatial/parquet 拡張）をダウンロード・初期化するため、<strong>セッションの最初の読み込みに約15秒</strong>かかります。2回目以降はインスタンスが温存されるため約3〜10秒に短縮されますが、<strong>ブラウザ再起動・再訪では必ず再ダウンロードが発生します</strong>（Re:Earth プラグイン iframe が <code>allow-same-origin</code> なしのサンドボックスで、HTTP キャッシュ・CacheStorage・Service Worker が一切使えない構造的制約のため回避不可）。<br>
+                            小〜中規模データでは初回読み込みが速い <code>geojson:</code> / <code>flatgeobuf:</code> / <code>parquet:</code> の方が適する場合があります。フォーマットの選び方・実測値は <a href="/duckdb-persistence.html" class="github-link">DuckDB-Wasm 永続化検証・フォーマット比較レポート</a> を参照してください。
+                        </p>
+                    </div>
+                </div>
+
             </section>
 
             <section>
                 <h2>🛠️ 開発について</h2>
-                <p>本プロジェクトは <strong>Vercel</strong> を利用した開発・配信フローを採用しています。ここで公開しているサイトは <strong>開発版（Developer Preview）</strong> として自動デプロイされています。開発版はテストや動作確認を目的としており、本番向けの安定版リリースとは別扱いです。ZIP や公開URLは予告なく更新・上書きされる可能性があります。</p>
-                
+                <p>本プロジェクトは <strong>AI コーディングエージェントによる完全自動開発</strong>を前提に設計されています。リポジトリの運用ルール（<code>AGENTS.md</code>）に沿って、エージェントがソース編集・ローカル動作検証・スクリーンショットによる UI 確認・コミットまでを自律的に実行します。人間は「何を作るか」を指示するだけで、ビルドや検証の手作業は不要です。</p>
+                <p>公開用サイトの配信には <strong>Vercel</strong> を利用しています。ここで公開しているサイトは <strong>開発版（Developer Preview）</strong> として自動デプロイされています。開発版はテストや動作確認を目的としており、本番向けの安定版リリースとは別扱いです。ZIP や公開URLは予告なく更新・上書きされる可能性があります。</p>
+
+                <h3 style="margin-top: 20px; color: #667eea;">🤖 AI 完全自動開発の使い方</h3>
+                <ol style="margin:8px 0 16px 20px; line-height:1.9;">
+                    <li><strong>リポジトリをクローン</strong>し、AI コーディングエージェント（Devin など）でプロジェクトを開きます。</li>
+                    <li>エージェントに<strong>やりたいことを日本語で指示</strong>します（例: 「duckdb: レイヤーに xxx オプションを追加して」）。エージェントは <code>AGENTS.md</code> のルールに従い <code>geo_suite/src/*.ts</code> を編集します。</li>
+                    <li><strong>ローカル動作検証は <code>npm run dev</code> 一発</strong>で全自動です。起動すると TypeScript の watch コンパイル → <code>workbench/plugin-build/</code> への出力 → Inspector テキストの自動反映 → 組込み <strong>Workbench</strong>（Re:Earth プラグイン開発用スタンドアロン Viewer）の自動リロードまでが回ります。ブラウザで <code>http://localhost:8787/</code> を開くと動作確認できます。</li>
+                    <li>エージェントは <strong><code>npm run shot</code></strong> でヘッドレス Chrome のスクリーンショットとコンソールログを取得し、UI 変更を自分で目視検証します。<code>node workbench/check_inline_scripts.js</code> で生成 HTML 内のスクリプト構文も一括検証します。</li>
+                    <li>検証が済んだらエージェントがコミットし、<strong><code>git push origin main</code> で Vercel が自動ビルド＆デプロイ</strong>します。ローカルでの本番ビルド（<code>npm run build</code>）は不要です（Vercel に任せます）。</li>
+                </ol>
+                <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; margin: 15px 0;"><code>git clone https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite.git
+cd ReEarth_GeoSuite
+npm install
+npm run dev        # → http://localhost:8787/ で Workbench が自動ライブリロード
+npm run shot       # → エージェント用スクリーンショット取得（検証用）</code></pre>
+                <p style="color:#666;">※ 詳細な運用ルール・制約は <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/blob/main/AGENTS.md" target="_blank" class="github-link">AGENTS.md</a> を参照してください。</p>
+
                 <h3 style="margin-top: 20px; color: #667eea;">自動デプロイ</h3>
                     <p>このリポジトリは <strong>Vercel</strong> と連携しています。`main` ブランチに push すると Vercel が自動でビルドを実行し、公開用ディレクトリ（`dist/`）をデプロイします。ビルドの概要は次の通りです：</p>
                     <ul style="margin:8px 0 16px 20px;">
@@ -552,7 +601,7 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                         <li>`npm run build` / `tsc`（TypeScript のビルド）</li>
                         <li>`dist/` の生成と静的ファイルのコピー</li>
                     </ul>
-                    <p>必要なら私がローカルでビルドして `dist/` の中身や ZIP（`dist/artifacts/geo_suite.zip`）を作成できます。また、デプロイを即時に反映したい場合は Vercel ダッシュボードの「Redeploy」や `vercel` CLI を使って手動デプロイしてください。</p>
+                    <p>必要であればエージェントがローカルでビルドし、`dist/` の中身や ZIP（`dist/artifacts/geo_suite.zip`）を作成することも可能です。また、デプロイを即時に反映したい場合は Vercel ダッシュボードの「Redeploy」や `vercel` CLI を使って手動デプロイしてください。</p>
             </section>
             
             <section>

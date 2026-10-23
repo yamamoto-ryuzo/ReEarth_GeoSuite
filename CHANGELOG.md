@@ -1,6 +1,6 @@
 # Changelog
 
-## v19.5.0
+## v21.0.0
 - 新機能: kasugai_canvas からの機能移植（A グループ＋ベクトルフォーマット群）。
     - Street View: `googleMapsApiKey:` 設定時は Street View Static metadata API でパノラマを検証し、確認した `pano_id` 付き URL を開きます（outdoor 優先・失敗時は従来の viewpoint URL にフォールバック）。
     - Google 検索プロバイダ: Search タブに `google` を追加。Geocoding + Places Text Search を並列実行・重複除去してマージします。
@@ -14,7 +14,7 @@
 - その他: QuickJS に `setTimeout` が無い制約に合わせ、カメラ移動デバウンスを `waitViaUiTimer` 委譲＋遅延購読で実装。sandbox iframe では HTTP キャッシュ・CacheStorage・localStorage・IndexedDB・ServiceWorker が全て不可（opaque origin）であることを実測確認し、上流へ reearth/reearth-visualizer#2497 として機能要望を登録。
 - 検証: `tsc --noEmit` 0 エラー / inline script チェック全通過 / Workbench AI テスト 44/44 全パス（`addFlatGeobufLayer`、`addParquetLayer`、`addDuckDbLayer` の追加・削除を含む、コンソールエラーなし）。
 
-## v19.4.0
+## v20.1.0
 - 新機能: FLY タブにプリセット選択を追加しました（kasugai_canvas の Fly モードから移植）。速度・地上高・ピッチの組み合わせを「徒歩 (h2 s5 p-5)」「車載 (h2 s60 p-10)」「ドローン (h200 s60 p-30)」「広域 (h1000 s300 p-45)」からワンクリックで適用でき、再生中でも即時に反映されます。数値を手動で編集すると自動的に「カスタム」表示になり、入力値がプリセットと一致した場合はそのプリセット名が選択されます。
 - 新機能: FLY タブに「逆転」ボタンを追加しました。読み込み済みルートの起終点を入れ替えて逆方向に飛行できます。進行度はミラーされるため、再生中・一時停止中に押してもカメラ位置を保ったまま反転します（再生前のプレビュー状態でも有効で、そのまま Play すると逆方向で再生されます）。
 - 新機能: FLY タブに「取込」ボタンを追加しました。GeoJSON ファイル（LineString 含む）を描画ルートとして取り込み、clientStorage に永続化します（リロード後もルート一覧に残ります）。同名ルートがある場合は自動で連番を付けます。
@@ -24,7 +24,7 @@
 - 改善: FLY のボタン状態をマウス操作と同期しました。再生中の方向に応じて Play/◀ ボタンがハイライト（`fly-dir-on` + `aria-pressed`）され、逆再生中は Play が有効のままになり押すと前進へ切替わります（左ダブルクリックと同じ動作）。ステータス行は逆再生中に `◀` マーカーを表示します。
 - 新機能: FLY パネル表示中かつルート読込済みの間（再生/一時停止/停止後）、マウスホイールで速度を調整できるようになりました（kasugai_canvas の wheel ハンドラ移植。`reearth.viewer.on("wheel")` → パネルの速度欄を ±1km/h 更新し即時反映、下回転=加速も同仕様）。さらに kasugai と同様、この間はホイールズーム自体を無効化します — `reearth.camera.overrideScreenSpaceCameraController`（実 Cesium `screenSpaceCameraController` へ `Object.assign` されるプラグイン API）で `zoomEventTypes` から `wheel` を除去するため、近似のスナップバックではなく真のズーム抑止です（kasugai 同様右ドラッグでのズームは有効のまま）。ルート未読込時やパネルを閉じたときは既定値へ復元され、従来通りホイールズームできます。
 
-## v19.3.0
+## v20.0.0
 - 改善: FLY タブの動作を見直しました。
     - ルートラインの表示制御を整理: ルート線は「Show route」トグルと FLY パネルの開閉に連動するようになりました。他タブへの切替・属性パネルの自動オープン・ウィジェット最小化で線は自動的に消え、パネルを開き直すとトグルが ON の場合のみ復帰します（従来は一度描画されるとレイヤー一覧にも出ず、消す手段が分かりにくい状態でした）。描画したルートも選択直後にプレビュー表示されるようになりました。
     - 速度・地上高・ピッチ・視点・ループの入力値は即時反映になりました（数値入力は 250ms デバウンス、再生中・一時停止中も有効）。従来は Play 押下時にのみ読み込まれ、しかもインスペクタ行 / GeoJSON `properties.fly` の値で入力が毎回上書きされていたため手入力が実質無効でした。ルート既定値はルート選択時のみ反映され、一度でも編集した後はユーザー入力が優先されます。

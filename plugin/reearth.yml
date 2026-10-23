@@ -1,6 +1,6 @@
 id: layers-and-tiles-list
 name: Layers & Tiles (geo_suite plugin)
-version: "19.5.0"
+version: "21.0.0"
 description: "XYZ タイル管理、レイヤ一覧 UI、位置情報共有（Share）、Fly ルート飛行、Street View 連携、Terrain/Shadow トグル、Info 表示、Google Earth 連携、AI チャット（Gemini function calling）を提供する統合プラグイン"
 author: yamamoto-ryuzo
 extensions:
