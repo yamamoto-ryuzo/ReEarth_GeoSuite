@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.1.0
+- 新機能: KASUGAI Canvas のデータ取り込み・レイヤー形式を追加移植。
+    - `gpkg:`/`geopackage:` インスペクタ構文: パネル iframe（通常時は basemap-widget 永続 iframe、未応答時フォールバック）で sql.js(SQLite WASM)を遅延ロードし GeoPackage をデコード。`table=`/`where=`/`limit=`/`columns=` に対応し、`bbox=auto`（既定 ON）は GPkgBinary ヘッダのエンベロープで表示範囲フィルター＋カメラ移動で再クエリ。`layer_styles` テーブルの QGIS 埋め込み QML（useAsDefault 優先）を自動適用し、`style=` 明示指定はそちらを優先。`duckdb:` で .gpkg/`format=gpkg` 指定も同経路へ振り分け。
+    - `sql:` インスペクタ構文: タイトル後の `|` 以降を SELECT 文として既存 DuckDB-Wasm 経路で実行し結果のジオメトリ列を描画。`:bbox` プレースホルダは表示範囲エンベロープへ置換されカメラ移動で再クエリ（要 spatial 拡張）。末尾 `| off`/`| style=` を認識。basemap-widget 側の ddbLoad コピーにも同一分岐を追加（同期規約）。
+    - ローカルファイル取り込み: Manage タブに「Add files」ボタンを追加。`.geojson/.json`(JSON.parse)、`.fgb`(flatgeobuf deserialize)、`.parquet`(hyparquet)、`.gpkg`(sql.js)、`.csv/.tsv`(lon/lat列→Point)を iframe 内でデコードし `importAdd` で GeoJSON レイヤー追加。`.kasc/.txt` は設定テキストへ行追記（`importKasc`）。サーバー不要で完結。
+    - `gpkg:`/`sql:` レイヤーも `bbox=auto` 時は `_ddbLayers` に `engine` 付きで登録し、既存のカメラ移動デバウンス再クエリ機構を共用。
+    - `qmlStyle` ハンドラを拡張し `{qmlText}` による URL fetch 不要の埋め込み QML コンパイルに対応。
+    - i18n: importTitle/importAddFile/importHint を全20言語で追加。
+- 検証: `tsc --noEmit` 0 エラー / inline script チェック全通過。
+
 ## v21.0.0
 - 新機能: kasugai_canvas からの機能移植（A グループ＋ベクトルフォーマット群）。
     - Street View: `googleMapsApiKey:` 設定時は Street View Static metadata API でパノラマを検証し、確認した `pano_id` 付き URL を開きます（outdoor 優先・失敗時は従来の viewpoint URL にフォールバック）。

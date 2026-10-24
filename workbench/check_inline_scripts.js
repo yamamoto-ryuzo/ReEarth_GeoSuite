@@ -18,7 +18,7 @@ for (const f of files) {
   const src = fs.readFileSync(file, "utf8");
   // grab every template literal (naive but effective for these files):
   // find `const X = \` ... \`` blocks that contain a <script>
-  const tplRe = /`([\s\S]*?)`/g;
+  const tplRe = /`((?:[^`\\]|\\[\s\S])*)`/g;
   let m, idx = 0;
   let any = false;
   while ((m = tplRe.exec(src))) {

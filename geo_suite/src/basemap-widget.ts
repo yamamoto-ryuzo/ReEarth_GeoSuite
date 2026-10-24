@@ -451,10 +451,21 @@ const html: string = `
                   var format = String(msg.format || '').toLowerCase();
                   var literal = ql(msg.url);
                   var isParquet = format === 'parquet' || (!format && /\\.parquet([?#]|$)/i.test(msg.url || ''));
-                  var source = format === 'parquet' ? 'read_parquet(' + literal + ')'
-                    : (format === 'csv' || format === 'tsv') ? 'read_csv_auto(' + literal + ')'
-                    : (format === 'json' || format === 'geojson') ? 'read_json_auto(' + literal + ')'
-                    : literal; // replacement scan infers reader from the extension
+                  // sql: raw query mode wraps the query as a subquery source.
+                  var source;
+                  if (msg.query) {
+                    var q0 = String(msg.query).replace(/;+\\s*$/, '');
+                    if (/:bbox\\b/i.test(q0)) {
+                      if (!spatial) throw new Error('sql: :bbox requires the spatial extension');
+                      q0 = q0.replace(/:bbox\\b/gi, boundsSql(msg.bounds) || 'ST_MakeEnvelope(-180,-90,180,90)');
+                    }
+                    source = '(' + q0 + ')';
+                  } else {
+                    source = format === 'parquet' ? 'read_parquet(' + literal + ')'
+                      : (format === 'csv' || format === 'tsv') ? 'read_csv_auto(' + literal + ')'
+                      : (format === 'json' || format === 'geojson') ? 'read_json_auto(' + literal + ')'
+                      : literal; // replacement scan infers reader from the extension
+                  }
                   var ctx = {};
                   return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
                     ctx.columns = table.toArray().map(function(row) {
@@ -543,8 +554,8 @@ const html: string = `
                       ? (selCols ? 'SELECT ' + selCols + ', ' + geomExpr : 'SELECT * EXCLUDE (' + excludeList.map(qi).join(', ') + '), ' + geomExpr)
                       : 'SELECT *';
                     var preds = [];
-                    if (msg.where) preds.push('(' + msg.where + ')');
-                    var envSql = boundsSql(msg.bounds);
+                    var envSql = msg.query ? null : boundsSql(msg.bounds);
+                    if (!msg.query && msg.where) preds.push('(' + msg.where + ')');
                     if (envSql) {
                       if (ctx.covering) {
                         var b = msg.bounds;
@@ -559,7 +570,7 @@ const html: string = `
                     }
                     var sql = select + ' FROM ' + source;
                     if (preds.length) sql += ' WHERE ' + preds.join(' AND ');
-                    var lim = Math.floor(Number(msg.limit) || 0);
+                    var lim = msg.query ? 0 : Math.floor(Number(msg.limit) || 0);
                     if (lim > 0) sql += ' LIMIT ' + lim;
                     return conn.query(sql).then(function(table) {
                       var fields = table.schema.fields.map(function(f) { return f.name; });
@@ -590,6 +601,115 @@ const html: string = `
                     });
                   });
                 }).then(function(fc) { reply(fc, null); }, function(e) { reply(null, String(e && e.message || e)); });
+              } catch (e) { reply(null, String(e)); }
+            })();
+          } else if (msg.action === 'gpkgLoad') {
+            // GeoPackage decode via sql.js (mirror of the layer-panel iframe
+            // handler). DBs stay open per url so bbox=auto re-queries do not
+            // re-download the file.
+            (function() {
+              var reply = function(geojson, error, qml) {
+                try {
+                  if (geojson) {
+                    geojson = JSON.parse(JSON.stringify(geojson, function(k, v) {
+                      return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
+                    }));
+                  }
+                  postToParent({ action: 'gpkgResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error, qml: qml || null });
+                } catch (e) {}
+              };
+              var b64ToBytes = function(b64) {
+                var bin = atob(b64);
+                var out = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+                return out;
+              };
+              var gpkgBinToWkb = function(value) {
+                if (!(value instanceof Uint8Array) || value.length < 8 || value[0] !== 0x47 || value[1] !== 0x50) return null;
+                var envelopeBytes = [0, 32, 48, 48, 64][(value[3] >> 1) & 0x07] || 0;
+                var wkb = value.subarray(8 + envelopeBytes);
+                return wkb.length ? wkb : null;
+              };
+              var gpkgBinEnvelope = function(value) {
+                if (!(value instanceof Uint8Array) || value.length < 40 || value[0] !== 0x47 || value[1] !== 0x50) return null;
+                var t = (value[3] >> 1) & 0x07;
+                if (t < 1 || t > 4) return null;
+                var little = (value[3] & 1) === 1;
+                var view = new DataView(value.buffer, value.byteOffset, value.byteLength);
+                try { return { west: view.getFloat64(8, little), east: view.getFloat64(16, little), south: view.getFloat64(24, little), north: view.getFloat64(32, little) }; } catch (e) { return null; }
+              };
+              var gpkgEnvIntersects = function(env, bbox) {
+                if (!env || !bbox) return true;
+                var south = Number(bbox.south), north = Number(bbox.north);
+                if (!(env.north >= south && env.south <= north)) return false;
+                return (bbox.ranges || []).some(function(r) { return env.east >= Number(r.west) && env.west <= Number(r.east); });
+              };
+              try { postToParent({ action: 'gpkgAck', vecId: msg.vecId }); } catch (e) {}
+              try {
+                if (!window._sqljsModule) {
+                  var lp = import('https://cdn.jsdelivr.net/npm/sql.js@1.13.0/+esm').then(function(mod) {
+                    var init = mod.default || mod.initSqlJs || mod;
+                    return init({ locateFile: function(f) { return 'https://cdn.jsdelivr.net/npm/sql.js@1.13.0/dist/' + f; } });
+                  });
+                  lp.catch(function() { if (window._sqljsModule === lp) window._sqljsModule = null; });
+                  window._sqljsModule = lp;
+                }
+                if (!window._gpkgDbs) window._gpkgDbs = {};
+                var dbKey = msg.dataB64 ? ('bytes:' + msg.url) : msg.url;
+                var dbP = window._gpkgDbs[dbKey];
+                if (!dbP) {
+                  dbP = window._sqljsModule.then(function(SQL) {
+                    var bufP = msg.dataB64
+                      ? Promise.resolve(b64ToBytes(msg.dataB64))
+                      : fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                          if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                          return res.arrayBuffer();
+                        }).then(function(buf) { return new Uint8Array(buf); });
+                    return bufP.then(function(bytes) { return new SQL.Database(bytes); });
+                  });
+                  dbP.catch(function() { if (window._gpkgDbs[dbKey] === dbP) delete window._gpkgDbs[dbKey]; });
+                  window._gpkgDbs[dbKey] = dbP;
+                }
+                dbP.then(function(db) {
+                  var qIdent = function(n) { return '"' + String(n).replace(/"/g, '""') + '"'; };
+                  var qLit = function(v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
+                  var tableName = msg.table || null;
+                  if (!tableName) {
+                    var r0 = db.exec('SELECT table_name FROM gpkg_geometry_columns ORDER BY rowid LIMIT 1');
+                    tableName = r0[0] && r0[0].values && r0[0].values[0] && r0[0].values[0][0] || null;
+                  }
+                  if (!tableName) throw new Error('feature table not found');
+                  var gres = db.exec('SELECT column_name FROM gpkg_geometry_columns WHERE table_name = ' + qLit(tableName) + ' LIMIT 1');
+                  var geomCol = (gres[0] && gres[0].values && gres[0].values[0] && gres[0].values[0][0]) || 'geom';
+                  var cols = Array.isArray(msg.columns) && msg.columns.length ? msg.columns.map(qIdent) : null;
+                  var selectCols = cols ? cols.concat([qIdent(geomCol)]).join(', ') : '*';
+                  var sql = 'SELECT ' + selectCols + ' FROM ' + qIdent(tableName)
+                    + (msg.where ? ' WHERE (' + msg.where + ')' : '')
+                    + (Number.isInteger(msg.limit) && msg.limit > 0 ? ' LIMIT ' + Math.floor(msg.limit) : '');
+                  var stmt = db.prepare(sql);
+                  var colNames = stmt.getColumnNames();
+                  var features = [];
+                  while (stmt.step()) {
+                    var row = stmt.get();
+                    var rec = {};
+                    colNames.forEach(function(c, i) { rec[c] = row[i]; });
+                    if (msg.bounds && !gpkgEnvIntersects(gpkgBinEnvelope(rec[geomCol]), msg.bounds)) continue;
+                    var wkb = gpkgBinToWkb(rec[geomCol]);
+                    var geometry = wkb ? vecWkbToGeoJson(wkb) : null;
+                    if (!geometry) continue;
+                    var properties = {};
+                    for (var i = 0; i < colNames.length; i++) { var c = colNames[i]; if (c !== geomCol) properties[c] = rec[c]; }
+                    features.push({ type: 'Feature', geometry: geometry, properties: properties });
+                  }
+                  stmt.free();
+                  var qml = null;
+                  try {
+                    var sres = db.exec('SELECT styleQML FROM layer_styles WHERE f_table_name = ' + qLit(tableName) + ' ORDER BY useAsDefault DESC');
+                    var qv = sres[0] && sres[0].values && sres[0].values[0] && sres[0].values[0][0];
+                    if (typeof qv === 'string' && qv.trim()) qml = qv;
+                  } catch (e) {}
+                  reply({ type: 'FeatureCollection', features: features }, null, qml);
+                }, function(e) { reply(null, String(e && e.message || e)); });
               } catch (e) { reply(null, String(e)); }
             })();
           }
@@ -681,6 +801,10 @@ try {
           try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, layerId: msg.layerId || null, geojson: msg.geojson || null, error: msg.error || null }, msg.action === 'ddbResult'); } catch (e) {}
           return;
         }
+        if (msg.action === 'gpkgAck' || msg.action === 'gpkgResult') {
+          try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, layerId: msg.layerId || null, geojson: msg.geojson || null, error: msg.error || null, qml: msg.qml || null }, msg.action === 'gpkgResult'); } catch (e) {}
+          return;
+        }
         if (msg.action === 'requestBasemaps') {
           sendBasemapsToUI();
         } else if (msg.action === 'selectBasemap') {
@@ -724,7 +848,20 @@ try {
               action: 'ddbLoad', vecId: data.vecId, layerId: data.layerId || null,
               url: data.url, format: data.format || null, where: data.where || null,
               limit: data.limit || null, geom: data.geom || null, lon: data.lon || null, lat: data.lat || null,
-              columns: data.columns || null, covering: data.covering || null, bounds: data.bounds || null
+              columns: data.columns || null, covering: data.covering || null, bounds: data.bounds || null,
+              query: data.query || null
+            });
+          } catch (e) {}
+        } else if (data.action === 'gpkgExec') {
+          // GeoPackage query request from the layer panel (same host pattern
+          // as ddbExec — this iframe's sql.js instance and open DBs persist).
+          try {
+            if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
+            postToUI({
+              action: 'gpkgLoad', vecId: data.vecId, layerId: data.layerId || null,
+              url: data.url, dataB64: data.dataB64 || null, table: data.table || null,
+              where: data.where || null, limit: data.limit || null,
+              columns: data.columns || null, bounds: data.bounds || null
             });
           } catch (e) {}
         } else if (data.action === 'requestBaseList') {
