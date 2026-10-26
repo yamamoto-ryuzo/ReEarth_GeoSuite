@@ -1,5 +1,16 @@
 # Changelog
 
+## v21.2.0
+- 新機能: `qgis:` インスペクタ構文（エイリアス `kasc:`/`kasczip:`）— QGIS geo_webview の `.kasc`+`DATA/` 出力を URL 一発で一括取り込み。
+    - `qgis: <.zip URL>`（Re:Earth CMS 等にホストした ZIP）→ iframe で fflate(CDN)解凍 → `.kasc` を検出 → 相対参照を `kasczip://<zipId>/<path>` に書き換え → 参照されたメンバだけを base64 で拡張側ストアへ → `.kasc` 行をインスペクタ行として処理。展開行は設定テキストへ追記しないインクルード型（読込のたびに ZIP を再取得するため CMS 側の更新が即反映）。
+    - `qgis: <.kasc/.txt URL>` → 裸の .kasc を fetch し、相対参照をその .kasc の URL ディレクトリ基準で絶対化（`DATA/` を公開ホストできる環境では 3dtiles/xyz/wms 含め全行が有効）。
+    - ZIP 内で読める形式: `geojson:`/`flatgeobuf:`/`parquet:`/`duckdb:`(csv/tsv 含む)/`gpkg:`＋ `style=*.qml`。`dataB64`/`zipName` をローダペイロードへ同梱し、fgb/parquet/geojson/qml はパネル iframe で、duckdb/gpkg は既存ホスト経路（basemap-widget iframe）でデコード。DuckDB は `registerFileBuffer` で仮想ファイル化。
+    - ローカルの `3dtiles:`/`xyz:`/`base:`/`wms:` 参照（ZIP 内タイルツリー）は Cesium に URL を供給できないため警告付きスキップ（http(s) 参照は従来どおり動作）。
+    - `wms:`/`theme:`/`bookmark:` 行をパーサで明示スキップ（`wms:` 行が XYZ キャッチオールでエンドポイント URL の偽タイルレイヤーになる既存バグも解消）。
+    - import UI に `.zip` ドロップ対応 — 展開は同じ kasczip 経路（sticky 扱いでセッション中保持）。`.kasc` が無い ZIP でも対応形式のメンバ全件をレイヤー化する合成 `.kasc` を生成。
+    - i18n: importHint に `.zip` を追加（全20言語）。
+- 検証: `tsc --noEmit` 0 エラー / inline script チェック全通過。
+
 ## v21.1.0
 - 新機能: KASUGAI Canvas のデータ取り込み・レイヤー形式を追加移植。
     - `gpkg:`/`geopackage:` インスペクタ構文: パネル iframe（通常時は basemap-widget 永続 iframe、未応答時フォールバック）で sql.js(SQLite WASM)を遅延ロードし GeoPackage をデコード。`table=`/`where=`/`limit=`/`columns=` に対応し、`bbox=auto`（既定 ON）は GPkgBinary ヘッダのエンベロープで表示範囲フィルター＋カメラ移動で再クエリ。`layer_styles` テーブルの QGIS 埋め込み QML（useAsDefault 優先）を自動適用し、`style=` 明示指定はそちらを優先。`duckdb:` で .gpkg/`format=gpkg` 指定も同経路へ振り分け。

@@ -20,6 +20,67 @@ let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
+
+// --- qgis: project include (.kasc / .kasc+DATA zip) ------------------------
+// "qgis: <url>" inspector lines include a geo_webview export (.kasc text, or a
+// zip holding .kasc + DATA/). The UI iframe fetches it, rewrites relative
+// resource refs to kasczip://<zipId>/<path> (zip members) or to absolute URLs
+// (bare .kasc), and ships the referenced zip members to the extension as
+// base64 (_zipFiles). Expanded lines are processed transiently — they are NOT
+// written back into the inspector text.
+const _qgisZipRefs = {};   // zipId -> { url, status: 'loading'|'ok'|'error' }
+const _qgisZipTexts = {};  // zipId -> rewritten .kasc text
+const _zipFiles = {};      // zipId -> { url, files: { relPath: dataB64 | 1 } } (1 = lazy: decoding iframe fetches the zip itself)
+function _fnv1a(s) { let h = 0x811c9dc5 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; } return h.toString(36); }
+function qgisZipId(url) { return 'z' + _fnv1a(String(url)); }
+function isKascZipUrl(u) { return typeof u === 'string' && /^kasczip:\/\//i.test(u); }
+function isVecRefUrl(u) { return typeof u === 'string' && /^(https?|kasczip):\/\//i.test(u); }
+// Resolve a kasczip:// url to { zipId, path, name, b64 } — null while the zip
+// is not loaded yet or the member is missing.
+function resolveZipEntry(u) {
+  const m = /^kasczip:\/\/([A-Za-z0-9]+)\/(.+)$/.exec(u || '');
+  if (!m) return null;
+  const store = _zipFiles[m[1]];
+  if (!store || !store.files) return null;
+  const path = m[2];
+  let e = store.files[path];
+  if (e == null) { try { e = store.files[decodeURIComponent(path)]; } catch (err) {} }
+  if (e == null) return null;
+  let name = 'file';
+  try { name = decodeURIComponent(path.split('/').pop() || 'file'); } catch (err) { name = path.split('/').pop() || 'file'; }
+  const out = { zipId: m[1], path: path, name: name };
+  if (typeof e === 'string') out.b64 = e;              // eager (small dropped zip)
+  else { out.zipUrl = store.url; }                      // lazy: iframe refetches
+  return out;
+}
+// Attach a zip member reference to a decoder payload — either dataB64
+// (eager) or zipId/zipUrl/zipPath (lazy; the decoding iframe fetches the
+// zip itself so large archives never cross the extension context).
+// Returns false when the zip is not loaded / member missing.
+function attachZipData(payload, url) {
+  if (!isKascZipUrl(url)) return true;
+  const e = resolveZipEntry(url);
+  if (!e) return false;
+  if (e.b64) { payload.dataB64 = e.b64; }
+  else { payload.zipId = e.zipId; payload.zipUrl = e.zipUrl; payload.zipPath = e.path; }
+  payload.zipName = e.name;
+  return true;
+}
+function ensureQgisZip(url) {
+  const zipId = qgisZipId(url);
+  const cur = _qgisZipRefs[zipId];
+  if (cur && cur.status === 'ok') return;
+  // 'loading'/'error' entries are re-requested on each inspector re-parse —
+  // the parse only runs on text changes, so a lost request (iframe re-render
+  // races) self-heals on the next edit/apply instead of sticking forever.
+  _qgisZipRefs[zipId] = { url: url, status: 'loading' };
+  try {
+    postToUI({ action: 'kascZipLoad', url: url, zipId: zipId });
+  } catch (e) {
+    _qgisZipRefs[zipId].status = 'error';
+    try { sendError('[qgis:] failed to request zip load:', e); } catch (_) {}
+  }
+}
 let _inspectorLegendItems = []; // cached legend items from inspector for initial UI render
 let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
@@ -53,7 +114,7 @@ const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','
 const GEO_I18N = {
   en: {
     minimize:'Minimize', restore:'Restore', move:'Move', moveCamera:'Move Camera',
-    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied', importTitle:'File import', importAddFile:'Add files', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied', importTitle:'File import', importAddFile:'Add files', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layers', note:'Note', refresh:'Refresh', refreshTitle:'Force Refresh User Layers',
     generateLink:'Generate Link', generating:'Generating...', copy:'Copy', copied:'Copied!',
     sharePasteLabel:'Paste a URL below.', sharePastePh:'Paste URL or ?lat=...', load:'Load', loaded:'Loaded!', invalidData:'Invalid Data', parseError:'Parse Error', error:'Error',
@@ -82,7 +143,7 @@ const GEO_I18N = {
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
-    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました', importTitle:'ファイル取り込み', importAddFile:'ファイルを追加', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました', importTitle:'ファイル取り込み', importAddFile:'ファイルを追加', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'レイヤー', note:'注意', refresh:'更新', refreshTitle:'ユーザーレイヤーを強制更新',
     generateLink:'リンクを生成', generating:'生成中...', copy:'コピー', copied:'コピーしました!',
     sharePasteLabel:'URLをペーストして下さい。', sharePastePh:'URL または ?lat=... を貼付', load:'読込', loaded:'読込完了!', invalidData:'無効なデータ', parseError:'解析エラー', error:'エラー',
@@ -111,7 +172,7 @@ const GEO_I18N = {
   },
   'zh-CN': {
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
-    tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性', tabDisplay:'显示', manageTitle:'管理', manageInspectorLbl:'设置文本', manageApply:'应用', manageApplied:'已应用', importTitle:'文件导入', importAddFile:'添加文件', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性', tabDisplay:'显示', manageTitle:'管理', manageInspectorLbl:'设置文本', manageApply:'应用', manageApplied:'已应用', importTitle:'文件导入', importAddFile:'添加文件', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'图层', note:'注意', refresh:'刷新', refreshTitle:'强制刷新用户图层',
     generateLink:'生成链接', generating:'生成中...', copy:'复制', copied:'已复制！',
     sharePasteLabel:'请在下方粘贴URL。', sharePastePh:'粘贴 URL 或 ?lat=...', load:'加载', loaded:'已加载！', invalidData:'无效数据', parseError:'解析错误', error:'错误',
@@ -140,7 +201,7 @@ const GEO_I18N = {
   },
   'zh-TW': {
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
-    tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性', tabDisplay:'顯示', manageTitle:'管理', manageInspectorLbl:'設定文字', manageApply:'套用', manageApplied:'已套用', importTitle:'檔案匯入', importAddFile:'新增檔案', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性', tabDisplay:'顯示', manageTitle:'管理', manageInspectorLbl:'設定文字', manageApply:'套用', manageApplied:'已套用', importTitle:'檔案匯入', importAddFile:'新增檔案', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'圖層', note:'注意', refresh:'重新整理', refreshTitle:'強制重新整理使用者圖層',
     generateLink:'產生連結', generating:'產生中...', copy:'複製', copied:'已複製！',
     sharePasteLabel:'請在下方貼上 URL。', sharePastePh:'貼上 URL 或 ?lat=...', load:'載入', loaded:'已載入！', invalidData:'無效資料', parseError:'解析錯誤', error:'錯誤',
@@ -169,7 +230,7 @@ const GEO_I18N = {
   },
   ko: {
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
-    tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성', tabDisplay:'표시', manageTitle:'관리', manageInspectorLbl:'설정 텍스트', manageApply:'적용', manageApplied:'적용됨', importTitle:'파일 가져오기', importAddFile:'파일 추가', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성', tabDisplay:'표시', manageTitle:'관리', manageInspectorLbl:'설정 텍스트', manageApply:'적용', manageApplied:'적용됨', importTitle:'파일 가져오기', importAddFile:'파일 추가', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'레이어', note:'주의', refresh:'새로고침', refreshTitle:'사용자 레이어 강제 새로고침',
     generateLink:'링크 생성', generating:'생성 중...', copy:'복사', copied:'복사됨!',
     sharePasteLabel:'아래에 URL을 붙여넣으세요.', sharePastePh:'URL 또는 ?lat=... 붙여넣기', load:'불러오기', loaded:'불러옴!', invalidData:'잘못된 데이터', parseError:'파싱 오류', error:'오류',
@@ -198,7 +259,7 @@ const GEO_I18N = {
   },
   es: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
-    tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.', tabDisplay:'Vista', manageTitle:'Gestión', manageInspectorLbl:'Texto de configuración', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar archivo', importAddFile:'Agregar archivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.', tabDisplay:'Vista', manageTitle:'Gestión', manageInspectorLbl:'Texto de configuración', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar archivo', importAddFile:'Agregar archivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Capas', note:'Nota', refresh:'Actualizar', refreshTitle:'Forzar actualización de capas de usuario',
     generateLink:'Generar enlace', generating:'Generando...', copy:'Copiar', copied:'¡Copiado!',
     sharePasteLabel:'Pega una URL abajo.', sharePastePh:'Pegar URL o ?lat=...', load:'Cargar', loaded:'¡Cargado!', invalidData:'Datos no válidos', parseError:'Error de análisis', error:'Error',
@@ -227,7 +288,7 @@ const GEO_I18N = {
   },
   fr: {
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
-    tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.', tabDisplay:'Affichage', manageTitle:'Gestion', manageInspectorLbl:'Texte de configuration', manageApply:'Appliquer', manageApplied:'Appliqué', importTitle:'Importer un fichier', importAddFile:'Ajouter des fichiers', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.', tabDisplay:'Affichage', manageTitle:'Gestion', manageInspectorLbl:'Texte de configuration', manageApply:'Appliquer', manageApplied:'Appliqué', importTitle:'Importer un fichier', importAddFile:'Ajouter des fichiers', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Couches', note:'Note', refresh:'Actualiser', refreshTitle:'Forcer l’actualisation des couches',
     generateLink:'Générer le lien', generating:'Génération...', copy:'Copier', copied:'Copié !',
     sharePasteLabel:'Collez une URL ci-dessous.', sharePastePh:'Coller URL ou ?lat=...', load:'Charger', loaded:'Chargé !', invalidData:'Données invalides', parseError:'Erreur d’analyse', error:'Erreur',
@@ -256,7 +317,7 @@ const GEO_I18N = {
   },
   de: {
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
-    tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.', tabDisplay:'Anzeige', manageTitle:'Verwaltung', manageInspectorLbl:'Einstellungstext', manageApply:'Anwenden', manageApplied:'Angewendet', importTitle:'Datei importieren', importAddFile:'Dateien hinzufügen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.', tabDisplay:'Anzeige', manageTitle:'Verwaltung', manageInspectorLbl:'Einstellungstext', manageApply:'Anwenden', manageApplied:'Angewendet', importTitle:'Datei importieren', importAddFile:'Dateien hinzufügen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layer', note:'Hinweis', refresh:'Aktualisieren', refreshTitle:'Benutzer-Layer neu laden',
     generateLink:'Link erzeugen', generating:'Erzeuge...', copy:'Kopieren', copied:'Kopiert!',
     sharePasteLabel:'URL unten einfügen.', sharePastePh:'URL oder ?lat=... einfügen', load:'Laden', loaded:'Geladen!', invalidData:'Ungültige Daten', parseError:'Parse-Fehler', error:'Fehler',
@@ -285,7 +346,7 @@ const GEO_I18N = {
   },
   it: {
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
-    tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.', tabDisplay:'Vista', manageTitle:'Gestione', manageInspectorLbl:'Testo di configurazione', manageApply:'Applica', manageApplied:'Applicato', importTitle:'Importa file', importAddFile:'Aggiungi file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.', tabDisplay:'Vista', manageTitle:'Gestione', manageInspectorLbl:'Testo di configurazione', manageApply:'Applica', manageApplied:'Applicato', importTitle:'Importa file', importAddFile:'Aggiungi file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layer', note:'Nota', refresh:'Aggiorna', refreshTitle:'Forza aggiornamento layer utente',
     generateLink:'Genera link', generating:'Generazione...', copy:'Copia', copied:'Copiato!',
     sharePasteLabel:'Incolla un URL qui sotto.', sharePastePh:'Incolla URL o ?lat=...', load:'Carica', loaded:'Caricato!', invalidData:'Dati non validi', parseError:'Errore di parsing', error:'Errore',
@@ -314,7 +375,7 @@ const GEO_I18N = {
   },
   pt: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
-    tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.', tabDisplay:'Exibição', manageTitle:'Gestão', manageInspectorLbl:'Texto de configuração', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar arquivo', importAddFile:'Adicionar arquivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.', tabDisplay:'Exibição', manageTitle:'Gestão', manageInspectorLbl:'Texto de configuração', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar arquivo', importAddFile:'Adicionar arquivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Camadas', note:'Nota', refresh:'Atualizar', refreshTitle:'Forçar atualização das camadas',
     generateLink:'Gerar link', generating:'Gerando...', copy:'Copiar', copied:'Copiado!',
     sharePasteLabel:'Cole uma URL abaixo.', sharePastePh:'Colar URL ou ?lat=...', load:'Carregar', loaded:'Carregado!', invalidData:'Dados inválidos', parseError:'Erro de análise', error:'Erro',
@@ -343,7 +404,7 @@ const GEO_I18N = {
   },
   ru: {
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
-    tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.', tabDisplay:'Вид', manageTitle:'Управление', manageInspectorLbl:'Текст настроек', manageApply:'Применить', manageApplied:'Применено', importTitle:'Импорт файла', importAddFile:'Добавить файлы', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.', tabDisplay:'Вид', manageTitle:'Управление', manageInspectorLbl:'Текст настроек', manageApply:'Применить', manageApplied:'Применено', importTitle:'Импорт файла', importAddFile:'Добавить файлы', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Слои', note:'Примечание', refresh:'Обновить', refreshTitle:'Принудительно обновить слои',
     generateLink:'Создать ссылку', generating:'Создание...', copy:'Копировать', copied:'Скопировано!',
     sharePasteLabel:'Вставьте URL ниже.', sharePastePh:'Вставить URL или ?lat=...', load:'Загрузить', loaded:'Загружено!', invalidData:'Неверные данные', parseError:'Ошибка разбора', error:'Ошибка',
@@ -372,7 +433,7 @@ const GEO_I18N = {
   },
   nl: {
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
-    tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.', tabDisplay:'Weergave', manageTitle:'Beheer', manageInspectorLbl:'Instellingentekst', manageApply:'Toepassen', manageApplied:'Toegepast', importTitle:'Bestand importeren', importAddFile:'Bestanden toevoegen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.', tabDisplay:'Weergave', manageTitle:'Beheer', manageInspectorLbl:'Instellingentekst', manageApply:'Toepassen', manageApplied:'Toegepast', importTitle:'Bestand importeren', importAddFile:'Bestanden toevoegen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lagen', note:'Let op', refresh:'Vernieuwen', refreshTitle:'Gebruikerslagen geforceerd vernieuwen',
     generateLink:'Link genereren', generating:'Genereren...', copy:'Kopiëren', copied:'Gekopieerd!',
     sharePasteLabel:'Plak hieronder een URL.', sharePastePh:'Plak URL of ?lat=...', load:'Laden', loaded:'Geladen!', invalidData:'Ongeldige gegevens', parseError:'Parsefout', error:'Fout',
@@ -401,7 +462,7 @@ const GEO_I18N = {
   },
   pl: {
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
-    tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.', tabDisplay:'Widok', manageTitle:'Zarządzanie', manageInspectorLbl:'Tekst ustawień', manageApply:'Zastosuj', manageApplied:'Zastosowano', importTitle:'Import pliku', importAddFile:'Dodaj pliki', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.', tabDisplay:'Widok', manageTitle:'Zarządzanie', manageInspectorLbl:'Tekst ustawień', manageApply:'Zastosuj', manageApplied:'Zastosowano', importTitle:'Import pliku', importAddFile:'Dodaj pliki', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Warstwy', note:'Uwaga', refresh:'Odśwież', refreshTitle:'Wymuś odświeżenie warstw użytkownika',
     generateLink:'Generuj link', generating:'Generowanie...', copy:'Kopiuj', copied:'Skopiowano!',
     sharePasteLabel:'Wklej URL poniżej.', sharePastePh:'Wklej URL lub ?lat=...', load:'Wczytaj', loaded:'Wczytano!', invalidData:'Nieprawidłowe dane', parseError:'Błąd parsowania', error:'Błąd',
@@ -430,7 +491,7 @@ const GEO_I18N = {
   },
   uk: {
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
-    tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.', tabDisplay:'Вигляд', manageTitle:'Керування', manageInspectorLbl:'Текст налаштувань', manageApply:'Застосувати', manageApplied:'Застосовано', importTitle:'Імпорт файлу', importAddFile:'Додати файли', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.', tabDisplay:'Вигляд', manageTitle:'Керування', manageInspectorLbl:'Текст налаштувань', manageApply:'Застосувати', manageApplied:'Застосовано', importTitle:'Імпорт файлу', importAddFile:'Додати файли', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Шари', note:'Примітка', refresh:'Оновити', refreshTitle:'Примусово оновити шари користувача',
     generateLink:'Створити посилання', generating:'Створення...', copy:'Копіювати', copied:'Скопійовано!',
     sharePasteLabel:'Вставте URL нижче.', sharePastePh:'Вставте URL або ?lat=...', load:'Завантажити', loaded:'Завантажено!', invalidData:'Недійсні дані', parseError:'Помилка розбору', error:'Помилка',
@@ -459,7 +520,7 @@ const GEO_I18N = {
   },
   tr: {
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
-    tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik', tabDisplay:'Görünüm', manageTitle:'Yönetim', manageInspectorLbl:'Ayar metni', manageApply:'Uygula', manageApplied:'Uygulandı', importTitle:'Dosya içe aktar', importAddFile:'Dosya ekle', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik', tabDisplay:'Görünüm', manageTitle:'Yönetim', manageInspectorLbl:'Ayar metni', manageApply:'Uygula', manageApplied:'Uygulandı', importTitle:'Dosya içe aktar', importAddFile:'Dosya ekle', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Katmanlar', note:'Not', refresh:'Yenile', refreshTitle:'Kullanıcı katmanlarını zorla yenile',
     generateLink:'Bağlantı oluştur', generating:'Oluşturuluyor...', copy:'Kopyala', copied:'Kopyalandı!',
     sharePasteLabel:'Aşağıya bir URL yapıştırın.', sharePastePh:'URL veya ?lat=... yapıştır', load:'Yükle', loaded:'Yüklendi!', invalidData:'Geçersiz veri', parseError:'Ayrıştırma hatası', error:'Hata',
@@ -488,7 +549,7 @@ const GEO_I18N = {
   },
   ar: {
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
-    tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص', tabDisplay:'عرض', manageTitle:'إدارة', manageInspectorLbl:'نص الإعدادات', manageApply:'تطبيق', manageApplied:'تم التطبيق', importTitle:'استيراد ملف', importAddFile:'إضافة ملفات', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص', tabDisplay:'عرض', manageTitle:'إدارة', manageInspectorLbl:'نص الإعدادات', manageApply:'تطبيق', manageApplied:'تم التطبيق', importTitle:'استيراد ملف', importAddFile:'إضافة ملفات', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'الطبقات', note:'ملاحظة', refresh:'تحديث', refreshTitle:'فرض تحديث طبقات المستخدم',
     generateLink:'إنشاء رابط', generating:'جارٍ الإنشاء...', copy:'نسخ', copied:'تم النسخ!',
     sharePasteLabel:'الصق عنوان URL أدناه.', sharePastePh:'الصق URL أو ?lat=...', load:'تحميل', loaded:'تم التحميل!', invalidData:'بيانات غير صالحة', parseError:'خطأ في التحليل', error:'خطأ',
@@ -517,7 +578,7 @@ const GEO_I18N = {
   },
   hi: {
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
-    tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ', tabDisplay:'प्रदर्शन', manageTitle:'प्रबंधन', manageInspectorLbl:'सेटिंग टेक्स्ट', manageApply:'लागू करें', manageApplied:'लागू किया गया', importTitle:'फ़ाइल आयात', importAddFile:'फ़ाइलें जोड़ें', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ', tabDisplay:'प्रदर्शन', manageTitle:'प्रबंधन', manageInspectorLbl:'सेटिंग टेक्स्ट', manageApply:'लागू करें', manageApplied:'लागू किया गया', importTitle:'फ़ाइल आयात', importAddFile:'फ़ाइलें जोड़ें', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'लेयर', note:'नोट', refresh:'रीफ़्रेश', refreshTitle:'उपयोगकर्ता लेयर ज़बरदस्ती रीफ़्रेश',
     generateLink:'लिंक बनाएँ', generating:'बनाया जा रहा है...', copy:'कॉपी', copied:'कॉपी किया गया!',
     sharePasteLabel:'नीचे URL पेस्ट करें।', sharePastePh:'URL या ?lat=... पेस्ट करें', load:'लोड', loaded:'लोड हुआ!', invalidData:'अमान्य डेटा', parseError:'पार्स त्रुटि', error:'त्रुटि',
@@ -546,7 +607,7 @@ const GEO_I18N = {
   },
   id: {
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
-    tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut', tabDisplay:'Tampilan', manageTitle:'Kelola', manageInspectorLbl:'Teks pengaturan', manageApply:'Terapkan', manageApplied:'Diterapkan', importTitle:'Impor file', importAddFile:'Tambah file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut', tabDisplay:'Tampilan', manageTitle:'Kelola', manageInspectorLbl:'Teks pengaturan', manageApply:'Terapkan', manageApplied:'Diterapkan', importTitle:'Impor file', importAddFile:'Tambah file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lapisan', note:'Catatan', refresh:'Muat ulang', refreshTitle:'Paksa muat ulang lapisan pengguna',
     generateLink:'Buat tautan', generating:'Membuat...', copy:'Salin', copied:'Tersalin!',
     sharePasteLabel:'Tempel URL di bawah.', sharePastePh:'Tempel URL atau ?lat=...', load:'Muat', loaded:'Termuat!', invalidData:'Data tidak valid', parseError:'Kesalahan parsing', error:'Kesalahan',
@@ -575,7 +636,7 @@ const GEO_I18N = {
   },
   th: {
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
-    tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ', tabDisplay:'การแสดง', manageTitle:'จัดการ', manageInspectorLbl:'ข้อความการตั้งค่า', manageApply:'ใช้', manageApplied:'ใช้แล้ว', importTitle:'นำเข้าไฟล์', importAddFile:'เพิ่มไฟล์', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ', tabDisplay:'การแสดง', manageTitle:'จัดการ', manageInspectorLbl:'ข้อความการตั้งค่า', manageApply:'ใช้', manageApplied:'ใช้แล้ว', importTitle:'นำเข้าไฟล์', importAddFile:'เพิ่มไฟล์', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'เลเยอร์', note:'หมายเหตุ', refresh:'รีเฟรช', refreshTitle:'บังคับรีเฟรชเลเยอร์ผู้ใช้',
     generateLink:'สร้างลิงก์', generating:'กำลังสร้าง...', copy:'คัดลอก', copied:'คัดลอกแล้ว!',
     sharePasteLabel:'วาง URL ด้านล่าง', sharePastePh:'วาง URL หรือ ?lat=...', load:'โหลด', loaded:'โหลดแล้ว!', invalidData:'ข้อมูลไม่ถูกต้อง', parseError:'ข้อผิดพลาดในการแยกวิเคราะห์', error:'ข้อผิดพลาด',
@@ -604,7 +665,7 @@ const GEO_I18N = {
   },
   vi: {
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
-    tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính', tabDisplay:'Hiển thị', manageTitle:'Quản lý', manageInspectorLbl:'Văn bản cài đặt', manageApply:'Áp dụng', manageApplied:'Đã áp dụng', importTitle:'Nhập tệp', importAddFile:'Thêm tệp', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc',
+    tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính', tabDisplay:'Hiển thị', manageTitle:'Quản lý', manageInspectorLbl:'Văn bản cài đặt', manageApply:'Áp dụng', manageApplied:'Đã áp dụng', importTitle:'Nhập tệp', importAddFile:'Thêm tệp', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lớp', note:'Lưu ý', refresh:'Làm mới', refreshTitle:'Bắt buộc làm mới lớp người dùng',
     generateLink:'Tạo liên kết', generating:'Đang tạo...', copy:'Sao chép', copied:'Đã sao chép!',
     sharePasteLabel:'Dán URL bên dưới.', sharePastePh:'Dán URL hoặc ?lat=...', load:'Tải', loaded:'Đã tải!', invalidData:'Dữ liệu không hợp lệ', parseError:'Lỗi phân tích', error:'Lỗi',
@@ -1687,10 +1748,10 @@ function getUI() {
     <div style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">
       <label class="text-sm" for="import-file-btn" data-i18n="importTitle">File import</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
-        <input id="import-file-input" type="file" multiple accept=".geojson,.json,.fgb,.parquet,.gpkg,.csv,.tsv,.kasc,.txt" style="display:none;" />
+        <input id="import-file-input" type="file" multiple accept=".geojson,.json,.fgb,.parquet,.gpkg,.csv,.tsv,.kasc,.txt,.zip" style="display:none;" />
         <button id="import-file-btn" class="btn-primary p-6" style="flex:1;" data-i18n="importAddFile">Add files</button>
       </div>
-      <div class="text-sm" style="color:#888;font-size:0.72em;margin-top:4px;line-height:1.35;" data-i18n="importHint">.geojson .json .fgb .parquet .gpkg .csv .tsv / .kasc appends lines to the settings text</div>
+      <div class="text-sm" style="color:#888;font-size:0.72em;margin-top:4px;line-height:1.35;" data-i18n="importHint">.geojson .json .fgb .parquet .gpkg .csv .tsv / .kasc appends lines to the settings text / .zip unpacks .kasc+DATA (same as qgis: URL)</div>
       <div id="import-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:2px;">&nbsp;</div>
     </div>
     <div id="manage-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;">&nbsp;</div>
@@ -4109,6 +4170,7 @@ function qmlStyleToReearth(xmlText, opts){
               };
               const importDetect = function(name) {
                 var n = String(name || '').toLowerCase();
+                if (/\\.zip$/.test(n)) return 'zip';
                 if (/\\.kasc$|\\.txt$/.test(n)) return 'kasc';
                 if (/\\.geojson$|\\.json$/.test(n)) return 'geojson';
                 if (/\\.fgb$|\\.flatgeobuf$/.test(n)) return 'fgb';
@@ -4127,6 +4189,24 @@ function qmlStyleToReearth(xmlText, opts){
                   if (type === 'kasc') {
                     file.text().then(function(t) {
                       try { parent.postMessage({ action: 'importKasc', text: t }, '*'); } catch (e) {}
+                    }).catch(fail);
+                  } else if (type === 'zip') {
+                    // .kasc+DATA archive (geo_webview export). Decoded lazily
+                    // through the kasczip:// path — the extension keeps the
+                    // referenced members (sticky: persists while the panel
+                    // lives, no reload persistence since there is no URL).
+                    file.arrayBuffer().then(function(buf) {
+                      var zipP = window._fflateModule || (window._fflateModule = import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/+esm'));
+                      return zipP.then(function(ff) {
+                        var h = 0;
+                        var key = file.name + ':' + file.size;
+                        for (var i = 0; i < key.length; i++) h = ((h * 31) + key.charCodeAt(i)) | 0;
+                        var zipId = 'drop' + Math.abs(h).toString(36);
+                        var zfiles = ff.unzipSync(new Uint8Array(buf));
+                        _zipCache[zipId] = { url: null, zfiles: zfiles };
+                        var res = zipToKascResult(zfiles, zipId, true);
+                        parent.postMessage({ action: 'kascZipResult', zipId: zipId, url: file.name, title: res.title || file.name, text: res.text, names: null, files: res.files, skipped: res.skipped, sticky: true }, '*');
+                      });
                     }).catch(fail);
                   } else if (type === 'geojson') {
                     file.text().then(function(t) { done(JSON.parse(t)); }).catch(fail);
@@ -4288,14 +4368,14 @@ function qmlStyleToReearth(xmlText, opts){
             // Opened GeoPackage DBs are kept per url so bbox=auto re-queries
             // do not re-download the file (same policy as kasugai gpkg-worker).
             if (!window._gpkgDbs) window._gpkgDbs = {};
-            var gpkgOpenDb = function(url, bytesB64) {
-              var key = bytesB64 ? ('bytes:' + url) : url;
+            var gpkgOpenDb = function(opts) {
+              var key = (opts.dataB64 || opts.zipPath) ? ('bytes:' + (opts.zipPath || opts.url)) : opts.url;
               var p = window._gpkgDbs[key];
               if (!p) {
                 p = loadSqlJsModule().then(function(SQL) {
-                  var bufP = bytesB64
-                    ? Promise.resolve(b64ToBytes(bytesB64))
-                    : fetch(url, { mode: 'cors' }).then(function(res) {
+                  var bufP = (opts.dataB64 || opts.zipPath)
+                    ? zipOrB64(opts)
+                    : fetch(opts.url, { mode: 'cors' }).then(function(res) {
                         if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
                         return res.arrayBuffer();
                       }).then(function(buf) { return new Uint8Array(buf); });
@@ -4307,11 +4387,11 @@ function qmlStyleToReearth(xmlText, opts){
               return p;
             };
             // gpkg: query -> GeoJSON FeatureCollection
-            // opts: {url, dataB64, table, where, limit, columns, bbox}
+            // opts: {url, dataB64, zipId, zipUrl, zipPath, table, where, limit, columns, bbox}
             var gpkgQueryToGeoJson = function(opts) {
               var qIdent = function(n) { return '"' + String(n).replace(/"/g, '""') + '"'; };
               var qLit = function(v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
-              return gpkgOpenDb(opts.url, opts.dataB64).then(function(db) {
+              return gpkgOpenDb(opts).then(function(db) {
                 var tableName = opts.table || null;
                 if (!tableName) {
                   var r0 = db.exec('SELECT table_name FROM gpkg_geometry_columns ORDER BY rowid LIMIT 1');
@@ -4386,6 +4466,243 @@ function qmlStyleToReearth(xmlText, opts){
               return { type: 'FeatureCollection', features: features };
             };
             window._csvTextToGeoJson = csvTextToGeoJson;
+
+            // ---------- qgis: include / .zip import helpers ----------
+            // .kasc+DATA archives are unpacked here (fflate via CDN). Relative
+            // resource refs are rewritten to kasczip://<zipId>/<path> when the
+            // archive came from a 'qgis:' URL, or decoded eagerly for .zip
+            // file drops. kasczip members are shipped to the extension as
+            // base64 so no decoder iframe ever needs the archive itself.
+            var bytesToB64 = function(u8) {
+              var out = '';
+              var chunk = 0x8000;
+              for (var i = 0; i < u8.length; i += chunk) {
+                out += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+              }
+              return btoa(out);
+            };
+            var kascNormPath = function(p) {
+              var s = String(p || '').replace(/\\\\/g, '/').replace(/^\\.?\\//, '');
+              var parts = s.split('/');
+              var out = [];
+              for (var i = 0; i < parts.length; i++) {
+                var seg = parts[i];
+                if (!seg || seg === '.') continue;
+                if (seg === '..') { if (out.length) out.pop(); continue; }
+                out.push(seg);
+              }
+              return out.join('/');
+            };
+            var kascFindEntry = function(files, base, rel) {
+              var cand = kascNormPath((base ? base + '/' : '') + rel);
+              if (files[cand] != null) return cand;
+              var cand2 = kascNormPath(rel);
+              if (files[cand2] != null) return cand2;
+              try {
+                var dec = decodeURIComponent(cand);
+                if (files[dec] != null) return dec;
+              } catch (e) {}
+              return null;
+            };
+            var KASC_VEC_RE = /^(geojson|flatgeobuf|fgb|parquet|geoparquet|duckdb|gpkg|geopackage|sql)$/;
+            var KASC_URL_RE = /^(3dtiles|3d-tiles|xyz|tile|base|wms|legend|info|fly_geojson)$/;
+            var KASC_FILE_RE = /\\.(geojson|json|fgb|flatgeobuf|parquet|geoparquet|gpkg|geopackage|csv|tsv|qml|xml|png|jpe?g|webp|gif|kml|czml|glb|gltf|b3dm|pnts|zip)([?#].*)?$/i;
+            // Classify a .kasc line. fields are '|'-separated; each field's ref
+            // candidate is the value after '=' or the field itself.
+            var kascScanLine = function(line, files, base) {
+              var out = { kind: '', hasHttp: false, hits: [] };
+              var m = /^([A-Za-z0-9_-]+)\\s*:/.exec(line);
+              if (!m) return out;
+              out.kind = m[1].toLowerCase();
+              var body = line.slice(m[0].length);
+              var fields = body.split('|');
+              out.bodyFields = fields;
+              for (var i = 0; i < fields.length; i++) {
+                var fld = fields[i].trim();
+                if (!fld) continue;
+                var eq = fld.indexOf('=');
+                var val = eq >= 0 ? fld.slice(eq + 1).trim() : fld;
+                if (/^https?:\\/\\//i.test(val)) { out.hasHttp = true; continue; }
+                if (/^[a-z][a-z0-9+.-]*:/i.test(val)) continue; // other scheme
+                if (files) {
+                  var hit = kascFindEntry(files, base, val);
+                  if (hit == null && val.indexOf('{') >= 0) {
+                    // template ref ({z}/{x}/{y}.png) — match the literal dir
+                    // prefix so local tile trees are detected and skipped
+                    var dir = kascNormPath((base ? base + '/' : '') + val).replace(/\{[^}]*\}.*/, '').replace(/\\/+$/, '');
+                    if (dir && Object.keys(files).some(function(k) { return k === dir || k.indexOf(dir + '/') === 0; })) {
+                      hit = '__dir__' + dir;
+                    }
+                  }
+                  if (hit != null) out.hits.push({ i: i, entry: hit, hasKey: eq >= 0 });
+                }
+              }
+              return out;
+            };
+            // Rewrite .kasc text for a qgis: include.
+            // zip mode  { zipId, files, base }: relative refs -> kasczip://
+            // text mode { baseUrl }:            relative file refs -> absolute
+            // Returns { text, needed, skipped } — needed maps member paths used.
+            var kascRewriteText = function(text, opts) {
+              var outLines = [];
+              var skipped = [];
+              var needed = {};
+              var lines = String(text || '').split(/\\r\\n|\\r|\\n/);
+              var pushSkip = function(l, why) { skipped.push((l || '').slice(0, 80) + (why ? ' [' + why + ']' : '')); };
+              for (var li = 0; li < lines.length; li++) {
+                var line = lines[li].trim();
+                if (!line) continue;
+                if (line.charAt(0) === '#') { outLines.push(line); continue; }
+                var scan = kascScanLine(line, opts.zipId ? opts.files : null, opts.base || '');
+                var isVec = KASC_VEC_RE.test(scan.kind);
+                var isUrl = KASC_URL_RE.test(scan.kind);
+                if (opts.zipId) {
+                  if (isUrl && scan.hits.length) { pushSkip(line, 'archive member cannot be served'); continue; }
+                  if (!isVec && !isUrl) { outLines.push(line); continue; }
+                  if (!scan.hits.length) { outLines.push(line); continue; }
+                  // rewrite hit fields -> kasczip://<id>/<entry>
+                  var fields = scan.bodyFields.slice();
+                  scan.hits.forEach(function(h) {
+                    if (h.entry.indexOf('__dir__') === 0) return; // dir-prefix match is detection-only
+                    var fld = fields[h.i];
+                    var idx = fld.indexOf(h.entry) >= 0 ? fld.indexOf(h.entry) : -1;
+                    var enc = encodeURIComponent(h.entry).replace(/%2F/gi, '/');
+                    if (h.hasKey) {
+                      var eq = fld.indexOf('=');
+                      fields[h.i] = fld.slice(0, eq + 1) + 'kasczip://' + opts.zipId + '/' + enc;
+                    } else {
+                      var vv = fld.trim();
+                      var pre = fld.slice(0, fld.indexOf(vv));
+                      fields[h.i] = pre + 'kasczip://' + opts.zipId + '/' + enc;
+                    }
+                    needed[h.entry] = true;
+                  });
+                  var nl = line.slice(0, line.indexOf(':') + 1) + fields.join(' | ');
+                  if (isVec && nl.indexOf('kasczip://') < 0 && !/https?:\\/\\//.test(nl)) { pushSkip(line, 'member missing'); continue; }
+                  outLines.push(nl);
+                  continue;
+                }
+                // bare .kasc mode — absolute-ize relative file refs
+                if (!isVec && !isUrl) { outLines.push(line); continue; }
+                var fields2 = line.slice(line.indexOf(':') + 1).split('|');
+                var changed = false;
+                for (var fi = 0; fi < fields2.length; fi++) {
+                  var fld2 = fields2[fi].trim();
+                  if (!fld2) continue;
+                  var eq2 = fld2.indexOf('=');
+                  var val2 = eq2 >= 0 ? fld2.slice(eq2 + 1).trim() : fld2;
+                  if (!val2 || /^[a-z][a-z0-9+.-]*:/i.test(val2)) continue;
+                  if (!KASC_FILE_RE.test(val2)) continue;
+                  var abs = null;
+                  try { abs = new URL(encodeURI(val2).replace(/%7B/gi, '{').replace(/%7D/gi, '}'), opts.baseUrl).toString().replace(/%7B/gi, '{').replace(/%7D/gi, '}'); } catch (e) {}
+                  if (!abs) continue;
+                  fields2[fi] = eq2 >= 0
+                    ? fld2.slice(0, eq2 + 1) + abs
+                    : fld2.slice(0, fld2.indexOf(val2)) + abs;
+                  changed = true;
+                }
+                outLines.push(line.slice(0, line.indexOf(':') + 1) + fields2.join(' | '));
+              }
+              return { text: outLines.join('\\n'), needed: needed, skipped: skipped };
+            };
+            window._kascRewriteText = kascRewriteText;
+
+            var kascEntryDetect = function(name) {
+              var n = String(name || '').toLowerCase();
+              if (/\\.geojson$|\\.json$/.test(n)) return 'geojson';
+              if (/\\.fgb$|\\.flatgeobuf$/.test(n)) return 'fgb';
+              if (/\\.parquet$|\\.geoparquet$/.test(n)) return 'parquet';
+              if (/\\.gpkg$|\\.geopackage$/.test(n)) return 'gpkg';
+              if (/\\.csv$|\\.tsv$/.test(n)) return 'csv';
+              return null;
+            };
+            // Shared zip -> { text, names, files(b64 eager only), skipped }
+            // used by both the qgis: URL include (eager=false — members are
+            // fetched lazily via zipOrB64 so big archives never cross the
+            // extension) and a .zip dropped on the file-import button
+            // (eager=true, 24MB cap). With no .kasc inside, a minimal text
+            // is synthesized so every decodable member still becomes a layer.
+            var zipToKascResult = function(zfiles, zipId, eager) {
+              var names = Object.keys(zfiles).filter(function(n) { return !/\\/$/.test(n); });
+              var kascName = names.filter(function(n) { return /\\.kasc$/i.test(n); })
+                .sort(function(a, b) { return a.length - b.length; })[0];
+              if (!kascName) kascName = names.filter(function(n) { return /\\.txt$/i.test(n); })[0];
+              var base = kascName ? kascName.replace(/[^\\/]*$/, '').replace(/\\/$/, '') : '';
+              var kascText;
+              if (kascName) {
+                kascText = new TextDecoder('utf-8').decode(zfiles[kascName]);
+              } else {
+                var synth = [];
+                names.forEach(function(n) {
+                  var t = kascEntryDetect(n);
+                  if (t === 'geojson') synth.push('geojson: ' + n + ' | ' + n);
+                  else if (t === 'fgb') synth.push('flatgeobuf: ' + n + ' | ' + n);
+                  else if (t === 'parquet') synth.push('parquet: ' + n + ' | ' + n);
+                  else if (t === 'gpkg') synth.push('gpkg: ' + n + ' | ' + n);
+                  else if (t === 'csv') synth.push('duckdb: ' + n + ' | ' + n + ' | format=csv');
+                });
+                kascText = synth.join('\\n');
+                if (!kascText.trim()) throw new Error('zip contains no .kasc and no supported data files');
+              }
+              var rr = kascRewriteText(kascText, { zipId: zipId, base: base, files: zfiles });
+              var out = null;
+              if (eager) {
+                // dropped zip — no URL to refetch from, so member bytes are
+                // shipped as base64 (capped: they cross the extension context)
+                var total = 0;
+                Object.keys(rr.needed).forEach(function(p) { if (zfiles[p]) total += zfiles[p].length; });
+                if (total > 8 * 1024 * 1024) throw new Error('zip members too large for file drop (' + Math.round(total / 1048576) + 'MB > 24MB) - host the zip and use qgis: <url>');
+                out = {};
+                Object.keys(rr.needed).forEach(function(p) { if (zfiles[p]) out[p] = bytesToB64(zfiles[p]); });
+              }
+              return { text: rr.text, names: names, files: out, skipped: rr.skipped, title: kascName || 'zip' };
+            };
+            window._zipToKascResult = zipToKascResult;
+
+            // Zip byte cache — zfiles maps member path -> Uint8Array. The
+            // bytes stay inside this iframe; a large archive must never
+            // cross the extension context (QuickJS OOMs on giant payloads).
+            var _zipCache = {};
+            var zipBytesFromUrl = function(zipId, url) {
+              var c = _zipCache[zipId];
+              if (c && c.zfiles) return Promise.resolve(c.zfiles);
+              var zipP = window._fflateModule || (window._fflateModule = import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/+esm'));
+              return zipP.then(function(ff) {
+                return fetch(url, { mode: 'cors' }).then(function(res) {
+                  if (!res || !res.ok) throw new Error('zip HTTP ' + (res && res.status));
+                  return res.arrayBuffer();
+                }).then(function(ab) {
+                  var zfiles = ff.unzipSync(new Uint8Array(ab));
+                  _zipCache[zipId] = { url: url, zfiles: zfiles };
+                  return zfiles;
+                });
+              });
+            };
+            // Decoded-GeoJSON size guard — the result must cross the
+            // extension context (QuickJS heap), so oversized layers are
+            // skipped with a hint instead of OOMing the whole plugin.
+            var gjTooBig = function(geojson) {
+              try {
+                var sz = JSON.stringify(geojson).length;
+                try { console.log('[gj-size] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e) {}
+                return sz > 8 * 1024 * 1024 ? ('layer too large (' + Math.round(sz / 1048576) + 'MB decoded) — host DATA/ and use qgis: <.kasc URL>') : null;
+              } catch (e) { return null; }
+            };
+            // Member bytes for a kasczip payload — eager dataB64 (dropped
+            // zips) or lazy {zipId, zipUrl, zipPath} refetch from the URL.
+            var zipOrB64 = function(msg) {
+              if (msg.dataB64) return Promise.resolve(b64ToBytes(msg.dataB64));
+              if (!msg.zipPath) return Promise.reject(new Error('no zip member data'));
+              var c = _zipCache[msg.zipId];
+              if (c && c.zfiles && c.zfiles[msg.zipPath]) return Promise.resolve(c.zfiles[msg.zipPath]);
+              var url = msg.zipUrl || (c && c.url);
+              if (!url) return Promise.reject(new Error('no zip source for ' + msg.zipPath));
+              return zipBytesFromUrl(msg.zipId || 'zip', url).then(function(zfiles) {
+                var b = zfiles[msg.zipPath];
+                if (!b) throw new Error('member missing: ' + msg.zipPath);
+                return b;
+              });
+            };
 
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
@@ -4793,10 +5110,12 @@ function qmlStyleToReearth(xmlText, opts){
                     };
                     try {
                       if (typeof qmlStyleToReearth !== 'function') { reply(null, 'qml translator not loaded'); return; }
-                      (msg.qmlText ? Promise.resolve(msg.qmlText) : fetch(msg.url).then(function(res) {
+                      (msg.qmlText ? Promise.resolve(msg.qmlText) : (msg.dataB64 || msg.zipPath
+                        ? zipOrB64(msg).then(function(b) { return new TextDecoder('utf-8').decode(b); })
+                        : fetch(msg.url).then(function(res) {
                         if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
                         return res.text();
-                      })).then(function(xmlText) {
+                      }))).then(function(xmlText) {
                         var done = function(props0) {
                           var res = qmlStyleToReearth(xmlText, {
                             qml: { compileQmlStyle: compileQmlStyle, resolveSymbolLayers: resolveSymbolLayers, markerLayersToCanvas: markerLayersToCanvas, rgbaToCss: rgbaToCss },
@@ -4805,6 +5124,14 @@ function qmlStyleToReearth(xmlText, opts){
                           reply(res.error ? null : { marker: res.marker, polyline: res.polyline, polygon: res.polygon }, res.error || null, res.warnings || [], res.legend || []);
                         };
                         if (msg.props0) done(msg.props0);
+                        else if (msg.geoB64 || msg.geoZipPath) {
+                          zipOrB64({ dataB64: msg.geoB64, zipId: msg.geoZipId, zipUrl: msg.geoZipUrl, zipPath: msg.geoZipPath }).then(function(b) {
+                            try {
+                              var gb = JSON.parse(new TextDecoder('utf-8').decode(b));
+                              done((((gb.features||[])[0])||{}).properties || {});
+                            } catch (e) { done({}); }
+                          }).catch(function() { done({}); });
+                        }
                         else if (msg.geojsonUrl) {
                           fetch(msg.geojsonUrl).then(function(r){ return r.json(); }).then(function(g){
                             done((((g.features||[])[0])||{}).properties || {});
@@ -4820,6 +5147,7 @@ function qmlStyleToReearth(xmlText, opts){
                   // extension adds as a normal GeoJSON layer.
                   (function() {
                     var reply = function(geojson, error) {
+                      if (geojson) { var tb = gjTooBig(geojson); if (tb) { geojson = null; error = tb; } }
                       try { parent.postMessage({ action: 'fgbResult', vecId: msg.vecId, geojson: geojson, error: error }, '*'); } catch (e) {}
                     };
                     try {
@@ -4827,12 +5155,17 @@ function qmlStyleToReearth(xmlText, opts){
                         window._fgbModule = import('https://cdn.jsdelivr.net/npm/flatgeobuf@4.4.0/lib/mjs/geojson.js/+esm');
                       }
                       window._fgbModule.then(function(mod) {
-                        return fetch(msg.url, { mode: 'cors' }).then(function(res) {
-                          if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
-                          if (!res.body) throw new Error('empty response body');
+                        var srcP = (msg.dataB64 || msg.zipPath)
+                          ? zipOrB64(msg)
+                          : fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                              if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                              if (!res.body) throw new Error('empty response body');
+                              return res.body;
+                            });
+                        return srcP.then(function(src) {
                           var features = [];
                           var limit = Math.max(1, Number(msg.limit) || 200000);
-                          var iter = mod.deserialize(res.body);
+                          var iter = mod.deserialize(src);
                           var readNext = function() {
                             return iter.next().then(function(r) {
                               if (r.done || features.length >= limit) return { type: 'FeatureCollection', features: features };
@@ -4862,6 +5195,7 @@ function qmlStyleToReearth(xmlText, opts){
                   // WKB/GeoJSON-valued column) is turned into GeoJSON features.
                   (function() {
                     var reply = function(geojson, error) {
+                      if (geojson) { var tb = gjTooBig(geojson); if (tb) { geojson = null; error = tb; } }
                       try { parent.postMessage({ action: 'pqResult', vecId: msg.vecId, geojson: geojson, error: error }, '*'); } catch (e) {}
                     };
                     var wkbToGeoJson = vecWkbToGeoJson;
@@ -4882,13 +5216,19 @@ function qmlStyleToReearth(xmlText, opts){
                       }
                       window._pqModule.then(function(mod) {
                         var fileP;
-                        try { fileP = mod.asyncBufferFromUrl({ url: msg.url }); } catch (e) { fileP = Promise.reject(e); }
-                        return fileP.catch(function() {
-                          return fetch(msg.url, { mode: 'cors' }).then(function(res) {
-                            if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
-                            return res.arrayBuffer();
+                        if (msg.dataB64 || msg.zipPath) {
+                          // kasczip:// member — eager bytes (drop) or lazy refetch (URL)
+                          fileP = zipOrB64(msg).then(function(b) { return b.buffer; });
+                        } else {
+                          try { fileP = mod.asyncBufferFromUrl({ url: msg.url }); } catch (e) { fileP = Promise.reject(e); }
+                          fileP = fileP.catch(function() {
+                            return fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                              if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                              return res.arrayBuffer();
+                            });
                           });
-                        }).then(function(file) {
+                        }
+                        return fileP.then(function(file) {
                           return mod.parquetReadObjects({ file: file, compressors: mod.compressors }).then(function(rows) {
                             return Promise.resolve(mod.parquetMetadata ? mod.parquetMetadata(file) : null).then(function(meta) {
                               return { rows: rows || [], meta: meta };
@@ -4955,6 +5295,7 @@ function qmlStyleToReearth(xmlText, opts){
                             return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
                           }));
                         }
+                        if (geojson) { var tb = gjTooBig(geojson); if (tb) { geojson = null; error = tb; } }
                         parent.postMessage({ action: 'ddbResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error }, '*');
                       } catch (e) {}
                     };
@@ -4977,7 +5318,7 @@ function qmlStyleToReearth(xmlText, opts){
                               try { URL.revokeObjectURL(workerUrl); } catch (e) {}
                               return db.connect();
                             }).then(function(conn) {
-                              var st = { conn: conn, spatial: false };
+                              var st = { conn: conn, db: db, spatial: false };
                               return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
                                 .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
                                 .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
@@ -4993,6 +5334,17 @@ function qmlStyleToReearth(xmlText, opts){
                         var format = String(msg.format || '').toLowerCase();
                         var literal = ql(msg.url);
                         var isParquet = format === 'parquet' || (!format && /\\.parquet([?#]|$)/i.test(msg.url || ''));
+                        // kasczip:// member — register the bytes as a virtual
+                        // file and point the SQL at that name. Bytes arrive
+                        // via dataB64 (drop) or a lazy zip refetch (zipPath).
+                        var prep = Promise.resolve();
+                        if (msg.dataB64 || msg.zipPath) {
+                          if (!(st.db && typeof st.db.registerFileBuffer === 'function')) throw new Error('dataB64 source not supported by this duckdb-wasm build');
+                          var vext = (/\\.([a-z0-9]{1,8})([?#].*)?$/i.exec(msg.zipName || msg.url || '') || [null, 'bin'])[1];
+                          var vname = 'kasczip_' + String(msg.vecId || 'f') + '.' + String(vext).toLowerCase();
+                          literal = ql(vname);
+                          prep = zipOrB64(msg).then(function(by) { return st.db.registerFileBuffer(vname, by); });
+                        }
                         // sql: raw query mode wraps the query as a subquery source.
                         // The :bbox placeholder is replaced by the viewport envelope.
                         var source;
@@ -5010,7 +5362,8 @@ function qmlStyleToReearth(xmlText, opts){
                             : literal; // replacement scan infers reader from the extension
                         }
                         var ctx = {};
-                        return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
+                        return prep.then(function() {
+                          return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
                           ctx.columns = table.toArray().map(function(row) {
                             var p = (typeof row.toJSON === 'function') ? row.toJSON() : row;
                             return { name: String(p.column_name), type: String(p.column_type || '').toUpperCase() };
@@ -5067,6 +5420,7 @@ function qmlStyleToReearth(xmlText, opts){
                             }).catch(function() {});
                           }
                           return null;
+                          });
                         }).then(function() {
                           if (msg.bounds && !ctx.covering) {
                             var fc = function(n) { var c = ctx.columns.filter(function(c) { return c.name.toLowerCase() === n; })[0]; return c ? c.name : null; };
@@ -5159,12 +5513,14 @@ function qmlStyleToReearth(xmlText, opts){
                             return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
                           }));
                         }
+                        if (geojson) { var tb = gjTooBig(geojson); if (tb) { geojson = null; error = tb; } }
                         parent.postMessage({ action: 'gpkgResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error, qml: qml || null }, '*');
                       } catch (e) {}
                     };
                     try {
                       gpkgQueryToGeoJson({
                         url: msg.url, dataB64: msg.dataB64 || null,
+                        zipId: msg.zipId || null, zipUrl: msg.zipUrl || null, zipPath: msg.zipPath || null,
                         table: msg.table || null, where: msg.where || null,
                         limit: msg.limit || null, columns: msg.columns || null,
                         bbox: msg.bounds || null
@@ -5181,6 +5537,74 @@ function qmlStyleToReearth(xmlText, opts){
                       else { ist.textContent = (msg.title || '') + (msg.count >= 0 ? ': ' + msg.count + ' features' : ' applied'); ist.style.color = '#666'; }
                     }
                   } catch (e) {}
+                } else if (msg.action === 'kascZipLoad') {
+                  // qgis: include — the URL may be a CMS-unpacked folder
+                  // ('/'-suffixed → probe <url>/kasugai_canvas.kasc then
+                  // <url>/<dir>.kasc), a bare .kasc/.txt, or a real .zip
+                  // binary (fflate). Folder/bare-text modes resolve every
+                  // relative ref to a plain HTTP URL (geojson stays a
+                  // data.url layer — nothing crosses the extension), while
+                  // zip members become lazy kasczip:// refs.
+                  (function() {
+                    var reply = function(text, names, files, skipped, error, title) {
+                      try { parent.postMessage({ action: 'kascZipResult', zipId: msg.zipId, url: msg.url, title: title || null, text: text || null, names: names || null, files: files || null, skipped: skipped || [], error: error || null }, '*'); } catch (e) {}
+                    };
+                    try {
+                      var cands = [msg.url];
+                      if (/\\/$/.test(msg.url)) {
+                        var dirName = msg.url.replace(/\\/+$/, '').split('/').pop();
+                        cands = [msg.url + 'kasugai_canvas.kasc'];
+                        if (dirName && dirName !== 'kasugai_canvas') cands.push(msg.url + dirName + '.kasc');
+                        cands.push(msg.url);
+                      }
+                      var tryFetch = function(i) {
+                        return fetch(cands[i], { mode: 'cors' }).then(function(res) {
+                          if (res && res.ok) return res.arrayBuffer().then(function(b) { return { buf: b, url: cands[i] }; });
+                          if (i + 1 < cands.length) return tryFetch(i + 1);
+                          throw new Error('HTTP ' + (res && res.status));
+                        });
+                      };
+                      tryFetch(0).then(function(o) {
+                        var u8 = new Uint8Array(o.buf);
+                        var isZip = u8.length > 4 && u8[0] === 0x50 && u8[1] === 0x4B;
+                        if (!isZip) {
+                          var kascText0 = new TextDecoder('utf-8').decode(u8);
+                          var baseUrl = String(o.url).replace(/[?#].*$/, '').replace(/\\/[^\\/]*$/, '/');
+                          var rr0 = kascRewriteText(kascText0, { baseUrl: baseUrl });
+                          reply(rr0.text, null, null, rr0.skipped, null, String(o.url).split('/').pop());
+                          return null;
+                        }
+                        var zipP = window._fflateModule || (window._fflateModule = import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/+esm'));
+                        return zipP.then(function(ff) {
+                          var zfiles = ff.unzipSync(u8);
+                          _zipCache[msg.zipId] = { url: o.url, zfiles: zfiles };
+                          var res = zipToKascResult(zfiles, msg.zipId, false);
+                          reply(res.text, res.names, null, res.skipped, null, res.title);
+                        });
+                      }).catch(function(e) { reply(null, null, null, null, String(e && e.message || e)); });
+                    } catch (e) { reply(null, null, null, null, String(e)); }
+                  })();
+                } else if (msg.action === 'geoLoad') {
+                  // kasczip:// geojson decode — bytes via dataB64 (drop) or
+                  // lazy zip refetch (zipPath) so they never cross the extension.
+                  (function() {
+                    var reply = function(geojson, error) {
+                      if (geojson) { var tb = gjTooBig(geojson); if (tb) { geojson = null; error = tb; } }
+                      try { parent.postMessage({ action: 'geoResult', vecId: msg.vecId, geojson: geojson, error: error }, '*'); } catch (e) {}
+                    };
+                    try {
+                      var gjP = (msg.dataB64 || msg.zipPath)
+                        ? zipOrB64(msg)
+                        : fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                            if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                            return res.arrayBuffer();
+                          }).then(function(b) { return new Uint8Array(b); });
+                      gjP.then(function(bytes) {
+                        var text = new TextDecoder('utf-8').decode(bytes);
+                        reply(JSON.parse(text), null);
+                      }).catch(function(e) { reply(null, String(e && e.message || e)); });
+                    } catch (e) { reply(null, String(e)); }
+                  })();
                 }
               } catch (e) {}
             });
@@ -8305,7 +8729,19 @@ function requestQmlAppearance(styleUrl, props0, geojsonUrl, build) {
     const id = 'qml' + (++_qmlSeq);
     _qmlPending[id] = { url: styleUrl, build: build };
     // styleUrl may be a URL string or { qmlText } for embedded QML (e.g. GPKG layer_styles).
-    try { postToUI({ action: 'qmlStyle', vecId: id, url: (typeof styleUrl === 'string') ? styleUrl : null, qmlText: (styleUrl && typeof styleUrl === 'object' && styleUrl.qmlText) ? styleUrl.qmlText : null, props0: props0 || null, geojsonUrl: geojsonUrl || null }); }
+    const qmlPayload = { action: 'qmlStyle', vecId: id, url: (typeof styleUrl === 'string') ? styleUrl : null, qmlText: (styleUrl && typeof styleUrl === 'object' && styleUrl.qmlText) ? styleUrl.qmlText : null, props0: props0 || null, geojsonUrl: geojsonUrl || null };
+    // kasczip:// refs ship their zip member bytes so the iframe never fetches.
+    if (qmlPayload.url && isKascZipUrl(qmlPayload.url)) {
+        if (!attachZipData(qmlPayload, qmlPayload.url)) { delete _qmlPending[id]; try { build(null, 'zip member not loaded: ' + qmlPayload.url); } catch (_) {} return; }
+    }
+    if (qmlPayload.geojsonUrl && isKascZipUrl(qmlPayload.geojsonUrl)) {
+        const ze = resolveZipEntry(qmlPayload.geojsonUrl);
+        if (ze) {
+            if (ze.b64) qmlPayload.geoB64 = ze.b64;
+            else { qmlPayload.geoZipId = ze.zipId; qmlPayload.geoZipUrl = ze.zipUrl; qmlPayload.geoZipPath = ze.path; }
+        }
+    }
+    try { postToUI(qmlPayload); }
     catch (e) {
         delete _qmlPending[id];
         try { build(null, String(e)); } catch (e2) {}
@@ -8343,17 +8779,40 @@ function loadParquetLayer(url, title, visible, classification, limit, pending, s
     loadVectorViaIframe('pqLoad', 'pq', _pqPending, url, title, visible, classification, limit, pending, () => 'pq' + (++_pqSeq), style);
 }
 function loadVectorViaIframe(action, prefix, pendMap, url, title, visible, classification, limit, pending, nextId, style) {
-    if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+    if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url) && !isKascZipUrl(url)) {
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'url required' });
         return;
     }
     const id = nextId();
     pendMap[id] = { url: url, title: title, visible: visible, classification: classification, pending: pending || null, style: style || null };
-    try { postToUI({ action: action, vecId: id, url: url, limit: limit }); }
+    const payload = { action: action, vecId: id, url: url, limit: limit };
+    if (!attachZipData(payload, url)) {
+        delete pendMap[id];
+        if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'zip member not loaded: ' + url });
+        return;
+    }
+    try { postToUI(payload); }
     catch (e) {
         delete pendMap[id];
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: String(e) });
     }
+}
+
+// geojson: inside a qgis: zip — the URL is kasczip:// so Cesium cannot fetch
+// it; decode in the UI iframe and add through the GeoJSON-value path instead.
+let _geoSeq = 0;
+const _geoPending = {};
+function loadGeoJsonViaIframe(url, title, visible, classification, style) {
+    const id = 'gj' + (++_geoSeq);
+    _geoPending[id] = { url: url, title: title, visible: visible, classification: classification, style: style || null };
+    const payload = { action: 'geoLoad', vecId: id, url: url };
+    if (!attachZipData(payload, url)) {
+        delete _geoPending[id];
+        try { sendError('[geojson] zip member not loaded:', url); } catch (e) {}
+        return;
+    }
+    try { postToUI(payload); }
+    catch (e) { delete _geoPending[id]; try { sendError('[geojson] geoLoad post failed:', e); } catch (_) {} }
 }
 
 // DuckDB-Wasm query layers (kasugai duckdb: port). The UI iframe runs the
@@ -8400,6 +8859,8 @@ function ddbPost(vecId, spec, layerId) {
         limit: spec.limit || null, geom: spec.geom || null, lon: spec.lon || null, lat: spec.lat || null,
         columns: spec.columns || null, covering: spec.covering || null,
         query: spec.query || null,
+        dataB64: spec.dataB64 || null, zipName: spec.zipName || null,
+        zipId: spec.zipId || null, zipUrl: spec.zipUrl || null, zipPath: spec.zipPath || null,
         bounds: spec.bboxAuto ? getViewportRanges() : null
     };
     let hosted = false;
@@ -8431,9 +8892,20 @@ function ddbPost(vecId, spec, layerId) {
 }
 
 function loadDuckDbLayer(spec, pending) {
-    if (!spec || !spec.url || !/^https?:\/\//.test(spec.url)) {
+    if (!spec || !spec.url || !/^https?:\/\//.test(spec.url) && !isKascZipUrl(spec.url)) {
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'url required' });
         return;
+    }
+    if (isKascZipUrl(spec.url) && !spec.dataB64 && !spec.zipPath) {
+        const ze = resolveZipEntry(spec.url);
+        if (!ze) {
+            try { sendError('[duckdb] zip member not loaded:', spec.url); } catch (e) {}
+            if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'zip member not loaded' });
+            return;
+        }
+        if (ze.b64) spec.dataB64 = ze.b64;
+        else { spec.zipId = ze.zipId; spec.zipUrl = ze.zipUrl; spec.zipPath = ze.path; }
+        spec.zipName = ze.name;
     }
     // .gpkg / format=gpkg is routed to the sql.js path (kasugai isGpkgBackedItem).
     const format = String(spec.format || '').toLowerCase();
@@ -8473,8 +8945,10 @@ function gpkgPost(vecId, spec, layerId) {
     const payload = {
         vecId: vecId, layerId: layerId || null,
         url: spec.url, dataB64: spec.dataB64 || null,
+        zipId: spec.zipId || null, zipUrl: spec.zipUrl || null, zipPath: spec.zipPath || null,
         table: spec.table || null, where: spec.where || null,
         limit: spec.limit || null, columns: spec.columns || null,
+        zipName: spec.zipName || null,
         bounds: spec.bboxAuto ? getViewportRanges() : null
     };
     let hosted = false;
@@ -8506,6 +8980,17 @@ function loadGpkgLayer(spec, pending) {
     if (!spec || (!spec.url && !spec.dataB64)) {
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'url required' });
         return;
+    }
+    if (isKascZipUrl(spec.url) && !spec.dataB64 && !spec.zipPath) {
+        const ze = resolveZipEntry(spec.url);
+        if (!ze) {
+            try { sendError('[gpkg] zip member not loaded:', spec.url); } catch (e) {}
+            if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'zip member not loaded' });
+            return;
+        }
+        if (ze.b64) spec.dataB64 = ze.b64;
+        else { spec.zipId = ze.zipId; spec.zipUrl = ze.zipUrl; spec.zipPath = ze.path; }
+        spec.zipName = ze.name;
     }
     const id = 'gp' + (++_gpkgSeq);
     _gpkgPending[id] = { kind: 'add', spec: spec, pending: pending || null };
@@ -9293,6 +9778,58 @@ reearth.extension.on("message", (msg) => {
               }
           } catch (e) {}
       }
+      else if (msg.action === 'geoResult') {
+          // UI iframe decoded a kasczip:// GeoJSON member — add as a
+          // GeoJSON-value layer (same path as fgb/parquet results).
+          try {
+              const p = _geoPending[msg.vecId];
+              if (p !== undefined) delete _geoPending[msg.vecId];
+              if (p) {
+                  if (msg.error || !msg.geojson) {
+                      try { sendError('[geojson] decode failed:', msg.error); } catch (e) {}
+                  } else {
+                      const title = p.title || ('GeoJSON: ' + p.url);
+                      const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
+                      addGeoJsonValueLayer(msg.geojson, title, p.visible !== false, p.classification, 'GeoJSON: ' + p.url, p.style, p0);
+                  }
+              }
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'kascZipResult') {
+          // qgis: include — the UI iframe fetched the .kasc (or unzipped the
+          // .zip), rewrote resource refs, and reported the member list
+          // (_zipFiles). Member bytes are fetched lazily by the decoding
+          // iframe itself (never through the extension); only small dropped
+          // zips ship bytes eagerly via msg.files.
+          try {
+              const zipId = msg.zipId;
+              const rec = _qgisZipRefs[zipId] || (_qgisZipRefs[zipId] = { url: msg.url || '', status: 'loading' });
+              if (msg.sticky) rec.sticky = true;  // dropped .zip — no qgis: line backs it, never prune
+              if (msg.error) {
+                  rec.status = 'error';
+                  try { sendError('[qgis:] include failed:', msg.url || zipId, msg.error); } catch (e) {}
+                  try { postToUI({ action: 'importDone', error: String(msg.error) }); } catch (e) {}
+              } else {
+                  const fmap: any = {};
+                  (Array.isArray(msg.names) ? msg.names : []).forEach((n: string) => { if (n) fmap[n] = 1; });
+                  const ff = msg.files || {};
+                  Object.keys(ff).forEach(k => { fmap[k] = ff[k]; });
+                  _zipFiles[zipId] = { url: rec.url || msg.url || '', files: fmap };
+                  _qgisZipTexts[zipId] = (typeof msg.text === 'string') ? msg.text : '';
+                  rec.status = 'ok';
+                  if (Array.isArray(msg.skipped) && msg.skipped.length) {
+                      try { sendLog('[qgis:] skipped entries:', msg.skipped.join(' ; ')); } catch (e) {}
+                      try { postToUI({ action: 'importDone', error: 'skipped: ' + msg.skipped.join(' ; ') }); } catch (e) {}
+                  } else {
+                      try { postToUI({ action: 'importDone', title: msg.title || '.kasc', count: -1 }); } catch (e) {}
+                  }
+                  const propK = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+                  const textK = (propK.settings && propK.settings.inspectorText) || propK.inspectorText || '';
+                  processInspectorText(textK);
+              }
+          } catch (e) {}
+      }
       else if (msg.action === 'viewerCapture') {
           try {
               viewerCapture();
@@ -9672,6 +10209,7 @@ base: 地理院タイル 1987～1990年 | https://cyberjapandata.gsi.go.jp/xyz/g
 base: 地理院タイル 1984～1986年 | https://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg| 出典：国土地理院
 base: 地理院タイル 1979～1983年 | https://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg| 出典：国土地理院
 base: 地理院タイル 1974～1978年 | https://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg| 出典：国土地理院
+qgis: https://assets.cms.reearth.io/assets/3f/50fab9-6b23-4116-96ac-bc409f9d79f6/kasugai_canvas/
 yahooAppId: あなたのYahoo Local Search API AppID`;
 
 // Also process any inspector text/config present at init
@@ -10452,8 +10990,11 @@ function processInspectorText(text) {
   const camsFound = [];
   const legends = [];
   const nonCamLines = [];  // preserve non-cam lines for rebuild
+  const _qgisZipUrls = []; // qgis: include urls found in this pass
 
-  lines.forEach(line => {
+  // keep=false marks transient lines injected from qgis: includes — they go
+  // through the same pipeline but are never written back to the inspector text.
+  const handleInspectorLine = function (line, keep) {
     const lowerLine = line.toLowerCase();
       // Legend: "legend: https://..." or "legend: GroupName|https://..."
       if (lowerLine.startsWith('legend:')) {
@@ -10468,7 +11009,7 @@ function processInspectorText(text) {
           }
           if (url) legends.push({ group: group, url: encodeNonAscii(url) });
         }
-        nonCamLines.push(line);
+        if (keep !== false) nonCamLines.push(line);
         return;
       }
 
@@ -10490,7 +11031,7 @@ function processInspectorText(text) {
       }
 
       // no parent clipboard fallback — rely on navigator.clipboard or user paste
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10501,7 +11042,7 @@ function processInspectorText(text) {
         infoUrlFound = encodeNonAscii(url);
         try { sendLog('[processInspectorText] found INFO url:', infoUrlFound); } catch(e){}
       }
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10514,7 +11055,7 @@ function processInspectorText(text) {
           try { sendLog('[processInspectorText] found inspector yahooAppId'); } catch(e){}
         }
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10528,7 +11069,7 @@ function processInspectorText(text) {
           try { sendLog('[processInspectorText] found inspector googleMapsApiKey'); } catch(e){}
         }
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10541,7 +11082,7 @@ function processInspectorText(text) {
           try { sendLog('[processInspectorText] found inspector geminiApiKey'); } catch(e){}
         }
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10551,7 +11092,7 @@ function processInspectorText(text) {
         const val = line.substring(line.indexOf(':') + 1).trim();
         if (val) _inspectorGeminiModel = val;
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10567,7 +11108,7 @@ function processInspectorText(text) {
         try { sendLog('[processInspectorText] found attrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
         try { sendLog('[processInspectorText] _inspectorAttrUrlOpen:', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10579,7 +11120,7 @@ function processInspectorText(text) {
         try { sendLog('[processInspectorText] found lang:', _inspectorLang); } catch(e){}
         try { postLangToBasemapWidget(); } catch(e){}
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10592,7 +11133,30 @@ function processInspectorText(text) {
         }
         try { sendLog('[processInspectorText] found openUrlInNewTab (legacy):', _inspectorAttrUrlOpen); } catch(e){}
       } catch(e){}
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // QGIS project include: "qgis: <.zip or .kasc URL>" (aliases: kasc:, kasczip:).
+    // .zip = geo_webview .kasc+DATA/ archive (relative refs resolve inside the
+    // archive); a bare .kasc/.txt URL resolves relative refs against its own
+    // directory. Expanded lines are processed transiently, not persisted.
+    if (/^(qgis|kasc|kasczip)\s*:/i.test(lowerLine)) {
+      const qContent = line.substring(line.indexOf(':') + 1).trim();
+      if (qContent) {
+        const qp = qContent.split('|').map(p => p.trim());
+        const qurl = qp.find(p => /^https?:\/\//i.test(p)) || null;
+        if (qurl) _qgisZipUrls.push(qurl);
+      }
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // KASUGAI-only directives without a Re:Earth counterpart. Never let them
+    // reach the XYZ catch-all — "wms: name | http…" would otherwise create a
+    // bogus XYZ layer with the endpoint as the tile template.
+    if (/^(wms|theme|bookmark)\s*:/i.test(lowerLine)) {
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10611,7 +11175,7 @@ function processInspectorText(text) {
            _systemLayerSettings.push({ name: name, visible: visible });
         }
       }
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10664,7 +11228,7 @@ function processInspectorText(text) {
             }
             catch (_) { }
         }
-        nonCamLines.push(line);
+        if (keep !== false) nonCamLines.push(line);
         return;
     }
 
@@ -10732,7 +11296,7 @@ function processInspectorText(text) {
         if (tileStr.startsWith('http')) url = tileStr;
       }
       if (url) tiles.push({ url, title, type: '3dtiles', visible });
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10748,17 +11312,17 @@ function processInspectorText(text) {
       if (geoStr.indexOf('|') !== -1) {
         const parts = geoStr.split('|').map(p => p.trim());
         visible = extractVisible(parts);
-        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
-        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        if (isVecRefUrl(parts[0])) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && isVecRefUrl(parts[1])) { title = parts[0]; url = parts[1]; }
         if (parts.length > 3 && parts[3]) classification = normalizeClassification(parts[3]);
       } else {
-        if (geoStr.startsWith('http')) url = geoStr;
+        if (isVecRefUrl(geoStr)) url = geoStr;
       }
       let style = null;
       const sm = geoStr.match(/(?:^|\|)\s*(?:style|qml)=(\S+)/i);
       if (sm) style = sm[1].trim();
       if (url) tiles.push({ url, title, type: 'geojson', visible, classification, style });
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10774,17 +11338,17 @@ function processInspectorText(text) {
       if (fgbStr.indexOf('|') !== -1) {
         const parts = fgbStr.split('|').map(p => p.trim());
         visible = extractVisible(parts);
-        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
-        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        if (isVecRefUrl(parts[0])) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && isVecRefUrl(parts[1])) { title = parts[0]; url = parts[1]; }
         if (parts.length > 3 && parts[3]) classification = normalizeClassification(parts[3]);
       } else {
-        if (fgbStr.startsWith('http')) url = fgbStr;
+        if (isVecRefUrl(fgbStr)) url = fgbStr;
       }
       let fgbStyle = null;
       const fgbSm = fgbStr.match(/(?:^|\|)\s*(?:style|qml)=(\S+)/i);
       if (fgbSm) fgbStyle = fgbSm[1].trim();
       if (url) tiles.push({ url, title, type: 'flatgeobuf', visible, classification, style: fgbStyle });
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10800,17 +11364,17 @@ function processInspectorText(text) {
       if (pqStr.indexOf('|') !== -1) {
         const parts = pqStr.split('|').map(p => p.trim());
         visible = extractVisible(parts);
-        if (parts[0].startsWith('http')) { url = parts[0]; title = parts[1]; }
-        else if (parts[1] && parts[1].startsWith('http')) { title = parts[0]; url = parts[1]; }
+        if (isVecRefUrl(parts[0])) { url = parts[0]; title = parts[1]; }
+        else if (parts[1] && isVecRefUrl(parts[1])) { title = parts[0]; url = parts[1]; }
         if (parts.length > 3 && parts[3]) classification = normalizeClassification(parts[3]);
       } else {
-        if (pqStr.startsWith('http')) url = pqStr;
+        if (isVecRefUrl(pqStr)) url = pqStr;
       }
       let pqStyle = null;
       const pqSm = pqStr.match(/(?:^|\|)\s*(?:style|qml)=(\S+)/i);
       if (pqSm) pqStyle = pqSm[1].trim();
       if (url) tiles.push({ url, title, type: 'parquet', visible, classification, style: pqStyle });
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10825,7 +11389,7 @@ function processInspectorText(text) {
       const ddStr = line.substring(line.indexOf(':') + 1).trim();
       const parts = ddStr.split('|').map(p => p.trim());
       const title = parts[0] || null;
-      const url = (parts[1] && /^https?:\/\//.test(parts[1])) ? parts[1] : null;
+      const url = (parts[1] && /^(https?|kasczip):\/\//.test(parts[1])) ? parts[1] : null;
       let visible = true;
       let classification = null;
       const opt = {};
@@ -10861,7 +11425,7 @@ function processInspectorText(text) {
       // Viewport-linked partial loading is the default; bbox=off disables it.
       if (opt.bboxAuto === undefined) opt.bboxAuto = true;
       if (url) tiles.push({ url, title, type: 'duckdb', visible, classification, ddb: opt });
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10873,7 +11437,7 @@ function processInspectorText(text) {
       const gpStr = line.substring(line.indexOf(':') + 1).trim();
       const parts = gpStr.split('|').map(p => p.trim());
       const title = parts[0] || null;
-      const url = (parts[1] && /^https?:\/\//.test(parts[1])) ? parts[1] : null;
+      const url = (parts[1] && /^(https?|kasczip):\/\//.test(parts[1])) ? parts[1] : null;
       let visible = true;
       let classification = null;
       const opt = {};
@@ -10905,7 +11469,7 @@ function processInspectorText(text) {
       }
       if (opt.bboxAuto === undefined) opt.bboxAuto = true;
       if (url) tiles.push({ url, title, type: 'gpkg', visible, classification, gpkg: opt });
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10932,7 +11496,7 @@ function processInspectorText(text) {
       if (title && query) {
         tiles.push({ type: 'sql', title, query, visible, classification: null, style: sStyle });
       }
-      nonCamLines.push(line);
+      if (keep !== false) nonCamLines.push(line);
       return;
     }
 
@@ -10981,8 +11545,31 @@ function processInspectorText(text) {
       tiles.push({ url, title, type: 'tiles', isBase: isBase, visible, minLevel: zoom.min, maxLevel: zoom.max, attribution });
       if (isBase) _parsedBaseTiles.push({ url, title, attribution, minLevel: zoom.min, maxLevel: zoom.max });
     }
-    nonCamLines.push(line);
-  });
+    if (keep !== false) nonCamLines.push(line);
+  };
+  // Own inspector lines are kept for rebuild; included (qgis:) lines are
+  // transient — parsed through the same handler but never persisted.
+  lines.forEach(function (l) { handleInspectorLine(l, true); });
+  try {
+    Object.keys(_qgisZipTexts).forEach(function (zipId) {
+      const zt = _qgisZipTexts[zipId];
+      if (typeof zt === 'string' && zt.trim()) {
+        zt.split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean).forEach(function (l) {
+          handleInspectorLine(l, false);
+        });
+      }
+    });
+  } catch (e) {}
+
+  // Kick off pending qgis: includes; drop included texts whose directive was
+  // removed from the inspector text.
+  try {
+    const wantedZips = {};
+    _qgisZipUrls.forEach(u => { wantedZips[qgisZipId(u)] = true; });
+    Object.keys(_qgisZipTexts).forEach(id => { if (!wantedZips[id] && !(_qgisZipRefs[id] && _qgisZipRefs[id].sticky)) { delete _qgisZipTexts[id]; delete _zipFiles[id]; } });
+    Object.keys(_qgisZipRefs).forEach(id => { if (!wantedZips[id] && !_qgisZipRefs[id].sticky) delete _qgisZipRefs[id]; });
+    _qgisZipUrls.forEach(ensureQgisZip);
+  } catch (e) {}
 
   // Defer sending legend/info messages until after UI is (re)rendered below
 
@@ -11253,7 +11840,7 @@ function addXyzLayersFromArray(items) {
     const visible = (it.visible !== undefined) ? it.visible : true;
     const zoom = { min: it.minLevel ?? null, max: it.maxLevel ?? null };
     if (!u) continue;
-    if (!/^https?:\/\//.test(u)) continue;
+    if (!/^https?:\/\//.test(u) && !isKascZipUrl(u)) continue;
     const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
     const dup = existing.find(l => l && l.data && l.data.url && (l.data.url === encoded || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded) !== -1)));
     if (dup) {
@@ -11301,6 +11888,17 @@ function addXyzLayersFromArray(items) {
         continue;
       }
       loadSqlLayer({ query: it.query, title: sqTitle, visible: visible, classification: it.classification, style: it.style || null, bboxAuto: /:bbox\b/i.test(it.query || '') }, null);
+      continue;
+    }
+    if (type === 'geojson' && isKascZipUrl(u)) {
+      // kasczip:// geojson — Cesium cannot fetch it; decode in the UI iframe
+      // and add via the data.value path (same as file import / fgb / parquet).
+      const gjTitle = t || ('GeoJSON: ' + u);
+      if (existing.find(l => l && l.title === gjTitle)) {
+        try { sendLog('[addXyzLayersFromArray] skip duplicate geojson(zip):', u); } catch(e){}
+        continue;
+      }
+      loadGeoJsonViaIframe(u, gjTitle, visible, it.classification, it.style);
       continue;
     }
     addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution, it.classification, it.style);

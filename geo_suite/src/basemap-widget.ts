@@ -388,6 +388,38 @@ const html: string = `
         try { return readGeometry(); } catch (e) { return null; }
       };
 
+      // kasczip:// lazy member fetch — the zip is fetched+unzipped inside
+      // THIS iframe (persistent, so the cache survives panel refreshes),
+      // never crossing the extension context as giant base64 payloads.
+      var _zipCache = {};
+      var kascB64ToBytes = function(b64) {
+        var bin = atob(b64);
+        var out = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      };
+      var zipOrB64 = function(msg) {
+        if (msg.dataB64) return Promise.resolve(kascB64ToBytes(msg.dataB64));
+        if (!msg.zipPath) return Promise.reject(new Error('no zip member data'));
+        var c = _zipCache[msg.zipId];
+        if (c && c.zfiles && c.zfiles[msg.zipPath]) return Promise.resolve(c.zfiles[msg.zipPath]);
+        var url = msg.zipUrl || (c && c.url);
+        if (!url) return Promise.reject(new Error('no zip source for ' + msg.zipPath));
+        var zipP = window._fflateModule || (window._fflateModule = import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/+esm'));
+        return zipP.then(function(ff) {
+          return fetch(url, { mode: 'cors' }).then(function(res) {
+            if (!res || !res.ok) throw new Error('zip HTTP ' + (res && res.status));
+            return res.arrayBuffer();
+          }).then(function(ab) {
+            var zfiles = ff.unzipSync(new Uint8Array(ab));
+            _zipCache[msg.zipId] = { url: url, zfiles: zfiles };
+            var b = zfiles[msg.zipPath];
+            if (!b) throw new Error('member missing: ' + msg.zipPath);
+            return b;
+          });
+        });
+      };
+
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data;
@@ -413,6 +445,7 @@ const html: string = `
                       return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
                     }));
                   }
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; try { console.log('[gj-size/ddb] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e2) {} if (sz > 8 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded) — host DATA/ and use qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
                   postToParent({ action: 'ddbResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error });
                 } catch (e) {}
               };
@@ -435,7 +468,7 @@ const html: string = `
                         try { URL.revokeObjectURL(workerUrl); } catch (e) {}
                         return db.connect();
                       }).then(function(conn) {
-                        var st = { conn: conn, spatial: false };
+                        var st = { conn: conn, db: db, spatial: false };
                         return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
                           .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
                           .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
@@ -451,6 +484,16 @@ const html: string = `
                   var format = String(msg.format || '').toLowerCase();
                   var literal = ql(msg.url);
                   var isParquet = format === 'parquet' || (!format && /\\.parquet([?#]|$)/i.test(msg.url || ''));
+                  // dataB64 (kasczip:// member) — register the bytes as a
+                  // virtual file and point the SQL at that name.
+                  var prep = Promise.resolve();
+                  if (msg.dataB64 || msg.zipPath) {
+                    if (!(st.db && typeof st.db.registerFileBuffer === 'function')) throw new Error('dataB64 source not supported by this duckdb-wasm build');
+                    var vext = (/\\.([a-z0-9]{1,8})([?#].*)?$/i.exec(msg.zipName || msg.zipPath || msg.url || '') || [null, 'bin'])[1];
+                    var vname = 'kasczip_' + String(msg.vecId || 'f') + '.' + String(vext).toLowerCase();
+                    literal = ql(vname);
+                    prep = zipOrB64(msg).then(function(by) { return st.db.registerFileBuffer(vname, by); });
+                  }
                   // sql: raw query mode wraps the query as a subquery source.
                   var source;
                   if (msg.query) {
@@ -467,7 +510,8 @@ const html: string = `
                       : literal; // replacement scan infers reader from the extension
                   }
                   var ctx = {};
-                  return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
+                  return prep.then(function() {
+                    return conn.query('DESCRIBE SELECT * FROM ' + source).then(function(table) {
                     ctx.columns = table.toArray().map(function(row) {
                       var p = (typeof row.toJSON === 'function') ? row.toJSON() : row;
                       return { name: String(p.column_name), type: String(p.column_type || '').toUpperCase() };
@@ -524,6 +568,7 @@ const html: string = `
                       }).catch(function() {});
                     }
                     return null;
+                    });
                   }).then(function() {
                     if (msg.bounds && !ctx.covering) {
                       var fc = function(n) { var c = ctx.columns.filter(function(c) { return c.name.toLowerCase() === n; })[0]; return c ? c.name : null; };
@@ -615,6 +660,7 @@ const html: string = `
                       return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
                     }));
                   }
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; try { console.log('[gj-size/gpkg] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e2) {} if (sz > 8 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded) — host DATA/ and use qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
                   postToParent({ action: 'gpkgResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error, qml: qml || null });
                 } catch (e) {}
               };
@@ -655,12 +701,12 @@ const html: string = `
                   window._sqljsModule = lp;
                 }
                 if (!window._gpkgDbs) window._gpkgDbs = {};
-                var dbKey = msg.dataB64 ? ('bytes:' + msg.url) : msg.url;
+                var dbKey = (msg.dataB64 || msg.zipPath) ? ('bytes:' + (msg.zipPath || msg.url)) : msg.url;
                 var dbP = window._gpkgDbs[dbKey];
                 if (!dbP) {
                   dbP = window._sqljsModule.then(function(SQL) {
-                    var bufP = msg.dataB64
-                      ? Promise.resolve(b64ToBytes(msg.dataB64))
+                    var bufP = (msg.dataB64 || msg.zipPath)
+                      ? zipOrB64(msg)
                       : fetch(msg.url, { mode: 'cors' }).then(function(res) {
                           if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
                           return res.arrayBuffer();
@@ -849,7 +895,8 @@ try {
               url: data.url, format: data.format || null, where: data.where || null,
               limit: data.limit || null, geom: data.geom || null, lon: data.lon || null, lat: data.lat || null,
               columns: data.columns || null, covering: data.covering || null, bounds: data.bounds || null,
-              query: data.query || null
+              query: data.query || null, dataB64: data.dataB64 || null, zipName: data.zipName || null,
+              zipId: data.zipId || null, zipUrl: data.zipUrl || null, zipPath: data.zipPath || null
             });
           } catch (e) {}
         } else if (data.action === 'gpkgExec') {
@@ -859,7 +906,9 @@ try {
             if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
             postToUI({
               action: 'gpkgLoad', vecId: data.vecId, layerId: data.layerId || null,
-              url: data.url, dataB64: data.dataB64 || null, table: data.table || null,
+              url: data.url, dataB64: data.dataB64 || null,
+              zipId: data.zipId || null, zipUrl: data.zipUrl || null, zipPath: data.zipPath || null,
+              table: data.table || null,
               where: data.where || null, limit: data.limit || null,
               columns: data.columns || null, bounds: data.bounds || null
             });
