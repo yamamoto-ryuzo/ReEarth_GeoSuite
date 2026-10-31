@@ -26,16 +26,19 @@
 - Workbench のバージョンを上げるときは `workbench/setup.js` の `WORKBENCH_VERSION` を変更してください。
 - 注意: Workbench のプラグイン API は 2.1.0。`reearth.viewer.viewport` の `query` しか取れない等、SHARE タブの制約（下記）は Workbench でも同じです。
 
-## デプロイ
-- 本サイトは **Vercel** でデプロイされます。
-- `main` ブランチに push すると Vercel が自動で `npm run build` を実行し、成果物を `/vercel/output/static` に生成してデプロイします。
+## リリース手順（重要・このリポジトリの「リリース」= Vercel デプロイ）
+- **本リポジトリのリリース本体は Vercel へのサイトデプロイです**。`main` ブランチへ push するだけで Vercel が自動で `npm run build` を実行し、成果物を `/vercel/output/static` へ生成してデプロイします。サイトのソースはルートの `index.html` と `ryu.html` です。
+- つまりリリース作業は「バージョン更新 + CHANGELOG 記載 → `main` へコミット & push」で完了します。**ローカルで `npm run build` や `tsc` を走らせて成果物を作る必要はありません**（ビルド節の禁止事項どおり）。
 - リポジトリに `vercel/output/` をコミットする必要はありません。
-- サイトのソースはルートの `index.html` と `ryu.html` です。
 
-## 配布資産
-- 配布用 ZIP（`geo_suite.zip`）は Vercel ビルド時に生成されます。
+## 配布資産（GitHub Release = 補助チャンネル）
+- 配布用 ZIP（`geo_suite.zip`）は **Vercel ビルド時に生成**され、デプロイ済みサイト上の `dist/artifacts/geo_suite.zip` として取得できます。ローカルで `npm run build` を実行した場合も同パスに生成されます。
+- **GitHub Release はプラグイン ZIP の配布用の補助チャンネル**です。リリースを作る場合は以下の手順で行います:
+  1. `main` への push が完了し Vercel デプロイが成功していること
+  2. `v<version>` タグを打って push（例: `git tag -a v21.3.0 -m "geo_suite v21.3.0" && git push origin v21.3.0`）
+  3. `gh release create v<version> releases/geo_suiteV<version>.zip --title "geo_suite v<version>" --notes-file <CHANGELOG の該当節>` で ZIP をアセット添付して作成
+  4. `releases/` 配下のバージョン付き ZIP（`geo_suiteV<version>.zip`）は Git 管理された保存用コピーです。GitHub Release へ添付する ZIP は Vercel デプロイ済みの `dist/artifacts/geo_suite.zip` を使うのが正本で、ローカルで再生成する場合は同一ソースから `tsc` コンパイルしたものにしてください
 - `release/` および `vercel/output/` は `.gitignore` で除外されています。
-- GitHub Release 用の ZIP は `npm run build` 実行後に `dist/artifacts/geo_suite.zip` として生成されます。
 
 ## バージョン管理
 - バージョンは `package.json` と `plugin/reearth.yml` の両方に記述します。
