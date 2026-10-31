@@ -7,7 +7,9 @@
     - 制御: インスペクタ `bridge: off | on | http://host:port` 行（レイヤーパネル → basemap 拡張 → iframe へ `bridgeConfig` 転送）。未設定時は `http://127.0.0.1:8977/status` へ一度だけ自動プローブし、ハーネスが応答すれば接続、いなければ完全に不活性。マップ描画・UI への影響なし。
     - `workbench/bridge_server.js`: dial-out 先ハーネス（無依存・127.0.0.1 のみバインド）。プラグイン iframe とは SSE `/events`＋POST `/result` で接続し、外部には `POST /call {name,args}`（結果まで保持）、`GET /status`/`/tools` の RPC を公開。`BRIDGE_TOKEN` で共有秘密トークン対応。
     - `workbench/bridge.js`: CDP ドライバ（無依存・Node>=22）。iframe ターゲットへ `Runtime.evaluate` で `window.__geoBridge.call()` を実行。`serve` モードは stdin/stdout JSONL（QGIS file-JSONL 相当）でエージェントループ向け。`BRIDGE_ATTACH` で既存デバッグ Chrome へ接続可。`__geoBridge` 非搭載ビルドでは AI Chat iframe 経由のレガシー経路にフォールバック。
-- 新規: AI チャットにプロバイダ選択を追加（Gemini / OpenAI互換 / Anthropic / Azure OpenAI / 外部エージェント）。プロバイダ別フィールド（エンドポイント・APIバージョン・キー・モデル）は `aiProvider` としてプラグインストレージに保存され、`aiSetProvider`/`aiConfig` メッセージで往復。ツール呼出しは各形式へ変換し既存 `executeTool` を共有。
+- 新規: AI チャットにプロバイダ選択を追加（Gemini / GitHub Copilot / OpenAI互換 / Anthropic / Azure OpenAI / 外部エージェント）。Copilot は CANVAS ブリッジハブ（既定 `http://127.0.0.1:8511/agent`、8511→8512 自動検出）へ `{provider,model,message,tools}` を POST、`{reply,actions[]}` の actions を既存ツールで実行。モデル一覧は各プロバイダの `/models` から自動取得（hub=`/models?provider=`、OpenAI/Anthropic=`/v1/models`）。設定は `aiProvider` JSON を clientStorage 保存。
+- 新規: 管理パネルに「AI Bridge (CANVAS)」ブロック — ハブエンドポイント入力・疎通テスト（`/health`+`/models`）。設定テキストの `aiHub: <url>` 行と双方向同期し、aiConfig 経由で AI チャットへ伝搬。
+- 新規: ブリッジツール `canvasApi` — `{path,method,body,endpoint?}` で CANVAS ハブへ任意 REST 呼出し（8511→8512 自動検出）。`runCode`・`describe` と同じ永続 iframe で実行されるため、外部エージェントが CANVAS API をブリッジ越しに利用可能。
 - 改善: 飛行系ツール（`flyToPreset`/`flyToFeature`/`showFeatureAttributes`）に `wait:false` オプションを追加 — 発行のみ即応答（既定は従来どおり飛行完了後に応答）。ブリッジ経由での応答遅延を解消。
 - 修正: `execLocalTool` を同期化 — QuickJS では `extensionMessage` ディスパッチ内に積まれた `.then` 継続が次イベントまで実行されず、ブリッジ経由の応答が滞留する事象を解消（AGENTS.md に制約を記録）。
 - 修正: `handleDdbResult`/`handleGpkgResult` に4MBの結果ガードを追加 — 大きな GeoJSON を `reearth.layers.add/override` でホストブリッジへ再マーシャルする際の QuickJS OOM（`Proxy.unwrapResult` で拡張コンテキスト死亡）を、コンテキスト破壊ではなく graceful なエラー返却に変更。

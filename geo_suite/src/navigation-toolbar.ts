@@ -95,8 +95,44 @@ export const html: string = `
           } catch (e) { fin({ error: String(e && e.message || e) }); }
         });
       }
+      // CANVAS bridge-hub access (bridge-hub.exe on 8511), then fetches
+      // <base>+path. Exposed as bridge tool 'canvasApi'.
+      var _hubDetected = null;
+      function hubDetect(ep) {
+        var e = String(ep || '').trim();
+        if (e) { _hubDetected = e.replace(/[/]+agent[\/]?$/, ''); return Promise.resolve(_hubDetected); }
+        if (_hubDetected) return Promise.resolve(_hubDetected);
+        var ports = [8511];
+        function probe(i) {
+          if (i >= ports.length) return Promise.reject(new Error('hub not found on 8511'));
+          return fetch('http://127.0.0.1:' + ports[i] + '/health', { cache: 'no-store' }).then(function(r) {
+            if (r && r.ok) { _hubDetected = 'http://127.0.0.1:' + ports[i]; return _hubDetected; }
+            return probe(i + 1);
+          }).catch(function() { return probe(i + 1); });
+        }
+        return probe(0);
+      }
+      function bridgeCanvasApi(args) {
+        var path = String((args && args.path) || '');
+        if (!path || path.charAt(0) !== '/') return Promise.resolve({ error: 'path must start with /' });
+        var method = String((args && args.method) || 'GET').toUpperCase();
+        var body = (args && args.body !== undefined) ? args.body : null;
+        return hubDetect(args && args.endpoint).then(function(base) {
+          return fetch(base + path, {
+            method: method,
+            headers: body ? { 'Content-Type': 'application/json' } : undefined,
+            body: body ? JSON.stringify(body) : null
+          }).then(function(r) {
+            return r.text().then(function(txt) {
+              var j = null; try { j = JSON.parse(txt); } catch (e) {}
+              return { ok: r.ok, status: r.status, json: j, text: j ? undefined : txt.slice(0, 4000) };
+            });
+          });
+        }).catch(function(e) { return { error: String(e && e.message || e) }; });
+      }
       function bridgeInvoke(name, args) {
         if (name === 'runCode') return bridgeRunCode(args);
+        if (name === 'canvasApi') return bridgeCanvasApi(args);
         return bridgeCallRaw(name, args);
       }
       function bridgePostResult(reqId, result) {

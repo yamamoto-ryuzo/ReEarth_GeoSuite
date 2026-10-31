@@ -110,6 +110,7 @@ const _aiAddedLayerIds = new Set();
 
 // Inspector-provided config (forwarded from the layer panel).
 let _inspectorGeminiApiKey: string | null = null;
+let _inspectorAiHub: string | null = null; // optional aiHub: endpoint (CANVAS bridge-hub) from inspector
 let _inspectorGeminiModel: string | null = null;
 let _inspectorYahooAppId: string | null = null;
 let _inspectorGoogleMapsApiKey: string | null = null;
@@ -161,6 +162,7 @@ async function sendConfig(): Promise<void> {
     keySource: inspectorKey ? 'inspector' : (_sessionGeminiApiKey ? 'session' : (storedKey ? 'storage' : 'none')),
     model: model,
     provider: provider,
+    aiHub: _inspectorAiHub || '',
     yahooAppId: _inspectorYahooAppId || '',
     googleMapsApiKey: _inspectorGoogleMapsApiKey || '',
     i18n: AI_I18N,
@@ -481,7 +483,8 @@ function bridgeToolCatalog(): any {
     plugin: 'geo_suite',
     local: LOCAL_TOOLS.slice(),
     panel: PANEL_TOOLS.slice(),
-    bridge: ['describe', 'runCode'],
+    bridge: ['describe', 'runCode', 'canvasApi'],
+    chat: ['aiChatSend', 'aiChatStatus', 'aiChatSet'],
     note: 'Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack.'
   };
 }
@@ -498,6 +501,12 @@ function dispatchToolCall(reqId: any, name: string, args: any, reply: (r: any) =
         return;
       }
       args._layerId = rl.id;
+    }
+    // AI chat panel control — round-trips through our own UI iframe.
+    if (name === 'aiChatSend' || name === 'aiChatStatus' || name === 'aiChatSet') {
+      _pendingForward[reqId] = { name: name, reply: reply };
+      postToUI({ action: 'aiChatCmd', reqId: reqId, cmd: name, args: args });
+      return;
     }
     if (PANEL_TOOLS.indexOf(name) >= 0) {
       _pendingForward[reqId] = { name: name, reply: reply };
@@ -568,6 +577,10 @@ try {
             }
           } catch (e) {}
           sendConfig();
+        } else if (msg.action === 'aiChatResult' && msg.reqId && _pendingForward[msg.reqId]) {
+          const meta = _pendingForward[msg.reqId];
+          delete _pendingForward[msg.reqId];
+          if (meta && typeof meta.reply === 'function') meta.reply(msg.result);
         } else if (msg.action === 'aiSetProvider') {
           const pv = (msg.provider && typeof msg.provider === 'object') ? msg.provider : null;
           try {
@@ -624,6 +637,7 @@ try {
           });
         } else if (data.action === 'aiConfig') {
           _inspectorGeminiApiKey = (typeof data.geminiApiKey === 'string' && data.geminiApiKey) ? data.geminiApiKey : null;
+          _inspectorAiHub = (typeof data.aiHub === 'string' && data.aiHub) ? data.aiHub : null;
           _inspectorGeminiModel = (typeof data.geminiModel === 'string' && data.geminiModel) ? data.geminiModel : null;
           _inspectorYahooAppId = (typeof data.yahooAppId === 'string' && data.yahooAppId) ? data.yahooAppId : null;
           _inspectorGoogleMapsApiKey = (typeof data.googleMapsApiKey === 'string' && data.googleMapsApiKey) ? data.googleMapsApiKey : null;
@@ -713,20 +727,22 @@ const html: string = `
     <label data-i18n="provider">Provider</label>
     <select id="ai-provider">
       <option value="gemini">Gemini</option>
+      <option value="copilot">GitHub Copilot (bridge hub)</option>
       <option value="openai">OpenAI-compatible</option>
       <option value="anthropic">Anthropic</option>
       <option value="azure">Azure OpenAI</option>
       <option value="agent">External agent (bridge)</option>
     </select>
-    <div class="pv-field" data-pv="openai azure anthropic agent"><label data-i18n="endpoint">Endpoint</label>
+    <div class="pv-field" data-pv="openai azure anthropic agent copilot"><label data-i18n="endpoint">Endpoint</label>
     <input id="ai-endpoint" type="text" autocomplete="off" placeholder="https://..."></div>
     <div class="pv-field" data-pv="azure"><label data-i18n="apiVer">API version</label>
     <input id="ai-apiver" type="text" autocomplete="off" placeholder="2024-10-21"></div>
     <div class="pv-field" data-pv="gemini openai anthropic azure"><div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
     <input id="ai-key" type="password" autocomplete="off" data-i18n-ph="apiKeyPh" placeholder="AIza..."></div>
     <div id="ai-key-src" class="ai-key-src"></div>
-    <div class="pv-field" data-pv="gemini openai anthropic azure"><label data-i18n="model">Model</label>
-    <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite"></div>
+    <div class="pv-field" data-pv="gemini openai anthropic azure copilot"><label data-i18n="model">Model</label>
+    <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite" list="ai-model-list"><datalist id="ai-model-list"></datalist>
+    <div id="ai-hub-status" class="ai-key-src" style="display:none;"></div></div>
     <div class="pv-field" data-pv="agent"><label data-i18n="agentModel">Agent note</label>
     <input id="ai-agentmodel" type="text" autocomplete="off" placeholder="(optional)"></div>
     <div class="row"><label style="font-weight:400;display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;"><input id="ai-remember" type="checkbox" style="width:auto;margin:0;"><span data-i18n="remember">Save key on this browser</span></label></div>
@@ -831,6 +847,9 @@ const html: string = `
     { name:'setDepthTest', description:'Enable or disable depth test against terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'setGeojsonDrape', description:'Set how GeoJSON layers drape: 3dtiles | terrain | both', parameters:{ type:'OBJECT', properties:{ classification:{type:'STRING'} }, required:['classification'] } },
     { name:'setBackground', description:'Set the globe/scene background color as #rgb, #rrggbb or #rrggbbaa', parameters:{ type:'OBJECT', properties:{ color:{type:'STRING'} }, required:['color'] } },
+    { name:'aiChatSend', description:'Send a message to the AI chat panel itself and return its reply (drives the chat)', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
+    { name:'aiChatStatus', description:'Get the AI chat panel state (provider/model/key/busy)', parameters:{ type:'OBJECT', properties:{} } },
+    { name:'aiChatSet', description:'Configure the AI chat provider/endpoint/model/apiKey (persist:false to keep it session-only)', parameters:{ type:'OBJECT', properties:{ provider:{type:'STRING'}, endpoint:{type:'STRING'}, model:{type:'STRING'}, apiKey:{type:'STRING'}, apiVer:{type:'STRING'}, persist:{type:'BOOLEAN'} } } },
     { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
 
@@ -857,6 +876,7 @@ const html: string = `
   var keyStatus = document.getElementById('ai-key-status');
   var keySrcEl = document.getElementById('ai-key-src');
   var saveMsg = document.getElementById('ai-save-msg');
+  var _chatReplyCb = null; // one-shot reply resolver for aiChatSend (bridge control)
   var providerSel = document.getElementById('ai-provider');
   var endpointInput = document.getElementById('ai-endpoint');
   var apiverInput = document.getElementById('ai-apiver');
@@ -868,9 +888,16 @@ const html: string = `
     document.querySelectorAll('.pv-field').forEach(function(el) {
       el.style.display = ((el.getAttribute('data-pv') || '').indexOf(pv) >= 0) ? '' : 'none';
     });
+    if (pv === 'copilot') {
+      if (endpointInput && !endpointInput.value.trim()) endpointInput.value = 'http://127.0.0.1:8511/agent';
+      if (modelInput && /^gemini-/.test(modelInput.value)) modelInput.value = '';
+    }
     try { updateKeyStatus(); } catch (e) {}
+    try { refreshProviderModels(); } catch (e) {}
   }
   if (providerSel) providerSel.addEventListener('change', applyProviderFields);
+  if (endpointInput) endpointInput.addEventListener('change', function() { try { refreshProviderModels(); } catch (e) {} });
+  if (keyInput) keyInput.addEventListener('change', function() { try { refreshProviderModels(); } catch (e) {} });
 
   var _apiKey = '';
   var _model = 'gemini-3.1-flash-lite';
@@ -927,14 +954,15 @@ const html: string = `
 
   function updateKeyStatus() {
     try {
-      var hasAny = !!(_apiKey || _serverHasKey);
-      keyStatus.textContent = hasAny ? t('keySet') : t('noKeySet');
+      var noKeyNeeded = (_provider === 'copilot' || _provider === 'agent');
+      var hasAny = noKeyNeeded || !!(_apiKey || _serverHasKey);
+      keyStatus.textContent = noKeyNeeded ? 'no key (bridge)' : (hasAny ? t('keySet') : t('noKeySet'));
       keyStatus.className = 'ai-key-status' + (hasAny ? ' ok' : '');
       // Expose where the active key comes from so users can judge exposure.
       var src = _apiKey ? _keySource : (_serverHasKey ? 'server proxy' : '');
-      if (keySrcEl) keySrcEl.textContent = src ? (t('keySrc') + ': ' + src) : '';
+      if (keySrcEl) keySrcEl.textContent = (!noKeyNeeded && src) ? (t('keySrc') + ': ' + src) : '';
       var warnEl = document.querySelector('.ai-key-warn');
-      if (warnEl) warnEl.style.display = (_serverHasKey && !_apiKey) ? 'none' : '';
+      if (warnEl) warnEl.style.display = (noKeyNeeded || (_serverHasKey && !_apiKey) || _provider !== 'gemini') ? 'none' : '';
     } catch (e) {}
   }
 
@@ -1368,14 +1396,41 @@ const html: string = `
     }
     return next();
   }
+  // CANVAS bridge-hub contract: POST /agent {provider,model,message,camera,
+  // layers,basemaps,history,tools} -> {reply,actions:[{name,args}]}
+  var _hubDetected = null;
+  // Explicit endpoint wins; otherwise probe bridge-hub.exe on port 8511
+  // (CANVAS spec: unified to 8511 only).
+  function detectHub() {
+    if (_hubDetected) return Promise.resolve(_hubDetected);
+    var ep = ((endpointInput && endpointInput.value) || '').trim();
+    if (ep) {
+      _hubDetected = ep.replace(/[/]+agent[\/]?$/, '');
+      return Promise.resolve(_hubDetected);
+    }
+    var ports = [8511];
+    function probe(i) {
+      if (i >= ports.length) return Promise.reject(new Error('hub not found on 8511'));
+      return fetch('http://127.0.0.1:' + ports[i] + '/health', { cache: 'no-store' }).then(function(r) {
+        if (r && r.ok) { _hubDetected = 'http://127.0.0.1:' + ports[i]; return _hubDetected; }
+        return probe(i + 1);
+      }).catch(function() { return probe(i + 1); });
+    }
+    return probe(0);
+  }
   function callAgent(text) {
-    var endpoint = ((endpointInput && endpointInput.value) || '').trim();
-    if (!endpoint) return Promise.reject(new Error('endpoint required'));
-    return fetch(endpoint.replace(/[/]+$/, ''), {
+    var prov = (_provider === 'copilot') ? 'copilot' : 'agent';
+    return detectHub().then(function(url) {
+      return fetch(url + '/agent', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        provider: prov,
+        model: _model || undefined,
         message: text,
-        tools: (TOOL_DECLS || []).map(function(d) { return { name: d.name, description: d.description, parameters: pxSchema(d.parameters) }; })
+        project: 'default',
+        camera: null, layers: [], basemaps: [],
+        history: _pxHist.slice(-20).map(function(m) { return { role: m.role, text: m.text || '' }; }),
+        tools: TOOL_DECLS || []
       })
     }).then(function(res) {
       return res.json().then(function(data) {
@@ -1393,6 +1448,52 @@ const html: string = `
         });
       });
     });
+    });
+  }
+  // Populate the model datalist from the provider's /models endpoint
+  // (CANVAS-style: the list reflects what the credential/endpoint advertises).
+  function refreshProviderModels() {
+    var dl = document.getElementById('ai-model-list');
+    var st = document.getElementById('ai-hub-status');
+    if (!dl || !st) return;
+    var pv = _provider;
+    function fill(models, note) {
+      dl.innerHTML = '';
+      (models || []).forEach(function(m) {
+        var o = document.createElement('option');
+        o.value = m.id || m.name || m; dl.appendChild(o);
+      });
+      st.style.display = '';
+      st.textContent = note;
+    }
+    if (pv === 'copilot') {
+      st.textContent = 'hub: fetching models...';
+      detectHub().then(function(base) {
+        return fetch(base + '/models?provider=copilot').then(function(r) { return r.json(); });
+      }).then(function(d) {
+        var ms = (d && d.models) || [];
+        fill(ms, (d && d.fallback) || !ms.length ? 'hub: connected, but no model list (not signed in?)' : 'hub: ' + ms.length + ' models');
+      }).catch(function() { st.style.display = ''; st.textContent = 'hub: unreachable — install/start bridge-hub.exe (port 8511)'; });
+      return;
+    }
+    if (pv === 'openai' || pv === 'anthropic') {
+      if (!_apiKey) { fill([], 'models: enter API key first'); return; }
+      var base = (((endpointInput && endpointInput.value) || '').trim()
+        || (pv === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com')).replace(/[/]+$/, '');
+      var headers = pv === 'anthropic'
+        ? { 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        : { 'Authorization': 'Bearer ' + _apiKey };
+      st.textContent = 'models: fetching...';
+      fetch(base + '/v1/models', { headers: headers }).then(function(r) {
+        return r.json().then(function(d) {
+          if (!r.ok) throw new Error((d && d.error && d.error.message) || ('HTTP ' + r.status));
+          var ms = (d && d.data) || [];
+          fill(ms, ms.length ? ('models: ' + ms.length) : 'models: none listed');
+        });
+      }).catch(function(e) { st.style.display = ''; st.textContent = 'models: ' + String(e && e.message || e); });
+      return;
+    }
+    st.style.display = 'none';
   }
 
   function callGemini() {
@@ -1450,7 +1551,7 @@ const html: string = `
     } else if (_provider === 'anthropic') {
       _pxHist.push({ role: 'user', text: text });
       p = callAnthropic();
-    } else if (_provider === 'agent') {
+    } else if (_provider === 'agent' || _provider === 'copilot') {
       p = callAgent(text);
     } else {
       _history.push({ role: 'user', parts: [{ text: text }] });
@@ -1458,10 +1559,14 @@ const html: string = `
     }
     p.then(function(res) {
       try { thinking.remove(); } catch (e) {}
-      addMsg('bot', (res && res.text) ? res.text : t('noResponse'));
+      var out = (res && res.text) ? res.text : t('noResponse');
+      addMsg('bot', out);
+      if (_chatReplyCb) { var cb = _chatReplyCb; _chatReplyCb = null; cb({ reply: out }); }
     }).catch(function(e) {
       try { thinking.remove(); } catch (e2) {}
-      addMsg('bot', t('err') + ': ' + String(e && e.message || e));
+      var et = t('err') + ': ' + String(e && e.message || e);
+      addMsg('bot', et);
+      if (_chatReplyCb) { var cb2 = _chatReplyCb; _chatReplyCb = null; cb2({ error: et }); }
     }).then(function() {
       _busy = false;
       sendBtn.disabled = false;
@@ -1474,7 +1579,8 @@ const html: string = `
     if (!text) return;
     inputEl.value = '';
     addMsg('user', text);
-    if (!_apiKey && !_serverHasKey) {
+    var needKey = (_provider !== 'copilot' && _provider !== 'agent');
+    if (needKey && !_apiKey && !_serverHasKey) {
       ensureServerKey().then(function() {
         if (_serverHasKey || _apiKey) submit(text);
         else addMsg('sys', t('noKey'));
@@ -1541,6 +1647,36 @@ const html: string = `
       if (msg.action === 'aiToolResult') {
         var p = _pendingTools[msg.reqId];
         if (p) { delete _pendingTools[msg.reqId]; p(msg.result); }
+      } else if (msg.action === 'aiChatCmd') {
+        // External/bridge control of this chat panel.
+        var cmd = String(msg.cmd || ''), rid = msg.reqId, aa = msg.args || {};
+        if (cmd === 'aiChatStatus') {
+          postToParent({ action: 'aiChatResult', reqId: rid, result: {
+            provider: _provider, model: _model,
+            hasKey: !!(_apiKey || _serverHasKey), busy: !!_busy,
+            endpoint: endpointInput ? endpointInput.value : ''
+          } });
+        } else if (cmd === 'aiChatSet') {
+          var persist = aa.persist === false ? false : true;
+          if (providerSel && typeof aa.provider === 'string' && aa.provider) { providerSel.value = aa.provider; applyProviderFields(); }
+          if (endpointInput && aa.endpoint !== undefined) { endpointInput.value = aa.endpoint; _hubDetected = null; }
+          if (modelInput && aa.model !== undefined) modelInput.value = aa.model;
+          if (apiverInput && aa.apiVer !== undefined) apiverInput.value = aa.apiVer;
+          if (agentModelInput && aa.agentModel !== undefined) agentModelInput.value = aa.agentModel;
+          if (aa.apiKey !== undefined) postToParent({ action: 'aiSetApiKey', key: String(aa.apiKey), persist: persist });
+          postToParent({ action: 'aiSetProvider', persist: persist, provider: {
+            provider: providerSel ? providerSel.value : 'gemini',
+            endpoint: (endpointInput && endpointInput.value || '').trim(),
+            apiVer: (apiverInput && apiverInput.value || '').trim(),
+            agentModel: (agentModelInput && agentModelInput.value || '').trim()
+          } });
+          postToParent({ action: 'aiChatResult', reqId: rid, result: { ok: true, provider: _provider } });
+        } else if (cmd === 'aiChatSend') {
+          _chatReplyCb = function(reply) { postToParent({ action: 'aiChatResult', reqId: rid, result: reply }); };
+          setTimeout(function() { if (_chatReplyCb) { var c = _chatReplyCb; _chatReplyCb = null; c({ error: 'chat timeout' }); } }, 120000);
+          inputEl.value = String(aa.text || '');
+          doSend();
+        }
       } else if (msg.action === 'aiConfig') {
         _apiKey = (typeof msg.apiKey === 'string') ? msg.apiKey : '';
         _keySource = msg.keySource || 'none';
@@ -1555,6 +1691,11 @@ const html: string = `
           if (agentModelInput && typeof pv.agentModel === 'string') agentModelInput.value = pv.agentModel;
           applyProviderFields();
         }
+        // inspector "aiHub:" line pre-fills the Copilot/agent endpoint when unset
+        if (typeof msg.aiHub === 'string' && msg.aiHub && endpointInput && !endpointInput.value.trim()) {
+          endpointInput.value = msg.aiHub;
+          _hubDetected = null;
+        }
         if (msg.i18n && typeof msg.i18n === 'object') {
           for (var lk in msg.i18n) { try { GEO_I18N[lk] = msg.i18n[lk]; } catch (e) {} }
           applyI18n(); updateKeyStatus();
@@ -1562,6 +1703,7 @@ const html: string = `
         if (rememberEl) rememberEl.checked = (_keySource === 'storage');
         if (_keySource !== 'inspector') keyInput.value = _apiKey;
         modelInput.value = _model;
+        if (_provider === 'copilot' && /^gemini-/.test(modelInput.value)) modelInput.value = '';
         updateKeyStatus();
         _configReceived = true;
         autoMinimize();

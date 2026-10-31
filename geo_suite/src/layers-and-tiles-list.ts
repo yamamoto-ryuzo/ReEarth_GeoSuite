@@ -86,6 +86,7 @@ let _lastAddedBasemapUrl = null; // encoded URL of the last-added basemap
 let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector text (forwarded to ai-chat widget)
 let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
+let _inspectorAiHub = null; // optional aiHub: CANVAS bridge-hub endpoint (forwarded to ai-chat widget)
 let _inspectorGoogleMapsApiKey = null; // optional googleMapsApiKey read from inspector text (Google Places search / Street View pano verification)
 let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
@@ -116,7 +117,7 @@ const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','
 const GEO_I18N = {
   en: {
     minimize:'Minimize', restore:'Restore', move:'Move', moveCamera:'Move Camera',
-    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied', importTitle:'File import', importAddFile:'Add files', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
+    tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied', importTitle:'File import', importAddFile:'Add files', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip', aiBridgeTitle:'AI Bridge (CANVAS)', aiHubLbl:'Bridge hub endpoint', aiHubTest:'Test', aiHubHint:'aiHub: sets the CANVAS bridge-hub endpoint shared with the AI chat providers (Copilot/agent). Saved to the settings text.',
     layersTitle:'Layers', note:'Note', refresh:'Refresh', refreshTitle:'Force Refresh User Layers',
     generateLink:'Generate Link', generating:'Generating...', copy:'Copy', copied:'Copied!',
     sharePasteLabel:'Paste a URL below.', sharePastePh:'Paste URL or ?lat=...', load:'Load', loaded:'Loaded!', invalidData:'Invalid Data', parseError:'Parse Error', error:'Error',
@@ -145,7 +146,7 @@ const GEO_I18N = {
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
-    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました', importTitle:'ファイル取り込み', importAddFile:'ファイルを追加', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
+    tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました', importTitle:'ファイル取り込み', importAddFile:'ファイルを追加', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip', aiBridgeTitle:'AIブリッジ (CANVAS)', aiHubLbl:'ブリッジハブのエンドポイント', aiHubTest:'疎通確認', aiHubHint:'aiHub: は CANVAS ブリッジハブの接続先で、AIチャットのプロバイダ（Copilot/エージェント）と共有されます。設定テキストに保存されます。',
     layersTitle:'レイヤー', note:'注意', refresh:'更新', refreshTitle:'ユーザーレイヤーを強制更新',
     generateLink:'リンクを生成', generating:'生成中...', copy:'コピー', copied:'コピーしました!',
     sharePasteLabel:'URLをペーストして下さい。', sharePastePh:'URL または ?lat=... を貼付', load:'読込', loaded:'読込完了!', invalidData:'無効なデータ', parseError:'解析エラー', error:'エラー',
@@ -1755,6 +1756,16 @@ function getUI() {
       </div>
       <div class="text-sm" style="color:#888;font-size:0.72em;margin-top:4px;line-height:1.35;" data-i18n="importHint">.geojson .json .fgb .parquet .gpkg .csv .tsv / .kasc appends lines to the settings text / .zip unpacks .kasc+DATA (same as qgis: URL)</div>
       <div id="import-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:2px;">&nbsp;</div>
+    </div>
+    <div style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">
+      <div style="font-weight:600;" data-i18n="aiBridgeTitle">AI Bridge (CANVAS)</div>
+      <label class="text-sm" for="ai-hub-input" data-i18n="aiHubLbl">Bridge hub endpoint</label>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input id="ai-hub-input" type="text" spellcheck="false" placeholder="http://127.0.0.1:8511" style="flex:1;font-size:0.75em;border:1px solid #ccc;border-radius:4px;padding:2px 6px;" />
+        <button id="ai-hub-test-btn" class="btn-primary p-6" data-i18n="aiHubTest">Test</button>
+      </div>
+      <div id="ai-hub-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;font-size:0.78em;">&nbsp;</div>
+      <div class="text-sm" style="color:#888;font-size:0.72em;line-height:1.35;" data-i18n="aiHubHint">aiHub: sets the CANVAS bridge-hub endpoint shared with the AI chat providers (Copilot/agent). Saved to the settings text.</div>
     </div>
     <div id="manage-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;">&nbsp;</div>
   </div>
@@ -4157,6 +4168,52 @@ function qmlStyleToReearth(xmlText, opts){
                   } catch(e) { try { ta.select(); document.execCommand('copy'); } catch(e2) {} }
                 });
               }
+              // CANVAS bridge-hub setting: mirrors an "aiHub:" line in the
+              // settings text. Test probes /health + /models?provider=copilot.
+              const aiHubInput = document.getElementById('ai-hub-input');
+              const aiHubStatus = document.getElementById('ai-hub-status');
+              const aiHubRe = /^\\s*aihub\\s*:\\s*(\\S+)/im;
+              function aiHubSyncFromText() {
+                const ta = document.getElementById('manage-inspector-text');
+                if (!ta || !aiHubInput) return;
+                const m = (ta.value || '').match(aiHubRe);
+                aiHubInput.value = m ? m[1] : '';
+              }
+              function aiHubSyncToText() {
+                const ta = document.getElementById('manage-inspector-text');
+                if (!ta || !aiHubInput) return;
+                const val = aiHubInput.value.trim();
+                const lines = (ta.value || '').split('\\n');
+                let found = false;
+                const out = lines.map(function(l) {
+                  if (/^\\s*aihub\\s*:/i.test(l)) { found = true; return val ? ('aiHub: ' + val) : l; }
+                  return l;
+                });
+                if (!found && val) out.push('aiHub: ' + val);
+                ta.value = out.join('\\n');
+              }
+              if (aiHubInput) aiHubInput.addEventListener('change', aiHubSyncToText);
+              const aiHubTestBtn = document.getElementById('ai-hub-test-btn');
+              if (aiHubTestBtn) aiHubTestBtn.addEventListener('click', function() {
+                const ep = ((aiHubInput && aiHubInput.value) || '').trim() || 'http://127.0.0.1:8511';
+                const base = ep.replace(/[/]+agent[/]?$/, '');
+                if (aiHubStatus) aiHubStatus.textContent = 'hub: testing ' + base + ' ...';
+                fetch(base + '/health', { cache: 'no-store' }).then(function(r) {
+                  return r.json().then(function(d) {
+                    const provs = (d && d.providers) ? Object.keys(d.providers).filter(function(k) { return d.providers[k].available; }).join(',') : '';
+                    return fetch(base + '/models?provider=copilot').then(function(r2) {
+                      return r2.json().then(function(m) {
+                        const n = (m && m.models ? m.models.length : 0);
+                        if (aiHubStatus) aiHubStatus.textContent = 'hub: OK (v' + (d && d.version || '?') + ', models:' + n + (provs ? ', ' + provs : '') + ')';
+                      });
+                    });
+                  });
+                }).catch(function() {
+                  if (aiHubStatus) aiHubStatus.textContent = 'hub: unreachable — start bridge-hub.exe (port 8511)';
+                });
+              });
+              // Populate once the settings text arrives
+              setTimeout(aiHubSyncFromText, 1200);
               // Local file import (KASUGAI Canvas DATA/ add equivalent).
               // Files are decoded here in the iframe (no server needed) and the
               // resulting GeoJSON is sent to the extension as an 'importAdd'
@@ -10061,7 +10118,8 @@ try {
                 geminiApiKey: _inspectorGeminiApiKey || '',
                 geminiModel: _inspectorGeminiModel || '',
                 yahooAppId: _inspectorYahooAppId || '',
-                googleMapsApiKey: _inspectorGoogleMapsApiKey || ''
+                googleMapsApiKey: _inspectorGoogleMapsApiKey || '',
+                aiHub: _inspectorAiHub || ''
               });
             } catch (e) {}
           }
@@ -11006,6 +11064,7 @@ function processInspectorText(text) {
   try { _inspectorYahooAppId = null; } catch(e) {}
   try { _inspectorGoogleMapsApiKey = null; } catch(e) {}
   try { _inspectorGeminiApiKey = null; } catch(e) {}
+  try { _inspectorAiHub = null; } catch(e) {}
   try { _inspectorGeminiModel = null; } catch(e) {}
   _systemLayerSettings = [];
   _inspectorAttrUrlOpen = 'newtab';
@@ -11160,6 +11219,19 @@ function processInspectorText(text) {
       try {
         const val = line.substring(line.indexOf(':') + 1).trim();
         if (val) _inspectorGeminiModel = val;
+      } catch(e){}
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // CANVAS bridge-hub endpoint for the AI providers: "aiHub: http://host:port"
+    if (/^aihub\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        if (val) {
+          _inspectorAiHub = val;
+          try { sendLog('[processInspectorText] found inspector aiHub:', val); } catch(e){}
+        }
       } catch(e){}
       if (keep !== false) nonCamLines.push(line);
       return;
