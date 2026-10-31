@@ -104,6 +104,8 @@ const FLY_ROUTE_LAYER_TITLE = 'Fly Route (geo_suite)';
 
 // UI language override from inspector text ("lang: <code>"). 'auto' = detect via navigator.language in the widget iframe.
 let _inspectorLang = 'auto';
+// External bridge endpoint from inspector "bridge:" line ('off'|'on'|<url>).
+let _inspectorBridgeUrl = null;
 
 // Supported UI locales. 'en' is the base language; missing keys fall back to English.
 const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
@@ -9016,6 +9018,12 @@ function handleGpkgResult(msg) {
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
         return;
     }
+    if (geojsonMsgTooBig(msg.geojson)) {
+        const err = 'result too large for the extension bridge (>4MB) — narrow the query (where/limit/columns/bbox) or host via qgis: <.kasc URL>';
+        try { sendError('[gpkg]', err); } catch (e) {}
+        if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
+        return;
+    }
     if (p.kind === 'refresh') {
         const spec = _ddbLayers[msg.layerId];
         if (spec && spec.req === msg.vecId) {
@@ -9086,6 +9094,15 @@ function ensureDuckDbMoveSubscription() {
 // A DuckDB query finished — either add a new layer (kind 'add') or override
 // an existing bbox=auto layer's data (kind 'refresh'). Reached via the UI
 // message channel (own iframe) or extensionMessage (basemap-widget host).
+// Guard: marshalling a big FeatureCollection into reearth.layers.add/override
+// copies it through the host bridge and has OOM-killed QuickJS contexts under
+// load. Reject oversized results before that crossing (the iframe-side 8MB cap
+// alone still allowed ~8MB × repeated bbox=auto refreshes to accumulate).
+const GEOJSON_MSG_MAX_BYTES = 4 * 1024 * 1024;
+function geojsonMsgTooBig(fc) {
+    try { return JSON.stringify(fc).length > GEOJSON_MSG_MAX_BYTES; } catch (e) { return true; }
+}
+
 function handleDdbResult(msg) {
     const p = _ddbPending[msg.vecId];
     if (p === undefined) return;
@@ -9093,6 +9110,12 @@ function handleDdbResult(msg) {
     if (msg.error || !msg.geojson) {
         try { sendError('[duckdb] query failed:', msg.error); } catch (e) {}
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
+        return;
+    }
+    if (geojsonMsgTooBig(msg.geojson)) {
+        const err = 'result too large for the extension bridge (>4MB) — narrow the query (where/limit/columns/bbox) or host via qgis: <.kasc URL>';
+        try { sendError('[duckdb]', err); } catch (e) {}
+        if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
         return;
     }
     if (p.kind === 'refresh') {
@@ -10042,6 +10065,13 @@ try {
               });
             } catch (e) {}
           }
+        } else if (data && data.action === 'requestBridgeConfig') {
+          // Another widget (navigation-toolbar bridge relay) asks for the
+          // inspector "bridge:" endpoint config.
+          const targetId = msg.sender || null;
+          if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+            try { reearth.extension.postMessage(targetId, { action: 'bridgeConfig', url: _inspectorBridgeUrl || '' }); } catch (e) {}
+          }
         } else if (data && data.action === 'aiToolRequest') {
           // The ai-chat widget delegates inspector-bound tools here (presets,
           // basemaps, fly routes, terrain/shadow, street view, vector features).
@@ -10279,6 +10309,29 @@ function postLangToBasemapWidget() {
   } catch (e) {}
 }
 
+// Forward the inspector "bridge:" endpoint config to the navigation toolbar,
+// whose extension context hosts the external-bridge relay.
+function findNavToolbarWidgetId() {
+  try {
+    const list = (reearth && reearth.extension && reearth.extension.list) || [];
+    const target = list.find((ex) => ex && ex.extensionId === 'navigation-toolbar');
+    return target ? target.id : null;
+  } catch (e) { return null; }
+}
+
+let _navToolbarWidgetId = null;
+
+function postBridgeConfigToNavToolbar() {
+  try {
+    const targetId = _navToolbarWidgetId || findNavToolbarWidgetId();
+    if (!targetId) return;
+    _navToolbarWidgetId = targetId;
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(targetId, { action: 'bridgeConfig', url: _inspectorBridgeUrl || '' });
+    }
+  } catch (e) {}
+}
+
 function postBaseListToBasemapWidget(baseEntries) {
   if (!baseEntries || !baseEntries.length) return;
   try {
@@ -10385,6 +10438,14 @@ function handleAiToolRequest(senderId, data) {
         const cam = (_cameraPresets || []).find(c => String(c.title).toLowerCase() === n)
           || (_cameraPresets || []).find(c => String(c.title).toLowerCase().indexOf(n) >= 0);
         if (!cam) { fail('preset not found: ' + args.name); return; }
+        if (args.wait === false) {
+          // Issue-and-acknowledge: reply synchronously without awaiting the
+          // flight (extensionMessage-origin callers stall on deferred
+          // promise continuations otherwise).
+          try { flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false }); } catch (e) {}
+          aiToolReply(senderId, reqId, true, { name: cam.title, wait: false });
+          return;
+        }
         flyToAndNotify(cam.lat, cam.lng, { height: cam.height, heading: cam.heading, pitch: cam.pitch, duration: 2, addMarker: false })
           .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { name: cam.title }))
           .catch(e => fail(String(e)));
@@ -10492,6 +10553,11 @@ function handleAiToolRequest(senderId, data) {
           }
         }
         if (!hit || hit.lat == null || hit.lng == null) { fail('feature not found'); return; }
+        if (args.wait === false) {
+          try { flyToAndNotify(hit.lat, hit.lng, { addMarker: false }); } catch (e) {}
+          aiToolReply(senderId, reqId, true, { lat: hit.lat, lng: hit.lng, wait: false });
+          return;
+        }
         flyToAndNotify(hit.lat, hit.lng, { addMarker: false })
           .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { lat: hit.lat, lng: hit.lng }))
           .catch(e => fail(String(e)));
@@ -10788,6 +10854,9 @@ function handleAiToolRequest(senderId, data) {
         } catch (e) {}
         if (args.fly === false) {
           aiToolReply(senderId, reqId, true, { properties: props, lat: hit.lat, lng: hit.lng });
+        } else if (args.wait === false) {
+          try { flyToAndNotify(hit.lat, hit.lng, { addMarker: false }); } catch (e) {}
+          aiToolReply(senderId, reqId, true, { properties: props, lat: hit.lat, lng: hit.lng, wait: false });
         } else {
           flyToAndNotify(hit.lat, hit.lng, { addMarker: false })
             .then(r => aiToolReply(senderId, reqId, !!(r && r.success), { properties: props, lat: hit.lat, lng: hit.lng }))
@@ -11119,6 +11188,20 @@ function processInspectorText(text) {
         if (val) _inspectorLang = val;
         try { sendLog('[processInspectorText] found lang:', _inspectorLang); } catch(e){}
         try { postLangToBasemapWidget(); } catch(e){}
+      } catch(e){}
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // External bridge endpoint: "bridge: off | on | http://host:port"
+    // Controls the basemap-widget bridge client that lets a local harness
+    // call map tools from outside the sandbox.
+    if (/^bridge\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        _inspectorBridgeUrl = val || null;
+        try { sendLog('[processInspectorText] found bridge:', _inspectorBridgeUrl); } catch(e){}
+        try { postBridgeConfigToNavToolbar(); } catch(e){}
       } catch(e){}
       if (keep !== false) nonCamLines.push(line);
       return;

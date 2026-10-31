@@ -96,6 +96,12 @@ const PANEL_TOOLS = [
 // Panel tools that still work (degraded) without the layer panel.
 const LOCAL_FALLBACK = ['setLayerVisible', 'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer'];
 
+// Tools executed locally in this extension context (mirrors execLocalTool's
+// switch; kept in sync manually — used by the bridge "describe" catalog).
+const LOCAL_TOOLS = ['getCamera', 'flyTo', 'listLayers', 'setLayerVisible', 'focusLayer',
+  'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer', 'captureView',
+  'getShareUrl', 'buildShareUrl', 'setCamera', 'lookAt', 'zoomIn', 'zoomOut', 'openUrl'];
+
 // reqIds currently forwarded to the layer panel; extensionMessage replies are routed back to the UI.
 const _pendingForward: any = {};
 
@@ -114,16 +120,25 @@ let _sessionGeminiApiKey: string | null = null;
 
 const AI_STORAGE_KEY = 'geminiApiKey';
 const AI_STORAGE_MODEL = 'geminiModel';
+const AI_STORAGE_PROVIDER = 'aiProvider';
 const AI_DEFAULT_MODEL = 'gemini-3.1-flash-lite';
+let _sessionAiProvider: any = null;
 
 async function sendConfig(): Promise<void> {
   let storedKey: any = null;
   let storedModel: any = null;
+  let storedProvider: any = null;
   try {
     if (reearth && reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.getAsync === 'function') {
       storedKey = await reearth.data.clientStorage.getAsync(AI_STORAGE_KEY);
       storedModel = await reearth.data.clientStorage.getAsync(AI_STORAGE_MODEL);
+      storedProvider = await reearth.data.clientStorage.getAsync(AI_STORAGE_PROVIDER);
     }
+  } catch (e) {}
+  let provider: any = null;
+  try {
+    const raw = _sessionAiProvider || storedProvider;
+    provider = (typeof raw === 'object' && raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : null);
   } catch (e) {}
   // Fields declared in this extension's own schema (editable in the inspector).
   // They take precedence over the layer panel's inspectorText geminiApiKey/geminiModel lines.
@@ -145,6 +160,7 @@ async function sendConfig(): Promise<void> {
     hasKey: !!key,
     keySource: inspectorKey ? 'inspector' : (_sessionGeminiApiKey ? 'session' : (storedKey ? 'storage' : 'none')),
     model: model,
+    provider: provider,
     yahooAppId: _inspectorYahooAppId || '',
     googleMapsApiKey: _inspectorGoogleMapsApiKey || '',
     i18n: AI_I18N,
@@ -428,7 +444,10 @@ function aiOpenUrl(args: any): any {
   }
 }
 
-async function execLocalTool(name: string, args: any): Promise<any> {
+// Synchronous on purpose: microtask continuations scheduled during an
+// extensionMessage dispatch are not pumped until the next event in the
+// QuickJS host, so replying via promise .then() can stall bridge calls.
+function execLocalTool(name: string, args: any): any {
   try {
     switch (name) {
       case 'getCamera': return cameraResult();
@@ -455,6 +474,59 @@ async function execLocalTool(name: string, args: any): Promise<any> {
   }
 }
 
+// Bridge catalog (describe): the tool set reachable through the external
+// bridge channel. runCode executes in the bridge host iframe (basemap-widget).
+function bridgeToolCatalog(): any {
+  return {
+    plugin: 'geo_suite',
+    local: LOCAL_TOOLS.slice(),
+    panel: PANEL_TOOLS.slice(),
+    bridge: ['describe', 'runCode'],
+    note: 'Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack.'
+  };
+}
+
+// Shared dispatch for aiToolCall (chat UI) and bridgeCall (external harness).
+// reply(result) routes the result back through the caller's channel.
+function dispatchToolCall(reqId: any, name: string, args: any, reply: (r: any) => void): void {
+  try {
+    if (name === 'describe') { reply(bridgeToolCatalog()); return; }
+    if (name === 'removeLayer') {
+      const rl = aiResolveLayer(args.layer);
+      if (!rl || !rl.id || !_aiAddedLayerIds.has(rl.id)) {
+        reply({ error: 'only layers added by the AI can be removed' });
+        return;
+      }
+      args._layerId = rl.id;
+    }
+    if (PANEL_TOOLS.indexOf(name) >= 0) {
+      _pendingForward[reqId] = { name: name, reply: reply };
+      const sent = postToLayerPanel({ action: 'aiToolRequest', reqId: reqId, name: name, args: args });
+      if (!sent) {
+        delete _pendingForward[reqId];
+        if (LOCAL_FALLBACK.indexOf(name) >= 0) {
+          replyLocal(name, args);
+        } else {
+          reply({ error: 'layer panel unavailable' });
+        }
+      }
+    } else {
+      replyLocal(name, args);
+    }
+  } catch (e) {
+    reply({ error: String((e && e.message) || e) });
+  }
+
+  function replyLocal(n: string, a: any): void {
+    try {
+      const v = execLocalTool(n, a);
+      if (v && typeof v.then === 'function') v.then(reply); else reply(v);
+    } catch (e) {
+      reply({ error: String((e && e.message) || e) });
+    }
+  }
+}
+
 // ---------- message handlers ----------
 
 try {
@@ -464,34 +536,9 @@ try {
         if (!msg || !msg.action) return;
         if (msg.action === 'aiToolCall') {
           const reqId = msg.reqId;
-          const name = String(msg.name || '');
-          const args = msg.args || {};
-          if (name === 'removeLayer') {
-            const rl = aiResolveLayer(args.layer);
-            if (!rl || !rl.id || !_aiAddedLayerIds.has(rl.id)) {
-              postToUI({ action: 'aiToolResult', reqId: reqId, result: { error: 'only layers added by the AI can be removed' } });
-              return;
-            }
-            args._layerId = rl.id;
-          }
-          if (PANEL_TOOLS.indexOf(name) >= 0) {
-            _pendingForward[reqId] = { name: name };
-            const sent = postToLayerPanel({ action: 'aiToolRequest', reqId: reqId, name: name, args: args });
-            if (!sent) {
-              delete _pendingForward[reqId];
-              if (LOCAL_FALLBACK.indexOf(name) >= 0) {
-                execLocalTool(name, args).then((result: any) => {
-                  postToUI({ action: 'aiToolResult', reqId: reqId, result: result });
-                });
-              } else {
-                postToUI({ action: 'aiToolResult', reqId: reqId, result: { error: 'layer panel unavailable' } });
-              }
-            }
-          } else {
-            execLocalTool(name, args).then((result: any) => {
-              postToUI({ action: 'aiToolResult', reqId: reqId, result: result });
-            });
-          }
+          dispatchToolCall(reqId, String(msg.name || ''), msg.args || {}, (result: any) => {
+            postToUI({ action: 'aiToolResult', reqId: reqId, result: result });
+          });
         } else if (msg.action === 'aiGetConfig') {
           // Ask the layer panel for inspector-provided values, then reply with merged config.
           try { postToLayerPanel({ action: 'requestAiConfig' }); } catch (e) {}
@@ -521,6 +568,22 @@ try {
             }
           } catch (e) {}
           sendConfig();
+        } else if (msg.action === 'aiSetProvider') {
+          const pv = (msg.provider && typeof msg.provider === 'object') ? msg.provider : null;
+          try {
+            if (msg.persist === false) {
+              _sessionAiProvider = pv;
+              if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+                reearth.data.clientStorage.setAsync(AI_STORAGE_PROVIDER, '');
+              }
+            } else {
+              _sessionAiProvider = null;
+              if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+                reearth.data.clientStorage.setAsync(AI_STORAGE_PROVIDER, pv ? JSON.stringify(pv) : '');
+              }
+            }
+          } catch (e) {}
+          sendConfig();
         }
       } catch (e) {}
     });
@@ -544,7 +607,21 @@ try {
               if (r && r.id) _aiAddedLayerIds.add(r.id);
             }
           } catch (e) {}
-          postToUI({ action: 'aiToolResult', reqId: data.reqId, result: data.result });
+          if (meta && typeof meta.reply === 'function') meta.reply(data.result);
+          else postToUI({ action: 'aiToolResult', reqId: data.reqId, result: data.result });
+        } else if (data.action === 'bridgeCall') {
+          // External bridge request (relayed by the basemap-widget host iframe
+          // from a local harness). The result goes back to the requesting
+          // widget instead of our own UI iframe.
+          const replyTo = (msg && msg.sender) ? String(msg.sender) : null;
+          const bReqId = data.reqId;
+          dispatchToolCall(bReqId, String(data.name || ''), data.args || {}, (result: any) => {
+            try {
+              if (replyTo && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+                reearth.extension.postMessage(replyTo, { action: 'bridgeResult', reqId: bReqId, result: result });
+              }
+            } catch (e) {}
+          });
         } else if (data.action === 'aiConfig') {
           _inspectorGeminiApiKey = (typeof data.geminiApiKey === 'string' && data.geminiApiKey) ? data.geminiApiKey : null;
           _inspectorGeminiModel = (typeof data.geminiModel === 'string' && data.geminiModel) ? data.geminiModel : null;
@@ -633,11 +710,25 @@ const html: string = `
   </div>
   <div id="ai-msgs" class="ai-msgs"></div>
   <div id="ai-settings" class="ai-settings">
-    <div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
-    <input id="ai-key" type="password" autocomplete="off" data-i18n-ph="apiKeyPh" placeholder="AIza...">
+    <label data-i18n="provider">Provider</label>
+    <select id="ai-provider">
+      <option value="gemini">Gemini</option>
+      <option value="openai">OpenAI-compatible</option>
+      <option value="anthropic">Anthropic</option>
+      <option value="azure">Azure OpenAI</option>
+      <option value="agent">External agent (bridge)</option>
+    </select>
+    <div class="pv-field" data-pv="openai azure anthropic agent"><label data-i18n="endpoint">Endpoint</label>
+    <input id="ai-endpoint" type="text" autocomplete="off" placeholder="https://..."></div>
+    <div class="pv-field" data-pv="azure"><label data-i18n="apiVer">API version</label>
+    <input id="ai-apiver" type="text" autocomplete="off" placeholder="2024-10-21"></div>
+    <div class="pv-field" data-pv="gemini openai anthropic azure"><div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
+    <input id="ai-key" type="password" autocomplete="off" data-i18n-ph="apiKeyPh" placeholder="AIza..."></div>
     <div id="ai-key-src" class="ai-key-src"></div>
-    <label data-i18n="model">Model</label>
-    <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite">
+    <div class="pv-field" data-pv="gemini openai anthropic azure"><label data-i18n="model">Model</label>
+    <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite"></div>
+    <div class="pv-field" data-pv="agent"><label data-i18n="agentModel">Agent note</label>
+    <input id="ai-agentmodel" type="text" autocomplete="off" placeholder="(optional)"></div>
     <div class="row"><label style="font-weight:400;display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;"><input id="ai-remember" type="checkbox" style="width:auto;margin:0;"><span data-i18n="remember">Save key on this browser</span></label></div>
     <div class="row"><button id="ai-save" data-i18n="save">Save</button><span id="ai-save-msg" style="color:#4a4;"></span></div>
     <div class="ai-key-warn" data-i18n="keyWarn">Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.</div>
@@ -651,7 +742,7 @@ const html: string = `
 (function(){
   // --- i18n (English base; missing keys fall back to en) ---
   var GEO_I18N = {
-    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore" }
+    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore", provider:'Provider', endpoint:'Endpoint URL', apiVer:'API version', agentModel:'Agent label (optional)' }
   };
   var GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
   var GEO_LANG = 'en';
@@ -704,7 +795,7 @@ const html: string = `
     { name:'add3dTilesLayer', description:'Add an OGC 3D Tiles layer (tileset.json URL)', parameters:{ type:'OBJECT', properties:{ title:{type:'STRING'}, url:{type:'STRING'} }, required:['url'] } },
     { name:'removeLayer', description:'Remove a layer previously added by the AI', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'} }, required:['layer'] } },
     { name:'listCameraPresets', description:'List named camera presets defined in the plugin inspector', parameters:{ type:'OBJECT', properties:{} } },
-    { name:'flyToPreset', description:'Fly to a named camera preset', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'} }, required:['name'] } },
+    { name:'flyToPreset', description:'Fly to a named camera preset. Replies after the flight completes; pass wait:false to reply immediately after issuing.', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, wait:{type:'BOOLEAN'} }, required:['name'] } },
     { name:'listBasemaps', description:'List available basemaps', parameters:{ type:'OBJECT', properties:{} } },
     { name:'setBasemap', description:'Switch the basemap by name; pass empty/none to clear', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'} }, required:['name'] } },
     { name:'listFlyPaths', description:'List flight routes (fly paths) defined in the inspector or drawn', parameters:{ type:'OBJECT', properties:{} } },
@@ -713,7 +804,7 @@ const html: string = `
     { name:'setTerrain', description:'Enable or disable 3D terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'setShadow', description:'Enable or disable shadows', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'openStreetView', description:'Open Google Street View at the map center in a new tab', parameters:{ type:'OBJECT', properties:{} } },
-    { name:'flyToFeature', description:'Fly to a vector feature whose attribute matches a value (optionally within a named layer)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'} }, required:['attribute','value'] } },
+    { name:'flyToFeature', description:'Fly to a vector feature whose attribute matches a value (optionally within a named layer). Replies after the flight; pass wait:false for an immediate ack.', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'}, wait:{type:'BOOLEAN'} }, required:['attribute','value'] } },
     { name:'captureView', description:'Capture a screenshot of the current map view', parameters:{ type:'OBJECT', properties:{} } },
     { name:'getShareUrl', description:'Get a permalink query string (?lat=...&lng=...) for the current view', parameters:{ type:'OBJECT', properties:{} } },
     { name:'addFlatGeobufLayer', description:'Add a FlatGeobuf (.fgb) vector layer by URL — decoded to GeoJSON in the browser and styled like a geojson layer.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'}, title:{type:'STRING'}, visible:{type:'BOOLEAN'}, limit:{type:'NUMBER', description:'max features (default 200000)'} }, required:['url'] } },
@@ -734,7 +825,7 @@ const html: string = `
     { name:'showPanel', description:'Open a panel in the Layers widget. panel: layers|legend|search|attr|cams|display|info|fly|share|manage', parameters:{ type:'OBJECT', properties:{ panel:{type:'STRING'} }, required:['panel'] } },
     { name:'showInfo', description:'Load a URL into the Info tab iframe and open the tab. Without url, opens the current Info tab.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'} } } },
     { name:'listLegends', description:'List legend images defined in the plugin inspector', parameters:{ type:'OBJECT', properties:{} } },
-    { name:'showFeatureAttributes', description:'Display a vector feature\\'s attributes in the Attr panel and fly to it (set fly:false to only show the panel)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'}, fly:{type:'BOOLEAN'} }, required:['attribute','value'] } },
+    { name:'showFeatureAttributes', description:'Display a vector feature\\'s attributes in the Attr panel and fly to it (fly:false = panel only, wait:false = reply immediately after issuing the flight)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'}, fly:{type:'BOOLEAN'}, wait:{type:'BOOLEAN'} }, required:['attribute','value'] } },
     { name:'getInspectorText', description:'Get the plugin inspector settings text (layers, cams, routes, basemaps, legends etc.)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'applyInspectorText', description:'Replace the plugin inspector settings text and apply it. Read the current text with getInspectorText first, then modify only the needed lines.', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
     { name:'setDepthTest', description:'Enable or disable depth test against terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
@@ -766,6 +857,20 @@ const html: string = `
   var keyStatus = document.getElementById('ai-key-status');
   var keySrcEl = document.getElementById('ai-key-src');
   var saveMsg = document.getElementById('ai-save-msg');
+  var providerSel = document.getElementById('ai-provider');
+  var endpointInput = document.getElementById('ai-endpoint');
+  var apiverInput = document.getElementById('ai-apiver');
+  var agentModelInput = document.getElementById('ai-agentmodel');
+  var _provider = 'gemini';
+  function applyProviderFields() {
+    var pv = providerSel ? providerSel.value : 'gemini';
+    _provider = pv;
+    document.querySelectorAll('.pv-field').forEach(function(el) {
+      el.style.display = ((el.getAttribute('data-pv') || '').indexOf(pv) >= 0) ? '' : 'none';
+    });
+    try { updateKeyStatus(); } catch (e) {}
+  }
+  if (providerSel) providerSel.addEventListener('change', applyProviderFields);
 
   var _apiKey = '';
   var _model = 'gemini-3.1-flash-lite';
@@ -1154,6 +1259,142 @@ const html: string = `
     });
   }
 
+  // --- generic provider loop (OpenAI-compatible / Anthropic / external agent) ---
+  // Neutral transcript for non-Gemini providers: entries are
+  // {role:'user',text} / {role:'assistant',text,calls:[{id,name,args}]} / {role:'tool',id,name,result}
+  var _pxHist = [];
+  function pxSchema(s) {
+    if (!s || typeof s !== 'object') return s;
+    var out = Array.isArray(s) ? [] : {};
+    for (var k in s) {
+      var v = s[k];
+      out[k] = (k === 'type' && typeof v === 'string') ? v.toLowerCase()
+        : (typeof v === 'object' ? pxSchema(v) : v);
+    }
+    return out;
+  }
+  function pxToolDecls(kind) {
+    return (TOOL_DECLS || []).map(function(d) {
+      if (kind === 'anthropic') return { name: d.name, description: d.description, input_schema: pxSchema(d.parameters || { type: 'object' }) };
+      return { type: 'function', function: { name: d.name, description: d.description, parameters: pxSchema(d.parameters || { type: 'object' }) } };
+    });
+  }
+  function pxTrunc(v) { var s = JSON.stringify(v === undefined ? null : v); return s.length > 4000 ? s.slice(0, 4000) : s; }
+  function pxMsgsOpenAi() {
+    return _pxHist.map(function(m) {
+      if (m.role === 'user') return { role: 'user', content: m.text };
+      if (m.role === 'assistant') return { role: 'assistant', content: m.text || null,
+        tool_calls: (m.calls || []).map(function(c) { return { id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args || {}) } }; }) };
+      return { role: 'tool', tool_call_id: m.id, name: m.name, content: pxTrunc(m.result) };
+    });
+  }
+  function pxMsgsAnthropic() {
+    return _pxHist.map(function(m) {
+      if (m.role === 'user') return { role: 'user', content: m.text };
+      if (m.role === 'assistant') {
+        var c = [];
+        if (m.text) c.push({ type: 'text', text: m.text });
+        (m.calls || []).forEach(function(t) { c.push({ type: 'tool_use', id: t.id, name: t.name, input: t.args || {} }); });
+        return { role: 'assistant', content: c };
+      }
+      return { role: 'user', content: [{ type: 'tool_result', tool_use_id: m.id, content: pxTrunc(m.result) }] };
+    });
+  }
+  function pxRunCalls(calls, log, nextRound) {
+    var chain = Promise.resolve();
+    calls.forEach(function(c) {
+      chain = chain.then(function() {
+        addMsg('tool', t('tool') + ': ' + c.name + ' ' + JSON.stringify(c.args).slice(0, 120));
+        return executeTool(c.name, c.args || {}).then(function(result) {
+          log.push({ role: 'tool', id: c.id, name: c.name, result: result });
+        });
+      });
+    });
+    return chain.then(nextRound);
+  }
+  function callOpenAICompat() {
+    var isAzure = _provider === 'azure';
+    var endpoint = ((endpointInput && endpointInput.value) || '').trim() || (isAzure ? '' : 'https://api.openai.com');
+    if (!endpoint) return Promise.reject(new Error('endpoint required'));
+    var url = isAzure
+      ? endpoint.replace(/[/]+$/, '') + '/openai/deployments/' + encodeURIComponent(_model) + '/chat/completions?api-version=' + encodeURIComponent((apiverInput && apiverInput.value || '').trim() || '2024-10-21')
+      : endpoint.replace(/[/]+$/, '') + '/v1/chat/completions';
+    var headers = { 'Content-Type': 'application/json' };
+    if (isAzure) headers['api-key'] = _apiKey; else headers['Authorization'] = 'Bearer ' + _apiKey;
+    var step = 0;
+    function next() {
+      if (++step > 8) return { done: true, text: t('stepLimit') };
+      return fetch(url, { method: 'POST', headers: headers, body: JSON.stringify({
+        model: _model, messages: pxMsgsOpenAi(), tools: pxToolDecls('openai'), tool_choice: 'auto'
+      }) }).then(function(res) {
+        return res.json().then(function(data) {
+          if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+          var msg = (data && data.choices && data.choices[0] && data.choices[0].message) || {};
+          var calls = (msg.tool_calls || []).map(function(tc) {
+            var a = {}; try { a = JSON.parse(tc.function && tc.function.arguments || '{}'); } catch (e) {}
+            return { id: tc.id, name: tc.function && tc.function.name, args: a };
+          }).filter(function(c) { return c.name; });
+          _pxHist.push({ role: 'assistant', text: msg.content || '', calls: calls });
+          if (!calls.length) return { done: true, text: (msg.content || '').trim() };
+          return pxRunCalls(calls, _pxHist, next);
+        });
+      });
+    }
+    return next();
+  }
+  function callAnthropic() {
+    var endpoint = ((endpointInput && endpointInput.value) || '').trim() || 'https://api.anthropic.com';
+    var url = endpoint.replace(/[/]+$/, '') + '/v1/messages';
+    var step = 0;
+    function next() {
+      if (++step > 8) return { done: true, text: t('stepLimit') };
+      return fetch(url, { method: 'POST', headers: {
+        'Content-Type': 'application/json', 'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
+      }, body: JSON.stringify({
+        model: _model, max_tokens: 2048, system: SYSTEM_INSTRUCTION,
+        messages: pxMsgsAnthropic(), tools: pxToolDecls('anthropic')
+      }) }).then(function(res) {
+        return res.json().then(function(data) {
+          if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+          var blocks = (data && data.content) || [];
+          var text = blocks.filter(function(b) { return b && b.type === 'text'; }).map(function(b) { return b.text; }).join('').trim();
+          var calls = blocks.filter(function(b) { return b && b.type === 'tool_use'; }).map(function(b) { return { id: b.id, name: b.name, args: b.input || {} }; });
+          _pxHist.push({ role: 'assistant', text: text, calls: calls });
+          if (!calls.length) return { done: true, text: text };
+          return pxRunCalls(calls, _pxHist, next);
+        });
+      });
+    }
+    return next();
+  }
+  function callAgent(text) {
+    var endpoint = ((endpointInput && endpointInput.value) || '').trim();
+    if (!endpoint) return Promise.reject(new Error('endpoint required'));
+    return fetch(endpoint.replace(/[/]+$/, ''), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        tools: (TOOL_DECLS || []).map(function(d) { return { name: d.name, description: d.description, parameters: pxSchema(d.parameters) }; })
+      })
+    }).then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
+        var actions = (data && data.actions) || [];
+        var chain = Promise.resolve();
+        actions.forEach(function(a) {
+          chain = chain.then(function() {
+            addMsg('tool', t('tool') + ': ' + a.name + ' ' + JSON.stringify(a.args || {}).slice(0, 120));
+            return executeTool(a.name, a.args || {});
+          });
+        });
+        return chain.then(function() {
+          return { done: true, text: (data && (data.reply || data.text)) || (actions.length ? '' : t('noResponse')) };
+        });
+      });
+    });
+  }
+
   function callGemini() {
     var maxSteps = 8;
     var step = 0;
@@ -1199,11 +1440,23 @@ const html: string = `
 
   function submit(text) {
     if (_busy) return;
-    _history.push({ role: 'user', parts: [{ text: text }] });
     _busy = true;
     sendBtn.disabled = true;
     var thinking = addMsg('sys', '…');
-    callGemini().then(function(res) {
+    var p;
+    if (_provider === 'openai' || _provider === 'azure') {
+      _pxHist.push({ role: 'user', text: text });
+      p = callOpenAICompat();
+    } else if (_provider === 'anthropic') {
+      _pxHist.push({ role: 'user', text: text });
+      p = callAnthropic();
+    } else if (_provider === 'agent') {
+      p = callAgent(text);
+    } else {
+      _history.push({ role: 'user', parts: [{ text: text }] });
+      p = callGemini();
+    }
+    p.then(function(res) {
       try { thinking.remove(); } catch (e) {}
       addMsg('bot', (res && res.text) ? res.text : t('noResponse'));
     }).catch(function(e) {
@@ -1271,6 +1524,12 @@ const html: string = `
     postToParent({ action: 'aiSetApiKey', key: k, persist: !!(rememberEl && rememberEl.checked) });
     var m = (modelInput.value || '').trim();
     if (m && m !== _model) postToParent({ action: 'aiSetModel', model: m });
+    postToParent({ action: 'aiSetProvider', persist: !!(rememberEl && rememberEl.checked), provider: {
+      provider: providerSel ? providerSel.value : 'gemini',
+      endpoint: (endpointInput && endpointInput.value || '').trim(),
+      apiVer: (apiverInput && apiverInput.value || '').trim(),
+      agentModel: (agentModelInput && agentModelInput.value || '').trim()
+    } });
     saveMsg.textContent = t('saved');
     setTimeout(function() { saveMsg.textContent = ''; }, 2000);
   });
@@ -1288,6 +1547,14 @@ const html: string = `
         if (typeof msg.model === 'string' && msg.model) _model = msg.model;
         window._yahooAppId = (typeof msg.yahooAppId === 'string') ? msg.yahooAppId : '';
         window._googleMapsApiKey = (typeof msg.googleMapsApiKey === 'string') ? msg.googleMapsApiKey : '';
+        if (msg.provider && typeof msg.provider === 'object') {
+          var pv = msg.provider;
+          if (providerSel && typeof pv.provider === 'string' && pv.provider) providerSel.value = pv.provider;
+          if (endpointInput && typeof pv.endpoint === 'string') endpointInput.value = pv.endpoint;
+          if (apiverInput && typeof pv.apiVer === 'string') apiverInput.value = pv.apiVer;
+          if (agentModelInput && typeof pv.agentModel === 'string') agentModelInput.value = pv.agentModel;
+          applyProviderFields();
+        }
         if (msg.i18n && typeof msg.i18n === 'object') {
           for (var lk in msg.i18n) { try { GEO_I18N[lk] = msg.i18n[lk]; } catch (e) {} }
           applyI18n(); updateKeyStatus();

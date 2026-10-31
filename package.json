@@ -1,6 +1,6 @@
 {
   "name": "geo_suite",
-  "version": "21.2.0",
+  "version": "21.3.0",
   "description": "ReEarth_GeoSuite: Re:Earth版 geo_suite を目指す統合プラグイン／ツール集",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,9 @@
     "dev": "node workbench/dev.js",
     "workbench:setup": "node workbench/setup.js",
     "shot": "node workbench/shot.js",
-    "test": "node workbench/test.js"
+    "test": "node workbench/test.js",
+    "bridge": "node workbench/bridge.js",
+    "bridge:server": "node workbench/bridge_server.js"
   },
   "keywords": [
     "reearth",

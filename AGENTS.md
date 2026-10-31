@@ -89,3 +89,20 @@
 
 ## QuickJS 拡張コンテキストには setTimeout が無い
 - 拡張側での遅延は `waitViaUiTimer(ms)`（UI iframe がブラウザ `setTimeout` を実行し `timerDone` で返送）を使うこと。直接 `setTimeout` を書くと ReferenceError。
+
+## 外部ブリッジ（QGIS bridge_call 相当・v21.3.0〜）
+- サンドボックス外のローカルハーネスやエージェントから地図ツールを呼ぶ経路。**navigation-toolbar の永続 iframe** にブリッジクライアント `window.__geoBridge` を常駐させる。
+- **なぜ basemap-widget ではなく navigation-toolbar か**: basemap-widget の拡張コンテキストは ddbExec/gpkgExec の巨大ペイロード（dataB64 数 MB〜）を中継するため、重いプロジェクト（既定 inspector の `qgis:` ZIP 取込等）や連続ホットリロードで QuickJS が `InternalError: out of memory`（`Proxy.unwrapResult`）を出して死亡し、道連れでブリッジが全滅することを実測確認した。nav-toolbar 拡張は重い中継を持たず生存性が高い。
+- 経路: ハーネス → iframe `__geoBridge.call(name,args)` → `postToParent({action:'bridgeCall'})` → nav-toolbar 拡張 → `extension.postMessage(ai-chat, {action:'bridgeCall'})` → ai-chat の `dispatchToolCall`（aiToolCall と同一）→ local 実行 or パネル転送 → 結果は `bridgeResult` で逆経路 → iframe の pending 解決。`extensionMessage` の `msg.sender` が返送先。
+- `describe`（カタログ）と `runCode`（iframe 内で `api` プロキシ + `fetch` 付き sandboxed JS）はブリッジ側で処理される。`runCode` は `new Function` を使うが iframe では利用可（QuickJS 拡張コンテキストとは無関係）。
+- 有効化: インスペクタ `bridge: off | on | http://host:port`。**未設定時はプローブすら行わない完全 opt-in**（コストゼロ・マップ/UI への影響なし）。CDP ドライバ `bridge.js` は接続時に `__geoBridge.configure('http://127.0.0.1:8977')` を評価して明示有効化するので dev はゼロ設定のまま。
+- **ハーネス（本番 dial-out 先）**: `node workbench/bridge_server.js`（`npm run bridge:server`、既定 127.0.0.1:8977・無依存）。プラグイン iframe とは SSE `GET /events`＋`POST /result` で接続。外部向けは `POST /call {name,args}`（結果まで保持）・`GET /status`・`GET /tools`。`BRIDGE_TOKEN` 環境変数で共有秘密対応（`bridge: http://127.0.0.1:8977/?token=<t>`）。**127.0.0.1 到達者は接続中の地図を操作できる**点に注意。
+- **CDP ドライバ（dev/検証）**: `node workbench/bridge.js`（`npm run bridge`）。`serve` は stdin/stdout JSONL（`{reqId,name,args}`→`{reqId,result}`）、`call <name> '<args>'` はワンショット、`list` は describe。`BRIDGE_ATTACH=<port>` で既存デバッグ Chrome に接続。`__geoBridge` 不在の旧ビルドでは AI Chat iframe 経由のレガシー経路にフォールバック。
+
+## QuickJS のイベントディスパッチとマイクロタスク（重要・実測）
+- `extensionMessage` ハンドラ内で `promise.then(cb)` に応答処理を委ねると、**その継続は次のイベントが来るまで実行されない**（実測: `extensionMessage` 起点の非同期応答だけが滞留し、後続イベントでまとめて消化された）。`message`（UI iframe 起点）イベントは後続が頻繁にあるため顕在化しにくい。
+- 対策: イベント起点で結果を返す経路は**同期で完結させる**。`execLocalTool` はこのため同期化した（async 化すると extensionMessage 経由ブリッジが詰まる）。Promise が返りうる場合だけ `then` にフォールバック（`replyLocal` 参照）。
+
+## プラグイン iframe → localhost fetch の PNA/CORS（実測）
+- opaque origin の iframe から `127.0.0.1` への `Content-Type: application/json` POST はプリフライト＋Private Network Access でブロックされる。GET（`/status`・EventSource）はシンプルリクエストで通るため「受信は来るが返送だけ落ちる」非対称症状になる。
+- 対策: iframe 側は `Content-Type: text/plain` で POST（シンプルリクエスト＝プリフライト不要）。サーバ側も `Access-Control-Allow-Private-Network: true` を全応答に付与してある（bridge_server.js）。

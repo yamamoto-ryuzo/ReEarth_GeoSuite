@@ -59,10 +59,130 @@ export const html: string = `
         } catch (e) { }
       }
 
+      // ---------- external bridge client ----------
+      // Lets a local harness (workbench/bridge_server.js via SSE, or the CDP
+      // driver workbench/bridge.js via window.__geoBridge.call) invoke map
+      // tools through this persistent iframe. Inert unless a harness endpoint
+      // is configured ("bridge:" inspector line) or a local harness answers
+      // the one-shot probe below — no effect on the map UI either way.
+      var _bridge = { pending: {}, seq: 0, url: null, qs: '', es: null, off: false, probing: false };
+      var BRIDGE_DEFAULT_URL = 'http://127.0.0.1:8977';
+      function bridgePostParent(data) {
+        try { if (window.parent && data) window.parent.postMessage(data, '*'); } catch(e) {}
+      }
+      function bridgeCallRaw(name, args) {
+        return new Promise(function(resolve) {
+          var reqId = 'b' + (++_bridge.seq) + '.' + Math.random().toString(36).slice(2, 8);
+          var timer = setTimeout(function() {
+            if (_bridge.pending[reqId]) { delete _bridge.pending[reqId]; resolve({ error: 'bridge timeout' }); }
+          }, 90000);
+          _bridge.pending[reqId] = function(result) { clearTimeout(timer); resolve(result); };
+          bridgePostParent({ action: 'bridgeCall', reqId: reqId, name: name, args: args || {} });
+        });
+      }
+      var _bridgeApi = (typeof Proxy === 'function') ? new Proxy({}, {
+        get: function(t, n) { return function(a) { return bridgeInvoke(String(n), a || {}); }; }
+      }) : {};
+      function bridgeRunCode(args) {
+        return new Promise(function(resolve) {
+          var code = String((args && args.code) || '');
+          var done = false;
+          var fin = function(v) { if (!done) { done = true; resolve(v); } };
+          setTimeout(function() { fin({ error: 'runCode timeout (30s)' }); }, 30000);
+          try {
+            var fn = new Function('api', 'fetch', '"use strict"; return (async function(){ ' + code + ' })();');
+            Promise.resolve(fn(_bridgeApi, fetch.bind(window))).then(function(v) { fin({ result: v === undefined ? null : v }); }).catch(function(e) { fin({ error: String(e && e.message || e) }); });
+          } catch (e) { fin({ error: String(e && e.message || e) }); }
+        });
+      }
+      function bridgeInvoke(name, args) {
+        if (name === 'runCode') return bridgeRunCode(args);
+        return bridgeCallRaw(name, args);
+      }
+      function bridgePostResult(reqId, result) {
+        try {
+          if (!_bridge.url) return;
+          // text/plain keeps this a CORS "simple request" (no preflight) —
+          // the server parses the JSON body regardless of content type.
+          fetch(_bridge.url + '/result' + _bridge.qs, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ reqId: reqId, result: result })
+          }).catch(function() {});
+        } catch (e) {}
+      }
+      function bridgeConnect(url) {
+        try {
+          var u = String(url || '');
+          var qi = u.indexOf('?');
+          _bridge.qs = qi >= 0 ? u.substring(qi) : '';
+          if (qi >= 0) u = u.substring(0, qi);
+          while (u.charAt(u.length - 1) === '/') u = u.substring(0, u.length - 1);
+          if (!u) return;
+          _bridge.url = u;
+          try { if (_bridge.es) _bridge.es.close(); } catch (e) {}
+          _bridge.es = new EventSource(u + '/events' + _bridge.qs);
+          _bridge.es.onmessage = function(ev) {
+            try {
+              var cmd = JSON.parse(ev.data);
+              if (!cmd || !cmd.reqId) return;
+              Promise.resolve(bridgeInvoke(String(cmd.name || ''), cmd.args || {})).then(function(res) {
+                bridgePostResult(String(cmd.reqId), res);
+              }).catch(function(e2) {
+                bridgePostResult(String(cmd.reqId), { error: String(e2 && e2.message || e2) });
+              });
+            } catch (e) {}
+          };
+        } catch (e) {}
+      }
+      function bridgeDisconnect() {
+        try { if (_bridge.es) _bridge.es.close(); } catch (e) {}
+        _bridge.es = null; _bridge.url = null;
+      }
+      function bridgeProbe() {
+        // One-shot probe of the default local endpoint. Silent when no harness
+        // is running; a single failed fetch may show in DevTools console.
+        if (_bridge.off || _bridge.es || _bridge.probing) return;
+        _bridge.probing = true;
+        fetch(BRIDGE_DEFAULT_URL + '/status').then(function(r) { return r.json(); }).then(function(j) {
+          if (j && j.geosuiteBridge && !_bridge.off && !_bridge.es) bridgeConnect(BRIDGE_DEFAULT_URL);
+        }).catch(function() {}).then(function() { _bridge.probing = false; });
+      }
+      function bridgeConfigure(url) {
+        // 'off' disables; 'on' probes the default endpoint once; a URL connects
+        // directly; '' (unset) stays fully inert — no probe, no traffic.
+        if (url === 'off') { _bridge.off = true; bridgeDisconnect(); return; }
+        if (!url) return;
+        _bridge.off = false;
+        if (url !== 'on') { bridgeConnect(url); return; }
+        bridgeProbe();
+      }
+      // CDP/dev-driver entry point + diagnostics.
+      window.__geoBridge = {
+        call: bridgeInvoke,
+        pending: _bridge.pending,
+        configure: bridgeConfigure,
+        status: function() { return { connected: !!_bridge.es, url: _bridge.url, off: _bridge.off }; }
+      };
+      try { bridgePostParent({ action: 'requestBridgeConfig' }); } catch (e) {}
+      // No auto-probe: the bridge stays inert until enabled via the inspector
+      // "bridge:" line or an explicit __geoBridge.configure() call (CDP).
+
       window.addEventListener('message', function(e){
         try{
           var d = e && e.data;
           if(!d) return;
+          // external bridge: tool results + endpoint config
+          if(d.action === 'bridgeResult') {
+            try {
+              var bp = _bridge.pending[String(d.reqId || '')];
+              if (bp) { delete _bridge.pending[String(d.reqId || '')]; bp(d.result); }
+            } catch (e2) {}
+            return;
+          }
+          if(d.action === 'bridgeConfig') {
+            try { bridgeConfigure(String(d.url || '')); } catch (e2) {}
+            return;
+          }
           // support cameraUpdate for compass needle + 2D label auto-reset
           if(d.type === 'cameraUpdate') {
             updateCompass(d.payload && d.payload.heading);
@@ -311,6 +431,34 @@ function groundPointFromCamera(cameraPos: any): { lat: number, lng: number } | n
   }
 }
 
+// ---------- external bridge relay ----------
+// The external bridge client lives in this widget's persistent iframe. This
+// extension context is intentionally used as the relay: it stays lightweight,
+// unlike basemap-widget which shuttles large DuckDB/GPKG wasm payloads through
+// the same QuickJS runtime and can die under memory pressure.
+let _aiChatWidgetId: string | null = null;
+let _navLayerPanelId: string | null = null;
+// Last bridge endpoint forwarded from the layer panel ("bridge:" inspector line).
+let _bridgeCfg: string = '';
+
+function findWidgetIdByExt(extensionId: string): string | null {
+  try {
+    const list = (reearth && reearth.extension && reearth.extension.list) || [];
+    const target = list.find((ex: any) => ex && ex.extensionId === extensionId);
+    return target ? target.id : null;
+  } catch (e) { return null; }
+}
+
+function bridgePostToExt(targetId: string | null, msg: any): boolean {
+  try {
+    if (targetId && reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      reearth.extension.postMessage(targetId, msg);
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 // Measurement state managed on extension side
 
 // Last rotate-button target heading in degrees (0,45,90,...), or null before first use
@@ -323,6 +471,38 @@ let _savedBefore2D: any = null;
 export const onMessage = (msg: any): void => {
   (async () => {
     if (!msg || !msg.action) return;
+
+    // External bridge: relay tool calls from this widget's iframe client to
+    // the ai-chat extension, which owns the tool dispatcher. Results arrive
+    // back as 'bridgeResult' extension messages.
+    if (msg.action === 'bridgeCall') {
+      try {
+        const aiId = _aiChatWidgetId || findWidgetIdByExt('ai-chat');
+        if (!aiId) {
+          postToUI({ action: 'bridgeResult', reqId: msg.reqId, result: { error: 'ai-chat extension unavailable' } });
+        } else {
+          _aiChatWidgetId = aiId;
+          const sent = bridgePostToExt(aiId, { action: 'bridgeCall', reqId: msg.reqId, name: msg.name, args: msg.args || {} });
+          if (!sent) {
+            _aiChatWidgetId = null;
+            postToUI({ action: 'bridgeResult', reqId: msg.reqId, result: { error: 'ai-chat unreachable' } });
+          }
+        }
+      } catch (e) {}
+      return;
+    }
+    if (msg.action === 'requestBridgeConfig') {
+      try {
+        postToUI({ action: 'bridgeConfig', url: _bridgeCfg || '' });
+        // Also pull fresh config from the layer panel (covers init races).
+        const panelId = _navLayerPanelId || findWidgetIdByExt('layers-and-tiles-list');
+        if (panelId) {
+          _navLayerPanelId = panelId;
+          bridgePostToExt(panelId, { action: 'requestBridgeConfig' });
+        }
+      } catch (e) {}
+      return;
+    }
 
     if (msg.action === 'setHeading') {
     try {
@@ -434,6 +614,26 @@ try {
     reearth.ui.on('message', onMessage);
   } else if (typeof reearth !== 'undefined' && reearth && typeof reearth.on === 'function') {
     reearth.on('message', onMessage);
+  }
+} catch (e) {}
+
+// Inter-extension messages for the bridge relay: tool results from the
+// ai-chat dispatcher go down to the iframe; bridgeConfig from the layer
+// panel is cached and forwarded.
+try {
+  if (typeof reearth !== 'undefined' && reearth && reearth.extension && typeof reearth.extension.on === 'function') {
+    reearth.extension.on('extensionMessage', (msg: any) => {
+      try {
+        const data = (msg && msg.data !== undefined) ? msg.data : msg;
+        if (!data || !data.action) return;
+        if (data.action === 'bridgeResult') {
+          try { postToUI({ action: 'bridgeResult', reqId: data.reqId, result: data.result }); } catch (e) {}
+        } else if (data.action === 'bridgeConfig') {
+          _bridgeCfg = (typeof data.url === 'string') ? data.url : '';
+          try { postToUI({ action: 'bridgeConfig', url: _bridgeCfg }); } catch (e) {}
+        }
+      } catch (e) {}
+    });
   }
 } catch (e) {}
 

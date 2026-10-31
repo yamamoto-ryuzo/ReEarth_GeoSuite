@@ -1,0 +1,51 @@
+PASS  describe  {"plugin":"geo_suite","local":["getCamera","flyTo","listLayers","setLayerVisible","focusLayer","addGeoJsonLayer","addTileLayer","add3dTilesLayer","rem
+PASS  runCode  {"result":35.68}
+PASS  getCamera  {"lat":35.68,"lng":139.69,"height":2500,"heading":360,"pitch":-35,"roll":360}
+PASS  listLayers  {"layers":[{"id":"workbench-sample-points","title":"Sample Points","type":"geojson","visible":true,"isBasemap":false},{"id":"07a2f41f-d045-4639-accf-3
+PASS  flyTo  {"ok":true,"lat":35.68,"lng":139.69,"height":2500}
+PASS  setCamera  {"ok":true,"lat":35,"lng":135}
+PASS  lookAt  {"ok":true,"lat":35.36,"lng":138.73}
+PASS  zoomIn  {"ok":true,"direction":"in","amount":2}
+PASS  zoomOut  {"ok":true,"direction":"out","amount":2}
+PASS  focusLayer  {"ok":true,"id":"workbench-sample-points","title":"Sample Points"}
+PASS  setLayerVisible  {"id":"workbench-sample-points","title":"Sample Points","visible":true}
+PASS  getShareUrl  {"ok":true,"query":"?lat=35&lng=135&height=5000&heading=360&pitch=-30"}
+PASS  buildShareUrl  {"ok":true,"query":"?lat=35&lng=139&height=1000","note":"append this query to the site URL; opening ?lat=..&lng=.. restores the view"}
+PASS  captureView  {"ok":true,"dataUrl":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABQAAAANbCAYAAAAdfTL5AAAQAElEQVR4Aez96bt121bdh7U2zpf8A07y5Fu+5B9LXMZWBVyqC/dekAQCJC
+PASS  openUrl  {"ok":true,"url":"https://example.com","note":"browser may block popups not triggered by a user gesture"}
+PASS  addGeoJsonLayer  {"id":"8f111490-0a38-4e30-9f40-cf40ab0335d0","title":"bridgetest-gj"}
+PASS  addTileLayer  {"id":"dd44848b-e556-4598-a300-34352faee993","title":"bridgetest-tile"}
+PASS  add3dTilesLayer  {"id":"317d7b6b-9e38-4253-a7ec-eef6734d1064","title":"bridgetest-3d"}
+PASS  removeLayer  {"id":"947a3d34-93cd-47fd-9aef-7d39891dfc42"}
+PASS  listCameraPresets  [{"name":"東京駅","lat":35.653108,"lng":139.761449},{"name":"富士山","lat":35.188733,"lng":138.610404},{"name":"大阪城","lat":34.683329,"lng":135.525766},{"nam
+FAIL  flyToPreset  "bridge call timeout"
+PASS  listBasemaps  [{"name":"OpenStreetMap","url":"https://tile.openstreetmap.org/{z}/{x}/{y}.png"},{"name":"地理院タイル 標準地図","url":"https://cyberjapandata.gsi.go.jp/xyz/std
+PASS  setBasemap  {"selected":"OpenStreetMap"}
+FAIL  listFlyPaths  "bridge call timeout"
+FAIL  createFlyPath  "bridge call timeout"
+FAIL  setFlySettings  "bridge call timeout"
+PASS  playFlyPath  {"error":"fly path not found: bridgetest-route"}
+PASS  stopFly  {}
+PASS  deleteFlyPath  {"error":"drawn route not found: bridgetest-route"}
+PASS  setTerrain  {"enabled":true}
+PASS  setTerrain  {"enabled":false}
+PASS  setShadow  {"enabled":true}
+PASS  setShadow  {"enabled":false}
+PASS  setDepthTest  {"enabled":true}
+PASS  setGeojsonDrape  {"classification":"both"}
+PASS  setBackground  {"color":"#112233"}
+PASS  setBackground  {"color":"#ffffff"}
+PASS  vectorSearch  {"results":[{"layer":"東京都/行政区域","attribute":"N03_001","value":"東京都","lat":35.68937222387163,"lng":139.75795802077118},{"layer":"東京都//行政区域","attribute"
+PASS  searchPlaces  {"error":"googleMapsApiKey not set (add \"googleMapsApiKey: ...\" to the plugin inspector)"}
+PASS  flyToFeature  {"error":"feature not found"}
+PASS  showFeatureAttributes  {"error":"feature not found"}
+PASS  openStreetView  {"url":"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.23353737280657,135","verified":false,"status":"NO_KEY"}
+PASS  showPanel  {"panel":"layers"}
+PASS  showInfo  {"url":"https://re-earth-geo-suite.vercel.app/ryu.html"}
+PASS  listLegends  [{"group":"Default","url":"https://assets.cms.reearth.io/assets/22/43aa2e-d72b-4313-9c9c-816bb038c676/2025SNS%E6%8B%A1%E5%A4%A7.JPG"},{"group":"凡例","u
+PASS  getInspectorText  {"text":"attrUrlOpen: newtab\nlayer:Googleフォトリアリスティック3Dタイル|off\n3dtiles: 東京都/千代田区（建築物LOD1） | https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e9
+PASS  addFlatGeobufLayer  {"error":"Failed to fetch"}
+PASS  addParquetLayer  {"error":"Failed to fetch"}
+PASS  addDuckDbLayer  {"error":"HTTP Error: Unable to connect to URL \"https://invalid.local/x.parquet\": 404 (Please consult the browser console for details, might be pote
+
+45/49 pass

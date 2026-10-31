@@ -1,5 +1,18 @@
 # Changelog
 
+## v21.3.0
+- 新機能: 外部ブリッジ（QGIS live_driver の `bridge_call`/`describe_plugins` 相当）— ローカルハーネスやエージェントがサンドボックス外から地図ツールを呼び出せる経路を追加。
+    - ai-chat 拡張のツールディスパッチャを `dispatchToolCall(reqId, name, args, reply)` に一般化し、`bridgeCall`/`bridgeResult` の extensionMessage 経路を追加（`msg.sender` へ返送）。`describe` で実行可能ツールのカタログ（local/panel/bridge 分類）を返す。
+    - **navigation-toolbar の永続 iframe** にブリッジクライアント `window.__geoBridge` を常駐。ハーネスからのコマンドを `bridgeCall` として ai-chat 拡張へ中継し、結果を待ち合わせる。`runCode` は iframe 内で自前実行（`api` プロキシが全ツールを再帰ブリッジ呼出し + `fetch` 利用可）。ホストに nav-toolbar を選んだのは、basemap-widget 拡張が wasm 中継ペイロードで QuickJS OOM 死亡しブリッジを道連れにする事象を実測したため。
+    - 制御: インスペクタ `bridge: off | on | http://host:port` 行（レイヤーパネル → basemap 拡張 → iframe へ `bridgeConfig` 転送）。未設定時は `http://127.0.0.1:8977/status` へ一度だけ自動プローブし、ハーネスが応答すれば接続、いなければ完全に不活性。マップ描画・UI への影響なし。
+    - `workbench/bridge_server.js`: dial-out 先ハーネス（無依存・127.0.0.1 のみバインド）。プラグイン iframe とは SSE `/events`＋POST `/result` で接続し、外部には `POST /call {name,args}`（結果まで保持）、`GET /status`/`/tools` の RPC を公開。`BRIDGE_TOKEN` で共有秘密トークン対応。
+    - `workbench/bridge.js`: CDP ドライバ（無依存・Node>=22）。iframe ターゲットへ `Runtime.evaluate` で `window.__geoBridge.call()` を実行。`serve` モードは stdin/stdout JSONL（QGIS file-JSONL 相当）でエージェントループ向け。`BRIDGE_ATTACH` で既存デバッグ Chrome へ接続可。`__geoBridge` 非搭載ビルドでは AI Chat iframe 経由のレガシー経路にフォールバック。
+- 新規: AI チャットにプロバイダ選択を追加（Gemini / OpenAI互換 / Anthropic / Azure OpenAI / 外部エージェント）。プロバイダ別フィールド（エンドポイント・APIバージョン・キー・モデル）は `aiProvider` としてプラグインストレージに保存され、`aiSetProvider`/`aiConfig` メッセージで往復。ツール呼出しは各形式へ変換し既存 `executeTool` を共有。
+- 改善: 飛行系ツール（`flyToPreset`/`flyToFeature`/`showFeatureAttributes`）に `wait:false` オプションを追加 — 発行のみ即応答（既定は従来どおり飛行完了後に応答）。ブリッジ経由での応答遅延を解消。
+- 修正: `execLocalTool` を同期化 — QuickJS では `extensionMessage` ディスパッチ内に積まれた `.then` 継続が次イベントまで実行されず、ブリッジ経由の応答が滞留する事象を解消（AGENTS.md に制約を記録）。
+- 修正: `handleDdbResult`/`handleGpkgResult` に4MBの結果ガードを追加 — 大きな GeoJSON を `reearth.layers.add/override` でホストブリッジへ再マーシャルする際の QuickJS OOM（`Proxy.unwrapResult` で拡張コンテキスト死亡）を、コンテキスト破壊ではなく graceful なエラー返却に変更。
+- 検証: `tsc --noEmit` 0 エラー / inline script チェック全通過 / Workbench E2E で describe・flyTo→getCamera・runCode・listBasemaps（SSE 経路）および CDP `__geoBridge.call` の双方向疎通を確認。
+
 ## v21.2.0
 - 新機能: `qgis:` インスペクタ構文（エイリアス `kasc:`/`kasczip:`）— QGIS geo_webview の `.kasc`+`DATA/` 出力を URL 一発で一括取り込み。
     - `qgis: <.zip URL>`（Re:Earth CMS 等にホストした ZIP）→ iframe で fflate(CDN)解凍 → `.kasc` を検出 → 相対参照を `kasczip://<zipId>/<path>` に書き換え → 参照されたメンバだけを base64 で拡張側ストアへ → `.kasc` 行をインスペクタ行として処理。展開行は設定テキストへ追記しないインクルード型（読込のたびに ZIP を再取得するため CMS 側の更新が即反映）。
