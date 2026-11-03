@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIチャット → ブリッジハブ連携 | Re:Earth GeoSuite</title>
+<link rel="stylesheet" href="style.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📚 AIチャット → ブリッジハブ連携</h1>
+    <nav>
+      <a href="../index.html">🏠 GeoSuite トップ</a>
+      <a href="index.html">ドキュメント一覧</a>
+      <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
+    </nav>
+  </header>
+  <div class="content">
+<p>AI チャットのプロバイダのうち <strong>GitHub Copilot</strong> と <strong>External agent（外部エージェント）</strong> は、API キーで直接叩く系統とは別経路で、ローカル常駐の <strong>CANVAS ブリッジハブ（bridge-hub.exe・127.0.0.1:8511）</strong> へ HTTP POST する「ブリッジ系」です。v21.3.0 追加。</p>
+<p>本ページは「ブラウザ → エージェント」（チャットから AI を使う）方向の説明です。逆方向「エージェント → ブラウザ」（外部ハーネスから地図ツールを遠隔実行する外部ブリッジ / <code>bridge:</code> 行 / <code>__geoBridge</code>）は <a href="./external-bridge.html">external-bridge.html</a> を参照してください。</p>
+
+<h2>全体構成</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph GS["geo_suite プラグイン内"]
+    UI["<b>ai-chat UI iframe</b><br>callAgent()"]
+  end
+  subgraph LO["ローカル（ブリッジ系・キー不要）"]
+    direction TB
+    HUB["<b>bridge-hub.exe</b><br>127.0.0.1:8511<br>provider で振り分け"]
+    P1["copilot CLI"]
+    P2["devin CLI (ACP)"]
+    P3["agy"]
+    HUB -- "copilot" --> P1
+    HUB -- "devin" --> P2
+    HUB -- "antigravity" --> P3
+  end
+  subgraph NET["外部 AI API（直接 fetch・API キー）"]
+    direction TB
+    API1["Gemini<br>generativelanguage.googleapis.com<br>※または /api/gemini プロキシ"]
+    API2["OpenAI互換 / Anthropic /<br>Azure OpenAI / Sakura<br>（設定エンドポイント）"]
+  end
+  UI <-->|"POST /agent ⇄ {reply, actions[]}"| HUB
+  UI <-->|"直接 fetch"| API1
+  UI <-->|"直接 fetch"| API2
+  style GS fill:#fff3cd
+  style LO fill:#e8f0fe
+  style NET fill:#e6f4ea
+</pre>
+<p><small>細かいペイロード（<code>tools</code>/<code>camera</code>/<code>toolResults</code> の往復）と <code>detectHub()</code> の検出手順は下のシーケンス図・後述の節を参照。直接 fetch 系（Gemini / OpenAI互換など）も同様のツール往復を行い、違いは応答をハブ経由で受け取るか API から直接受け取るかだけです。</small></p>
+<p>ハブ側は各プロバイダの <strong>CLI を子プロセスとして遅延起動</strong>し、その公開インターフェース経由で応答を取ります（Copilot なら <code>copilot --server --stdio</code> へ github-copilot-sdk の JSON-RPC）。認証・クォータは CLI 側の本人ログインに委ねられ、<strong>ブラウザは API キーを持ちません</strong>（Copilot/agent プロバイダはキー欄が不要＝<code>no key (bridge)</code> 表示）。</p>
+
+<h2>通信シーケンス（サンドボックス → AI API 直接）</h2>
+<p>まず通常の API 直接接続です。Gemini・OpenAI互換・Anthropic・Azure・Sakura の各プロバイダはハブを介さず、iframe から設定エンドポイントへ <strong>API キーを同梱して直接 fetch</strong> します。ツール呼出しは各 API ネイティブの形式（<code>functionCall</code> / <code>tool_calls</code> / <code>tool_use</code>）で返り、結果もプロバイダ固有の履歴フォーマットで次リクエストへ積む往復ループです。</p>
+<p>なお <code>fetch</code> は opaque origin の UI iframe 側でのみ実行でき、QuickJS 拡張コンテキストはメッセージ中継（<code>postToParent</code> / <code>aiToolCall</code> ↔ <code>aiToolResult</code> / <code>aiToolRequest</code>）しか担いません。この後の2図に出る「拡張ctx がツール実行」はこの中継を指します。</p>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant HOST as Re:Earth ホスト
+  box rgb(255,243,205) geo_suite サンドボックス
+    participant UI as ai-chat iframe<br>（拡張ctx が中継）
+  end
+  participant API as AI API<br>（設定エンドポイント）
+
+  Note over UI,API: 送信先はプロバイダ別（下表参照）。Gemini は<br>/api/gemini-env でサーバキーを検出し、あれば<br>/api/gemini プロキシ・なければ Google へ直接
+  loop ツール呼出しが空になるまで
+    UI->>API: 直接 fetch（API キー同梱）<br>contents/messages + tools 宣言
+    API-->>UI: テキスト + functionCall / tool_calls / tool_use
+    UI->>HOST: 拡張ctx がツール実行（reearth.*）
+    Note over UI: 結果を functionResponse / tool_result として<br>履歴へ積み、次回 fetch へ同梱
+  end
+  Note over UI,API: 完了 → reply 表示（往復上限 =<br>Max tool round trips・既定10・全プロバイダ共通）
+</pre>
+<p><small>補足: ツール結果は各 API の履歴フォーマット（Gemini なら <code>functionResponse</code> part、OpenAI なら <code>role:"tool"</code> メッセージ、Anthropic なら <code>tool_result</code> ブロック）に乗ります。<code>searchLocation</code> / <code>runCode</code> / <code>showReport</code> / <code>flyToUrl</code> 等は拡張ctx を経由しない iframe 内完結ツールです。</small></p>
+
+<h2>通信シーケンス（サンドボックス → ブリッジ → AI）</h2>
+<p>GitHub Copilot / External agent のブリッジ系は、同じツール往復をローカル常駐の <strong>bridge-hub（127.0.0.1:8511）</strong> 経由で行います。直接接続との違いは (1) <code>detectHub()</code> による接続先検出がある代わりに API キーが不要、(2) ハブ側ローカル状態ツール用に camera/layers/basemaps を毎往復取り直して送信する、(3) ツール結果が履歴フォーマットではなく POST ボディの <code>toolResults</code> フィールドに乗る、の3点です。</p>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant HOST as Re:Earth ホスト
+  box rgb(255,243,205) geo_suite サンドボックス
+    participant UI as ai-chat iframe<br>（拡張ctx が中継）
+  end
+  participant HUB as bridge-hub :8511
+  participant AGENT as CLI + AI
+
+  UI->>HUB: GET /health（detectHub による接続先検出）
+  loop actions が空になるまで
+    UI->>HUB: POST /agent<br>（camera/layers/basemaps・tools・history＋toolResults）
+    HUB->>AGENT: 振り分け → AI 推論
+    AGENT-->>UI: {reply, actions[]}（ハブ転送）
+    UI->>HOST: 拡張ctx が actions 実行（reearth.*）
+    Note over UI: ハブはツールを実行せずキュー返しのみ。<br>実行結果は toolResults で次回 POST へ
+  end
+  Note over UI,HUB: 完了 → reply 表示・report は showReport
+</pre>
+<p><small>補足: <code>actions</code> が空の応答が来たら <code>reply</code> をチャットへ表示し、<code>report</code> フィールドがあれば <code>showReport</code> モーダルを開いて完了です。</small></p>
+
+<h2>プロバイダ別の通信先</h2>
+<table>
+<thead>
+<tr><th>プロバイダ（設定画面）</th><th>ID</th><th>送信先</th><th>認証</th></tr>
+</thead>
+<tbody>
+<tr><td>Gemini</td><td><code>gemini</code></td><td><code>generativelanguage.googleapis.com</code>（またはサイト側 <code>/api/gemini</code> プロキシ）に直接 fetch</td><td>API キー</td></tr>
+<tr><td>OpenAI-compatible / Anthropic / Azure OpenAI / Sakura AI Engine</td><td><code>openai</code> <code>anthropic</code> <code>azure</code> <code>sakura</code></td><td>設定したエンドポイント（Sakura は固定 <code>api.ai.sakura.ad.jp</code>）に直接 fetch</td><td>API キー</td></tr>
+<tr><td>GitHub Copilot (bridge hub)</td><td><code>copilot</code></td><td>ブリッジハブへ <code>POST /agent</code>（<code>provider:"copilot"</code>）。既定 <code>http://127.0.0.1:8511/agent</code></td><td>不要（ハブ側 CLI の本人ログイン）</td></tr>
+<tr><td>External agent (bridge)</td><td><code>agent</code></td><td>設定したエンドポイントへ <code>POST /agent</code>（<code>provider:"agent"</code>）。<code>/agent</code> 互換コントラクトを実装する任意のエージェントサーバ向け</td><td>エンドポイント次第</td></tr>
+</tbody>
+</table>
+<p><small>※ <code>provider:"agent"</code> は汎用パススルー値で、bridge-hub の振り分け対象（<code>copilot</code>/<code>devin</code>/<code>antigravity</code>）ではありません。ハブへ Devin/Antigravity を使わせたい場合は現状 GeoSuite 側に専用選択肢はなく、External agent ではなく Canvas 側プロバイダ経由を使います。</small></p>
+
+<h2>エンドポイント解決（detectHub）</h2>
+<p>ハブの接続先は次の優先順で決まります:</p>
+<ol>
+<li><strong>AI チャット設定画面の Endpoint 欄</strong>（明示指定が最優先。末尾の <code>/agent</code> は剥がしてベース URL 化）</li>
+<li><strong>インスペクタの <code>aiHub: &lt;url&gt;</code> 行</strong> — 管理パネルの「AI Bridge (CANVAS)」ブロックの入力欄と双方向同期し、<code>aiConfig</code> メッセージで AI チャットへ伝搬（Endpoint 欄が空のときのプリフィル）</li>
+<li><strong>自動プローブ</strong> — 上記が無ければ <code>http://127.0.0.1:8511/health</code> を 1 回だけ GET し、応答すれば <code>http://127.0.0.1:8511</code> を採用（bridge-hub.exe が常駐していれば自動接続）</li>
+</ol>
+<p>管理パネル「AI Bridge (CANVAS)」の <strong>Test</strong> ボタンは <code>/health</code> + <code>/models?provider=copilot</code> を叩いて疎通・モデル数・プロバイダ一覧を表示します。</p>
+
+<h2>プロトコル（CANVAS ブリッジハブ コントラクト）</h2>
+<h3>リクエスト: <code>POST {base}/agent</code>（application/json・120s タイムアウト）</h3>
+<table>
+<thead><tr><th>フィールド</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td><code>provider</code></td><td><code>"copilot"</code> または <code>"agent"</code></td></tr>
+<tr><td><code>model</code></td><td>設定画面のモデル欄（未指定なら省略）</td></tr>
+<tr><td><code>message</code></td><td>ユーザーの発言テキスト</td></tr>
+<tr><td><code>project</code></td><td>固定 <code>"default"</code></td></tr>
+<tr><td><code>camera</code> / <code>layers</code> / <code>basemaps</code></td><td><strong>各往復で実値を取り直して送信</strong>（<code>getCamera</code>/<code>listLayers</code>/<code>listBasemaps</code> ツール経由）。ハブ側のローカル状態参照ツールはここから応答する</td></tr>
+<tr><td><code>history</code></td><td>直近 20 件の <code>{role,text}</code></td></tr>
+<tr><td><code>tools</code></td><td><strong>フラットな宣言配列</strong>（<code>TOOL_DECLS[0].functionDeclarations</code>。Gemini ラッパー形式のまま送るとハブ側でツール数 0 扱いになるため展開済み）</td></tr>
+<tr><td><code>toolResults</code></td><td>2 往復目以降のみ。前ラウンドで実行した <code>{name,args,result}</code> の配列</td></tr>
+</tbody>
+</table>
+<h3>レスポンス</h3>
+<table>
+<thead><tr><th>フィールド</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td><code>reply</code> / <code>text</code></td><td>エージェントの回答テキスト</td></tr>
+<tr><td><code>actions</code></td><td><code>[{name,args}]</code> — 実行してほしいツール呼出しのキュー。<strong>ハブはツールを実行せずスタブ結果で留保し、実実行はブラウザ側</strong></td></tr>
+<tr><td><code>report</code></td><td><code>{title,format,content}</code> が返ると <code>showReport</code> と同等にモーダル表示</td></tr>
+</tbody>
+</table>
+<h3>往復ループ（queued-action 方式）</h3>
+<pre><code>POST /agent {message, tools, camera, layers, basemaps, ...}
+  ← {reply, actions:[{name,args}]}
+    → actions を executeTool で順次実行
+POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果を返送
+  ← {reply, actions:[...]}   ← 結果を踏えた続き or 完了
+  …actions が空になるまで繰り返す（上限 = Max tool round trips、既定10・1-20）</code></pre>
+<p>上限到達時は「あと{n}往復続けますか？」の確認が出ます（<code>aiToolMaxSteps</code> で永続化・<code>setToolMaxSteps</code> ツールからも変更可）。この往復は KASUGAI Canvas の <code>callExternalAgent</code> と同じコントラクトです。</p>
+
+<h2>モデル一覧の取得</h2>
+<p>プロバイダ選択時に <code>GET {base}/models?provider=copilot</code> を叩き、返ってきた一覧をモデル欄の datalist に反映します。ハブ未到達時は <code>hub: unreachable — install/start bridge-hub.exe (port 8511)</code> と表示されます。</p>
+
+<h2>bridge ツール <code>canvasApi</code></h2>
+<p>外部ブリッジ（<a href="./external-bridge.html">external-bridge.html</a> の経路）越しにハブの REST を叩けるツールとして <code>canvasApi</code> があります。<code>{path, method, body, endpoint?}</code> で <code>&lt;base&gt;+path</code> へ fetch し、<code>{ok,status,json|text}</code> を返します。navigation-toolbar の永続 iframe で実行されるため、外部エージェントが <code>/setup</code> や <code>/mcp</code> 等のハブ API をブリッジ越しに利用できます（v21.3.0〜）。</p>
+
+<h2>ブリッジハブ（bridge-hub.exe）側の概要</h2>
+<ul>
+<li><strong>Rust 製の単一 exe</strong>（Node.js 不要）で <code>127.0.0.1:8511</code> のみバインド。<code>%LOCALAPPDATA%\kasugai\bridge-hub\</code> へ自己インストール＋ログイン時自動起動</li>
+<li>プロバイダは <code>copilot</code> / <code>devin</code> / <code>antigravity</code> の 3 系統。<strong>実際に使われた時点で対応 CLI を子プロセス起動</strong>（未使用時はゼロコスト）。CLI 未導入なら <code>POST /setup</code> で公式手順の自動インストールも可能</li>
+<li>認証は CLI 側（Copilot なら <code>copilot</code> CLI の対話ログイン or <code>COPILOT_GITHUB_TOKEN</code>/<code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code>）。クォータは利用者本人のものを消費</li>
+<li>API: <code>GET /health</code>・<code>GET /models?provider=</code>・<code>POST /agent</code>・<code>GET|POST /setup</code>・<code>POST|DELETE /mcp[/&lt;project&gt;]</code>・<code>GET /</code>（状態ページ）</li>
+<li>GeoSuite の AI チャットが送れるのは <code>provider:"copilot"</code>（専用選択肢）と汎用 <code>provider:"agent"</code>。devin/antigravity 宛の送信は現状 GeoSuite 側 UI に無い</li>
+</ul>
+<p>ハブの詳細仕様（導入・自動セットアップ・プロバイダ別前提・環境変数）は KASUGAI Canvas 側のドキュメントが正本です: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
+
+<h2>設計上の制約・注意</h2>
+<ul>
+<li><strong>通信は全て iframe 側で行う</strong> — QuickJS 拡張コンテキストには <code>fetch</code> が無いため、<code>callAgent</code>・<code>detectHub</code>・<code>/models</code> 取得はすべて ai-chat UI iframe 内ブラウザ JS です</li>
+<li><strong>opaque origin からの localhost POST</strong> — iframe はサンドボックス（opaque origin）なので <code>application/json</code> POST は本来 PNA プリフライトが必要ですが、<strong>ハブ側が <code>Access-Control-Allow-Private-Network: true</code> 付きの permissive CORS</strong> で応答するためそのまま通ります（外部ブリッジ側で text/plain 化しているのとは対照的に、ハブがサーバ側で対策済み）</li>
+<li><strong>ローカル・本人利用限定</strong> — ハブの各プロバイダは公式連携ではなく公開インターフェースを使うサードパーティ製クライアントです。127.0.0.1 バインド・本人アカウントの CLI で使ってください</li>
+<li><strong>apiKey は送らない</strong> — Copilot/agent プロバイダではキー欄が無効（<code>no key (bridge)</code>）。外部エージェントへキーを同梱する経路は GeoSuite 側にはありません</li>
+<li><strong>ハブがいなければ失敗するだけ</strong> — 8511 プローブは 1 回だけ。ハブ未起動でも地図・他プロバイダには影響しません</li>
+</ul>
+
+<h2>ファイル対応表</h2>
+<table>
+<thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+<tbody>
+<tr><td><code>geo_suite/src/ai-chat.ts</code></td><td>プロバイダ選択 UI・<code>callAgent()</code>（detectHub・POST /agent・toolResults 往復）・<code>/models</code> 取得・<code>report</code> → showReport</td></tr>
+<tr><td><code>geo_suite/src/layers-and-tiles-list.ts</code></td><td><code>aiHub:</code> インスペクタ行解析・管理パネル「AI Bridge (CANVAS)」ブロック（入力・疎通テスト・設定テキスト双方向同期）・<code>aiConfig</code> での伝搬</td></tr>
+<tr><td><code>geo_suite/src/navigation-toolbar.ts</code></td><td>ブリッジツール <code>canvasApi</code>（外部ブリッジ越しのハブ REST アクセス。永続 iframe 内で実行）</td></tr>
+<tr><td><code>kasugai_canvas/server/src/bridge/</code>（別リポジトリ）</td><td>bridge-hub 本体。<code>mod.rs</code> が /agent・/models・/setup・/mcp を振り分け、<code>copilot.rs</code>/<code>devin.rs</code>/<code>antigravity.rs</code> が各 CLI を子プロセス起動して JSON-RPC/ACP 中継</td></tr>
+</tbody>
+</table>
+</div>
+  <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>try { mermaid.initialize({ startOnLoad: true, theme: 'default', themeVariables: { fontSize: '17px' }, sequence: { actorFontSize: 17, noteFontSize: 16, messageFontSize: 16 }, flowchart: { htmlLabels: true } }); } catch (e) {}</script>
+
+</body>
+</html>
