@@ -192,6 +192,7 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 </ul>
 <p><small>通信面の補足: ハブ呼出しはパネル iframe の <code>hubExternalize</code> ハンドラで <code>GET /vector/status</code> → <code>GET /vector/sources</code> → 必要時のみ <code>POST /vector/sources</code>（text/plain・プリフライト不要のシンプルリクエスト）を1往復で行い、結果は <code>hubResult</code> で拡張ctxへ返ります。登録ボディの <code>name</code> は kind/src/where/limit/lon/lat/geom_col の FNV-1a ハッシュから決定的に生成します。</small></p>
 
+<p><small>実機検証で確認済みの注意（v22.2.0）: (a) inspector 一括適用のストーム中はレイヤ着地ごとの <code>safeShowUI</code> がパネル iframe を再生成し、in-flight の <code>POST /vector/sources</code> が abort されて無言で wasm フォールバックに落ちることがある（既登録ソースは probe のみで潜り抜ける。静穏時・単行適用では正常）。対策として hubExternalize の永続 basemap iframe 経由化、または ext-path drain 中の safeShowUI coalesce が候補。(b) <code>format=read</code>（<code>SELECT * FROM ST_Read(&#x27;url&#x27;)</code> の kind:sql VIEW）は GDAL 可読フォーマット専用 — <code>.parquet</code> では 502→フォールバック、<code>.gpkg</code> URL では拡張子判定が先に効き kind:gpkg 登録になる。(c) <code>vectorHub: http://host:port</code> はその適用パス以降の全ソース（<code>qgis:</code> インクルード分を含む）の接続先になる点に注意。</small></p>
 <h2>設計上の制約・注意</h2>
 <ul>
 <li><strong>通信は全て iframe 側で行う</strong> — QuickJS 拡張コンテキストには <code>fetch</code> が無いため、<code>callAgent</code>・<code>detectHub</code>・<code>/models</code> 取得はすべて ai-chat UI iframe 内ブラウザ JS です</li>
