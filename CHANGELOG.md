@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.3.0
+- 新規: bridge-hub 未検出時にレイヤーパネルへ常設の導入プロモを表示（issue #12）— パネル iframe が起動ごとに `GET {hub}/health` を1回プローブし、`hub:true` が返らなければタブバー直下へ小さな導入行を表示。「Download bridge-hub.exe」ボタンは `<a download>` で kasugai-canvas-web CDN（stable チャンネル）の自己インストール型 exe を取得させ、押下後は「起動待ち」表示へ切替えて `/health` を2秒間隔・最長3分ポーリング、検出次第「connected」→ 自動で行を閉じる。exe は1回実行で `%LOCALAPPDATA%\kasugai\bridge-hub\` へ自己インストール＋ログイン自動起動登録されるため、以後は wasm 初期化（~15s）・拡張ctx 4MB 上限・セッション毎のデータ再取得が回避され、AI ブリッジ（Copilot/Devin/Antigravity）も解放される。`vectorHub: off` 指定時はプローブも表示も行わない。接続先は `hubEndpoint()` の解決結果（`vectorHub:` > `aiHub:` > `127.0.0.1:8511`）をそのまま利用。UI 文字列は GEO_I18N 全20言語へ `hubPromo*` キーとして追加。
+
 ## v22.2.0
 - 新規: bridge-hub `/vector` サービスへの自動外部 GeoJSON 化 — `fgb:`/`parquet:`/`gpkg:`/`duckdb:` の http(s) ソースを、検出できた bridge-hub（`vector.status` で疎通確認）へ `POST /vector/sources` で登録し、`geojson: http://<hub>/vector/geojson/<name>` の素の URL レイヤとして追加。ネイティブ DuckDB CLI が永続 `.duckdb` に取り込むため、DuckDB-Wasm の ~15s 初期化・opaque origin キャッシュ不可・拡張ctx 4MB 制約を全て回避し、同一ソースは `gs_<hash>` の決定的名で再取込みせず共有される。`where=`/`limit=`/`table=`/`lon=`/`lat=`/`geom=` は登録ボディへ、`columns=` は geojson URL の `?columns=` へマップ。kasczip メンバ・`.duckdb` ファイルは対象外で従来どおり iframe デコード。ハブ未到達・登録失敗時も既存デコード経路へフォールバックするため挙動は環境非依存。
 - 新規: インスペクタ行 `vectorHub:` — `off` で自動外部化を無効化、`http://host:port` で接続先を指定（省略時は `aiHub:` の値、それも無ければ `127.0.0.1:8511` を自動検出）。

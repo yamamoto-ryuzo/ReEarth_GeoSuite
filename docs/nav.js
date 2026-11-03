@@ -6,12 +6,11 @@
 // - docs/ 配下のページを追加したら GROUPS を更新すること（ここがページ一覧の正本）
 (function () {
   const scriptUrl = document.currentScript.src;
-  const VERSION = 'v22.2.0';
+  const VERSION = 'v22.3.0';
 
   // サイトルートのページ（nav.js は docs/ に置くため ../ で指す）
   const SITE = [
-    { href: '../index.html', text: 'GeoSuite トップ' },
-    { href: '../duckdb-persistence.html', text: 'DuckDB-Wasm 永続化検証' }
+    { href: '../index.html', text: 'GeoSuite トップ' }
   ];
 
   const GROUPS = [
@@ -34,6 +33,12 @@
       items: [
         { href: 'external-bridge.html', text: '5. 外部ブリッジ（実装構成）' },
         { href: 'bridge-hub.html', text: '6. AIチャット → ブリッジハブ' }
+      ]
+    },
+    {
+      label: '参考資料',
+      items: [
+        { href: 'duckdb-persistence.html', text: '7. DuckDB-Wasm 永続化検証（解決済・検証記録）' }
       ]
     }
   ];

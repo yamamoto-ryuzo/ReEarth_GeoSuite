@@ -93,13 +93,13 @@
             font-size: 0.85em;
         }
     </style>
-    <script src="docs/nav.js" defer></script>
+    <script src="nav.js" defer></script>
 </head>
 <body>
 <div class="container">
     <header>
         <h1>DuckDB-Wasm 永続化検証レポート</h1>
-        <p>GeoSuite プラグイン — 読み込みタイミング・セッション内再利用・ブラウザ再起動時の挙動（実測）</p>
+        <p>GeoSuite プラグイン — 読み込みタイミング・セッション内再利用・ブラウザ再起動時の挙動（実測）＋ v22.2.0 までの拡張</p>
     </header>
     <div class="content">
 
@@ -115,7 +115,9 @@
                 <strong>結論</strong>:
                 セッション内では「初回のみ ~15–17s の初期化、以後 warm（~3–9s）で継続利用」を実現した。
                 ただしブラウザ再起動・再訪では <strong>アセットは必ず再ダウンロードされる</strong>。
-                これは Re:Earth プラグイン iframe のサンドボックス制約（opaque origin）によるもので、アプリ側では回避不可能。
+                これは Re:Earth プラグイン iframe のサンドボックス制約（opaque origin）によるもので、アプリ側では回避不可能。<br>
+                <span class="muted">※ v22.2.0 で bridge-hub <code>/vector</code> 外部化が追加され、ハブ到達環境では
+                wasm 経路自体を使わない第3の経路が存在する（§5.5）。本結論は wasm 経路についてのもの。</span>
             </div>
         </section>
 
@@ -167,6 +169,10 @@
                 変更ファイル: <code>geo_suite/src/basemap-widget.ts</code>（ddbExec 中継・ddbLoad 実行・ddbAck/ddbResult 返送）、
                 <code>geo_suite/src/layers-and-tiles-list.ts</code>（ddbPost ホスト優先＋フォールバック、handleDdbResult、ddbAck/ddbResult 受信）
             </p>
+            <p class="muted">
+                ※ v22.0.0 で <code>flatgeobuf:</code>/<code>parquet:</code>/kasczip geojson も同一ホスト経路へ拡張（§5.3）。
+                v22.2.0 ではハブ到達時に wasm 経路自体を回避する <code>/vector</code> 外部化も追加された（§5.5）。
+            </p>
         </section>
 
         <section>
@@ -186,14 +192,93 @@
         </section>
 
         <section>
-            <h2>5. ブラウザ再起動・再訪の検証</h2>
-            <h3>5.1 実測</h3>
+            <h2>5. その後の拡張（v21.3.1〜v22.2.0）</h2>
+            <p>
+                §3〜§4 は v21.0.0 時点の検証だが、永続ホスト方式はその後も拡張されている。
+                「再起動をまたぐ永続化は不可能・セッション内1回の初期化が最適」という結論は変わっていないものの、
+                初期化コストの隠蔽・ホスト信頼性・適用範囲・回避経路が強化された。
+            </p>
+
+            <h3>5.1 先行ウォーム（v21.3.1）</h3>
+            <p>
+                「セッション1回の ~15s」をユーザーの初回クエリと重ねるため、inspector テキストに
+                <code>duckdb:</code>/<code>sql:</code> 行（<code>qgis:</code> ZIP 取込分を含む、<code>format=gpkg</code> 系を除く）が
+                現れた時点で、パネルが <code>ddbWarm</code> を basemap-widget 拡張へ送信。
+                永続 iframe の <code>ensureDdbModule()</code> が wasm ダウンロード＋初期化をバックグラウンド開始する。
+            </p>
+            <ul>
+                <li>ホスト拡張の登録待ちは ~20s リトライ。basemap 拡張側は iframe ready（最初の <code>requestBaseList</code>）まで <code>postToUI</code> をキュー</li>
+                <li>計測（workbench・最小 inspector）: warm 完了 = 起動 ~12s（クエリ未発行）、その後の <code>addDuckDbLayer</code> = ~2s</li>
+                <li>永続化は依然不可能なため「初期化を起動処理とオーバーラップさせて体感待ちを消す」設計</li>
+            </ul>
+
+            <h3>5.2 ホスト死亡判定の暫定化・自己修復（v21.3.3〜v22.0.0）</h3>
+            <ul>
+                <li><code>_ddbHostDead</code> は永久フラグではなく <code>DDB_HOST_RETRY_MS</code>（15s）の隔離期間を持つ暫定評決。
+                    隔離中のクエリは自 iframe で即実行し、期限後の次クエリでホストを再試行。拡張未登録は dead 判定にならず毎クエリ再解決</li>
+                <li>ホスト由来の <code>ddbAck</code>/<code>ddbResult</code>/<code>gpkgAck</code>/<code>gpkgResult</code> を受信した時点で dead 解除（<code>ddbNoteHostAlive</code>）、復帰時は <code>ddbWarm</code> を再送</li>
+                <li>basemap 側は <code>ddbExec</code>/<code>gpkgExec</code>/<code>ddbWarm</code> を iframe ready まで <code>postToUIWhenReady</code> でキューし、「拡張登録済み・iframe 未 ready」のドロップを根絶</li>
+                <li><code>waitViaUiTimer</code> は iframe 再生成をまたぐ再武装（<code>rearmUiTimers</code>）に対応 — タイマー喪失で ack フォールバック・TTL ウォッチドッグが発火しなくなる問題を解消</li>
+                <li>自 iframe 作業の自己修復再送（v22.0.0）: <code>postToOwnIframeTracked</code> が pending エントリに投げたメッセージ（<code>ownReq</code>）を記録し、
+                    iframe 再生成後の <code>requestRestoreState</code> で全再送。再描画で殺されたデコード/コンパイルが TTL(300s) まで宙に浮く問題を解消</li>
+            </ul>
+
+            <h3>5.3 fgb / parquet / geojson の同一ホスト経路化（v22.0.0）</h3>
+            <p>
+                <code>flatgeobuf:</code>/<code>parquet:</code>/kasczip geojson メンバも短命なパネル iframe でデコードしていたため、
+                DuckDB と同じ「in-flight デコードが <code>safeShowUI</code> で殺され結果が来ない」問題を抱えていた。
+                <code>vecHostPost</code> が <code>fgbExec</code>/<code>pqExec</code>/<code>geoExec</code> を永続ホストへ送り、
+                <code>fgbLoad</code>/<code>pqLoad</code>/<code>geoLoad</code> → <code>*Ack</code> + <code>*Result</code> で返送する。
+                結果は <code>handleVecResult</code> で統一処理。
+            </p>
+            <ul>
+                <li>eager <code>dataB64</code>（ドロップ ZIP メンバ）は巨大 base64 がホスト拡張 ctx を通るため従来どおり自 iframe でデコード</li>
+                <li>ロード中はレイヤ一覧に <code>⏳</code> グレー行を表示し、結果 or トゥームストーンで解消</li>
+                <li>永続ホストは「DuckDB 専用」から「ctx 横断ベクターの共通デコード基盤」へ格上げされた形</li>
+            </ul>
+
+            <h3>5.4 4MB ペイロード上限と早期打切り（v21.3.3〜v22.0.0）</h3>
+            <p>
+                QuickJS 拡張コンテキストは大きな JSON のマーシャルで <code>InternalError: out of memory</code> 死亡するため、
+                ペイロードの拡張 ctx 横断は <strong>4MB がハード上限</strong>（iframe 側 <code>gjTooBig</code> と拡張側
+                <code>geojsonMsgTooBig</code>/<code>capToolResult</code>/<code>aiToolReply</code> で統一）。超過はコンテキストに入る前に拒否しトゥームストーン表示。
+            </p>
+            <ul>
+                <li>早期打切り: gpkg は行ごとの積算、duckdb は行→GeoJSON 変換ループで積算、fgb はストリーム積算で 4MB 到達時に中断</li>
+                <li>parquet は <code>parquetMetadata</code>（footer のみ・URL は Range 読み）の非圧縮 <code>total_byte_size</code> で事前判定し本体を読まない</li>
+                <li>gpkg ファイル自体が 4MB 超なら結果が収まり得ても恒久拒否（<code>payload-limits.html</code> に仕様明記）</li>
+                <li><code>bbox=auto</code> レイヤは失敗 spec を <code>_ddbFailedAdds</code> に保持し、ズームイン後のカメラ移動で自動リトライ</li>
+            </ul>
+
+            <h3>5.5 bridge-hub <code>/vector</code> 外部化 — wasm 経路自体の回避（v22.2.0）</h3>
+            <p>
+                最も大きな変更。到達可能な bridge-hub（<code>vectorHub:</code> 行 → <code>aiHub:</code> → 既定 <code>127.0.0.1:8511</code> の順で解決）が
+                ある環境では、<code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを
+                ハブへ <code>POST /vector/sources</code> で登録し、<code>geojson: &lt;hub&gt;/vector/geojson/&lt;name&gt;</code> の
+                <strong>素の URL 型レイヤー</strong>として追加する（AI ツール <code>addDuckDbLayer</code> も同経路）。
+            </p>
+            <div class="box ok-box">
+                ハブ側はネイティブ DuckDB CLI で永続 <code>.duckdb</code> へ取り込むため、
+                <strong>wasm ~15s 初期化・opaque origin キャッシュ不可・拡張 ctx 4MB 制約を全て回避</strong>できる。
+                「ブラウザ内に永続キャッシュを作れない」制約を、キャッシュを必要としない構成へ変えることで解消した形。
+            </div>
+            <ul>
+                <li><code>bbox=auto</code> は <code>?bbox=</code> URL パラメータで実現し、カメラ移動で <code>refreshHubVecLayer</code> が <code>data.url</code> を差替え（ホスト取得＝ctx 横断ゼロ・4MB 上限非該当）</li>
+                <li><code>sql:</code> は <code>kind:"sql"</code> の VIEW（materialize:false、<code>:bbox</code>→世界エンベロープ焼込み）として登録。<code>format=read</code> は <code>SELECT * FROM ST_Read(url)</code> の kind:sql に変換</li>
+                <li>登録名は spec ハッシュ由来の <code>gs_&lt;hash&gt;</code> で冪等 — 同一ソースを再取込みせず共有</li>
+                <li>kasczip メンバ・dataB64・<code>.duckdb</code> ファイルとハブ未到達・登録失敗時は従来の wasm 経路へフォールバック。<code>vectorHub: off</code> で無効化</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>6. ブラウザ再起動・再訪の検証</h2>
+            <h3>6.1 実測</h3>
             <table>
                 <tr><th>セッション</th><th>所要時間</th><th>解釈</th></tr>
                 <tr><td>A（新規プロファイル）</td><td>15.3s</td><td>コールド</td></tr>
                 <tr><td>B（再起動・同一プロファイル）</td><td>16.9s</td><td class="ng">コールドと同等 — キャッシュ未利用</td></tr>
             </table>
-            <h3>5.2 原因の特定（CDP 実測）</h3>
+            <h3>6.2 原因の特定（CDP 実測）</h3>
             <ul>
                 <li>同一 iframe・同一セッション内で同一 URL を 2 回 fetch →
                     2回目も <code>transferSize=4456</code>（全バイト再転送）。<strong>HTTP キャッシュが機能しない</strong></li>
@@ -211,24 +296,25 @@
         </section>
 
         <section>
-            <h2>6. 回避策の検討</h2>
+            <h2>7. 回避策の検討</h2>
             <table>
                 <tr><th>案</th><th>判定</th><th>理由</th></tr>
                 <tr><td>HTTP キャッシュ依存</td><td class="ng">不可</td><td>opaque origin で無効（実測）</td></tr>
                 <tr><td>Service Worker + CacheStorage（KASUGAI 方式）</td><td class="ng">不可</td><td>sandbox で SecurityError</td></tr>
                 <tr><td>拡張側 <code>clientStorage</code> に wasm バイナリ保存→次回注入</td><td class="warn">理論上可能だが非推奨</td><td>wasm+worker+拡張で ~6–8MB → base64 ~10MB 超。localStorage 系上限・メッセージ橋のバイナリ転送制約あり</td></tr>
-                <tr><td>永続 iframe ホスト（basemap-widget）</td><td class="ok">採用</td><td>セッション内の再初期化を排除（本実装）</td></tr>
+                <tr><td>永続 iframe ホスト（basemap-widget）</td><td class="ok">採用</td><td>セッション内の再初期化を排除（本実装）。v22.0.0 で全 ext ベクターの共通デコードホストへ拡張（§5.3）</td></tr>
+                <tr><td>bridge-hub <code>/vector</code> 外部化（v22.2.0〜）</td><td class="ok">採用（併用）</td><td>ハブ到達時は wasm 経路自体を回避し、ハブ側の永続 <code>.duckdb</code> へ取込。opaque origin 制約がそもそも無関係になる。未到達時は永続 iframe 経路へフォールバック（§5.5）</td></tr>
             </table>
         </section>
 
         <section>
-            <h2>7. フォーマット別の使いどころ（GeoJSON / FlatGeobuf / GeoParquet / duckdb:）</h2>
+            <h2>8. フォーマット別の使いどころ（GeoJSON / FlatGeobuf / GeoParquet / duckdb:）</h2>
             <p>
                 GeoSuite にはベクトルデータの読込経路が4種類ある。利用者視点で
                 「ファイルサイズ」「ダウンロード→描画の速さ」「選び方の目安」をまとめる。
             </p>
 
-            <h3>7.1 フォーマット特性</h3>
+            <h3>8.1 フォーマット特性</h3>
             <table>
                 <tr><th>構文</th><th>実体</th><th>圧縮</th><th>読込単位</th><th>備考</th></tr>
                 <tr>
@@ -249,7 +335,7 @@
                 </tr>
             </table>
 
-            <h3>7.2 ファイルサイズの比較（実測 + 目安）</h3>
+            <h3>8.2 ファイルサイズの比較（実測 + 目安）</h3>
             <table>
                 <tr><th>データセット</th><th>GeoJSON</th><th>FlatGeobuf</th><th>GeoParquet</th></tr>
                 <tr>
@@ -267,7 +353,7 @@
             </table>
             <p><strong>ファイルサイズが小さい順の目安</strong>: GeoParquet &lt; FlatGeobuf &lt; GeoJSON（中〜大ファイルの場合）</p>
 
-            <h3>7.3 ダウンロード→描画までの速さ</h3>
+            <h3>8.3 ダウンロード→描画までの速さ</h3>
             <h4>小さいファイル（~数MB 以下）</h4>
             <table>
                 <tr><th>経路</th><th>構成</th><th>実測（countries 205KB, 179地物）</th></tr>
@@ -292,7 +378,7 @@
                 <code>bbox=auto</code> のカメラ連動再クエリを使うほど元が取れる。
             </p>
 
-            <h3>7.4 選び方の目安</h3>
+            <h3>8.4 選び方の目安</h3>
             <table>
                 <tr><th>ファイルサイズ / 用途</th><th>推奨</th><th>理由</th></tr>
                 <tr><td>〜10MB 程度</td><td><code>geojson:</code> または <code>fgb:</code></td><td>デコード基盤なしで最速。手軽さ優先</td></tr>
@@ -302,7 +388,7 @@
                 <tr><td>複数レイヤーをまとめてクエリする</td><td><code>duckdb:</code></td><td>wasm 初期化はセッション1回で使い回せる</td></tr>
             </table>
 
-            <h3>7.5 その他の留意点</h3>
+            <h3>8.5 その他の留意点</h3>
             <ul>
                 <li><strong>変換</strong>: GeoJSON → FlatGeobuf / GeoParquet は QGIS・ogr2ogr・geopandas 等で変換可能</li>
                 <li><strong>属性が多いデータ</strong>: カラムナーの Parquet が圧倒的に有利。<code>duckdb:</code> の <code>columns=</code> で必要列だけ取り込める</li>
@@ -315,10 +401,10 @@
         </section>
 
         <section>
-            <h2>8. 関連する環境制約・今回の発見</h2>
+            <h2>9. 関連する環境制約・今回の発見</h2>
             <p>調査過程で判明した、プラグイン開発上の重要な制約を記録しておく。</p>
 
-            <h3>8.1 上流への機能要望（Issue 登録済み）</h3>
+            <h3>9.1 上流への機能要望（Issue 登録済み）</h3>
             <div class="box">
                 <strong><a href="https://github.com/reearth/reearth-visualizer/issues/2497">reearth-visualizer#2497</a></strong>
                 — プラグイン UI iframe が opaque origin で HTTP キャッシュ・CacheStorage・localStorage・
@@ -327,8 +413,19 @@
                 (3) COOP/COEP opt-in による COI 解放。WASM 系プラグイン（DuckDB/GDAL/ML/タイルデコーダ）や
                 COI 必須の Cesium 最新機能が使えない現状の抜本解決を狙う。
             </div>
+            <div class="box ok-box">
+                <strong>対応結果 — 外部アプリ化で解決（本課題はクローズ扱い）</strong>:
+                メンテナ回答は「opaque-origin sandbox は意図的な分離モデルであり、host-managed caching は検討に値するが
+                対応目処・タイムラインのコミットなし（Issue は open のまま）」。
+                上流改修を待たず、<strong>bridge-hub <code>/vector</code> 外部化（§5.5）を本課題への実回答</strong>とした。
+                ハブ側の永続 <code>.duckdb</code> に処理を寄せる構成のため、wasm 再 DL・opaque origin・
+                4MB 制約・SAB 不可のすべてが無関係になる。<br>
+                対応結果は Issue へコメント起票済み:
+                <a href="https://github.com/reearth/reearth-visualizer/issues/2497#issuecomment-6615527578">issuecomment-6615527578</a>
+                （bridge-hub 概要・/vector 経路の仕組み・各制約の無効化・計測プローブの内訳を記録）。
+            </div>
 
-            <h3>8.2 QuickJS 拡張コンテキストには <code>setTimeout</code> が無い</h3>
+            <h3>9.2 QuickJS 拡張コンテキストには <code>setTimeout</code> が無い</h3>
             <p>
                 拡張側（QuickJS サンドボックス）で遅延処理が必要な場合は、既存のタイマー委譲機構を使うこと:
                 <code>waitViaUiTimer(ms)</code> → UI iframe がブラウザの <code>setTimeout</code> を実行 →
@@ -336,7 +433,7 @@
                 ReferenceError になる（DuckDB のカメラデバウンスで実際に踏んだ）。
             </p>
 
-            <h3>8.3 Workbench の resize script 注入バグ</h3>
+            <h3>9.3 Workbench の resize script 注入バグ</h3>
             <p>
                 Workbench が iframe HTML の <code>&lt;/body&gt;</code> 直前に <code>_zushi_resize</code> スクリプトを
                 挿入する際、<strong>JS 文字列リテラル内の <code>'&lt;/body&gt;&lt;/html&gt;'</code> に誤マッチ</strong>し、
@@ -346,7 +443,7 @@
                 書かず <code>'&lt;\/body&gt;&lt;\/html&gt;'</code> のようにスラッシュをエスケープする（ai-chat.ts で修正済み）。
             </p>
 
-            <h3>8.4 サンドボックスでも動作するもの</h3>
+            <h3>9.4 サンドボックスでも動作するもの</h3>
             <ul>
                 <li><strong>blob URL Worker は生成可能</strong> — DuckDB-Wasm のワーカー起動が通る</li>
                 <li><code>crossOriginIsolated=false</code> でも DuckDB は <code>eh</code>（非スレッド）バンドルで動作。
@@ -359,13 +456,21 @@
         </section>
 
         <section>
-            <h2>9. 結論</h2>
+            <h2>10. 結論</h2>
             <div class="box">
-                <strong>現状の最適構成</strong> — 再訪時は最初の1回だけ ~15s の初期化待ち、
-                以後はセッション内でインスタンスを使い回す。
+                <strong>現状の最適構成（v22.2.0 時点）</strong> — 3 段構え:
+                ① bridge-hub が到達可能なら <code>/vector</code> 外部化で wasm を一切使わない（最良・初期化コスト皆無）、
+                ② wasm 経路でも先行ウォームにより「1セッション1回の初期化」を起動処理とオーバーラップさせ、以後は warm で使い回す、
+                ③ ブラウザ再起動・再訪でのアセット再ダウンロードは依然不可避。
                 修正前はレイヤー追加のたびに 13–22s の再初期化が発生していたため、
-                セッションあたりの初期化回数が「毎回」→「1回」に改善された。
+                セッションあたりの初期化回数が「毎回」→「最大1回（多くは事前ウォームで隠蔽）」に改善された。
             </div>
+            <p>
+                <strong>本課題の最終的な解決は外部アプリ化</strong>:
+                reearth-visualizer#2497 に対し上流は「sandbox は意図的・対応時期未定」と回答したため、
+                bridge-hub <code>/vector</code> 外部化を本課題への正式な回答として確定した（§9.1）。
+                wasm 経路はハブ未導入環境向けの graceful degradation として残置する。
+            </p>
             <p class="muted">
                 検証: <code>tsc --noEmit</code> 0 エラー / inline script チェック全通過 /
                 Workbench AI テスト 44/44 全パス（コンソールエラーなし）
@@ -374,7 +479,7 @@
 
     </div>
     <footer>
-        GeoSuite Plugin — DuckDB-Wasm 永続化検証 / 2026-10-24
+        GeoSuite Plugin — DuckDB-Wasm 永続化検証 / 初版 2026-10-24・v22.2.0 時点の実装へ追補・#2497 対応結果（外部アプリ化で解決）を記録 2026-11-04
     </footer>
 </div>
 </body>

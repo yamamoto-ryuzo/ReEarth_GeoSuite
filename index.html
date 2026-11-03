@@ -663,8 +663,9 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                     <h3>⚠️ duckdb: レイヤーの初回読み込み時間</h3>
                     <div>
                         <p style="color:#333;">
-                            <code>duckdb:</code> レイヤーは初回クエリ時に DuckDB-Wasm（wasm + worker + httpfs/spatial/parquet 拡張）をダウンロード・初期化するため、<strong>セッションの最初の読み込みに約15秒</strong>かかります。2回目以降はインスタンスが温存されるため約3〜10秒に短縮されますが、<strong>ブラウザ再起動・再訪では必ず再ダウンロードが発生します</strong>（Re:Earth プラグイン iframe が <code>allow-same-origin</code> なしのサンドボックスで、HTTP キャッシュ・CacheStorage・Service Worker が一切使えない構造的制約のため回避不可）。<br>
-                            小〜中規模データでは初回読み込みが速い <code>geojson:</code> / <code>flatgeobuf:</code> / <code>parquet:</code> の方が適する場合があります。フォーマットの選び方・実測値は <a href="/duckdb-persistence.html" class="github-link">DuckDB-Wasm 永続化検証・フォーマット比較レポート</a> を参照してください。
+                            <code>duckdb:</code> レイヤーは初回クエリ時に DuckDB-Wasm（wasm + worker + httpfs/spatial/parquet 拡張）をダウンロード・初期化するため、<strong>セッションの最初の読み込みに約15秒</strong>かかります。2回目以降はインスタンスが温存されるため約3〜10秒に短縮されますが、<strong>ブラウザ再起動・再訪では必ず再ダウンロードが発生します</strong>（Re:Earth プラグイン iframe が <code>allow-same-origin</code> なしのサンドボックスで、HTTP キャッシュ・CacheStorage・Service Worker が一切使えない構造的制約のため）。<br>
+                            なお <strong>bridge-hub（127.0.0.1:8511）が動作している環境では <code>/vector</code> 外部化により wasm 経路自体を使わないため、この制約は丸ごと回避されます</strong>（推奨構成。詳細: <a href="docs/bridge-hub.html" class="github-link">ブリッジハブ連携</a>）。<br>
+                            小〜中規模データでは初回読み込みが速い <code>geojson:</code> / <code>flatgeobuf:</code> / <code>parquet:</code> の方が適する場合があります。フォーマットの選び方・実測値は <a href="docs/duckdb-persistence.html" class="github-link">DuckDB-Wasm 永続化検証・フォーマット比較レポート</a> を参照してください。
                         </p>
                     </div>
                 </div>
@@ -723,7 +724,7 @@ npm run shot       # → エージェント用スクリーンショット取得�
                     <li><a href="https://re-earth-geo-suite.vercel.app" target="_blank" class="github-link">Production (Vercel)</a></li>
                     <li><a href="https://vercel.com/dashboard" target="_blank" class="github-link">Vercel ダッシュボード</a></li>
                     <li><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/blob/main/CHANGELOG.md" target="_blank" class="github-link">Changelog</a></li>
-                    <li><a href="/duckdb-persistence.html" class="github-link">DuckDB-Wasm 永続化検証・フォーマット比較</a></li>
+                    <li><a href="docs/duckdb-persistence.html" class="github-link">DuckDB-Wasm 永続化検証・フォーマット比較</a></li>
                     <li><a href="docs/index.html" class="github-link">ドキュメント一覧（仕様書）</a></li>
                     <!-- GitHub リポジトリリンクは索引ページから削除 -->
                 </ul>

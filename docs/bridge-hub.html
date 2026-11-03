@@ -192,7 +192,15 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 </ul>
 <p><small>通信面の補足: ハブ呼出しはパネル iframe の <code>hubExternalize</code> ハンドラで <code>GET /vector/status</code> → <code>GET /vector/sources</code> → 必要時のみ <code>POST /vector/sources</code>（text/plain・プリフライト不要のシンプルリクエスト）を1往復で行い、結果は <code>hubResult</code> で拡張ctxへ返ります。登録ボディの <code>name</code> は kind/src/where/limit/lon/lat/geom_col の FNV-1a ハッシュから決定的に生成します。</small></p>
 
-<p><small>実機検証で確認済みの注意（v22.2.0）: (a) inspector 一括適用のストーム中はレイヤ着地ごとの <code>safeShowUI</code> がパネル iframe を再生成し、in-flight の <code>POST /vector/sources</code> が abort されて無言で wasm フォールバックに落ちることがある（既登録ソースは probe のみで潜り抜ける。静穏時・単行適用では正常）。対策として hubExternalize の永続 basemap iframe 経由化、または ext-path drain 中の safeShowUI coalesce が候補。(b) <code>format=read</code>（<code>SELECT * FROM ST_Read(&#x27;url&#x27;)</code> の kind:sql VIEW）は GDAL 可読フォーマット専用 — <code>.parquet</code> では 502→フォールバック、<code>.gpkg</code> URL では拡張子判定が先に効き kind:gpkg 登録になる。(c) <code>vectorHub: http://host:port</code> はその適用パス以降の全ソース（<code>qgis:</code> インクルード分を含む）の接続先になる点に注意。</small></p>
+<h3>実機検証で判明した運用上の注意（v22.2.0）</h3>
+<ul>
+<li><strong>適用ストーム中の iframe 再生成</strong> — inspector 一括適用ではレイヤ着地ごとの <code>safeShowUI</code> がパネル iframe を再生成し、in-flight の <code>POST /vector/sources</code> が abort されて無言で wasm フォールバックに落ちることがあります（既登録ソースは probe のみで潜り抜ける。静穏時・単行適用では正常）。対策候補: <code>hubExternalize</code> の永続 basemap iframe 経由化、または ext-path drain 中の <code>safeShowUI</code> coalesce</li>
+<li><strong>フォールバック側はソースの CORS が前提</strong> — wasm/iframe デコード経路は opaque origin の iframe がソース URL を直接 fetch するため、<code>Access-Control-Allow-Origin</code> を返さないサーバ上のソースは全て <code>Failed to fetch</code> で失敗します。この場合外部化が唯一の動作経路になります（検証用の <code>python -m http.server</code> 等は ACAO 無しでフォールバック不可）</li>
+<li><strong><code>format=read</code> の適用範囲</strong> — <code>SELECT * FROM ST_Read('url')</code> の kind:sql VIEW は GDAL 可読フォーマット専用です。<code>.parquet</code> では 502→フォールバック、<code>.gpkg</code> URL では拡張子判定が先に効き kind:gpkg 登録になります</li>
+<li><strong><code>vectorHub: http://host:port</code> の効力範囲</strong> — その適用パス以降の全ソース（<code>qgis:</code> インクルード分を含む）の接続先になります</li>
+<li><strong>再適用の二重追加は抑止済み</strong> — ext-path アイテムは <code>isLayerLoading(url)</code> の in-flight チェック＋着地後の title 重複判定で、適用が短時間に重なっても同一ソースを重複追加しません（v22.2.0 で全 type に適用。sql: 行がディスパッチされず外部化に到達しない問題も同版で修正）</li>
+<li><strong>ハブ側の既知課題（kasugai_canvas）</strong> — <code>duckdb_lock</code> の直列化により取込みハング時に全 /vector リクエストが無音待機になります（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/46" target="_blank">#46</a>。クライアント側は <code>hubResult</code> が来ず 300s TTL まで無応答）。また sources.json↔実テーブル不整合で manifest 比較のみの stale 判定をすり抜け、死んだ geojson URL を指すレイヤが追加され得ます（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/42" target="_blank">#42</a>）</li>
+</ul>
 <h2>設計上の制約・注意</h2>
 <ul>
 <li><strong>通信は全て iframe 側で行う</strong> — QuickJS 拡張コンテキストには <code>fetch</code> が無いため、<code>callAgent</code>・<code>detectHub</code>・<code>/models</code> 取得はすべて ai-chat UI iframe 内ブラウザ JS です</li>

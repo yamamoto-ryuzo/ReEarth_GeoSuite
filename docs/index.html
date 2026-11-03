@@ -19,11 +19,12 @@
   </header>
   <div class="content">
 <ul class="doc-list">
-  <li><a href="basemap-initial-selection.html">ベースマップ初期選択（仕様・確認手順）</a><div class="desc">Inspector の base: 行の上から最初のエントリが初期ベースマップとして選択される仕様と確認手順。</div></li>
-  <li><a href="bridge-hub.html">AIチャット → ブリッジハブ連携</a><div class="desc">AI チャットの GitHub Copilot / External agent プロバイダが CANVAS ブリッジハブ（bridge-hub.exe・127.0.0.1:8511）へ POST /agent する通信仕様。エンドポイント解決・queued-action 往復ループ・aiHub: 行・/vector 自動外部 GeoJSON 化（vectorHub: 行）。</div></li>
-  <li><a href="external-bridge.html">外部ブリッジ（実装構成）</a><div class="desc">QGIS live_driver の bridge_call / describe_plugins に相当する機能を Re:Earth プラグインへ移植したものです。Re:Earth のサンドボックス（QuickJS 拡張コンテキスト + …</div></li>
   <li><a href="layer-grouping-specification.html">レイヤ階層化・排他グループ機能 仕様書</a><div class="desc">Re:Earth GeoSuite プラグインにおいて、レイヤリストを階層的（ツリー状）に表示し、グループごとの一括制御や排他制御（ラジオボタン動作）を提供する機能の仕様について記述する。</div></li>
+  <li><a href="basemap-initial-selection.html">ベースマップ初期選択（仕様・確認手順）</a><div class="desc">Inspector の base: 行の上から最初のエントリが初期ベースマップとして選択される仕様と確認手順。</div></li>
   <li><a href="payload-limits.html">ペイロード制限（QuickJS OOM 対策）</a><div class="desc">基本的にはこの制約を受けません。 geojson:/xyz:/3dtiles:/base: など URL 指定レイヤーは Re:Earth 正規経路（data.url）で Visualizer ホスト側が直接 fetch・パースするため、本…</div></li>
+  <li><a href="external-bridge.html">外部ブリッジ（実装構成）</a><div class="desc">QGIS live_driver の bridge_call / describe_plugins に相当する機能を Re:Earth プラグインへ移植したものです。Re:Earth のサンドボックス（QuickJS 拡張コンテキスト + …</div></li>
+  <li><a href="bridge-hub.html">AIチャット → ブリッジハブ連携</a><div class="desc">AI チャットの GitHub Copilot / External agent プロバイダが CANVAS ブリッジハブ（bridge-hub.exe・127.0.0.1:8511）へ POST /agent する通信仕様。エンドポイント解決・queued-action 往復ループ・aiHub: 行・/vector 自動外部 GeoJSON 化（vectorHub: 行）。</div></li>
+  <li><a href="duckdb-persistence.html">DuckDB-Wasm 永続化検証（解決済・検証記録）</a><div class="desc">【参考資料】プラグイン iframe の opaque origin 制約により DuckDB-Wasm の永続キャッシュが不可能だった課題の検証記録。bridge-hub /vector 外部化により解決済み（reearth-visualizer#2497）。フォーマット別（geojson/fgb/parquet/duckdb）の選び方・実測比較も収録。</div></li>
 </ul></div>
   <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
 </div>
