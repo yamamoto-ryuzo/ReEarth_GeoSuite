@@ -1,5 +1,9 @@
 # Changelog
 
+## v22.3.1
+- 変更: 管理パネル（⚙️）をサブタブ化し Ext（拡張）タブを追加 — 従来1列だった「設定テキスト／ファイル取り込み／AI Bridge」を `Set`・`Import`・`Ext` の3ペインに分割。Ext ペインには bridge-hub の状態行（`bridge-hub: ON/OFF`＋疎通確認ボタン）と導入ブロック（レイヤーパネルの Ext ボタンが開くプロモと同一内容・同一プローブ/ダウンロード/ポーリング処理を共有）を常設し、AI Bridge (CANVAS) エンドポイント設定も同ペインへ移動。これにより bridge-hub の導入・状態確認・再接続が管理パネルからも行える。ハブ未検出時はレイヤーパネルの Ext ボタンと同様に Ext サブタブもアンバー強調（`.sub-tab.hub-attn`、dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示。`vectorHub: off` 時は Ext ペイン内の bridge-hub ブロックごと非表示（AI Bridge 設定は残る）。サブタブのラベルは既存 i18n キー（`tabSet`/`importTitle`/`hubPromoExt`）を再利用し新規キー追加なし。
+- 変更: bridge-hub のダウンロードを裸 exe から ZIP 同梱版へ切替 — 環境によって `.exe` 直ダウンロードがブロックされるため `bridge-hub.zip`（自己インストール型 exe 内包）を配布物に変更し、プロモ行に「①ダウンロード → ②展開 → ③実行」の手順行を追加（`hubPromoSteps`、全20言語）。ダウンロードボタンのラベルと待機/リトライ文言も ZIP 前提へ更新。
+
 ## v22.3.0
 - 新規: bridge-hub 未検出時にレイヤーパネルへ導入導線を常設（issue #12）— レイヤー見出しの「Note」右に **Ext ボタン**を追加し、押下で直下の導入行を開閉。パネル iframe が起動ごとに `GET {hub}/health` を1回プローブし、`hub:true` が返らなければ Ext ボタンをアンバー色に強調（未導入の訴求）。「Download bridge-hub.exe」ボタンは `<a download>` で kasugai-canvas-web CDN（stable チャンネル）の自己インストール型 exe を取得させ、押下後は「起動待ち」表示へ切替えて `/health` を2秒間隔・最長3分ポーリング、検出次第「connected」→ 自動で行を閉じる。exe は1回実行で `%LOCALAPPDATA%\kasugai\bridge-hub\` へ自己インストール＋ログイン自動起動登録されるため、以後は wasm 初期化（~15s）・拡張ctx 4MB 上限・セッション毎のデータ再取得が回避され、AI ブリッジ（Copilot/Devin/Antigravity）も解放される。`vectorHub: off` 指定時は Ext ボタンごと非表示。接続先は `hubEndpoint()` の解決結果（`vectorHub:` > `aiHub:` > `127.0.0.1:8511`）をそのまま利用。行右端の − ボタンでセッション中はボタン強調ごと非表示にできる（`hubPromoDismiss` → `_hubPromoDismissed` → `_hubInstallCfg.dismissed` 注入で iframe 再生成を跨いでも消えたまま）。UI 文字列は GEO_I18N 全20言語へ `hubPromo*` キーとして追加（− ボタンの title/aria は既存 `closeAria` を再利用）。
 

@@ -88,10 +88,11 @@ let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector 
 let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
 let _inspectorAiHub = null; // optional aiHub: CANVAS bridge-hub endpoint (forwarded to ai-chat widget)
 let _inspectorVectorHub = null; // optional vectorHub: off | http://host:port — /vector externalization endpoint
-// CDN download URL of the self-installing bridge-hub.exe (kasugai-canvas-web
-// stable channel). One run self-installs to %LOCALAPPDATA%, registers a logon
-// autostart and serves 127.0.0.1:8511.
-const HUB_DOWNLOAD_URL = 'https://yamamoto-ryuzo.github.io/kasugai-canvas-web/stable/download/bridge-hub.exe';
+// CDN download URL of the bridge-hub bundle (kasugai-canvas-web stable
+// channel). The zip is preferred over the bare exe because some environments
+// block direct .exe downloads. The extracted bridge-hub.exe self-installs to
+// %LOCALAPPDATA%, registers a logon autostart and serves 127.0.0.1:8511.
+const HUB_DOWNLOAD_URL = 'https://yamamoto-ryuzo.github.io/kasugai-canvas-web/stable/download/bridge-hub.zip';
 // Session-level dismiss of the hub promo row (the − button posts hubPromoDismiss;
 // injected into _hubInstallCfg so re-rendered iframes keep it hidden)
 let _hubPromoDismissed = false;
@@ -155,7 +156,7 @@ const GEO_I18N = {
     flyViewHint: 'Ride: camera travels on the route looking ahead. Aerial: camera tracks the moving point from behind and above.',
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = ride on the route looking ahead; center (=chase) = aerial tracking of the point from behind/above.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
     svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save',
-    hubPromoNote: 'Optional component: bridge-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download bridge-hub.exe', hubPromoWait: 'Downloaded. Run bridge-hub.exe to auto-install & start — waiting for the hub...', hubPromoOk: 'bridge-hub detected', hubPromoRetry: 'Still not detected — run the downloaded bridge-hub.exe.'
+    hubPromoNote: 'Optional component: bridge-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download bridge-hub.zip', hubPromoWait: 'Downloaded. Extract the zip and run bridge-hub.exe to auto-install & start — waiting for the hub...', hubPromoOk: 'bridge-hub detected', hubPromoRetry: 'Still not detected — extract the downloaded zip and run bridge-hub.exe.', hubPromoSteps: 'Steps: 1) Download the zip  2) Extract it  3) Run bridge-hub.exe — it auto-installs & starts the hub.'
 , hubPromoExt: 'Ext'
   },
   ja: {
@@ -186,7 +187,7 @@ const GEO_I18N = {
     flyViewHint: '搭乗: ルート上を進み前方を見る視点。空撮: 後方上空から移動点を追う視点。',
     flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=ルート上を進み前方を見る搭乗視点 / center(=chase)=後方上空から移動点を追う空撮視点。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
     svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存',
-    hubPromoNote: '拡張コンポーネント: bridge-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'bridge-hub.exe をダウンロード', hubPromoWait: 'ダウンロードしました。bridge-hub.exe を実行すると自動インストール＆起動します — ハブを待機中…', hubPromoOk: 'bridge-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした bridge-hub.exe を実行してください。'
+    hubPromoNote: '拡張コンポーネント: bridge-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'bridge-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して bridge-hub.exe を実行すると自動インストール＆起動します — ハブを待機中…', hubPromoOk: 'bridge-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して bridge-hub.exe を実行してください。', hubPromoSteps: '手順: ① ZIP をダウンロード → ② 展開 → ③ bridge-hub.exe を実行（自動インストール＆起動）'
 , hubPromoExt: '拡張'
   },
   'zh-CN': {
@@ -217,7 +218,7 @@ const GEO_I18N = {
     flyViewHint: '搭乘: 相机沿路线前进并朝向前方。航拍: 相机从后方上空追踪移动点。',
     flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路线前进、朝向前方的搭乘视角 / center(=chase)=从后方上空追踪移动点的航拍视角。<br>参数修改即时生效，飞行中也可调整。<br>或点击"绘制"在地图上画出折线。',
     svOpen: '街景', captureBtn: '截图', capturedHint: '右键点击图片保存',
-    hubPromoNote: '可选组件：未检测到 bridge-hub。安装一次即可加速矢量图层、解除 4MB 限制，并启用 AI 桥接提供程序。', hubPromoBtn: '下载 bridge-hub.exe', hubPromoWait: '已下载。运行 bridge-hub.exe 即可自动安装并启动 — 正在等待桥接中心…', hubPromoOk: '已检测到 bridge-hub', hubPromoRetry: '仍未检测到 — 请运行已下载的 bridge-hub.exe。'
+    hubPromoNote: '可选组件：未检测到 bridge-hub。安装一次即可加速矢量图层、解除 4MB 限制，并启用 AI 桥接提供程序。', hubPromoBtn: '下载 bridge-hub.zip', hubPromoWait: '已下载。解压 ZIP 并运行 bridge-hub.exe 即可自动安装并启动 — 正在等待桥接中心…', hubPromoOk: '已检测到 bridge-hub', hubPromoRetry: '仍未检测到 — 请解压下载的 ZIP 并运行 bridge-hub.exe。', hubPromoSteps: '步骤：1) 下载 ZIP → 2) 解压 → 3) 运行 bridge-hub.exe（自动安装并启动）'
 , hubPromoExt: '扩展'
   },
   'zh-TW': {
@@ -248,7 +249,7 @@ const GEO_I18N = {
     flyViewHint: '搭乘: 相機沿路線前進並朝向前方。空拍: 相機從後方上空追蹤移動點。',
     flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路線前進、朝向前方的搭乘視角 / center(=chase)=從後方上空追蹤移動點的空拍視角。<br>參數修改即時生效，飛行中也可調整。<br>或按「繪製」在地圖上畫出折線。',
     svOpen: '街景', captureBtn: '截圖', capturedHint: '在圖片上按右鍵儲存',
-    hubPromoNote: '可選元件：未偵測到 bridge-hub。安裝一次即可加速向量圖層、解除 4MB 限制，並啟用 AI 橋接提供者。', hubPromoBtn: '下載 bridge-hub.exe', hubPromoWait: '已下載。執行 bridge-hub.exe 即可自動安裝並啟動 — 正在等待橋接中心…', hubPromoOk: '已偵測到 bridge-hub', hubPromoRetry: '仍未偵測到 — 請執行已下載的 bridge-hub.exe。'
+    hubPromoNote: '可選元件：未偵測到 bridge-hub。安裝一次即可加速向量圖層、解除 4MB 限制，並啟用 AI 橋接提供者。', hubPromoBtn: '下載 bridge-hub.zip', hubPromoWait: '已下載。解壓縮 ZIP 並執行 bridge-hub.exe 即可自動安裝並啟動 — 正在等待橋接中心…', hubPromoOk: '已偵測到 bridge-hub', hubPromoRetry: '仍未偵測到 — 請解壓縮已下載的 ZIP 並執行 bridge-hub.exe。', hubPromoSteps: '步驟：1) 下載 ZIP → 2) 解壓縮 → 3) 執行 bridge-hub.exe（自動安裝並啟動）'
 , hubPromoExt: '擴充'
   },
   ko: {
@@ -279,7 +280,7 @@ const GEO_I18N = {
     flyViewHint: '탑승: 경로 위를 전진하며 전방을 보는 시점. 항공: 후방 상공에서 이동 지점을 추적하는 시점.',
     flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=경로 위를 전진하며 전방을 보는 탑승 시점 / center(=chase)=후방 상공에서 이동 지점을 추적하는 항공 시점.<br>입력값은 재생 중에도 즉시 반영됩니다.<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
     svOpen: '스트리트 뷰', captureBtn: '캡처', capturedHint: '이미지를 우클릭해 저장',
-    hubPromoNote: '선택 구성 요소: bridge-hub가 감지되지 않습니다. 한 번 설치하면 벡터 레이어가 빨라지고 4MB 제한이 해제되며 AI 브리지 프로바이더를 사용할 수 있습니다.', hubPromoBtn: 'bridge-hub.exe 다운로드', hubPromoWait: '다운로드했습니다. bridge-hub.exe를 실행하면 자동 설치 및 시작됩니다 — 허브를 기다리는 중…', hubPromoOk: 'bridge-hub가 감지되었습니다', hubPromoRetry: '아직 감지되지 않았습니다 — 다운로드한 bridge-hub.exe를 실행하세요.'
+    hubPromoNote: '선택 구성 요소: bridge-hub가 감지되지 않습니다. 한 번 설치하면 벡터 레이어가 빨라지고 4MB 제한이 해제되며 AI 브리지 프로바이더를 사용할 수 있습니다.', hubPromoBtn: 'bridge-hub.zip 다운로드', hubPromoWait: '다운로드했습니다. ZIP을 압축 해제하고 bridge-hub.exe를 실행하면 자동 설치 및 시작됩니다 — 허브를 기다리는 중…', hubPromoOk: 'bridge-hub가 감지되었습니다', hubPromoRetry: '아직 감지되지 않았습니다 — 다운로드한 ZIP을 압축 해제하고 bridge-hub.exe를 실행하세요.', hubPromoSteps: '순서: 1) ZIP 다운로드 → 2) 압축 해제 → 3) bridge-hub.exe 실행(자동 설치 및 시작)'
 , hubPromoExt: '확장'
   },
   es: {
@@ -310,7 +311,7 @@ const GEO_I18N = {
     flyViewHint: 'A bordo: la cámara avanza por la ruta mirando al frente. Aérea: la cámara sigue el punto en movimiento desde atrás y desde arriba.',
     flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo que recorre la ruta; center (=chase) = vista aérea que sigue el punto desde atrás.<br>Los cambios se aplican de inmediato, incluso en vuelo.<br>O pulse Dibujar y trace una polilínea en el mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clic derecho en la imagen para guardar',
-    hubPromoNote: 'Componente opcional: bridge-hub no está en ejecución. Instálelo una vez para acelerar las capas vectoriales, eliminar el límite de 4MB y desbloquear los proveedores de puente de IA.', hubPromoBtn: 'Descargar bridge-hub.exe', hubPromoWait: 'Descargado. Ejecute bridge-hub.exe para instalarlo e iniciarlo automáticamente — esperando al hub…', hubPromoOk: 'bridge-hub detectado', hubPromoRetry: 'Aún no detectado — ejecute el bridge-hub.exe descargado.'
+    hubPromoNote: 'Componente opcional: bridge-hub no está en ejecución. Instálelo una vez para acelerar las capas vectoriales, eliminar el límite de 4MB y desbloquear los proveedores de puente de IA.', hubPromoBtn: 'Descargar bridge-hub.zip', hubPromoWait: 'Descargado. Extraiga el zip y ejecute bridge-hub.exe para instalarlo e iniciarlo automáticamente — esperando al hub…', hubPromoOk: 'bridge-hub detectado', hubPromoRetry: 'Aún no detectado — extraiga el zip descargado y ejecute bridge-hub.exe.', hubPromoSteps: 'Pasos: 1) Descargue el zip  2) Extráigalo  3) Ejecute bridge-hub.exe (instalación e inicio automáticos).'
 , hubPromoExt: 'Ext.'
   },
   fr: {
@@ -341,7 +342,7 @@ const GEO_I18N = {
     flyViewHint: 'Embarquée : la caméra parcourt la route en regardant devant. Aérienne : la caméra suit le point mobile par l’arrière et par le haut.',
     flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vue embarquée qui parcourt la route ; center (=chase) = vue aérienne qui suit le point par l’arrière.<br>Les réglages s’appliquent immédiatement, même en vol.<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
     svOpen: 'Street View', captureBtn: 'Capturer', capturedHint: 'Clic droit sur l\u2019image pour enregistrer',
-    hubPromoNote: 'Composant optionnel : bridge-hub n\'est pas détecté. Installez-le une fois pour accélérer les couches vectorielles, lever la limite de 4 Mo et débloquer les fournisseurs de pont IA.', hubPromoBtn: 'Télécharger bridge-hub.exe', hubPromoWait: 'Téléchargé. Exécutez bridge-hub.exe pour l\'installer et le démarrer automatiquement — en attente du hub…', hubPromoOk: 'bridge-hub détecté', hubPromoRetry: 'Toujours non détecté — exécutez le bridge-hub.exe téléchargé.'
+    hubPromoNote: 'Composant optionnel : bridge-hub n\'est pas détecté. Installez-le une fois pour accélérer les couches vectorielles, lever la limite de 4 Mo et débloquer les fournisseurs de pont IA.', hubPromoBtn: 'Télécharger bridge-hub.zip', hubPromoWait: 'Téléchargé. Extrayez le zip et exécutez bridge-hub.exe pour l\'installer et le démarrer automatiquement — en attente du hub…', hubPromoOk: 'bridge-hub détecté', hubPromoRetry: 'Toujours non détecté — extrayez le zip téléchargé et exécutez bridge-hub.exe.', hubPromoSteps: 'Étapes : 1) Téléchargez le zip  2) Extrayez-le  3) Exécutez bridge-hub.exe (installation et démarrage automatiques).'
 , hubPromoExt: 'Ext.'
   },
   de: {
@@ -372,7 +373,7 @@ const GEO_I18N = {
     flyViewHint: 'Bord: Kamera fährt auf der Route und blickt nach vorn. Luft: Kamera verfolgt den bewegten Punkt von hinten und oben.',
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = Bordansicht auf der Route nach vorn; center (=chase) = Luftansicht, die den Punkt von hinten verfolgt.<br>Änderungen wirken sofort, auch während des Flugs.<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
     svOpen: 'Street View', captureBtn: 'Aufnehmen', capturedHint: 'Bild per Rechtsklick speichern',
-    hubPromoNote: 'Optionale Komponente: bridge-hub wurde nicht erkannt. Einmalig installieren, um Vektorebenen zu beschleunigen, das 4MB-Limit aufzuheben und KI-Bridge-Anbieter freizuschalten.', hubPromoBtn: 'bridge-hub.exe herunterladen', hubPromoWait: 'Heruntergeladen. Führen Sie bridge-hub.exe aus — es installiert und startet sich selbst. Warte auf den Hub…', hubPromoOk: 'bridge-hub erkannt', hubPromoRetry: 'Noch nicht erkannt — führen Sie die heruntergeladene bridge-hub.exe aus.'
+    hubPromoNote: 'Optionale Komponente: bridge-hub wurde nicht erkannt. Einmalig installieren, um Vektorebenen zu beschleunigen, das 4MB-Limit aufzuheben und KI-Bridge-Anbieter freizuschalten.', hubPromoBtn: 'bridge-hub.zip herunterladen', hubPromoWait: 'Heruntergeladen. Entpacken Sie das ZIP und führen Sie bridge-hub.exe aus — es installiert und startet sich selbst. Warte auf den Hub…', hubPromoOk: 'bridge-hub erkannt', hubPromoRetry: 'Noch nicht erkannt — entpacken Sie das heruntergeladene ZIP und führen Sie bridge-hub.exe aus.', hubPromoSteps: 'Schritte: 1) ZIP herunterladen  2) Entpacken  3) bridge-hub.exe ausführen (Installation und Start erfolgen automatisch).'
 , hubPromoExt: 'Ext.'
   },
   it: {
@@ -403,7 +404,7 @@ const GEO_I18N = {
     flyViewHint: 'A bordo: la camera avanza sul percorso guardando avanti. Aerea: la camera insegue il punto mobile da dietro e dall’alto.',
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo che percorre la rotta; center (=chase) = vista aerea che segue il punto da dietro.<br>Le modifiche si applicano subito, anche in volo.<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
     svOpen: 'Street View', captureBtn: 'Cattura', capturedHint: 'Tasto destro sull\u2019immagine per salvare',
-    hubPromoNote: 'Componente opzionale: bridge-hub non rilevato. Installalo una volta per velocizzare i layer vettoriali, rimuovere il limite di 4MB e sbloccare i provider bridge AI.', hubPromoBtn: 'Scarica bridge-hub.exe', hubPromoWait: 'Scaricato. Esegui bridge-hub.exe per installarlo e avviarlo automaticamente — in attesa dell\'hub…', hubPromoOk: 'bridge-hub rilevato', hubPromoRetry: 'Ancora non rilevato — esegui il bridge-hub.exe scaricato.'
+    hubPromoNote: 'Componente opzionale: bridge-hub non rilevato. Installalo una volta per velocizzare i layer vettoriali, rimuovere il limite di 4MB e sbloccare i provider bridge AI.', hubPromoBtn: 'Scarica bridge-hub.zip', hubPromoWait: 'Scaricato. Estrai lo zip ed esegui bridge-hub.exe per installarlo e avviarlo automaticamente — in attesa dell\'hub…', hubPromoOk: 'bridge-hub rilevato', hubPromoRetry: 'Ancora non rilevato — estrai lo zip scaricato ed esegui bridge-hub.exe.', hubPromoSteps: 'Passaggi: 1) Scarica lo zip  2) Estrailo  3) Esegui bridge-hub.exe (installazione e avvio automatici).'
 , hubPromoExt: 'Ext.'
   },
   pt: {
@@ -434,7 +435,7 @@ const GEO_I18N = {
     flyViewHint: 'A bordo: a câmera avança pela rota olhando à frente. Aérea: a câmera segue o ponto em movimento por trás e por cima.',
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo percorrendo a rota; center (=chase) = vista aérea que segue o ponto por trás.<br>As alterações aplicam-se de imediato, mesmo em voo.<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clique com o botão direito na imagem para salvar',
-    hubPromoNote: 'Componente opcional: bridge-hub não detectado. Instale-o uma vez para acelerar as camadas vetoriais, remover o limite de 4MB e desbloquear os provedores de ponte de IA.', hubPromoBtn: 'Baixar bridge-hub.exe', hubPromoWait: 'Baixado. Execute bridge-hub.exe para instalar e iniciar automaticamente — aguardando o hub…', hubPromoOk: 'bridge-hub detectado', hubPromoRetry: 'Ainda não detectado — execute o bridge-hub.exe baixado.'
+    hubPromoNote: 'Componente opcional: bridge-hub não detectado. Instale-o uma vez para acelerar as camadas vetoriais, remover o limite de 4MB e desbloquear os provedores de ponte de IA.', hubPromoBtn: 'Baixar bridge-hub.zip', hubPromoWait: 'Baixado. Extraia o zip e execute bridge-hub.exe para instalar e iniciar automaticamente — aguardando o hub…', hubPromoOk: 'bridge-hub detectado', hubPromoRetry: 'Ainda não detectado — extraia o zip baixado e execute bridge-hub.exe.', hubPromoSteps: 'Passos: 1) Baixe o zip  2) Extraia-o  3) Execute bridge-hub.exe (instalação e início automáticos).'
 , hubPromoExt: 'Ext.'
   },
   ru: {
@@ -465,7 +466,7 @@ const GEO_I18N = {
     flyViewHint: 'Борт: камера движется по маршруту и смотрит вперёд. Аэро: камера следит за движущейся точкой сзади и сверху.',
     flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид с борта, движение по маршруту вперёд; center (=chase) = аэровид, слежение за точкой сзади.<br>Изменения применяются сразу, даже во время полёта.<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
     svOpen: 'Просмотр улиц', captureBtn: 'Снимок', capturedHint: 'Щёлкните изображение правой кнопкой, чтобы сохранить',
-    hubPromoNote: 'Дополнительный компонент: bridge-hub не обнаружен. Установите один раз, чтобы ускорить векторные слои, снять лимит 4 МБ и разблокировать ИИ-мосты.', hubPromoBtn: 'Скачать bridge-hub.exe', hubPromoWait: 'Загружено. Запустите bridge-hub.exe для автоустановки и запуска — ожидание хаба…', hubPromoOk: 'bridge-hub обнаружен', hubPromoRetry: 'Пока не обнаружен — запустите скачанный bridge-hub.exe.'
+    hubPromoNote: 'Дополнительный компонент: bridge-hub не обнаружен. Установите один раз, чтобы ускорить векторные слои, снять лимит 4 МБ и разблокировать ИИ-мосты.', hubPromoBtn: 'Скачать bridge-hub.zip', hubPromoWait: 'Загружено. Распакуйте ZIP и запустите bridge-hub.exe для автоустановки и запуска — ожидание хаба…', hubPromoOk: 'bridge-hub обнаружен', hubPromoRetry: 'Пока не обнаружен — распакуйте скачанный ZIP и запустите bridge-hub.exe.', hubPromoSteps: 'Шаги: 1) Скачайте ZIP  2) Распакуйте  3) Запустите bridge-hub.exe (автоустановка и запуск).'
 , hubPromoExt: 'Расш.'
   },
   nl: {
@@ -496,7 +497,7 @@ const GEO_I18N = {
     flyViewHint: 'Boord: camera rijdt op de route en kijkt vooruit. Lucht: camera volgt het bewegende punt van achteren en boven.',
     flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = boordbeeld dat de route aflegt; center (=chase) = luchtbeeld dat het punt van achteren volgt.<br>Wijzigingen gelden direct, ook tijdens de vlucht.<br>Of druk op Tekenen en schets een polylijn op de kaart.',
     svOpen: 'Street View', captureBtn: 'Vastleggen', capturedHint: 'Rechtermuisknop op afbeelding om op te slaan',
-    hubPromoNote: 'Optionele component: bridge-hub is niet gedetecteerd. Eenmalig installeren versnelt vectorlagen, heft de 4MB-limiet op en ontgrendelt AI-bridgeproviders.', hubPromoBtn: 'bridge-hub.exe downloaden', hubPromoWait: 'Gedownload. Voer bridge-hub.exe uit om automatisch te installeren en te starten — wachten op de hub…', hubPromoOk: 'bridge-hub gedetecteerd', hubPromoRetry: 'Nog niet gedetecteerd — voer de gedownloade bridge-hub.exe uit.'
+    hubPromoNote: 'Optionele component: bridge-hub is niet gedetecteerd. Eenmalig installeren versnelt vectorlagen, heft de 4MB-limiet op en ontgrendelt AI-bridgeproviders.', hubPromoBtn: 'bridge-hub.zip downloaden', hubPromoWait: 'Gedownload. Pak het zipbestand uit en voer bridge-hub.exe uit om automatisch te installeren en te starten — wachten op de hub…', hubPromoOk: 'bridge-hub gedetecteerd', hubPromoRetry: 'Nog niet gedetecteerd — pak het gedownloade zipbestand uit en voer bridge-hub.exe uit.', hubPromoSteps: 'Stappen: 1) Download de zip  2) Pak deze uit  3) Voer bridge-hub.exe uit (installatie en start gaan automatisch).'
 , hubPromoExt: 'Ext.'
   },
   pl: {
@@ -527,7 +528,7 @@ const GEO_I18N = {
     flyViewHint: 'Pokład: kamera jedzie po trasie patrząc naprzód. Lotniczy: kamera śledzi poruszający się punkt z tyłu i z góry.',
     flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = widok z pokładu jadący po trasie; center (=chase) = widok lotniczy śledzący punkt z tyłu.<br>Zmiany działają od razu, także w locie.<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
     svOpen: 'Street View', captureBtn: 'Zrzut', capturedHint: 'Kliknij obraz prawym przyciskiem, aby zapisać',
-    hubPromoNote: 'Opcjonalny komponent: nie wykryto bridge-hub. Zainstaluj raz, aby przyspieszyć warstwy wektorowe, znieść limit 4MB i odblokować dostawców mostu AI.', hubPromoBtn: 'Pobierz bridge-hub.exe', hubPromoWait: 'Pobrano. Uruchom bridge-hub.exe, aby automatycznie zainstalować i wystartować — oczekiwanie na hub…', hubPromoOk: 'Wykryto bridge-hub', hubPromoRetry: 'Nadal niewykryty — uruchom pobrany bridge-hub.exe.'
+    hubPromoNote: 'Opcjonalny komponent: nie wykryto bridge-hub. Zainstaluj raz, aby przyspieszyć warstwy wektorowe, znieść limit 4MB i odblokować dostawców mostu AI.', hubPromoBtn: 'Pobierz bridge-hub.zip', hubPromoWait: 'Pobrano. Wypakuj ZIP i uruchom bridge-hub.exe, aby automatycznie zainstalować i wystartować — oczekiwanie na hub…', hubPromoOk: 'Wykryto bridge-hub', hubPromoRetry: 'Nadal niewykryty — wypakuj pobrany ZIP i uruchom bridge-hub.exe.', hubPromoSteps: 'Kroki: 1) Pobierz ZIP  2) Wypakuj go  3) Uruchom bridge-hub.exe (instalacja i start automatyczne).'
 , hubPromoExt: 'Rozsz.'
   },
   uk: {
@@ -558,7 +559,7 @@ const GEO_I18N = {
     flyViewHint: 'Борт: камера рухається маршрутом і дивиться вперед. Аеро: камера стежить за рухомою точкою ззаду й згори.',
     flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид з борту, рух маршрутом уперед; center (=chase) = аеровигляд, стеження за точкою ззаду.<br>Зміни застосовуються одразу, навіть у польоті.<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
     svOpen: 'Перегляд вулиць', captureBtn: 'Знімок', capturedHint: 'Клацніть зображення правою кнопкою, щоб зберегти',
-    hubPromoNote: 'Додатковий компонент: bridge-hub не виявлено. Встановіть один раз, щоб прискорити векторні шари, зняти ліміт 4 МБ і розблокувати ШІ-мости.', hubPromoBtn: 'Завантажити bridge-hub.exe', hubPromoWait: 'Завантажено. Запустіть bridge-hub.exe для автовстановлення й запуску — очікування на хаб…', hubPromoOk: 'bridge-hub виявлено', hubPromoRetry: 'Досі не виявлено — запустіть завантажений bridge-hub.exe.'
+    hubPromoNote: 'Додатковий компонент: bridge-hub не виявлено. Встановіть один раз, щоб прискорити векторні шари, зняти ліміт 4 МБ і розблокувати ШІ-мости.', hubPromoBtn: 'Завантажити bridge-hub.zip', hubPromoWait: 'Завантажено. Розпакуйте ZIP і запустіть bridge-hub.exe для автовстановлення й запуску — очікування на хаб…', hubPromoOk: 'bridge-hub виявлено', hubPromoRetry: 'Досі не виявлено — розпакуйте завантажений ZIP і запустіть bridge-hub.exe.', hubPromoSteps: 'Кроки: 1) Завантажте ZIP  2) Розпакуйте  3) Запустіть bridge-hub.exe (автовстановлення і запуск).'
 , hubPromoExt: 'Розш.'
   },
   tr: {
@@ -589,7 +590,7 @@ const GEO_I18N = {
     flyViewHint: 'Araç içi: kamera rota üzerinde ilerler ve öne bakar. Hava: kamera hareketli noktayı arkadan ve yukarıdan izler.',
     flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = rotada ilerleyen araç içi görünüm; center (=chase) = noktayı arkadan izleyen hava görünümü.<br>Değişiklikler uçuş sırasında da anında uygulanır.<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
     svOpen: 'Sokak Görünümü', captureBtn: 'Yakala', capturedHint: 'Kaydetmek için görüntüye sağ tıklayın',
-    hubPromoNote: 'İsteğe bağlı bileşen: bridge-hub algılanmadı. Vektör katmanlarını hızlandırmak, 4MB sınırını kaldırmak ve AI köprü sağlayıcılarını açmak için bir kez kurun.', hubPromoBtn: 'bridge-hub.exe indir', hubPromoWait: 'İndirildi. Otomatik kurulum ve başlatma için bridge-hub.exe çalıştırın — hub bekleniyor…', hubPromoOk: 'bridge-hub algılandı', hubPromoRetry: 'Hâlâ algılanmadı — indirilen bridge-hub.exe dosyasını çalıştırın.'
+    hubPromoNote: 'İsteğe bağlı bileşen: bridge-hub algılanmadı. Vektör katmanlarını hızlandırmak, 4MB sınırını kaldırmak ve AI köprü sağlayıcılarını açmak için bir kez kurun.', hubPromoBtn: 'bridge-hub.zip indir', hubPromoWait: 'İndirildi. Otomatik kurulum ve başlatma için ZIP içindeki bridge-hub.exe dosyasını çalıştırın — hub bekleniyor…', hubPromoOk: 'bridge-hub algılandı', hubPromoRetry: 'Hâlâ algılanmadı — indirilen ZIP içindeki bridge-hub.exe dosyasını çalıştırın.', hubPromoSteps: 'Adımlar: 1) ZIP dosyasını indirin  2) Çıkarın  3) bridge-hub.exe dosyasını çalıştırın (kurulum ve başlatma otomatiktir).'
 , hubPromoExt: 'Eklenti'
   },
   ar: {
@@ -620,7 +621,7 @@ const GEO_I18N = {
     flyViewHint: 'على متن: الكاميرا تسير على المسار وتنظر إلى الأمام. جوّي: الكاميرا تتعقب النقطة المتحركة من الخلف والأعلى.',
     flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = منظر على متن المسار يتقدم للأمام؛ center (=chase) = منظر جوّي يتعقب النقطة من الخلف.<br>تُطبَّق التغييرات فورًا حتى أثناء التحليق.<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
     svOpen: 'التجوّل الافتراضي', captureBtn: 'لقطة', capturedHint: 'انقر بزر الفأرة الأيمن على الصورة للحفظ',
-    hubPromoNote: 'مكوّن اختياري: لم يتم اكتشاف bridge-hub. ثبّته مرة واحدة لتسريع الطبقات المتجهة وإزالة حد 4MB وفتح موفري جسر الذكاء الاصطناعي.', hubPromoBtn: 'تنزيل bridge-hub.exe', hubPromoWait: 'تم التنزيل. شغّل bridge-hub.exe للتثبيت والتشغيل التلقائي — بانتظار المركز…', hubPromoOk: 'تم اكتشاف bridge-hub', hubPromoRetry: 'لم يُكتشف بعد — شغّل ملف bridge-hub.exe الذي تم تنزيله.'
+    hubPromoNote: 'مكوّن اختياري: لم يتم اكتشاف bridge-hub. ثبّته مرة واحدة لتسريع الطبقات المتجهة وإزالة حد 4MB وفتح موفري جسر الذكاء الاصطناعي.', hubPromoBtn: 'تنزيل bridge-hub.zip', hubPromoWait: 'تم التنزيل. فكّ ضغط ملف ZIP وشغّل bridge-hub.exe للتثبيت والتشغيل التلقائي — بانتظار المركز…', hubPromoOk: 'تم اكتشاف bridge-hub', hubPromoRetry: 'لم يُكتشف بعد — فكّ ضغط ملف ZIP الذي تم تنزيله وشغّل bridge-hub.exe.', hubPromoSteps: 'الخطوات: 1) نزّل ملف ZIP  2) فكّ ضغطه  3) شغّل bridge-hub.exe (تثبيت وتشغيل تلقائي).'
 , hubPromoExt: 'إضافة'
   },
   hi: {
@@ -651,7 +652,7 @@ const GEO_I18N = {
     flyViewHint: 'सवारी: कैमरा मार्ग पर आगे देखते हुए चलता है। हवाई: कैमरा चलते बिंदु को पीछे और ऊपर से ट्रैक करता है।',
     flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = मार्ग पर चलने वाला सवारी दृश्य; center (=chase) = बिंदु को पीछे से ट्रैक करने वाला हवाई दृश्य।<br>बदलाव उड़ान के दौरान भी तुरंत लागू होते हैं।<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
     svOpen: 'स्ट्रीट व्यू', captureBtn: 'कैप्चर', capturedHint: 'सहेजने के लिए छवि पर राइट-क्लिक करें',
-    hubPromoNote: 'वैकल्पिक घटक: bridge-hub नहीं मिला। वेक्टर लेयर तेज़ करने, 4MB सीमा हटाने और AI ब्रिज प्रदाता अनलॉक करने के लिए एक बार इंस्टॉल करें।', hubPromoBtn: 'bridge-hub.exe डाउनलोड करें', hubPromoWait: 'डाउनलोड हो गया। ऑटो-इंस्टॉल और स्टार्ट के लिए bridge-hub.exe चलाएँ — हब की प्रतीक्षा में…', hubPromoOk: 'bridge-hub मिल गया', hubPromoRetry: 'अभी नहीं मिला — डाउनलोड किया गया bridge-hub.exe चलाएँ।'
+    hubPromoNote: 'वैकल्पिक घटक: bridge-hub नहीं मिला। वेक्टर लेयर तेज़ करने, 4MB सीमा हटाने और AI ब्रिज प्रदाता अनलॉक करने के लिए एक बार इंस्टॉल करें।', hubPromoBtn: 'bridge-hub.zip डाउनलोड करें', hubPromoWait: 'डाउनलोड हो गया। ZIP निकालकर bridge-hub.exe चलाएँ — ऑटो-इंस्टॉल और स्टार्ट होगा — हब की प्रतीक्षा में…', hubPromoOk: 'bridge-hub मिल गया', hubPromoRetry: 'अभी नहीं मिला — डाउनलोड की गई ZIP निकालकर bridge-hub.exe चलाएँ।', hubPromoSteps: 'चरण: 1) ZIP डाउनलोड करें  2) निकालें  3) bridge-hub.exe चलाएँ (ऑटो-इंस्टॉल और स्टार्ट)।'
 , hubPromoExt: 'एक्स.'
   },
   id: {
@@ -682,7 +683,7 @@ const GEO_I18N = {
     flyViewHint: 'Menumpang: kamera bergerak di rute menghadap depan. Udara: kamera melacak titik bergerak dari belakang dan atas.',
     flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = tampilan menumpang yang bergerak di rute; center (=chase) = tampilan udara yang melacak titik dari belakang.<br>Perubahan langsung berlaku, bahkan saat terbang.<br>Atau tekan Gambar lalu sketsa polyline di peta.',
     svOpen: 'Street View', captureBtn: 'Tangkap', capturedHint: 'Klik kanan gambar untuk menyimpan',
-    hubPromoNote: 'Komponen opsional: bridge-hub tidak terdeteksi. Instal sekali untuk mempercepat layer vektor, menghapus batas 4MB, dan membuka penyedia bridge AI.', hubPromoBtn: 'Unduh bridge-hub.exe', hubPromoWait: 'Terunduh. Jalankan bridge-hub.exe untuk instal & mulai otomatis — menunggu hub…', hubPromoOk: 'bridge-hub terdeteksi', hubPromoRetry: 'Belum terdeteksi — jalankan bridge-hub.exe yang diunduh.'
+    hubPromoNote: 'Komponen opsional: bridge-hub tidak terdeteksi. Instal sekali untuk mempercepat layer vektor, menghapus batas 4MB, dan membuka penyedia bridge AI.', hubPromoBtn: 'Unduh bridge-hub.zip', hubPromoWait: 'Terunduh. Ekstrak ZIP lalu jalankan bridge-hub.exe untuk instal & mulai otomatis — menunggu hub…', hubPromoOk: 'bridge-hub terdeteksi', hubPromoRetry: 'Belum terdeteksi — ekstrak ZIP yang diunduh lalu jalankan bridge-hub.exe.', hubPromoSteps: 'Langkah: 1) Unduh ZIP  2) Ekstrak  3) Jalankan bridge-hub.exe (instal & mulai otomatis).'
 , hubPromoExt: 'Eks.'
   },
   th: {
@@ -713,7 +714,7 @@ const GEO_I18N = {
     flyViewHint: 'นั่งร่วม: กล้องเคลื่อนตามเส้นทางมองไปข้างหน้า ทางอากาศ: กล้องติดตามจุดที่เคลื่อนที่จากด้านหลังและด้านบน',
     flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = มุมมองนั่งร่วมเคลื่อนตามเส้นทาง; center (=chase) = มุมมองทางอากาศที่ติดตามจุดจากด้านหลัง<br>ค่าที่แก้ไขมีผลทันที แม้ขณะบิน<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
     svOpen: 'Street View', captureBtn: 'จับภาพ', capturedHint: 'คลิกขวาที่ภาพเพื่อบันทึก',
-    hubPromoNote: 'ส่วนประกอบเสริม: ไม่พบ bridge-hub ติดตั้งครั้งเดียวเพื่อเร่งเลเยอร์เวกเตอร์ ยกเลิกขีดจำกัด 4MB และปลดล็อกผู้ให้บริการบริดจ์ AI', hubPromoBtn: 'ดาวน์โหลด bridge-hub.exe', hubPromoWait: 'ดาวน์โหลดแล้ว รัน bridge-hub.exe เพื่อติดตั้งและเริ่มอัตโนมัติ — กำลังรอฮับ…', hubPromoOk: 'พบ bridge-hub แล้ว', hubPromoRetry: 'ยังไม่พบ — รัน bridge-hub.exe ที่ดาวน์โหลดมา'
+    hubPromoNote: 'ส่วนประกอบเสริม: ไม่พบ bridge-hub ติดตั้งครั้งเดียวเพื่อเร่งเลเยอร์เวกเตอร์ ยกเลิกขีดจำกัด 4MB และปลดล็อกผู้ให้บริการบริดจ์ AI', hubPromoBtn: 'ดาวน์โหลด bridge-hub.zip', hubPromoWait: 'ดาวน์โหลดแล้ว แตกไฟล์ ZIP แล้วรัน bridge-hub.exe เพื่อติดตั้งและเริ่มอัตโนมัติ — กำลังรอฮับ…', hubPromoOk: 'พบ bridge-hub แล้ว', hubPromoRetry: 'ยังไม่พบ — แตกไฟล์ ZIP ที่ดาวน์โหลดมาแล้วรัน bridge-hub.exe', hubPromoSteps: 'ขั้นตอน: 1) ดาวน์โหลด ZIP  2) แตกไฟล์  3) รัน bridge-hub.exe (ติดตั้งและเริ่มอัตโนมัติ)'
 , hubPromoExt: 'ขยาย'
   },
   vi: {
@@ -744,7 +745,7 @@ const GEO_I18N = {
     flyViewHint: 'Đi cùng: camera đi trên tuyến nhìn về phía trước. Trên không: camera theo dõi điểm di chuyển từ phía sau và phía trên.',
     flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = góc nhìn đi cùng di chuyển trên tuyến; center (=chase) = góc nhìn trên không theo dõi điểm từ phía sau.<br>Thay đổi áp dụng ngay, kể cả khi đang bay.<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
     svOpen: 'Street View', captureBtn: 'Chụp', capturedHint: 'Nhấp chuột phải vào ảnh để lưu',
-    hubPromoNote: 'Thành phần tùy chọn: không phát hiện bridge-hub. Cài một lần để tăng tốc lớp vector, bỏ giới hạn 4MB và mở khóa nhà cung cấp cầu nối AI.', hubPromoBtn: 'Tải bridge-hub.exe', hubPromoWait: 'Đã tải. Chạy bridge-hub.exe để tự động cài đặt và khởi động — đang chờ hub…', hubPromoOk: 'Đã phát hiện bridge-hub', hubPromoRetry: 'Vẫn chưa phát hiện — hãy chạy bridge-hub.exe đã tải.'
+    hubPromoNote: 'Thành phần tùy chọn: không phát hiện bridge-hub. Cài một lần để tăng tốc lớp vector, bỏ giới hạn 4MB và mở khóa nhà cung cấp cầu nối AI.', hubPromoBtn: 'Tải bridge-hub.zip', hubPromoWait: 'Đã tải. Giải nén ZIP và chạy bridge-hub.exe để tự động cài đặt và khởi động — đang chờ hub…', hubPromoOk: 'Đã phát hiện bridge-hub', hubPromoRetry: 'Vẫn chưa phát hiện — giải nén ZIP đã tải và chạy bridge-hub.exe.', hubPromoSteps: 'Các bước: 1) Tải ZIP  2) Giải nén  3) Chạy bridge-hub.exe (tự động cài đặt và khởi động).'
 , hubPromoExt: 'Mở rộng'
   }
 };
@@ -1444,7 +1445,7 @@ function getUI() {
   }
 
   /* Ext button: amber highlight while bridge-hub is undetected */
-  .restore-all-btn.hub-attn {
+  .restore-all-btn.hub-attn, .sub-tab.hub-attn {
     border-color: #d97706;
     color: #b45309;
     font-weight: 700;
@@ -1797,8 +1798,9 @@ function getUI() {
         <div style="font-size:0.78em;line-height:1.35;color:#5a4a1a;flex:1;" data-i18n="hubPromoNote">Optional component: bridge-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.</div>
         <button id="hub-promo-dismiss" type="button" title="Dismiss" aria-label="Dismiss" data-i18n-title="closeAria" data-i18n-aria="closeAria" style="flex:0 0 auto;border:0;background:none;color:#5a4a1a;font-size:1em;line-height:1;cursor:pointer;padding:0 2px;">&minus;</button>
       </div>
+      <div style="margin-top:5px;font-size:0.78em;line-height:1.45;color:#5a4a1a;" data-i18n="hubPromoSteps">Steps: 1) Download the zip  2) Extract it  3) Run bridge-hub.exe — it auto-installs &amp; starts the hub.</div>
       <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
-        <button id="hub-promo-dl" class="btn-primary p-6" data-i18n="hubPromoBtn">Download bridge-hub.exe</button>
+        <button id="hub-promo-dl" class="btn-primary p-6" data-i18n="hubPromoBtn">Download bridge-hub.zip</button>
         <span id="hub-promo-status" style="font-size:0.78em;color:#666;">&nbsp;</span>
       </div>
     </div>
@@ -1894,14 +1896,21 @@ function getUI() {
 
   <div id="manage-panel" style="display:none;">
     <div style="font-weight:600;margin-bottom:8px;" data-i18n="manageTitle">Manage</div>
-    <label class="text-sm" for="manage-inspector-text" data-i18n="manageInspectorLbl">Settings text</label>
-    <textarea id="manage-inspector-text" spellcheck="false" style="width:100%;height:180px;font-size:0.75em;border:1px solid #ccc;border-radius:4px;font-family:monospace;margin-top:4px;"></textarea>
-    <div class="text-sm" style="color:#a33;font-size:0.8em;line-height:1.35;margin-top:4px;" data-i18n="manageSecretWarn">Note: geminiApiKey: and yahooAppId: written here are saved with the project and published to all site visitors.</div>
-    <div style="display:flex;gap:6px;margin-top:6px;">
-      <button id="manage-apply-btn" class="btn-primary p-6" style="flex:1;" data-i18n="manageApply">Apply</button>
-      <button id="manage-copy-btn" class="btn-primary p-6" style="flex:1;" data-i18n="copy">Copy</button>
+    <div class="manage-sub-tab-bar" style="display:flex;gap:4px;margin-bottom:8px;overflow-x:auto;">
+      <button class="sub-tab active" data-mtarget="manage-set" data-i18n="tabSet">Set</button>
+      <button class="sub-tab" data-mtarget="manage-import" data-i18n="importTitle">Import</button>
+      <button class="sub-tab" id="manage-ext-tab" data-mtarget="manage-ext" data-i18n="hubPromoExt">Ext</button>
     </div>
-    <div style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">
+    <div id="manage-set">
+      <label class="text-sm" for="manage-inspector-text" data-i18n="manageInspectorLbl">Settings text</label>
+      <textarea id="manage-inspector-text" spellcheck="false" style="width:100%;height:180px;font-size:0.75em;border:1px solid #ccc;border-radius:4px;font-family:monospace;margin-top:4px;"></textarea>
+      <div class="text-sm" style="color:#a33;font-size:0.8em;line-height:1.35;margin-top:4px;" data-i18n="manageSecretWarn">Note: geminiApiKey: and yahooAppId: written here are saved with the project and published to all site visitors.</div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button id="manage-apply-btn" class="btn-primary p-6" style="flex:1;" data-i18n="manageApply">Apply</button>
+        <button id="manage-copy-btn" class="btn-primary p-6" style="flex:1;" data-i18n="copy">Copy</button>
+      </div>
+    </div>
+    <div id="manage-import" style="display:none;">
       <label class="text-sm" for="import-file-btn" data-i18n="importTitle">File import</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
         <input id="import-file-input" type="file" multiple accept=".geojson,.json,.fgb,.parquet,.gpkg,.csv,.tsv,.kasc,.txt,.zip" style="display:none;" />
@@ -1910,15 +1919,31 @@ function getUI() {
       <div class="text-sm" style="color:#888;font-size:0.72em;margin-top:4px;line-height:1.35;" data-i18n="importHint">.geojson .json .fgb .parquet .gpkg .csv .tsv / .kasc appends lines to the settings text / .zip unpacks .kasc+DATA (same as qgis: URL)</div>
       <div id="import-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:2px;">&nbsp;</div>
     </div>
-    <div style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">
-      <div style="font-weight:600;" data-i18n="aiBridgeTitle">AI Bridge (CANVAS)</div>
-      <label class="text-sm" for="ai-hub-input" data-i18n="aiHubLbl">Bridge hub endpoint</label>
-      <div style="display:flex;gap:6px;margin-top:4px;">
-        <input id="ai-hub-input" type="text" spellcheck="false" placeholder="http://127.0.0.1:8511" style="flex:1;font-size:0.75em;border:1px solid #ccc;border-radius:4px;padding:2px 6px;" />
-        <button id="ai-hub-test-btn" class="btn-primary p-6" data-i18n="aiHubTest">Test</button>
+    <div id="manage-ext" style="display:none;">
+      <div id="hub2-block">
+        <div class="primary-background terrain-row rounded-sm" style="margin-bottom:8px;">
+          <div class="text-md" id="hub2-state">bridge-hub: —</div>
+          <button id="hub2-check" class="btn-primary p-6" data-i18n="aiHubTest">Test</button>
+        </div>
+        <div id="hub2-install" style="margin:0 0 8px;padding:6px 8px;border:1px solid #d9c58a;border-radius:4px;background:#fdf6e3;">
+          <div style="font-size:0.78em;line-height:1.35;color:#5a4a1a;" data-i18n="hubPromoNote">Optional component: bridge-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.</div>
+          <div style="margin-top:5px;font-size:0.78em;line-height:1.45;color:#5a4a1a;" data-i18n="hubPromoSteps">Steps: 1) Download the zip  2) Extract it  3) Run bridge-hub.exe — it auto-installs &amp; starts the hub.</div>
+          <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+            <button id="hub2-dl" class="btn-primary p-6" data-i18n="hubPromoBtn">Download bridge-hub.zip</button>
+            <span id="hub2-status" style="font-size:0.78em;color:#666;">&nbsp;</span>
+          </div>
+        </div>
       </div>
-      <div id="ai-hub-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;font-size:0.78em;">&nbsp;</div>
-      <div class="text-sm" style="color:#888;font-size:0.72em;line-height:1.35;" data-i18n="aiHubHint">aiHub: sets the CANVAS bridge-hub endpoint shared with the AI chat providers (Copilot/agent). Saved to the settings text.</div>
+      <div>
+        <div style="font-weight:600;" data-i18n="aiBridgeTitle">AI Bridge (CANVAS)</div>
+        <label class="text-sm" for="ai-hub-input" data-i18n="aiHubLbl">Bridge hub endpoint</label>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input id="ai-hub-input" type="text" spellcheck="false" placeholder="http://127.0.0.1:8511" style="flex:1;font-size:0.75em;border:1px solid #ccc;border-radius:4px;padding:2px 6px;" />
+          <button id="ai-hub-test-btn" class="btn-primary p-6" data-i18n="aiHubTest">Test</button>
+        </div>
+        <div id="ai-hub-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;font-size:0.78em;">&nbsp;</div>
+        <div class="text-sm" style="color:#888;font-size:0.72em;line-height:1.35;" data-i18n="aiHubHint">aiHub: sets the CANVAS bridge-hub endpoint shared with the AI chat providers (Copilot/agent). Saved to the settings text.</div>
+      </div>
     </div>
     <div id="manage-status" class="text-sm" style="color:#666;min-height:1.2em;margin-top:4px;">&nbsp;</div>
   </div>
@@ -4229,6 +4254,27 @@ function qmlStyleToReearth(xmlText, opts){
               });
           }
 
+          // Manage sub-tab switching (Set / Import / Ext panes)
+          const managePanel = document.getElementById('manage-panel');
+          if (managePanel) {
+              managePanel.addEventListener('click', function(e) {
+                  const btn = e.target.closest('.sub-tab');
+                  if (!btn) return;
+                  const target = btn.getAttribute('data-mtarget');
+                  if (!target) return;
+                  managePanel.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+                  btn.classList.add('active');
+                  ['manage-set','manage-import','manage-ext'].forEach(id => {
+                      const p = document.getElementById(id);
+                      if (p) p.style.display = (id === target) ? '' : 'none';
+                  });
+                  // Refresh the bridge-hub state each time the Ext pane opens
+                  if (target === 'manage-ext' && typeof window._hubPromoCheck === 'function') {
+                      try { window._hubPromoCheck(true); } catch (e) {}
+                  }
+              });
+          }
+
           // Adjust tab-bar height when tabs wrap into multiple rows (max 3 rows)
           const tabBar = document.querySelector('.tab-bar');
           const updateTabRows = () => {
@@ -4411,19 +4457,39 @@ function qmlStyleToReearth(xmlText, opts){
               // the resolved endpoint once per panel load only marks the button
               // (.hub-attn) when the hub is unreachable — the install row opens
               // on demand. The download button fires an <a download> of the
-              // self-installing exe, then polls /health until it comes up
+              // hub zip (self-installing exe inside), then polls /health until it comes up
               // (the sandbox allows downloads). vectorHub: off hides the button.
               try {
                 var hubCfg = window._hubInstallCfg || null;
                 var hubRow = document.getElementById('hub-promo');
                 var hubStatus = document.getElementById('hub-promo-status');
                 var hubExtBtn = document.getElementById('hub-ext-btn');
+                // Same promo mirrored into Manage > Ext pane (settings-side entry)
+                var hub2Block = document.getElementById('hub2-block');
+                var hub2State = document.getElementById('hub2-state');
+                var hub2Install = document.getElementById('hub2-install');
+                var hub2Status = document.getElementById('hub2-status');
+                var hubExtTab = document.getElementById('manage-ext-tab');
                 if (hubExtBtn && !(hubCfg && hubCfg.endpoint)) hubExtBtn.style.display = 'none';
-                if (hubRow && hubCfg && hubCfg.endpoint) {
+                if (hub2Block && !(hubCfg && hubCfg.endpoint)) hub2Block.style.display = 'none';
+                if ((hubRow || hub2Block) && hubCfg && hubCfg.endpoint) {
                   var hubEp = String(hubCfg.endpoint).replace(/[/]+$/, '');
                   var hubPoll = null;
-                  var hubSetStatus = function(key) { if (hubStatus) hubStatus.textContent = key ? t(key) : ''; };
-                  var hubSetAttn = function(on) { if (hubExtBtn) { try { hubExtBtn.classList.toggle('hub-attn', !!on); } catch (e) {} } };
+                  var hubSetStatus = function(key) {
+                    var s = key ? t(key) : '';
+                    if (hubStatus) hubStatus.textContent = s;
+                    if (hub2Status) hub2Status.textContent = s;
+                  };
+                  // Attn highlight is suppressed once the promo is dismissed;
+                  // the Ext-pane state line keeps reflecting the real state.
+                  // The install block is only shown while the hub is undetected.
+                  var hubSetAttn = function(on) {
+                    var attn = !!on && !hubCfg.dismissed;
+                    if (hubExtBtn) { try { hubExtBtn.classList.toggle('hub-attn', attn); } catch (e) {} }
+                    if (hubExtTab) { try { hubExtTab.classList.toggle('hub-attn', attn); } catch (e) {} }
+                    if (hub2State) hub2State.textContent = 'bridge-hub: ' + (on ? 'OFF' : 'ON');
+                    if (hub2Install) hub2Install.style.display = on ? '' : 'none';
+                  };
                   var hubProbe = function(ms) {
                     var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
                     var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, ms || 3000);
@@ -4447,8 +4513,10 @@ function qmlStyleToReearth(xmlText, opts){
                     });
                   };
                   window._hubPromoCheck = hubCheck;
-                  if (!hubCfg.dismissed) hubCheck(false);
-                  if (hubExtBtn) hubExtBtn.addEventListener('click', function() {
+                  // Always probe once so the Ext pane shows the current state;
+                  // the attn badge itself stays suppressed after dismissal.
+                  hubCheck(false);
+                  if (hubExtBtn && hubRow) hubExtBtn.addEventListener('click', function() {
                     var opening = (hubRow.style.display === 'none');
                     hubRow.style.display = opening ? '' : 'none';
                     if (opening) { hubSetStatus(''); hubCheck(true); }
@@ -4456,37 +4524,49 @@ function qmlStyleToReearth(xmlText, opts){
                   var hubDismiss = document.getElementById('hub-promo-dismiss');
                   if (hubDismiss) hubDismiss.addEventListener('click', function() {
                     if (hubPoll) { try { clearInterval(hubPoll); } catch (e) {} hubPoll = null; }
-                    hubRow.style.display = 'none';
+                    if (hubRow) hubRow.style.display = 'none';
+                    hubCfg.dismissed = true;
                     hubSetAttn(false);
                     try { parent.postMessage({ action: 'hubPromoDismiss' }, '*'); } catch (e) {}
                   });
-                  var hubBtn = document.getElementById('hub-promo-dl');
-                  if (hubBtn) hubBtn.addEventListener('click', function() {
-                    try {
-                      var a = document.createElement('a');
-                      a.href = String(hubCfg.download || '');
-                      a.download = 'bridge-hub.exe';
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                    } catch (e) {}
-                    hubSetStatus('hubPromoWait');
-                    if (hubPoll) return; // re-click = re-download; keep one poll
-                    var deadline = Date.now() + 180000;
-                    hubPoll = setInterval(function() {
-                      hubProbe(3000).then(function() {
-                        clearInterval(hubPoll); hubPoll = null;
-                        hubSetStatus('hubPromoOk');
-                        hubSetAttn(false);
-                        setTimeout(function() { hubRow.style.display = 'none'; }, 4000);
-                      }).catch(function() {
-                        if (Date.now() > deadline) {
-                          clearInterval(hubPoll); hubPoll = null;
-                          hubSetStatus('hubPromoRetry');
-                        }
-                      });
-                    }, 2000);
+                  // Re-check button in Manage > Ext
+                  var hub2Check = document.getElementById('hub2-check');
+                  if (hub2Check) hub2Check.addEventListener('click', function() {
+                    if (hub2State) hub2State.textContent = 'bridge-hub: —';
+                    hubCheck(true);
                   });
+                  // Download button(s): layers-panel promo + Manage > Ext pane
+                  var hubBindDl = function(btn) {
+                    if (!btn) return;
+                    btn.addEventListener('click', function() {
+                      try {
+                        var a = document.createElement('a');
+                        a.href = String(hubCfg.download || '');
+                        a.download = 'bridge-hub.zip';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                      } catch (e) {}
+                      hubSetStatus('hubPromoWait');
+                      if (hubPoll) return; // re-click = re-download; keep one poll
+                      var deadline = Date.now() + 180000;
+                      hubPoll = setInterval(function() {
+                        hubProbe(3000).then(function() {
+                          clearInterval(hubPoll); hubPoll = null;
+                          hubSetStatus('hubPromoOk');
+                          hubSetAttn(false);
+                          setTimeout(function() { if (hubRow) hubRow.style.display = 'none'; }, 4000);
+                        }).catch(function() {
+                          if (Date.now() > deadline) {
+                            clearInterval(hubPoll); hubPoll = null;
+                            hubSetStatus('hubPromoRetry');
+                          }
+                        });
+                      }, 2000);
+                    });
+                  };
+                  hubBindDl(document.getElementById('hub-promo-dl'));
+                  hubBindDl(document.getElementById('hub2-dl'));
                 }
               } catch (e) {}
               // Local file import (KASUGAI Canvas DATA/ add equivalent).
