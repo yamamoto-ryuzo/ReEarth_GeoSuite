@@ -1,5 +1,8 @@
 # Changelog
 
+## v21.3.2
+- 修正: 外部プロキシ（bridge-hub / canvasApi 経路）へ送る `tools` ペイロードを Gemini ラッパー `[{functionDeclarations:[...]}]` ではなくフラットな宣言配列へ正規化。ラッパー形式のままだとハブ側でツール数が 0 と解釈され function calling が無効化されていた。
+
 ## v21.3.1
 - 改善: DuckDB-Wasm の先行ウォーム — inspector テキストに `duckdb:`/`sql:` 行（`qgis:` ZIP 取込分を含む）が現れた時点で basemap-widget 永続 iframe 内の wasm ダウンロード＋初期化（~60MB）をバックグラウンド開始。初回クエリを待たずにモジュールが立ち上がるため、起動後に追加する duckdb レイヤー・遅延ロードされるレイヤー（kasczip メンバ等）の初回クエリが warm 状態で返る。
     - パネル `handleInspectorLine` が `duckdb:`/`sql:` 行を検出したら `ddbWarm` を basemap-widget 拡張へ送信（format=gpkg 系は sql.js 経路のため除外）。ホスト拡張の登録待ちは最大 ~20s リトライし、見つからなければ自 iframe を温めるフォールバック。

@@ -1430,7 +1430,10 @@ const html: string = `
         project: 'default',
         camera: null, layers: [], basemaps: [],
         history: _pxHist.slice(-20).map(function(m) { return { role: m.role, text: m.text || '' }; }),
-        tools: TOOL_DECLS || []
+        // bridge-hub expects a flat array of declarations (same shape KASUGAI
+        // Canvas sends); the Gemini [{functionDeclarations:[...]}] wrapper
+        // normalizes to zero tools there.
+        tools: (TOOL_DECLS && TOOL_DECLS[0] && TOOL_DECLS[0].functionDeclarations) || []
       })
     }).then(function(res) {
       return res.json().then(function(data) {
