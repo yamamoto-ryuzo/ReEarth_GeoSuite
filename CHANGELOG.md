@@ -8,6 +8,7 @@
 - 拡張: 外部化レイヤーの `bbox=auto` 対応 — `duckdb:`/`gpkg:`/`sql:` の geojson URL に viewport エンベロープを `?bbox=` として付与し `_ddbLayers` へ `engine:'hubvec'` で登録。カメラ移動時は `refreshHubVecLayer` が `layers.override` で `data.url` を差し替えホストが再取得（ctx 横断ゼロ・4MB 上限非該当）。
 - 変更: 登録名ハッシュ（`hubNameFor`）に `sql`/`materialize` をキー追加し kind:sql を冪等化。iframe の stale 判定は kind:sql では既存エントリを fresh 扱い（マニフェストに sql 文は保存されないため名前一致=同一クエリ）。
 - 修正: 起動時に `parquet:`/`fgb:`/`gpkg:`/`duckdb:` 等の拡張経路レイヤが二重追加されていた問題 — init の `processInspectorText` がポーリング用キャッシュ `_lastInspectorLayersJson` を設定していなかったため、起動直後の poll が同一テキストを必ず再処理し、非同期完了のキュー項目が両方とも遅延 title dedupe を通過していた。init で処理したテキストをキャッシュへ事前設定＋`applyExtPathItem` 冒頭に `isLayerLoading`（in-flight ⏳マーカー）チェックを追加し、再適用・連続適用でも二重追加しない。
+- 修正: `sql:` インスペクタ行がレイヤとして追加されなかった問題 — sql 項目は `url` を持たず `addXyzLayersFromArray` の `if (!u) continue` で捨てられていたため、`sql:` 構文（DuckDB-Wasm クエリ・kind:sql ハブ外部化含む）が dead code 化していた。`query` を持つ項目を url ガードより先に拡張経路キューへ送るよう修正。
 
 ## v22.1.0
 - 修正: ベクター索引が `data.value` のオブジェクト形式 FeatureCollection をスキップしていた問題 — ブリッジ越しの Proxy 配列は `Array.isArray` が偽を返すため `{type,features}` のままでは `features` 未設定となり、市区町村名/都道府県名等のレイヤが Attr/検索索引から抜け落ちていた。array-like（数値 length）を実配列へ材料化して索引化。また索引走査を `forEach`（全要素をブリッジ越しに読む）から上限5万地物の for ループへ変更し、Proxy 要素読みを実際に制限 — 取込中の間欠的な QuickJS ctx OOM 死亡（UI 無応答の原因）の主要ベクターを低減。

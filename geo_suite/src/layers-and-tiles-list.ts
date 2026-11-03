@@ -12940,6 +12940,12 @@ function addXyzLayersFromArray(items) {
     if (isBase) continue; // basemaps are applied via reearth.viewer.overrideProperty (basemap widget)
     const visible = (it.visible !== undefined) ? it.visible : true;
     const zoom = { min: it.minLevel ?? null, max: it.maxLevel ?? null };
+    // sql: items carry `query` instead of `url` — dispatch before the url guard.
+    if (type === 'sql') {
+      if (!it.query) continue;
+      enqueueExtPath(() => { try { applyExtPathItem(it, u, t, type, visible, zoom); } catch (e) {} });
+      continue;
+    }
     if (!u) continue;
     if (!/^https?:\/\//.test(u) && !isKascZipUrl(u)) continue;
     const encoded = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
