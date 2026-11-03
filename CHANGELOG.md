@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.3.1
+- 改善: DuckDB-Wasm の先行ウォーム — inspector テキストに `duckdb:`/`sql:` 行（`qgis:` ZIP 取込分を含む）が現れた時点で basemap-widget 永続 iframe 内の wasm ダウンロード＋初期化（~60MB）をバックグラウンド開始。初回クエリを待たずにモジュールが立ち上がるため、起動後に追加する duckdb レイヤー・遅延ロードされるレイヤー（kasczip メンバ等）の初回クエリが warm 状態で返る。
+    - パネル `handleInspectorLine` が `duckdb:`/`sql:` 行を検出したら `ddbWarm` を basemap-widget 拡張へ送信（format=gpkg 系は sql.js 経路のため除外）。ホスト拡張の登録待ちは最大 ~20s リトライし、見つからなければ自 iframe を温めるフォールバック。
+    - basemap-widget 拡張側は iframe の message リスナ登録前に落ちる `postToUI` を防ぐため、iframe からの最初のメッセージ（`requestBaseList`）を ready 合図として早期メッセージをキュー。iframe 側は `ensureDdbModule()` に初期化を集約し `ddbWarm`/`ddbLoad` 両ハンドラから再利用。
+    - 計測（workbench・最小 inspector）: warm 完了 = 起動 ~12s（クエリ未発行）、その後の `addDuckDbLayer` = ~2s。なお既定 qgis: プロジェクトの巨大 gpkg 結果が QuickJS を OOM kill し拡張間メッセージを全滅させる既存問題とは独立（本変更は wasm 初期化のみ）。
+
 ## v21.3.0
 - 新機能: 外部ブリッジ（QGIS live_driver の `bridge_call`/`describe_plugins` 相当）— ローカルハーネスやエージェントがサンドボックス外から地図ツールを呼び出せる経路を追加。
     - ai-chat 拡張のツールディスパッチャを `dispatchToolCall(reqId, name, args, reply)` に一般化し、`bridgeCall`/`bridgeResult` の extensionMessage 経路を追加（`msg.sender` へ返送）。`describe` で実行可能ツールのカタログ（local/panel/bridge 分類）を返す。

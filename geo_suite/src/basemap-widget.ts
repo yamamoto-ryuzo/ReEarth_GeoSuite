@@ -420,6 +420,36 @@ const html: string = `
         });
       };
 
+      // DuckDB-Wasm module loader — shared by ddbLoad (queries) and ddbWarm
+      // (background pre-init triggered by the layer panel's config scan).
+      // The promise is cached on window._ddbModule; a failed load clears the
+      // cache so the next call retries.
+      var ensureDdbModule = function() {
+        if (!window._ddbModule) {
+          var loading = import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm').then(function(duckdb) {
+            return duckdb.selectBundle(duckdb.getJsDelivrBundles()).then(function(bundle) {
+              var workerUrl = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(bundle.mainWorker) + ');'], { type: 'text/javascript' }));
+              var worker = new Worker(workerUrl);
+              var logger = duckdb.VoidLogger ? new duckdb.VoidLogger() : new duckdb.ConsoleLogger();
+              var db = new duckdb.AsyncDuckDB(logger, worker);
+              return db.instantiate(bundle.mainModule, bundle.pthreadWorker).then(function() {
+                try { URL.revokeObjectURL(workerUrl); } catch (e) {}
+                return db.connect();
+              }).then(function(conn) {
+                var st = { conn: conn, db: db, spatial: false };
+                return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
+                  .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
+                  .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
+                  .then(function() { return st; });
+              });
+            });
+          });
+          loading.catch(function() { if (window._ddbModule === loading) window._ddbModule = null; });
+          window._ddbModule = loading;
+        }
+        return window._ddbModule;
+      };
+
       window.addEventListener('message', function(e) {
         try {
           const msg = e && e.data;
@@ -431,6 +461,16 @@ const html: string = `
               window._GEO_LANG_CONF = String(msg.lang || 'auto');
               GEO_LANG = resolveLang();
               applyI18n();
+            } catch (e) {}
+          } else if (msg.action === 'ddbWarm') {
+            // Background pre-init: a duckdb:/sql: layer exists in the config,
+            // so start the ~60MB download+init now instead of on the first
+            // query. Fire-and-forget; ddbWarmed is for diagnostics only.
+            try {
+              ensureDdbModule().then(
+                function() { try { postToParent({ action: 'ddbWarmed', ok: true }); } catch (e) {} },
+                function(err) { try { postToParent({ action: 'ddbWarmed', ok: false, error: String(err && err.message || err) }); } catch (e) {} }
+              );
             } catch (e) {}
           } else if (msg.action === 'ddbLoad') {
             // DuckDB-Wasm query host. This iframe persists across panel
@@ -457,29 +497,7 @@ const html: string = `
                 return b.ranges.length === 1 ? env(b.ranges[0]) : 'ST_Union(' + env(b.ranges[0]) + ', ' + env(b.ranges[1]) + ')';
               };
               try {
-                if (!window._ddbModule) {
-                  var loading = import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm').then(function(duckdb) {
-                    return duckdb.selectBundle(duckdb.getJsDelivrBundles()).then(function(bundle) {
-                      var workerUrl = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(bundle.mainWorker) + ');'], { type: 'text/javascript' }));
-                      var worker = new Worker(workerUrl);
-                      var logger = duckdb.VoidLogger ? new duckdb.VoidLogger() : new duckdb.ConsoleLogger();
-                      var db = new duckdb.AsyncDuckDB(logger, worker);
-                      return db.instantiate(bundle.mainModule, bundle.pthreadWorker).then(function() {
-                        try { URL.revokeObjectURL(workerUrl); } catch (e) {}
-                        return db.connect();
-                      }).then(function(conn) {
-                        var st = { conn: conn, db: db, spatial: false };
-                        return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
-                          .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
-                          .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
-                          .then(function() { return st; });
-                      });
-                    });
-                  });
-                  loading.catch(function() { if (window._ddbModule === loading) window._ddbModule = null; });
-                  window._ddbModule = loading;
-                }
-                window._ddbModule.then(function(st) {
+                ensureDdbModule().then(function(st) {
                   var conn = st.conn, spatial = st.spatial;
                   var format = String(msg.format || '').toLowerCase();
                   var literal = ql(msg.url);
@@ -824,6 +842,16 @@ function openGoogleEarthInNewWindow(): void {
   }
 }
 
+// postToUI drops messages sent before the iframe's script registers its
+// listener; the iframe posts requestBaseList once loaded, so any incoming
+// message proves it is alive. Early messages (ddbWarm) queue until then.
+let _uiIframeReady = false;
+const _uiEarlyQueue: any[] = [];
+function postToUIWhenReady(msg: any): void {
+  if (_uiIframeReady) { postToUI(msg); return; }
+  _uiEarlyQueue.push(msg);
+}
+
 // DuckDB query host routing: vecId -> requesting extension id. Replies
 // (ddbAck/ddbResult) from the UI iframe are forwarded to that extension.
 const _ddbSenders: { [key: string]: string } = {};
@@ -843,6 +871,14 @@ try {
     reearth.extension.on('message', (msg: any) => {
       try {
         if (!msg || !msg.action) return;
+        if (!_uiIframeReady) {
+          _uiIframeReady = true;
+          while (_uiEarlyQueue.length) { try { postToUI(_uiEarlyQueue.shift()); } catch (e) {} }
+        }
+        if (msg.action === 'ddbWarmed') {
+          try { sendLog('[ddbWarm]', msg.ok ? 'ready' : ('failed: ' + (msg.error || 'unknown'))); } catch (e) {}
+          return;
+        }
         if (msg.action === 'ddbAck' || msg.action === 'ddbResult') {
           try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, layerId: msg.layerId || null, geojson: msg.geojson || null, error: msg.error || null }, msg.action === 'ddbResult'); } catch (e) {}
           return;
@@ -884,6 +920,11 @@ try {
         } else if (data.action === 'lang') {
           // Language override forwarded from the layer panel (inspector "lang:" line)
           try { postToUI({ action: 'lang', lang: data.lang || 'auto' }); } catch (e) {}
+        } else if (data.action === 'ddbWarm') {
+          // Pre-init request from the layer panel (inspector config contains
+          // duckdb:/sql: layers). Queued until the iframe is alive, then
+          // fire-and-forget — it only starts the wasm download+init.
+          try { postToUIWhenReady({ action: 'ddbWarm' }); } catch (e) {}
         } else if (data.action === 'ddbExec') {
           // DuckDB-Wasm query request from the layer panel. This widget's iframe
           // is long-lived (ui.show runs once), so the wasm instance stays warm —

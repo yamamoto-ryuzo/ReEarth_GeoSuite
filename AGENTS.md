@@ -85,6 +85,7 @@
 - **フォールバック**: パネルは `ddbExec` 送信後 3 秒以内に `ddbAck` が来なければホスト iframe 消失（widget 非表示等）とみなし、自分の iframe で `ddbLoad` を再実行する（`layers-and-tiles-list.ts` の `ddbPost`/`_ddbHostDead`）。パネル iframe 側にも同一の `ddbLoad` ハンドラを残してあるので、両者を同期して変更すること。
 - `window._ddbModule` は Promise キャッシュ（初期化失敗時は null に戻る）。iframe 側の DuckDB コードは `basemap-widget.ts` と `layers-and-tiles-list.ts` に2か所ある（WKB デコーダ `vecWkbToGeoJson` も同様）。
 - **ブラウザ再起動・再訪では DuckDB アセットは必ず再ダウンロードされる**（実測: 再起動後 16.9s ≈ コールド）。プラグイン UI iframe は `allow-same-origin` なしサンドボックス（opaque origin）のため、HTTP キャッシュは同一ドキュメント内の再 fetch すら全バイト再転送され、CacheStorage/localStorage/IndexedDB/ServiceWorker はアクセス自体が SecurityError。KASUGAI の Service Worker + CacheStorage 方式は構造上移植不可。拡張側 `clientStorage` への wasm バイナリ保存は容量・メッセージ橋の制約から実用性が低い。「セッション毎に1回 ~15s 初期化、その後は warm」が現状の最適。
+- **先行ウォーム（v21.3.1〜）**: inspector に `duckdb:`/`sql:` 行（qgis: ZIP 取込分含む、`format=gpkg` を除く）が現れた時点で `handleInspectorLine` → `warmupDuckDbHost()` が basemap-widget へ `ddbWarm` を送り、永続 iframe の `ensureDdbModule()`（ddbLoad と共有）が wasm DL+初期化をバックグラウンド開始する。ホスト拡張の登録待ちは ~20s リトライ。basemap 拡張側は iframe ready（最初の `requestBaseList`）まで `postToUI` をキューする。永続化は依然不可のため「1セッション1回の初期化を起動処理とオーバーラップさせる」設計。
 
 ## Workbench の resize script 注入バグ（重要）
 - Workbench は iframe HTML の `</body>` 直前に `_zushi_resize` スクリプトを挿入するが、**JS 文字列リテラル内の `'</body></html>'` にも誤マッチ**しスクリプト中間へ注入 → 注入された `</script>` で script 要素が早期終了し iframe が無反応になる。

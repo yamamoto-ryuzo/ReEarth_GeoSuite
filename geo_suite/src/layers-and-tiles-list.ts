@@ -4763,6 +4763,35 @@ function qmlStyleToReearth(xmlText, opts){
               });
             };
 
+            // DuckDB-Wasm module loader — shared by ddbLoad (queries) and
+            // ddbWarm (background pre-init). Same implementation as the
+            // basemap-widget host iframe; keep them in sync.
+            var ensureDdbModule = function() {
+              if (!window._ddbModule) {
+                var loading = import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm').then(function(duckdb) {
+                  return duckdb.selectBundle(duckdb.getJsDelivrBundles()).then(function(bundle) {
+                    var workerUrl = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(bundle.mainWorker) + ');'], { type: 'text/javascript' }));
+                    var worker = new Worker(workerUrl);
+                    var logger = duckdb.VoidLogger ? new duckdb.VoidLogger() : new duckdb.ConsoleLogger();
+                    var db = new duckdb.AsyncDuckDB(logger, worker);
+                    return db.instantiate(bundle.mainModule, bundle.pthreadWorker).then(function() {
+                      try { URL.revokeObjectURL(workerUrl); } catch (e) {}
+                      return db.connect();
+                    }).then(function(conn) {
+                      var st = { conn: conn, db: db, spatial: false };
+                      return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
+                        .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
+                        .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
+                        .then(function() { return st; });
+                    });
+                  });
+                });
+                loading.catch(function() { if (window._ddbModule === loading) window._ddbModule = null; });
+                window._ddbModule = loading;
+              }
+              return window._ddbModule;
+            };
+
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
             window.addEventListener('message', function(e) {
               try {
@@ -5341,6 +5370,10 @@ function qmlStyleToReearth(xmlText, opts){
                       }).then(function() {}, function(e) { reply(null, String(e && e.message || e)); });
                     } catch (e) { reply(null, String(e)); }
                   })();
+                } else if (msg.action === 'ddbWarm') {
+                  // Background pre-init (fallback host — used only when the
+                  // basemap-widget host is unreachable).
+                  try { ensureDdbModule(); } catch (e) {}
                 } else if (msg.action === 'ddbLoad') {
                   // DuckDB-Wasm query path (kasugai duckdb: port). SQL pushdown
                   // (where/limit/columns) and covering-bbox predicates prune
@@ -5366,29 +5399,7 @@ function qmlStyleToReearth(xmlText, opts){
                       return b.ranges.length === 1 ? env(b.ranges[0]) : 'ST_Union(' + env(b.ranges[0]) + ', ' + env(b.ranges[1]) + ')';
                     };
                     try {
-                      if (!window._ddbModule) {
-                        var loading = import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm').then(function(duckdb) {
-                          return duckdb.selectBundle(duckdb.getJsDelivrBundles()).then(function(bundle) {
-                            var workerUrl = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(bundle.mainWorker) + ');'], { type: 'text/javascript' }));
-                            var worker = new Worker(workerUrl);
-                            var logger = duckdb.VoidLogger ? new duckdb.VoidLogger() : new duckdb.ConsoleLogger();
-                            var db = new duckdb.AsyncDuckDB(logger, worker);
-                            return db.instantiate(bundle.mainModule, bundle.pthreadWorker).then(function() {
-                              try { URL.revokeObjectURL(workerUrl); } catch (e) {}
-                              return db.connect();
-                            }).then(function(conn) {
-                              var st = { conn: conn, db: db, spatial: false };
-                              return conn.query('INSTALL httpfs; LOAD httpfs;').catch(function() {})
-                                .then(function() { return conn.query('INSTALL spatial; LOAD spatial;').then(function() { st.spatial = true; }).catch(function() {}); })
-                                .then(function() { return conn.query('INSTALL parquet; LOAD parquet;').catch(function() {}); })
-                                .then(function() { return st; });
-                            });
-                          });
-                        });
-                        loading.catch(function() { if (window._ddbModule === loading) window._ddbModule = null; });
-                        window._ddbModule = loading;
-                      }
-                      window._ddbModule.then(function(st) {
+                      ensureDdbModule().then(function(st) {
                         var conn = st.conn, spatial = st.spatial;
                         var format = String(msg.format || '').toLowerCase();
                         var literal = ql(msg.url);
@@ -8911,6 +8922,40 @@ function findExtensionInstanceId(extensionId) {
         return t ? t.id : null;
     } catch (e) { return null; }
 }
+// Pre-warm the DuckDB-Wasm module in the host iframe as soon as the config
+// mentions a duckdb:/sql: layer — the ~60MB download+init then overlaps
+// startup instead of sitting on the first query's critical path. When the
+// host extension is not registered yet it retries once, then falls back to
+// our own iframe (its instance dies on re-render, but the download still
+// warms the path).
+let _ddbWarmSent = false;
+function warmupDuckDbHost(tries) {
+    if (_ddbWarmSent) return;
+    tries = (typeof tries === 'number') ? tries : 0;
+    try {
+        if (!_ddbHostDead) {
+            const hostId = _ddbHostId || findExtensionInstanceId('basemap-widget');
+            if (hostId) {
+                _ddbHostId = hostId;
+                reearth.extension.postMessage(hostId, { action: 'ddbWarm' });
+                _ddbWarmSent = true;
+                try { sendLog('[ddbWarm] requested (host iframe)'); } catch (e) {}
+                return;
+            }
+            // Host extension may simply not be registered yet — keep retrying
+            // for a while before falling back to our own (ephemeral) iframe.
+            if (tries < 10) {
+                try { waitViaUiTimer(2000).then(function () { warmupDuckDbHost(tries + 1); }); } catch (e) { _ddbWarmSent = true; }
+                return;
+            }
+        }
+        // Host unreachable — warm our own iframe (its instance dies on
+        // re-render, but the started download still warms the path).
+        try { postToUI({ action: 'ddbWarm' }); } catch (e) {}
+        _ddbWarmSent = true;
+        try { sendLog('[ddbWarm] requested (own iframe)'); } catch (e) {}
+    } catch (e) {}
+}
 function ddbPost(vecId, spec, layerId) {
     const payload = {
         vecId: vecId, layerId: layerId || null,
@@ -11541,6 +11586,8 @@ function processInspectorText(text) {
     //         geom=.. | lon=.. | lat=.. | columns=a,b | covering=xmin,xmax,ymin,ymax |
     //         bbox=auto|off | on/off | classification
     if (lowerLine.startsWith('duckdb:')) {
+      // gpkg-backed duckdb lines route to sql.js, not DuckDB-Wasm — skip those.
+      try { if (!/\.gpkg([?#\s|]|$)|format\s*=\s*gpkg/i.test(line)) warmupDuckDbHost(); } catch (e) {}
       const ddStr = line.substring(line.indexOf(':') + 1).trim();
       const parts = ddStr.split('|').map(p => p.trim());
       const title = parts[0] || null;
@@ -11633,6 +11680,7 @@ function processInspectorText(text) {
     // Syntax: sql: 名前 | SELECT ...   (trailing "| off" hides; the query itself may contain |)
     // A :bbox placeholder in the query is replaced by the viewport envelope on each camera move.
     if (lowerLine.startsWith('sql:')) {
+      try { warmupDuckDbHost(); } catch (e) {}
       const sValue = line.substring(line.indexOf(':') + 1).trim();
       const firstSep = sValue.indexOf('|');
       const title = firstSep < 0 ? '' : sValue.slice(0, firstSep).trim();
