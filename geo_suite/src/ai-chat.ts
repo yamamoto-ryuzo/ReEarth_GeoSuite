@@ -116,30 +116,60 @@ let _inspectorYahooAppId: string | null = null;
 let _inspectorGoogleMapsApiKey: string | null = null;
 let _inspectorLang = 'auto';
 
-// Session-only key: kept in extension memory, never written to clientStorage.
-let _sessionGeminiApiKey: string | null = null;
+// Session-only keys: kept in extension memory, never written to clientStorage.
+let _sessionAiKeys: { [k: string]: string | null } = {};
 
 const AI_STORAGE_KEY = 'geminiApiKey';
 const AI_STORAGE_MODEL = 'geminiModel';
 const AI_STORAGE_PROVIDER = 'aiProvider';
+const AI_STORAGE_STEPS = 'aiToolMaxSteps';
 const AI_DEFAULT_MODEL = 'gemini-3.1-flash-lite';
+const AI_DEFAULT_MAX_STEPS = 10;
 let _sessionAiProvider: any = null;
+// Last provider actually selected in the chat UI. Once the user picks a
+// provider, every config reply must keep echoing it — echoing the stored
+// provider instead would snap the selection back and ping-pong forever.
+let _lastPvHint: string | null = null;
 
-async function sendConfig(): Promise<void> {
+// Per-provider key/model storage — a Gemini key must never be sent to
+// Sakura/Anthropic/etc (it would fail as an invalid token). 'gemini' keeps
+// the original storage names for backward compatibility with saved keys.
+function aiKeyStorageName(providerId: string): string {
+  return providerId === 'gemini' ? AI_STORAGE_KEY : ('aiApiKey_' + providerId);
+}
+function aiModelStorageName(providerId: string): string {
+  return providerId === 'gemini' ? AI_STORAGE_MODEL : ('aiModel_' + providerId);
+}
+
+async function sendConfig(pvHint?: string): Promise<void> {
   let storedKey: any = null;
   let storedModel: any = null;
   let storedProvider: any = null;
+  let storedSteps: any = null;
   try {
     if (reearth && reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.getAsync === 'function') {
-      storedKey = await reearth.data.clientStorage.getAsync(AI_STORAGE_KEY);
-      storedModel = await reearth.data.clientStorage.getAsync(AI_STORAGE_MODEL);
       storedProvider = await reearth.data.clientStorage.getAsync(AI_STORAGE_PROVIDER);
+      storedSteps = await reearth.data.clientStorage.getAsync(AI_STORAGE_STEPS);
     }
   } catch (e) {}
   let provider: any = null;
   try {
     const raw = _sessionAiProvider || storedProvider;
     provider = (typeof raw === 'object' && raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : null);
+  } catch (e) {}
+  // pvHint = the provider currently selected in the UI (may be unsaved) —
+  // key/model must be looked up for that provider, not the stored one.
+  const storedPvId = (provider && typeof provider === 'object' && typeof provider.provider === 'string' && provider.provider) || '';
+  const pvId = pvHint || _lastPvHint || storedPvId || 'gemini';
+  if (pvHint) _lastPvHint = pvHint;
+  // Echo the effective provider; carry the stored endpoint/apiVer only when it
+  // is the same provider (avoid leaking another provider's fields).
+  provider = (pvId === storedPvId && provider) ? provider : { provider: pvId };
+  try {
+    if (reearth && reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.getAsync === 'function') {
+      storedKey = await reearth.data.clientStorage.getAsync(aiKeyStorageName(pvId));
+      storedModel = await reearth.data.clientStorage.getAsync(aiModelStorageName(pvId));
+    }
   } catch (e) {}
   // Fields declared in this extension's own schema (editable in the inspector).
   // They take precedence over the layer panel's inspectorText geminiApiKey/geminiModel lines.
@@ -152,21 +182,26 @@ async function sendConfig(): Promise<void> {
     if (s && typeof s.geminiApiKey === 'string') schemaKey = s.geminiApiKey.trim();
     if (s && typeof s.geminiModel === 'string') schemaModel = s.geminiModel.trim();
   } catch (e) {}
-  const inspectorKey = schemaKey || _inspectorGeminiApiKey;
-  const key = inspectorKey || _sessionGeminiApiKey || (typeof storedKey === 'string' ? storedKey : '');
-  const model = schemaModel || _inspectorGeminiModel || (typeof storedModel === 'string' && storedModel ? storedModel : AI_DEFAULT_MODEL);
+  const inspectorKey = (pvId === 'gemini') ? (schemaKey || _inspectorGeminiApiKey) : '';
+  const sessionKey = _sessionAiKeys[pvId] || null;
+  const key = inspectorKey || sessionKey || (typeof storedKey === 'string' ? storedKey : '');
+  const model = (pvId === 'gemini')
+    ? (schemaModel || _inspectorGeminiModel || (typeof storedModel === 'string' && storedModel ? storedModel : AI_DEFAULT_MODEL))
+    : (typeof storedModel === 'string' ? storedModel : '');
+  const stepsN = Math.round(Number(storedSteps));
   postToUI({
     action: 'aiConfig',
     apiKey: key,
     hasKey: !!key,
-    keySource: inspectorKey ? 'inspector' : (_sessionGeminiApiKey ? 'session' : (storedKey ? 'storage' : 'none')),
+    keySource: inspectorKey ? 'inspector' : (sessionKey ? 'session' : (storedKey ? 'storage' : 'none')),
     model: model,
     provider: provider,
     aiHub: _inspectorAiHub || '',
     yahooAppId: _inspectorYahooAppId || '',
     googleMapsApiKey: _inspectorGoogleMapsApiKey || '',
     i18n: AI_I18N,
-    lang: _inspectorLang || 'auto'
+    lang: _inspectorLang || 'auto',
+    toolMaxSteps: (isFinite(stepsN) && stepsN >= 1) ? Math.min(stepsN, 20) : AI_DEFAULT_MAX_STEPS
   });
 }
 
@@ -564,31 +599,45 @@ try {
         } else if (msg.action === 'aiGetConfig') {
           // Ask the layer panel for inspector-provided values, then reply with merged config.
           try { postToLayerPanel({ action: 'requestAiConfig' }); } catch (e) {}
-          sendConfig();
+          sendConfig(typeof msg.provider === 'string' && msg.provider ? msg.provider : undefined);
         } else if (msg.action === 'aiSetApiKey') {
           const key = (typeof msg.key === 'string') ? msg.key.trim() : '';
+          const pv2 = (typeof msg.provider === 'string' && msg.provider) || 'gemini';
+          const kn = aiKeyStorageName(pv2);
           try {
             if (msg.persist === false) {
               // Session-only: keep in extension memory, clear any persisted copy.
-              _sessionGeminiApiKey = key || null;
+              _sessionAiKeys[pv2] = key || null;
               if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
-                reearth.data.clientStorage.setAsync(AI_STORAGE_KEY, '');
+                reearth.data.clientStorage.setAsync(kn, '');
               }
             } else {
-              _sessionGeminiApiKey = null;
+              delete _sessionAiKeys[pv2];
               if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
-                reearth.data.clientStorage.setAsync(AI_STORAGE_KEY, key);
+                reearth.data.clientStorage.setAsync(kn, key);
               }
             }
           } catch (e) {}
           sendConfig();
         } else if (msg.action === 'aiSetModel') {
           const m = (typeof msg.model === 'string') ? msg.model.trim() : '';
+          const pv2 = (typeof msg.provider === 'string' && msg.provider) || 'gemini';
           try {
             if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
-              reearth.data.clientStorage.setAsync(AI_STORAGE_MODEL, m);
+              reearth.data.clientStorage.setAsync(aiModelStorageName(pv2), m);
             }
           } catch (e) {}
+          sendConfig();
+        } else if (msg.action === 'aiSetToolMaxSteps') {
+          const n = Math.round(Number(msg.steps));
+          if (isFinite(n)) {
+            const v = Math.min(Math.max(n, 1), 20);
+            try {
+              if (reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+                reearth.data.clientStorage.setAsync(AI_STORAGE_STEPS, String(v));
+              }
+            } catch (e) {}
+          }
           sendConfig();
         } else if (msg.action === 'aiChatResult' && msg.reqId && _pendingForward[msg.reqId]) {
           const meta = _pendingForward[msg.reqId];
@@ -596,6 +645,7 @@ try {
           if (meta && typeof meta.reply === 'function') meta.reply(msg.result);
         } else if (msg.action === 'aiSetProvider') {
           const pv = (msg.provider && typeof msg.provider === 'object') ? msg.provider : null;
+          _lastPvHint = (pv && typeof pv.provider === 'string' && pv.provider) || null;
           try {
             if (msg.persist === false) {
               _sessionAiProvider = pv;
@@ -673,26 +723,26 @@ try { postToLayerPanel({ action: 'requestAiConfig' }); } catch (e) {}
 // iframe i18n dictionary — delivered via aiConfig.i18n (kept out of the
 // html template because the widget html transport truncates at ~54.3KB).
 const AI_I18N: any = {
-  en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:'Minimize', restore:'Restore' },
-  ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存', keySrc:'キーの出所' , minimize:'最小化', restore:'元に戻す' },
-  'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥', keySrc:'密钥来源' , minimize:'最小化', restore:'还原' },
-  'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰', keySrc:'金鑰來源' , minimize:'最小化', restore:'還原' },
-  ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장', keySrc:'키 출처' , minimize:'최소화', restore:'복원' },
-  es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador', keySrc:'Origen de la clave' , minimize:'Minimizar', restore:'Restaurar' },
-  fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur', keySrc:'Source de la clé' , minimize:'Réduire', restore:'Restaurer' },
-  de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern', keySrc:'Schlüsselquelle' , minimize:'Minimieren', restore:'Wiederherstellen' },
-  it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser', keySrc:'Origine della chiave' , minimize:'Riduci', restore:'Ripristina' },
-  pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador', keySrc:'Origem da chave' , minimize:'Minimizar', restore:'Restaurar' },
-  ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере', keySrc:'Источник ключа' , minimize:'Свернуть', restore:'Восстановить' },
-  nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser', keySrc:'Sleutelbron' , minimize:'Minimaliseren', restore:'Herstellen' },
-  pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce', keySrc:'Źródło klucza' , minimize:'Minimalizuj', restore:'Przywróć' },
-  uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері', keySrc:'Джерело ключа' , minimize:'Згорнути', restore:'Відновити' },
-  tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet', keySrc:'Anahtar kaynağı' , minimize:'Küçült', restore:'Geri yükle' },
-  ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح', keySrc:'مصدر المفتاح' , minimize:'تصغير', restore:'استعادة' },
-  hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें', keySrc:'कुंजी स्रोत' , minimize:'छोटा करें', restore:'पुनर्स्थापित' },
-  id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini', keySrc:'Sumber kunci' , minimize:'Minimalkan', restore:'Pulihkan' },
-  th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้', keySrc:'แหล่งที่มาของคีย์' , minimize:'ย่อ', restore:'คืนค่า' },
-  vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này', keySrc:'Nguồn khóa' , minimize:'Thu nhỏ', restore:'Khôi phục' },
+  en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:'Minimize', restore:'Restore', toolStepsLabel:"Max tool round trips", toolLimitContinue:"Tool step limit reached — continue for {n} more steps?" },
+  ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存', keySrc:'キーの出所' , minimize:'最小化', restore:'元に戻す', toolStepsLabel:"ツール実行の上限往復数", toolLimitContinue:"ツール実行の上限に達しました。あと{n}往復続けますか？" },
+  'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥', keySrc:'密钥来源' , minimize:'最小化', restore:'还原', toolStepsLabel:"工具调用往返上限", toolLimitContinue:"已达工具调用上限 — 再继续 {n} 步吗？" },
+  'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰', keySrc:'金鑰來源' , minimize:'最小化', restore:'還原', toolStepsLabel:"工具呼叫往返上限", toolLimitContinue:"已達工具呼叫上限 — 要再繼續 {n} 步嗎？" },
+  ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장', keySrc:'키 출처' , minimize:'최소화', restore:'복원', toolStepsLabel:"도구 호출 왕복 한도", toolLimitContinue:"도구 호출 한도에 도달했습니다 — {n}회 더 진행할까요?" },
+  es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador', keySrc:'Origen de la clave' , minimize:'Minimizar', restore:'Restaurar', toolStepsLabel:"Máx. rondas de herramientas", toolLimitContinue:"Límite de pasos de herramienta alcanzado — ¿continuar {n} pasos más?" },
+  fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur', keySrc:'Source de la clé' , minimize:'Réduire', restore:'Restaurer', toolStepsLabel:"Max. allers-retours d’outils", toolLimitContinue:"Limite d’étapes atteinte — continuer {n} étapes de plus ?" },
+  de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern', keySrc:'Schlüsselquelle' , minimize:'Minimieren', restore:'Wiederherstellen', toolStepsLabel:"Max. Tool-Rundgänge", toolLimitContinue:"Tool-Schrittlimit erreicht — {n} weitere Schritte ausführen?" },
+  it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser', keySrc:'Origine della chiave' , minimize:'Riduci', restore:'Ripristina', toolStepsLabel:"Max. round trip degli strumenti", toolLimitContinue:"Limite di passaggi raggiunto — continuare per altri {n} passaggi?" },
+  pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador', keySrc:'Origem da chave' , minimize:'Minimizar', restore:'Restaurar', toolStepsLabel:"Máx. de rodadas de ferramentas", toolLimitContinue:"Limite de etapas atingido — continuar mais {n} etapas?" },
+  ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере', keySrc:'Источник ключа' , minimize:'Свернуть', restore:'Восстановить', toolStepsLabel:"Макс. итераций инструментов", toolLimitContinue:"Достигнут лимит шагов — продолжить ещё {n} шагов?" },
+  nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser', keySrc:'Sleutelbron' , minimize:'Minimaliseren', restore:'Herstellen', toolStepsLabel:"Max. tool-rondes", toolLimitContinue:"Tool-staplimiet bereikt — nog {n} stappen doorgaan?" },
+  pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce', keySrc:'Źródło klucza' , minimize:'Minimalizuj', restore:'Przywróć', toolStepsLabel:"Maks. rund narzędzi", toolLimitContinue:"Osiągnięto limit kroków — kontynuować {n} kroków?" },
+  uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері', keySrc:'Джерело ключа' , minimize:'Згорнути', restore:'Відновити', toolStepsLabel:"Макс. ітерацій інструментів", toolLimitContinue:"Досягнуто ліміту кроків — продовжити ще {n} кроків?" },
+  tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet', keySrc:'Anahtar kaynağı' , minimize:'Küçült', restore:'Geri yükle', toolStepsLabel:"Maks. araç turu", toolLimitContinue:"Araç adım sınırına ulaşıldı — {n} adım daha devam edilsin mi?" },
+  ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح', keySrc:'مصدر المفتاح' , minimize:'تصغير', restore:'استعادة', toolStepsLabel:"الحد الأقصى لجولات الأدوات", toolLimitContinue:"تم بلوغ حد خطوات الأداة — المتابعة لـ {n} خطوات أخرى؟" },
+  hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें', keySrc:'कुंजी स्रोत' , minimize:'छोटा करें', restore:'पुनर्स्थापित', toolStepsLabel:"अधिकतम टूल राउंड", toolLimitContinue:"टूल चरण सीमा पहुँची — और {n} चरण जारी रखें?" },
+  id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini', keySrc:'Sumber kunci' , minimize:'Minimalkan', restore:'Pulihkan', toolStepsLabel:"Maks. putaran alat", toolLimitContinue:"Batas langkah alat tercapai — lanjutkan {n} langkah lagi?" },
+  th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้', keySrc:'แหล่งที่มาของคีย์' , minimize:'ย่อ', restore:'คืนค่า', toolStepsLabel:"จำนวนรอบเครื่องมือสูงสุด", toolLimitContinue:"ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว — ดำเนินการต่ออีก {n} ขั้นตอนหรือไม่?" },
+  vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này', keySrc:'Nguồn khóa' , minimize:'Thu nhỏ', restore:'Khôi phục', toolStepsLabel:"Số vòng gọi công cụ tối đa", toolLimitContinue:"Đã đạt giới hạn bước công cụ — tiếp tục thêm {n} bước nữa?" },
 };
 
 const html: string = `
@@ -742,6 +792,7 @@ const html: string = `
       <option value="gemini">Gemini</option>
       <option value="copilot">GitHub Copilot (bridge hub)</option>
       <option value="openai">OpenAI-compatible</option>
+      <option value="sakura">Sakura AI Engine (さくらAI)</option>
       <option value="anthropic">Anthropic</option>
       <option value="azure">Azure OpenAI</option>
       <option value="agent">External agent (bridge)</option>
@@ -750,14 +801,15 @@ const html: string = `
     <input id="ai-endpoint" type="text" autocomplete="off" placeholder="https://..."></div>
     <div class="pv-field" data-pv="azure"><label data-i18n="apiVer">API version</label>
     <input id="ai-apiver" type="text" autocomplete="off" placeholder="2024-10-21"></div>
-    <div class="pv-field" data-pv="gemini openai anthropic azure"><div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
+    <div class="pv-field" data-pv="gemini openai anthropic azure sakura"><div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
     <input id="ai-key" type="password" autocomplete="off" data-i18n-ph="apiKeyPh" placeholder="AIza..."></div>
     <div id="ai-key-src" class="ai-key-src"></div>
-    <div class="pv-field" data-pv="gemini openai anthropic azure copilot"><label data-i18n="model">Model</label>
+    <div class="pv-field" data-pv="gemini openai anthropic azure copilot sakura"><label data-i18n="model">Model</label>
     <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite" list="ai-model-list"><datalist id="ai-model-list"></datalist>
     <div id="ai-hub-status" class="ai-key-src" style="display:none;"></div></div>
     <div class="pv-field" data-pv="agent"><label data-i18n="agentModel">Agent note</label>
     <input id="ai-agentmodel" type="text" autocomplete="off" placeholder="(optional)"></div>
+    <div class="row"><label data-i18n="toolStepsLabel" style="flex:1;font-weight:400;">Max tool round trips</label><input id="ai-max-steps" type="number" min="1" max="20" step="1" style="width:64px;flex:none;"></div>
     <div class="row"><label style="font-weight:400;display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;"><input id="ai-remember" type="checkbox" style="width:auto;margin:0;"><span data-i18n="remember">Save key on this browser</span></label></div>
     <div class="row"><button id="ai-save" data-i18n="save">Save</button><span id="ai-save-msg" style="color:#4a4;"></span></div>
     <div class="ai-key-warn" data-i18n="keyWarn">Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.</div>
@@ -771,7 +823,7 @@ const html: string = `
 (function(){
   // --- i18n (English base; missing keys fall back to en) ---
   var GEO_I18N = {
-    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore", provider:'Provider', endpoint:'Endpoint URL', apiVer:'API version', agentModel:'Agent label (optional)' }
+    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore", provider:'Provider', endpoint:'Endpoint URL', apiVer:'API version', agentModel:'Agent label (optional)', toolStepsLabel:'Max tool round trips', toolLimitContinue:'Tool step limit reached — continue for {n} more steps?' }
   };
   var GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
   var GEO_LANG = 'en';
@@ -857,13 +909,14 @@ const html: string = `
     { name:'showFeatureAttributes', description:'Display a vector feature\\'s attributes in the Attr panel and fly to it (fly:false = panel only, wait:false = reply immediately after issuing the flight)', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'}, fly:{type:'BOOLEAN'}, wait:{type:'BOOLEAN'} }, required:['attribute','value'] } },
     { name:'getInspectorText', description:'Get the plugin inspector settings text (layers, cams, routes, basemaps, legends etc.)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'applyInspectorText', description:'Replace the plugin inspector settings text and apply it. Read the current text with getInspectorText first, then modify only the needed lines.', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
+    { name:'setToolMaxSteps', description:'Change the max tool-call round trips per request (1-20). Use when the user asks to raise or lower the tool step limit.', parameters:{ type:'OBJECT', properties:{ steps:{type:'NUMBER', description:'new limit (1-20)'} }, required:['steps'] } },
     { name:'setDepthTest', description:'Enable or disable depth test against terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'setGeojsonDrape', description:'Set how GeoJSON layers drape: 3dtiles | terrain | both', parameters:{ type:'OBJECT', properties:{ classification:{type:'STRING'} }, required:['classification'] } },
     { name:'setBackground', description:'Set the globe/scene background color as #rgb, #rrggbb or #rrggbbaa', parameters:{ type:'OBJECT', properties:{ color:{type:'STRING'} }, required:['color'] } },
     { name:'aiChatSend', description:'Send a message to the AI chat panel itself and return its reply (drives the chat)', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
     { name:'aiChatStatus', description:'Get the AI chat panel state (provider/model/key/busy)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'aiChatSet', description:'Configure the AI chat provider/endpoint/model/apiKey (persist:false to keep it session-only)', parameters:{ type:'OBJECT', properties:{ provider:{type:'STRING'}, endpoint:{type:'STRING'}, model:{type:'STRING'}, apiKey:{type:'STRING'}, apiVer:{type:'STRING'}, persist:{type:'BOOLEAN'} } } },
-    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
+    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText, setToolMaxSteps. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
 
   var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','setFlySettings','listFlyPaths','vectorSearch','searchPlaces','buildShareUrl','addFlatGeobufLayer','addParquetLayer','addDuckDbLayer','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground'];
@@ -895,7 +948,15 @@ const html: string = `
   var apiverInput = document.getElementById('ai-apiver');
   var agentModelInput = document.getElementById('ai-agentmodel');
   var _provider = 'gemini';
+  var _suppressCfgHint = false; // set while aiChatSet applies fields programmatically
+  // Per-provider label for the API key field (keys/models are stored per
+  // provider — a Gemini key is never sent to another provider).
+  var PROVIDER_KEY_LABEL = {
+    openai: 'API key', sakura: 'Sakura AI API key', anthropic: 'Anthropic API key',
+    azure: 'Azure OpenAI API key', copilot: 'API key', agent: 'API key'
+  };
   function applyProviderFields() {
+    var prev = _provider;
     var pv = providerSel ? providerSel.value : 'gemini';
     _provider = pv;
     document.querySelectorAll('.pv-field').forEach(function(el) {
@@ -905,15 +966,64 @@ const html: string = `
       if (endpointInput && !endpointInput.value.trim()) endpointInput.value = 'http://127.0.0.1:8511/agent';
       if (modelInput && /^gemini-/.test(modelInput.value)) modelInput.value = '';
     }
+    if (pv === 'sakura') {
+      // Fixed endpoint provider — clear models belonging to other providers so
+      // the gpt-oss-120b default applies.
+      if (modelInput && (/^(gemini-|claude-|gpt-4|o4|auto$)/.test(modelInput.value))) modelInput.value = '';
+    }
+    if (modelInput) modelInput.placeholder = (pv === 'sakura') ? 'gpt-oss-120b' : 'gemini-3.1-flash-lite';
     try { updateKeyStatus(); } catch (e) {}
-    try { refreshProviderModels(); } catch (e) {}
+    // On a real provider switch the key field still holds the previous
+    // provider's key — seed defaults only; the aiGetConfig echo then
+    // re-enters applyProviderFields and fetches /models with the right key.
+    try { refreshProviderModels(pv !== prev && !_suppressCfgHint); } catch (e) {}
+    // Provider actually changed — pull that provider's own saved key/model
+    // (storage is per-provider). The echoed aiConfig re-applies fields; prev
+    // check prevents a request loop.
+    if (pv !== prev && !_suppressCfgHint) postToParent({ action: 'aiGetConfig', provider: pv });
   }
   if (providerSel) providerSel.addEventListener('change', applyProviderFields);
   if (endpointInput) endpointInput.addEventListener('change', function() { try { refreshProviderModels(); } catch (e) {} });
   if (keyInput) keyInput.addEventListener('change', function() { try { refreshProviderModels(); } catch (e) {} });
 
+  var stepsInput = document.getElementById('ai-max-steps');
+  // Max tool-call round trips per request (infinite-loop safety valve).
+  // Persisted via extension clientStorage 'aiToolMaxSteps' — the sandboxed
+  // iframe cannot use localStorage. Same contract as KASUGAI Canvas:
+  // default 10, clamped 1-20, also changeable via the setToolMaxSteps tool.
+  var _maxSteps = 10;
+  function clampToolSteps(value) {
+    var n = Math.round(Number(value));
+    return isFinite(n) ? Math.min(Math.max(n, 1), 20) : 10;
+  }
+  function getChatMaxToolSteps() { return _maxSteps; }
+  function setChatMaxToolSteps(value) {
+    _maxSteps = clampToolSteps(value);
+    try { if (stepsInput) stepsInput.value = String(_maxSteps); } catch (e) {}
+    postToParent({ action: 'aiSetToolMaxSteps', steps: _maxSteps });
+    return _maxSteps;
+  }
+  if (stepsInput) stepsInput.addEventListener('change', function() { setChatMaxToolSteps(stepsInput.value); });
+  // Limit reached mid-loop: ask to continue for another increment (declines
+  // silently to the step-limit message when modals are sandbox-blocked).
+  function askContinue() {
+    var inc = getChatMaxToolSteps();
+    try {
+      if (window.confirm(String(t('toolLimitContinue')).replace('{n}', String(inc)))) return inc;
+    } catch (e) {}
+    return 0;
+  }
   var _apiKey = '';
   var _model = 'gemini-3.1-flash-lite';
+  // Effective values = what the settings fields currently show, falling back
+  // to the last configured value. Typed-but-unsaved entries must take effect
+  // immediately (the provider fields do not post back on every keystroke).
+  function effModel() {
+    return (modelInput && modelInput.value || '').trim() || _model;
+  }
+  function effKey() {
+    return (keyInput && keyInput.value || '').trim() || _apiKey;
+  }
   var _keySource = 'none';
   var _history = [];
   var _reqSeq = 0;
@@ -968,11 +1078,13 @@ const html: string = `
   function updateKeyStatus() {
     try {
       var noKeyNeeded = (_provider === 'copilot' || _provider === 'agent');
-      var hasAny = noKeyNeeded || !!(_apiKey || _serverHasKey);
+      var keyLabel = document.querySelector('[data-i18n="apiKey"]');
+      if (keyLabel) keyLabel.textContent = PROVIDER_KEY_LABEL[_provider] || t('apiKey');
+      var hasAny = noKeyNeeded || !!(effKey() || _serverHasKey);
       keyStatus.textContent = noKeyNeeded ? 'no key (bridge)' : (hasAny ? t('keySet') : t('noKeySet'));
       keyStatus.className = 'ai-key-status' + (hasAny ? ' ok' : '');
       // Expose where the active key comes from so users can judge exposure.
-      var src = _apiKey ? _keySource : (_serverHasKey ? 'server proxy' : '');
+      var src = _apiKey ? _keySource : (effKey() ? 'session' : (_serverHasKey ? 'server proxy' : ''));
       if (keySrcEl) keySrcEl.textContent = (!noKeyNeeded && src) ? (t('keySrc') + ': ' + src) : '';
       var warnEl = document.querySelector('.ai-key-warn');
       if (warnEl) warnEl.style.display = (noKeyNeeded || (_serverHasKey && !_apiKey) || _provider !== 'gemini') ? 'none' : '';
@@ -1197,6 +1309,7 @@ const html: string = `
       api[n] = function(args) { return callHostTool(n, args || {}); };
     });
     api.searchLocation = function(a) { return toolSearchLocation(typeof a === 'string' ? { query: a } : a); };
+    api.setToolMaxSteps = function(a) { return Promise.resolve({ ok: true, steps: setChatMaxToolSteps(a && a.steps) }); };
     api.showReport = function(a) { return toolShowReport(a || {}); };
     api.flyToUrl = function(a) { return toolFlyToUrl(typeof a === 'string' ? { url: a } : a); };
     api.flyToCurrentLocation = function() { return toolFlyToCurrentLocation(); };
@@ -1232,6 +1345,7 @@ const html: string = `
 
   function executeTool(name, args) {
     if (name === 'searchLocation') return toolSearchLocation(args);
+    if (name === 'setToolMaxSteps') return Promise.resolve({ ok: true, steps: setChatMaxToolSteps(args && args.steps) });
     if (name === 'showReport') return toolShowReport(args);
     if (name === 'flyToUrl') return toolFlyToUrl(args);
     if (name === 'flyToCurrentLocation') return toolFlyToCurrentLocation();
@@ -1270,11 +1384,15 @@ const html: string = `
   }
 
   function postGemini(bodyObj) {
+    // A leftover non-gemini model name (e.g. 'auto' saved while another
+    // provider was active) would 404 against Google — force the default.
+    var gm = effModel();
+    if (!/^gemini-/.test(gm)) gm = 'gemini-3.1-flash-lite';
     if (_serverHasKey) {
       return fetch(PROXY_BASE + '/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: _model, request: bodyObj })
+        body: JSON.stringify({ model: gm, request: bodyObj })
       }).then(function(res) {
         return res.json().then(function(data) {
           if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
@@ -1287,7 +1405,7 @@ const html: string = `
         throw e;
       });
     }
-    var endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(_model) + ':generateContent?key=' + encodeURIComponent(_apiKey);
+    var endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(gm) + ':generateContent?key=' + encodeURIComponent(effKey());
     return fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1315,7 +1433,15 @@ const html: string = `
     return out;
   }
   function pxToolDecls(kind) {
-    return (TOOL_DECLS || []).map(function(d) {
+    // TOOL_DECLS is the Gemini wrapper [{functionDeclarations:[...]}] — flatten
+    // to bare declarations (same normalization the bridge-hub does), else every
+    // entry loses name/description and providers see zero usable tools.
+    var flat = [];
+    (TOOL_DECLS || []).forEach(function(d) {
+      if (d && Array.isArray(d.functionDeclarations)) flat = flat.concat(d.functionDeclarations);
+      else if (d) flat.push(d);
+    });
+    return flat.map(function(d) {
       if (kind === 'anthropic') return { name: d.name, description: d.description, input_schema: pxSchema(d.parameters || { type: 'object' }) };
       return { type: 'function', function: { name: d.name, description: d.description, parameters: pxSchema(d.parameters || { type: 'object' }) } };
     });
@@ -1355,18 +1481,33 @@ const html: string = `
   }
   function callOpenAICompat() {
     var isAzure = _provider === 'azure';
-    var endpoint = ((endpointInput && endpointInput.value) || '').trim() || (isAzure ? '' : 'https://api.openai.com');
+    // Sakura AI Engine is OpenAI-compatible with a fixed base URL — its
+    // endpoint field is hidden, so any value still in it belongs to another
+    // provider and must not override the fixed URL (same contract as KASUGAI
+    // Canvas).
+    var endpoint = (_provider === 'sakura')
+      ? 'https://api.ai.sakura.ad.jp'
+      : (((endpointInput && endpointInput.value) || '').trim() || (isAzure ? '' : 'https://api.openai.com'));
     if (!endpoint) return Promise.reject(new Error('endpoint required'));
+    var reqModel = effModel();
+    // A stored model name from another provider is invalid for sakura —
+    // fall back to the gpt-oss-120b default (same contract as KASUGAI Canvas).
+    if (_provider === 'sakura' && (!reqModel || /^(gemini-|claude-|gpt-4|o4|auto$)/.test(reqModel))) reqModel = 'gpt-oss-120b';
     var url = isAzure
-      ? endpoint.replace(/[/]+$/, '') + '/openai/deployments/' + encodeURIComponent(_model) + '/chat/completions?api-version=' + encodeURIComponent((apiverInput && apiverInput.value || '').trim() || '2024-10-21')
+      ? endpoint.replace(/[/]+$/, '') + '/openai/deployments/' + encodeURIComponent(reqModel) + '/chat/completions?api-version=' + encodeURIComponent((apiverInput && apiverInput.value || '').trim() || '2024-10-21')
       : endpoint.replace(/[/]+$/, '') + '/v1/chat/completions';
     var headers = { 'Content-Type': 'application/json' };
-    if (isAzure) headers['api-key'] = _apiKey; else headers['Authorization'] = 'Bearer ' + _apiKey;
+    if (isAzure) headers['api-key'] = effKey(); else headers['Authorization'] = 'Bearer ' + effKey();
     var step = 0;
+    var maxSteps = getChatMaxToolSteps();
     function next() {
-      if (++step > 8) return { done: true, text: t('stepLimit') };
+      if (++step > maxSteps) {
+        var inc = askContinue();
+        if (!inc) return { done: true, text: t('stepLimit') };
+        maxSteps += inc;
+      }
       return fetch(url, { method: 'POST', headers: headers, body: JSON.stringify({
-        model: _model, messages: pxMsgsOpenAi(), tools: pxToolDecls('openai'), tool_choice: 'auto'
+        model: reqModel, messages: pxMsgsOpenAi(), tools: pxToolDecls('openai'), tool_choice: 'auto'
       }) }).then(function(res) {
         return res.json().then(function(data) {
           if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
@@ -1387,13 +1528,18 @@ const html: string = `
     var endpoint = ((endpointInput && endpointInput.value) || '').trim() || 'https://api.anthropic.com';
     var url = endpoint.replace(/[/]+$/, '') + '/v1/messages';
     var step = 0;
+    var maxSteps = getChatMaxToolSteps();
     function next() {
-      if (++step > 8) return { done: true, text: t('stepLimit') };
+      if (++step > maxSteps) {
+        var inc = askContinue();
+        if (!inc) return { done: true, text: t('stepLimit') };
+        maxSteps += inc;
+      }
       return fetch(url, { method: 'POST', headers: {
-        'Content-Type': 'application/json', 'x-api-key': _apiKey,
+        'Content-Type': 'application/json', 'x-api-key': effKey(),
         'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
       }, body: JSON.stringify({
-        model: _model, max_tokens: 2048, system: SYSTEM_INSTRUCTION,
+        model: effModel(), max_tokens: 2048, system: SYSTEM_INSTRUCTION,
         messages: pxMsgsAnthropic(), tools: pxToolDecls('anthropic')
       }) }).then(function(res) {
         return res.json().then(function(data) {
@@ -1433,57 +1579,137 @@ const html: string = `
   }
   function callAgent(text) {
     var prov = (_provider === 'copilot') ? 'copilot' : 'agent';
-    return detectHub().then(function(url) {
-      return fetch(url + '/agent', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: prov,
-        model: _model || undefined,
-        message: text,
-        project: 'default',
-        camera: null, layers: [], basemaps: [],
-        history: _pxHist.slice(-20).map(function(m) { return { role: m.role, text: m.text || '' }; }),
-        // bridge-hub expects a flat array of declarations (same shape KASUGAI
-        // Canvas sends); the Gemini [{functionDeclarations:[...]}] wrapper
-        // normalizes to zero tools there.
-        tools: (TOOL_DECLS && TOOL_DECLS[0] && TOOL_DECLS[0].functionDeclarations) || []
-      })
-    }).then(function(res) {
-      return res.json().then(function(data) {
-        if (!res.ok) throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
-        var actions = (data && data.actions) || [];
-        var chain = Promise.resolve();
+    return detectHub().then(function(base) {
+      // Camera/layers/basemaps are re-read every round — the hub's local-state
+      // tools (listLayers/getCamera/listBasemaps) answer from these values and
+      // previous actions may have changed them.
+      function makeBody(extra) {
+        return Promise.all([
+          callHostTool('getCamera', {}),
+          callHostTool('listLayers', {}),
+          callHostTool('listBasemaps', {})
+        ]).then(function(st) {
+          var body = {
+            provider: prov,
+            model: effModel() || undefined,
+            message: text,
+            project: 'default',
+            camera: (st[0] && !st[0].error) ? st[0] : null,
+            layers: (st[1] && !st[1].error && st[1].layers) ? st[1].layers : [],
+            basemaps: (st[2] && !st[2].error && Array.isArray(st[2])) ? st[2] : [],
+            history: _pxHist.slice(-20).map(function(m) { return { role: m.role, text: m.text || '' }; }),
+            // bridge-hub expects a flat array of declarations (same shape KASUGAI
+            // Canvas sends); the Gemini [{functionDeclarations:[...]}] wrapper
+            // normalizes to zero tools there.
+            tools: (TOOL_DECLS && TOOL_DECLS[0] && TOOL_DECLS[0].functionDeclarations) || []
+          };
+          if (extra) for (var k in extra) body[k] = extra[k];
+          return JSON.stringify(body);
+        });
+      }
+      function postOnce(payload) {
+        var ctl = new AbortController();
+        var timer = setTimeout(function() { ctl.abort(); }, 120000);
+        return fetch(base + '/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, signal: ctl.signal })
+          .then(function(res) {
+            return res.json().then(function(data) {
+              if (!res.ok) throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
+              return data;
+            });
+          }).then(function(d) { clearTimeout(timer); return d; }, function(e) { clearTimeout(timer); throw e; });
+      }
+      // Queued-action round trip (same contract as KASUGAI callExternalAgent):
+      // the hub returns actions, the browser executes them, results go back in
+      // the next POST's toolResults and the agent answers/continues — repeat
+      // until no actions arrive (up to the configured max tool steps).
+      var reply = '';
+      var round = 0;
+      var maxRounds = getChatMaxToolSteps();
+      function next(data) {
+        if (data && typeof data.reply === 'string' && data.reply) reply = data.reply;
+        else if (data && typeof data.text === 'string' && data.text) reply = data.text;
+        var actions = ((data && Array.isArray(data.actions)) ? data.actions : []).filter(function(a) { return a && typeof a.name === 'string'; });
+        // A returned report payload is shown like the showReport tool.
+        var repPromise = Promise.resolve();
+        if (data && data.report && typeof data.report === 'object') {
+          var rep = data.report;
+          var repArgs = { title: rep.title || '' };
+          if (String(rep.format || '').toLowerCase() === 'html') repArgs.html = rep.content;
+          else repArgs.markdown = rep.content;
+          repPromise = executeTool('showReport', repArgs).then(function() {});
+        }
+        if (!actions.length) {
+          return repPromise.then(function() { return { done: true, text: reply || t('noResponse') }; });
+        }
+        if (++round > maxRounds) {
+          var inc = askContinue();
+          if (!inc) return repPromise.then(function() { return { done: true, text: reply || t('stepLimit') }; });
+          maxRounds += inc;
+        }
+        var results = [];
+        var chain = repPromise;
         actions.forEach(function(a) {
           chain = chain.then(function() {
             addMsg('tool', t('tool') + ': ' + a.name + ' ' + JSON.stringify(a.args || {}).slice(0, 120));
-            return executeTool(a.name, a.args || {});
+            return executeTool(a.name, a.args || {}).then(function(result) {
+              results.push({ name: a.name, args: a.args || {}, result: result });
+            });
           });
         });
         return chain.then(function() {
-          return { done: true, text: (data && (data.reply || data.text)) || (actions.length ? '' : t('noResponse')) };
+          return makeBody({ toolResults: results }).then(postOnce).then(next);
         });
+      }
+      return makeBody().then(postOnce).then(next).then(function(res) {
+        _pxHist.push({ role: 'assistant', text: res.text });
+        return res;
       });
-    });
     });
   }
   // Populate the model datalist from the provider's /models endpoint
   // (CANVAS-style: the list reflects what the credential/endpoint advertises).
-  function refreshProviderModels() {
+  // STATIC_MODELS seeds the datalist so choices exist before any fetch —
+  // same idea as KASUGAI Canvas' built-in catalog per provider.
+  var STATIC_MODELS = {
+    gemini: ['gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-pro-preview'],
+    openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1', 'gpt-4.1-nano', 'o4-mini'],
+    anthropic: ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5'],
+    sakura: ['gpt-oss-120b', 'gpt-oss-20b']
+  };
+  var _modelFetchSeq = 0;
+  function refreshProviderModels(defaultsOnly) {
     var dl = document.getElementById('ai-model-list');
     var st = document.getElementById('ai-hub-status');
     if (!dl || !st) return;
     var pv = _provider;
+    // Stale-fetch guard: a /models request issued under a previous provider
+    // may resolve after the switch and overwrite this provider's options.
+    var seq = ++_modelFetchSeq;
     function fill(models, note) {
+      if (seq !== _modelFetchSeq) return;
       dl.innerHTML = '';
+      var seen = {};
       (models || []).forEach(function(m) {
+        var v = (m && (m.id || m.name)) || m;
+        if (!v || seen[v]) return;
+        seen[v] = 1;
         var o = document.createElement('option');
-        o.value = m.id || m.name || m; dl.appendChild(o);
+        o.value = v; dl.appendChild(o);
       });
-      st.style.display = '';
-      st.textContent = note;
+      st.style.display = note ? '' : 'none';
+      st.textContent = note || '';
+    }
+    if (defaultsOnly) {
+      // Provider just switched — the key field still shows the previous
+      // provider's key until aiGetConfig echoes the stored one, so fetching
+      // now would send a foreign key (spurious 401). Seed static candidates;
+      // the config-applied refresh does the real fetch.
+      fill((STATIC_MODELS[pv] || []).slice(), '');
+      return;
     }
     if (pv === 'copilot') {
       st.textContent = 'hub: fetching models...';
+      st.style.display = '';
       detectHub().then(function(base) {
         return fetch(base + '/models?provider=copilot').then(function(r) { return r.json(); });
       }).then(function(d) {
@@ -1492,28 +1718,87 @@ const html: string = `
       }).catch(function() { st.style.display = ''; st.textContent = 'hub: unreachable — install/start bridge-hub.exe (port 8511)'; });
       return;
     }
-    if (pv === 'openai' || pv === 'anthropic') {
-      if (!_apiKey) { fill([], 'models: enter API key first'); return; }
-      var base = (((endpointInput && endpointInput.value) || '').trim()
-        || (pv === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com')).replace(/[/]+$/, '');
+    if (pv === 'gemini') {
+      var seeds = STATIC_MODELS.gemini.slice();
+      fill(seeds, '');
+      var gk = effKey();
+      if (!gk) return;
+      // List generateContent-capable models advertised by the key (Google AI).
+      fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=' + encodeURIComponent(gk))
+        .then(function(r) { return r.json(); }).then(function(d) {
+          var ms = ((d && d.models) || []).filter(function(m) {
+            var gm = m && m.supportedGenerationMethods;
+            return String(m && m.name || '').indexOf('models/gemini-') === 0 && (!gm || gm.indexOf('generateContent') >= 0);
+          }).map(function(m) { return String(m.name).split('/').pop(); });
+          fill(ms.length ? ms.concat(seeds.filter(function(s) { return ms.indexOf(s) < 0; })) : seeds, ms.length ? ('models: ' + ms.length + ' listed') : '');
+        }).catch(function() { /* keep static seeds */ });
+      return;
+    }
+    if (pv === 'openai' || pv === 'anthropic' || pv === 'sakura') {
+      var seeds2 = (STATIC_MODELS[pv] || []).slice();
+      var key = effKey();
+      if (!key) { fill(seeds2, 'models: defaults — enter API key to refresh'); return; }
+      // sakura has a fixed endpoint — the hidden endpoint field may still hold
+      // another provider's URL and must not be used here.
+      var base = (pv === 'sakura' ? 'https://api.ai.sakura.ad.jp'
+        : (((endpointInput && endpointInput.value) || '').trim()
+          || (pv === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com'))).replace(/[/]+$/, '');
       var headers = pv === 'anthropic'
-        ? { 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
-        : { 'Authorization': 'Bearer ' + _apiKey };
+        ? { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        : { 'Authorization': 'Bearer ' + key };
       st.textContent = 'models: fetching...';
+      st.style.display = '';
       fetch(base + '/v1/models', { headers: headers }).then(function(r) {
         return r.json().then(function(d) {
           if (!r.ok) throw new Error((d && d.error && d.error.message) || ('HTTP ' + r.status));
-          var ms = (d && d.data) || [];
-          fill(ms, ms.length ? ('models: ' + ms.length) : 'models: none listed');
+          var ms = ((d && d.data) || []).map(function(m) { return m && m.id; }).filter(Boolean);
+          fill(ms.length ? ms.concat(seeds2.filter(function(s) { return ms.indexOf(s) < 0; })) : seeds2,
+            ms.length ? ('models: ' + ms.length) : 'models: none listed — defaults shown');
         });
-      }).catch(function(e) { st.style.display = ''; st.textContent = 'models: ' + String(e && e.message || e); });
+      }).catch(function(e) {
+        fill(seeds2, 'models: fetch failed (' + String(e && e.message || e) + ') — defaults shown');
+      });
+      return;
+    }
+    if (pv === 'azure') {
+      // Azure has no /v1/models — the deployment list is the model catalog
+      // (GET {resource}/openai/deployments?api-version=..., api-key header).
+      // The "model" field for Azure is the deployment name, not a model id.
+      var azBase = ((endpointInput && endpointInput.value) || '').trim().replace(/[/]+$/, '');
+      var azKey = effKey();
+      var azVer = ((apiverInput && apiverInput.value) || '').trim() || '2024-10-21';
+      if (!azBase || !azKey) { fill([], 'models: enter endpoint + key to list deployments'); return; }
+      st.textContent = 'deployments: fetching...';
+      st.style.display = '';
+      fetch(azBase + '/openai/deployments?api-version=' + encodeURIComponent(azVer), { headers: { 'api-key': azKey } })
+        .then(function(r) {
+          return r.json().then(function(d) {
+            if (!r.ok) throw new Error((d && d.error && d.error.message) || ('HTTP ' + r.status));
+            var ms = ((d && d.data) || []).map(function(m) { return m && (m.id || m.name); }).filter(Boolean);
+            fill(ms, ms.length ? ('deployments: ' + ms.length) : 'deployments: none');
+          });
+        }).catch(function(e) {
+          fill([], 'deployments: fetch failed (' + String(e && e.message || e) + ')');
+        });
+      return;
+    }
+    if (pv === 'agent') {
+      // Generic /agent-compatible endpoint: try GET {base}/models (same
+      // convention as the bridge hub — endpoint's /agent suffix is stripped).
+      detectHub().then(function(base) {
+        return fetch(base + '/models', { cache: 'no-store' }).then(function(r) { return r.json(); });
+      }).then(function(d) {
+        var raw = (d && (d.models || d.data)) || [];
+        var ms = raw.map(function(m) { return (m && (m.id || m.name)) || m; }).filter(Boolean);
+        fill(ms, ms.length ? ('models: ' + ms.length) : 'models: none listed');
+      }).catch(function() { fill([], 'models: unreachable'); });
       return;
     }
     st.style.display = 'none';
   }
 
   function callGemini() {
-    var maxSteps = 8;
+    var maxSteps = getChatMaxToolSteps();
     var step = 0;
     function next() {
       trimHistory();
@@ -1530,7 +1815,9 @@ const html: string = `
           return { done: true, text: text };
         }
         if (++step > maxSteps) {
-          return { done: true, text: t('stepLimit') };
+          var inc = askContinue();
+          if (!inc) return { done: true, text: t('stepLimit') };
+          maxSteps += inc;
         }
         var responseParts = [];
         var chain = Promise.resolve();
@@ -1561,13 +1848,14 @@ const html: string = `
     sendBtn.disabled = true;
     var thinking = addMsg('sys', '…');
     var p;
-    if (_provider === 'openai' || _provider === 'azure') {
+    if (_provider === 'openai' || _provider === 'azure' || _provider === 'sakura') {
       _pxHist.push({ role: 'user', text: text });
       p = callOpenAICompat();
     } else if (_provider === 'anthropic') {
       _pxHist.push({ role: 'user', text: text });
       p = callAnthropic();
     } else if (_provider === 'agent' || _provider === 'copilot') {
+      _pxHist.push({ role: 'user', text: text });
       p = callAgent(text);
     } else {
       _history.push({ role: 'user', parts: [{ text: text }] });
@@ -1596,7 +1884,7 @@ const html: string = `
     inputEl.value = '';
     addMsg('user', text);
     var needKey = (_provider !== 'copilot' && _provider !== 'agent');
-    if (needKey && !_apiKey && !_serverHasKey) {
+    if (needKey && !effKey() && !_serverHasKey) {
       ensureServerKey().then(function() {
         if (_serverHasKey || _apiKey) submit(text);
         else addMsg('sys', t('noKey'));
@@ -1643,9 +1931,9 @@ const html: string = `
   document.getElementById('ai-save').addEventListener('click', function(ev) {
     ev.preventDefault();
     var k = (keyInput.value || '').trim();
-    postToParent({ action: 'aiSetApiKey', key: k, persist: !!(rememberEl && rememberEl.checked) });
+    postToParent({ action: 'aiSetApiKey', key: k, persist: !!(rememberEl && rememberEl.checked), provider: providerSel ? providerSel.value : 'gemini' });
     var m = (modelInput.value || '').trim();
-    if (m && m !== _model) postToParent({ action: 'aiSetModel', model: m });
+    if (m && m !== _model) postToParent({ action: 'aiSetModel', model: m, provider: providerSel ? providerSel.value : 'gemini' });
     postToParent({ action: 'aiSetProvider', persist: !!(rememberEl && rememberEl.checked), provider: {
       provider: providerSel ? providerSel.value : 'gemini',
       endpoint: (endpointInput && endpointInput.value || '').trim(),
@@ -1668,18 +1956,25 @@ const html: string = `
         var cmd = String(msg.cmd || ''), rid = msg.reqId, aa = msg.args || {};
         if (cmd === 'aiChatStatus') {
           postToParent({ action: 'aiChatResult', reqId: rid, result: {
-            provider: _provider, model: _model,
+            provider: _provider, model: effModel(),
             hasKey: !!(_apiKey || _serverHasKey), busy: !!_busy,
+            maxSteps: _maxSteps,
             endpoint: endpointInput ? endpointInput.value : ''
           } });
         } else if (cmd === 'aiChatSet') {
           var persist = aa.persist === false ? false : true;
-          if (providerSel && typeof aa.provider === 'string' && aa.provider) { providerSel.value = aa.provider; applyProviderFields(); }
+          if (providerSel && typeof aa.provider === 'string' && aa.provider) {
+            // Programmatic set: don't pull the stored config — the cmd's own
+            // values (model/endpoint/apiKey) must win.
+            _suppressCfgHint = true;
+            try { providerSel.value = aa.provider; applyProviderFields(); } finally { _suppressCfgHint = false; }
+          }
           if (endpointInput && aa.endpoint !== undefined) { endpointInput.value = aa.endpoint; _hubDetected = null; }
           if (modelInput && aa.model !== undefined) modelInput.value = aa.model;
           if (apiverInput && aa.apiVer !== undefined) apiverInput.value = aa.apiVer;
           if (agentModelInput && aa.agentModel !== undefined) agentModelInput.value = aa.agentModel;
-          if (aa.apiKey !== undefined) postToParent({ action: 'aiSetApiKey', key: String(aa.apiKey), persist: persist });
+          if (aa.maxSteps !== undefined) setChatMaxToolSteps(aa.maxSteps);
+          if (aa.apiKey !== undefined) postToParent({ action: 'aiSetApiKey', key: String(aa.apiKey), persist: persist, provider: providerSel ? providerSel.value : 'gemini' });
           postToParent({ action: 'aiSetProvider', persist: persist, provider: {
             provider: providerSel ? providerSel.value : 'gemini',
             endpoint: (endpointInput && endpointInput.value || '').trim(),
@@ -1696,7 +1991,12 @@ const html: string = `
       } else if (msg.action === 'aiConfig') {
         _apiKey = (typeof msg.apiKey === 'string') ? msg.apiKey : '';
         _keySource = msg.keySource || 'none';
+        if (_keySource !== 'inspector') keyInput.value = _apiKey;
         if (typeof msg.model === 'string' && msg.model) _model = msg.model;
+        if (msg.toolMaxSteps !== undefined) {
+          _maxSteps = clampToolSteps(msg.toolMaxSteps);
+          try { if (stepsInput) stepsInput.value = String(_maxSteps); } catch (e) {}
+        }
         window._yahooAppId = (typeof msg.yahooAppId === 'string') ? msg.yahooAppId : '';
         window._googleMapsApiKey = (typeof msg.googleMapsApiKey === 'string') ? msg.googleMapsApiKey : '';
         if (msg.provider && typeof msg.provider === 'object') {
@@ -1705,7 +2005,10 @@ const html: string = `
           if (endpointInput && typeof pv.endpoint === 'string') endpointInput.value = pv.endpoint;
           if (apiverInput && typeof pv.apiVer === 'string') apiverInput.value = pv.apiVer;
           if (agentModelInput && typeof pv.agentModel === 'string') agentModelInput.value = pv.agentModel;
-          applyProviderFields();
+          // Config-applied provider changes must not re-request config —
+          // only real user 'change' events may post the provider hint.
+          _suppressCfgHint = true;
+          try { applyProviderFields(); } finally { _suppressCfgHint = false; }
         }
         // inspector "aiHub:" line pre-fills the Copilot/agent endpoint when unset
         if (typeof msg.aiHub === 'string' && msg.aiHub && endpointInput && !endpointInput.value.trim()) {
@@ -1717,9 +2020,9 @@ const html: string = `
           applyI18n(); updateKeyStatus();
         }
         if (rememberEl) rememberEl.checked = (_keySource === 'storage');
-        if (_keySource !== 'inspector') keyInput.value = _apiKey;
         modelInput.value = _model;
         if (_provider === 'copilot' && /^gemini-/.test(modelInput.value)) modelInput.value = '';
+        if (_provider === 'sakura' && /^(gemini-|claude-|gpt-4|o4|auto$)/.test(modelInput.value)) modelInput.value = '';
         updateKeyStatus();
         _configReceived = true;
         autoMinimize();

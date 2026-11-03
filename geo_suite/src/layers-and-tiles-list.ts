@@ -87,10 +87,15 @@ let _inspectorYahooAppId = null; // optional yahooAppId read from inspector text
 let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector text (forwarded to ai-chat widget)
 let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
 let _inspectorAiHub = null; // optional aiHub: CANVAS bridge-hub endpoint (forwarded to ai-chat widget)
+let _inspectorVectorHub = null; // optional vectorHub: off | http://host:port — /vector externalization endpoint
 let _inspectorGoogleMapsApiKey = null; // optional googleMapsApiKey read from inspector text (Google Places search / Street View pano verification)
 let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
+let _vectorIndexDirty = true;   // vector layer set changed since the last index build (starts dirty: nothing built yet)
+let _vectorIndexPosted = null;  // last vectorFeatureIndex payload posted to the UI — replayed for unchanged-layer requests
+let _vectorIndexReqGen = 0;     // debounce generation for getVectorFeatureIndex bursts (every iframe recreation asks once)
+function markVectorIndexDirty() { _vectorIndexDirty = true; }
 
 // --- Fly mode (ported from kasugai_canvas) ---
 // Inspector syntax: fly_geojson: Name | URL | speed=30 | height=0 | pitch=-10 | loop=true | view=camera|center
@@ -705,6 +710,10 @@ let _pluginAddedGeojsonLayerIds = []; // track GeoJSON layer ids for runtime cla
 // Declared early: getUI() reads this during the first render.
 const _failedLayerEntries = {};
 let _failSeq = 0;
+// In-flight vector decodes: rendered as greyed ⏳ rows so the layer list is
+// complete at once; each resolves to a real layer or a tombstone when the
+// (host-iframe) decode finishes.
+const _loadingLayerEntries = {};
 
 // Ensure globe and scene background are white before any tiles are applied
 try {
@@ -990,6 +999,23 @@ function getUI() {
       </div>
       <div class="actions">
         <button class="btn-icon dismiss-failed-btn" data-fail-id="${fid}" aria-label="Close" data-i18n-aria="closeAria">×</button>
+      </div>
+    </li>`;
+  }).join('');
+
+  // In-flight vector decodes (host iframe): greyed ⏳ rows so the list is
+  // complete at once — replaced by the real layer or a tombstone on arrival.
+  const loadingLayerItems = Object.keys(_loadingLayerEntries).map(lid => {
+    const l = _loadingLayerEntries[lid];
+    const title = escOpt(l.title || 'layer');
+    return `
+    <li class="layer-item layer-failed" title="${escOpt((l.title || '') + ' — loading')}">
+      <div class="layer-item-left">
+        <input class="layer-checkbox" type="checkbox" disabled />
+        <span class="layer-name">⏳ ${title}</span>
+        <span class="layer-fail-reason" data-i18n="loading">Loading...</span>
+      </div>
+      <div class="actions">
       </div>
     </li>`;
   }).join('');
@@ -1709,7 +1735,7 @@ function getUI() {
     </div>
 
     <ul class="layers-list">
-      ${combinedLayerItems}${failedLayerItems}
+      ${combinedLayerItems}${loadingLayerItems}${failedLayerItems}
     </ul>
   </div>
 
@@ -2500,7 +2526,10 @@ function compileRenderer(rendererEl, warnings) {
         ...ctx,
       };
     }
-    case "RuleBased": {
+    // QGIS writes the type as "RuleRenderer"; "RuleBased" is kept for
+    // hand-authored/renamed files that already use it.
+    case "RuleBased":
+    case "RuleRenderer": {
       const rulesEl = [...rendererEl.children].find(c => c.tagName === "rules");
       const rootRules = [];
       const parseRule = (ruleEl) => {
@@ -3673,9 +3702,27 @@ const _qmlGisRgba = s => (s && s.split(',').length >= 3)
 function qmlRendererConds(rendererEl, props0, warnings){
   const type = rendererEl.getAttribute('type') || 'singleSymbol';
   let attr = rendererEl.getAttribute('attr');
-  if (attr && (!/^\\w+$/.test(attr) || !(attr in (props0||{})))) {
-    warnings.push(\`renderer attr '\${attr}' is an expression or missing field -> fallback\`);
-    attr = null;
+  if (attr){
+    // "field"-quoted attrs (QGIS writes attr='"field"' for quoted refs):
+    // recover the bare name and match the property case-insensitively.
+    const bare = String(attr).replace(/^"+|"+$/g, '');
+    const keys = Object.keys(props0 || {});
+    if (bare in (props0||{})) attr = bare;
+    else {
+      const ci = keys.find(k => k.toLowerCase() === bare.toLowerCase());
+      if (ci) attr = ci;
+      else if (/^\\w+$/.test(bare)) {
+        // Declared but absent from the data: keep the declared name so
+        // \${attr} evaluates to null and the ELSE symbol applies — same as
+        // QGIS treating the field as NULL. Swapping in an unrelated first
+        // property would silently mis-classify every feature.
+        warnings.push(\`renderer attr '\${attr}' missing in feature properties -> ELSE rules apply\`);
+        attr = bare;
+      } else {
+        warnings.push(\`renderer attr '\${attr}' is an expression or missing field -> fallback\`);
+        attr = null;
+      }
+    }
   }
   if (!attr && props0){
     const cands = ['FEATURECLA','featurecla','NAME','name'];
@@ -3683,6 +3730,10 @@ function qmlRendererConds(rendererEl, props0, warnings){
   }
   const conds = [];
   let elseName = null;
+  if (type === 'nullSymbol'){
+    // "no symbol" renderer: geometry draws nothing, labels still apply.
+    return { conds: null, elseName: null, nullRenderer: true };
+  }
   if (type === 'singleSymbol'){
     const s = rendererEl.querySelector('symbols > symbol');
     return { conds: null, elseName: s ? s.getAttribute('name') : null };
@@ -3705,7 +3756,9 @@ function qmlRendererConds(rendererEl, props0, warnings){
     });
     return { conds, elseName };
   }
-  if (type === 'RuleBased'){
+  // "RuleRenderer" is the type name QGIS actually writes; "RuleBased" is
+  // kept for hand-authored/renamed files.
+  if (type === 'RuleBased' || type === 'RuleRenderer'){
     const walk = (ruleEl, parentCond) => {
       const filter = ruleEl.getAttribute('filter');
       const sym = ruleEl.getAttribute('symbol');
@@ -3792,7 +3845,7 @@ function qmlStyleToReearth(xmlText, opts){
       catch(e){ specByName.set(name, null); }
     }
   }
-  const { conds, elseName, warn } = qmlRendererConds(rendererEl, props0, warnings);
+  const { conds, elseName, warn, nullRenderer } = qmlRendererConds(rendererEl, props0, warnings);
   if (warn) { warnings.push(warn); return { error: warn, warnings }; }
   const fbField = ('FEATURECLA' in props0) ? 'FEATURECLA' : ('NAME' in props0 ? 'NAME' : (Object.keys(props0)[0]||null));
   const label = qmlLabelInfo(doc.querySelector('labeling'), fbField);
@@ -3823,15 +3876,17 @@ function qmlStyleToReearth(xmlText, opts){
   };
 
   const marker = {};
-  const img = condOrVal(conds, f=>f.markerImage, elseName);
-  if (img !== undefined){
-    marker.style = 'image'; marker.image = img; marker.imageSize = 1;
-    marker.imageHorizontalOrigin = 'center'; marker.imageVerticalOrigin = 'center';
-  } else {
-    const pt = condOrVal(conds, f=>f.point, elseName);
-    marker.style = 'point';
-    marker.pointColor = pt && pt.color ? (typeof pt === 'string' ? pt : qmlRgbaCss(pt.color)) : '#3388ff';
-    marker.pointSize = pt && pt.sizePx ? pt.sizePx : 8;
+  if (!nullRenderer){
+    const img = condOrVal(conds, f=>f.markerImage, elseName);
+    if (img !== undefined){
+      marker.style = 'image'; marker.image = img; marker.imageSize = 1;
+      marker.imageHorizontalOrigin = 'center'; marker.imageVerticalOrigin = 'center';
+    } else {
+      const pt = condOrVal(conds, f=>f.point, elseName);
+      marker.style = 'point';
+      marker.pointColor = pt && pt.color ? (typeof pt === 'string' ? pt : qmlRgbaCss(pt.color)) : '#3388ff';
+      marker.pointSize = pt && pt.sizePx ? pt.sizePx : 8;
+    }
   }
   if (label){
     marker.label = true; marker.labelPosition = 'righttop';
@@ -3846,21 +3901,28 @@ function qmlStyleToReearth(xmlText, opts){
   } else {
     marker.style = marker.style || 'none';
   }
+  if (nullRenderer) marker.style = 'none'; // no glyph; labels (if any) still apply
 
   const polyline = { clampToGround: true };
-  const sc = condOrVal(conds, f=>f.line && qmlRgbaCss(f.line.color), elseName);
-  const sw = condOrVal(conds, f=>f.line && Math.max(1,Math.round(f.line.widthPx)), elseName);
-  if (sc !== undefined){ polyline.strokeColor = sc; polyline.strokeWidth = (sw!==undefined?sw:1); }
-  else polyline.show = false;
+  if (nullRenderer) polyline.show = false;
+  else {
+    const sc = condOrVal(conds, f=>f.line && qmlRgbaCss(f.line.color), elseName);
+    const sw = condOrVal(conds, f=>f.line && Math.max(1,Math.round(f.line.widthPx)), elseName);
+    if (sc !== undefined){ polyline.strokeColor = sc; polyline.strokeWidth = (sw!==undefined?sw:1); }
+    else polyline.show = false;
+  }
   const dashWarn = [...frags.values()].some(f=>f.line&&f.line.dash) || [...frags.values()].some(f=>f.outline&&f.outline.dash);
   if (dashWarn) warnings.push('dash/dot line styles degrade to solid lines');
 
   const polygon = { fill:true, stroke:false, heightReference:'clamp' };
-  const fc = condOrVal(conds, f=>f.fill && qmlRgbaCss(f.fill.color), elseName);
-  const oc = condOrVal(conds, f=>f.outline && qmlRgbaCss(f.outline.color), elseName);
-  const ow = condOrVal(conds, f=>f.outline && Math.max(1,Math.round(f.outline.widthPx)), elseName);
-  if (fc !== undefined) polygon.fillColor = fc;
-  if (oc !== undefined){ polygon.stroke = true; polygon.strokeColor = oc; polygon.strokeWidth = (ow!==undefined?ow:1); }
+  if (nullRenderer) polygon.fill = false;
+  else {
+    const fc = condOrVal(conds, f=>f.fill && qmlRgbaCss(f.fill.color), elseName);
+    const oc = condOrVal(conds, f=>f.outline && qmlRgbaCss(f.outline.color), elseName);
+    const ow = condOrVal(conds, f=>f.outline && Math.max(1,Math.round(f.outline.widthPx)), elseName);
+    if (fc !== undefined) polygon.fillColor = fc;
+    if (oc !== undefined){ polygon.stroke = true; polygon.strokeColor = oc; polygon.strokeWidth = (ow!==undefined?ow:1); }
+  }
 
   const legend = (style.legend||[]).map(e=>({ label: e.label, symbolName: e.symbolName }));
   return { marker, polyline, polygon, warnings, legend };
@@ -3958,6 +4020,7 @@ function qmlStyleToReearth(xmlText, opts){
   try { window._googleMapsApiKey = ${JSON.stringify(_inspectorGoogleMapsApiKey || '')}; } catch(e) {}
   // Terrain toggle: send action messages to parent
   document.addEventListener('DOMContentLoaded', function() {
+      try { if (window._DEBUG_LOG) console.log('[iframe-init] dom-ready t=' + Date.now()); } catch(e) {}
       // Apply translations (data-i18n attributes + status labels)
       try { applyI18n(); } catch(e) {}
 
@@ -4342,10 +4405,20 @@ function qmlStyleToReearth(xmlText, opts){
                     modP.then(function(mod) {
                       var features = [];
                       var iter = mod.deserialize(file.stream());
+                      // Fail fast: accumulated JSON size over the 4MB bridge
+                      // cap would be discarded by gjTooBig in done() anyway.
+                      var approxBytes = 2;
                       var next = function() {
                         return iter.next().then(function(r) {
                           if (r.done) return done({ type: 'FeatureCollection', features: features });
-                          if (r.value && r.value.geometry) features.push(r.value);
+                          if (r.value && r.value.geometry) {
+                            features.push(r.value);
+                            try { approxBytes += JSON.stringify(r.value).length + 1; }
+                            catch (e0) { approxBytes += 4096; }
+                            if (approxBytes > 4 * 1024 * 1024) {
+                              throw new Error('layer too large (>4MB decoded) — narrow the query (limit) or host via qgis: <.kasc URL>');
+                            }
+                          }
                           return next();
                         });
                       };
@@ -4498,13 +4571,26 @@ function qmlStyleToReearth(xmlText, opts){
               var p = window._gpkgDbs[key];
               if (!p) {
                 p = loadSqlJsModule().then(function(SQL) {
+                  // Spec: GeoPackage files over the 4MB cap are rejected
+                  // outright — even when a table=/where=/limit=/columns=/bbox
+                  // filter could produce a smaller result. Content-Length is
+                  // checked before the body is read (bytes still verified
+                  // after, since gzip reports compressed size).
+                  var fileTooLarge = function(n) {
+                      return 'gpkg file too large (' + Math.round(n / 104857.6) / 10 + 'MB > 4MB) — oversized GeoPackage files are rejected outright (spec)';
+                  };
                   var bufP = (opts.dataB64 || opts.zipPath)
                     ? zipOrB64(opts)
                     : fetch(opts.url, { mode: 'cors' }).then(function(res) {
                         if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                        var cl = Number(res.headers.get('content-length')) || 0;
+                        if (cl > 4 * 1024 * 1024) throw new Error(fileTooLarge(cl));
                         return res.arrayBuffer();
                       }).then(function(buf) { return new Uint8Array(buf); });
-                  return bufP.then(function(bytes) { return new SQL.Database(bytes); });
+                  return bufP.then(function(bytes) {
+                      if (bytes.length > 4 * 1024 * 1024) throw new Error(fileTooLarge(bytes.length));
+                      return new SQL.Database(bytes);
+                  });
                 });
                 p.catch(function() { if (window._gpkgDbs[key] === p) delete window._gpkgDbs[key]; });
                 window._gpkgDbs[key] = p;
@@ -4534,6 +4620,64 @@ function qmlStyleToReearth(xmlText, opts){
                   + (Number.isInteger(opts.limit) && opts.limit > 0 ? ' LIMIT ' + Math.floor(opts.limit) : '');
                 var stmt = db.prepare(sql);
                 var colNames = stmt.getColumnNames();
+                // Fast pre-decode probe: sum the raw byte volume that would
+                // cross the bridge (WKB blob bytes + property text lengths +
+                // per-feature JSON overhead) without decoding a single
+                // geometry. bbox=auto applies the same envelope filter to the
+                // estimate, reading only each row's 40-byte GPkgBinary header
+                // (SUBSTR) — full blobs are never touched for the estimate.
+                // Raw bytes already over the cap cannot decode smaller, so
+                // reject here instead of after ~4MB of wasted decode.
+                var propCols = colNames.filter(function(c) { return c !== geomCol; });
+                var propLenExpr = propCols.length ? propCols.map(function(c) { return 'LENGTH(' + qIdent(c) + ')'; }).join('+') : '0';
+                var probeRows = 0, probeWkb = 0, probeProp = 0;
+                try {
+                    if (opts.bbox) {
+                        // Fastest path: the gpkg rtree_<table>_<geom> index is a
+                        // plain table (id, minx, maxx, miny, maxy) readable
+                        // without the RTree module, so the bbox estimate is a
+                        // single aggregate query — no per-row JS at all.
+                        var probed = false;
+                        try {
+                            var rtName = 'rtree_' + tableName + '_' + geomCol;
+                            var rtOk = db.exec('SELECT 1 FROM sqlite_master WHERE name = ' + qLit(rtName) + ' LIMIT 1');
+                            var pkRes = db.exec('SELECT name FROM pragma_table_info(' + qLit(tableName) + ') WHERE pk > 0 ORDER BY pk LIMIT 1');
+                            var pkName = pkRes[0] && pkRes[0].values[0] && pkRes[0].values[0][0];
+                            if (rtOk[0] && rtOk[0].values.length && pkName) {
+                                var propLenG = propCols.length ? propCols.map(function(c) { return 'LENGTH(g.' + qIdent(c) + ')'; }).join('+') : '0';
+                                var lonPred = (opts.bbox.ranges || []).map(function(r) {
+                                    return '(r.maxx >= ' + Number(r.west) + ' AND r.minx <= ' + Number(r.east) + ')';
+                                }).join(' OR ') || '0';
+                                var bb = '((' + lonPred + ') AND r.maxy >= ' + Number(opts.bbox.south) + ' AND r.miny <= ' + Number(opts.bbox.north) + ')';
+                                var rtRes = db.exec('SELECT COUNT(*), SUM(LENGTH(g.' + qIdent(geomCol) + ')), SUM(' + propLenG + ')'
+                                    + ' FROM (' + sql + ') g JOIN ' + qIdent(rtName) + ' r ON g.' + qIdent(pkName) + ' = r.id WHERE ' + bb);
+                                var rv = rtRes[0] && rtRes[0].values && rtRes[0].values[0];
+                                if (rv) { probeRows = Number(rv[0]) || 0; probeWkb = Number(rv[1]) || 0; probeProp = Number(rv[2]) || 0; probed = true; }
+                            }
+                        } catch (e2) { probed = false; }
+                        if (!probed) {
+                            // No rtree index (or pk not in the column subset):
+                            // envelope-only SUBSTR pass — still no WKB decode.
+                            var ps = db.prepare('SELECT SUBSTR(' + qIdent(geomCol) + ',1,40), LENGTH(' + qIdent(geomCol) + '), ' + propLenExpr
+                                + ' FROM (' + sql + ')');
+                            while (ps.step()) {
+                                var prow = ps.get();
+                                if (!gpkgEnvIntersects(gpkgBinEnvelope(prow[0]), opts.bbox)) continue;
+                                probeRows++; probeWkb += Number(prow[1]) || 0; probeProp += Number(prow[2]) || 0;
+                            }
+                            ps.free();
+                        }
+                    } else {
+                        var pres = db.exec('SELECT COUNT(*), SUM(LENGTH(' + qIdent(geomCol) + ')), SUM(' + propLenExpr + ') FROM (' + sql + ')');
+                        var pv = pres[0] && pres[0].values && pres[0].values[0];
+                        if (pv) { probeRows = Number(pv[0]) || 0; probeWkb = Number(pv[1]) || 0; probeProp = Number(pv[2]) || 0; }
+                    }
+                } catch (e) { probeRows = 0; probeWkb = 0; probeProp = 0; /* advisory probe — fall through to the decode loop */ }
+                var probeEst = probeWkb + probeProp + probeRows * (64 + propCols.length * 12);
+                if (probeEst > 4 * 1024 * 1024) {
+                    stmt.free();
+                    throw new Error('layer too large (raw ~' + Math.round(probeEst / 104857.6) / 10 + 'MB, >4MB decoded) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns/table), or host DATA/ and use qgis: <.kasc URL>');
+                }
                 var features = [];
                 // Fail fast: anything over the 4MB bridge cap is discarded by
                 // gjTooBig anyway, so track the accumulated JSON size and bail
@@ -4554,7 +4698,7 @@ function qmlStyleToReearth(xmlText, opts){
                   catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
                   if (approxBytes > 4 * 1024 * 1024) {
                     stmt.free();
-                    throw new Error('layer too large (>4MB decoded) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>');
+                    throw new Error('layer too large (>4MB decoded) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns/table), or host DATA/ and use qgis: <.kasc URL>');
                   }
                   features.push(feat);
                 }
@@ -5351,11 +5495,23 @@ function qmlStyleToReearth(xmlText, opts){
                           var features = [];
                           var limit = Math.max(1, Number(msg.limit) || 200000);
                           var iter = mod.deserialize(src);
+                          // Fail fast (same as gpkgLoad): anything over the
+                          // 4MB bridge cap is discarded by gjTooBig anyway, so
+                          // track accumulated JSON size and bail mid-stream
+                          // instead of decoding the whole file to throw it.
+                          var approxBytes = 2;
                           var readNext = function() {
                             return iter.next().then(function(r) {
                               if (r.done || features.length >= limit) return { type: 'FeatureCollection', features: features };
                               var f = r.value;
-                              if (f && f.geometry) features.push(f);
+                              if (f && f.geometry) {
+                                features.push(f);
+                                try { approxBytes += JSON.stringify(f).length + 1; }
+                                catch (e0) { approxBytes += 4096; }
+                                if (approxBytes > 4 * 1024 * 1024) {
+                                  throw new Error('layer too large (>4MB decoded) — narrow the query (limit) or host via qgis: <.kasc URL>');
+                                }
+                              }
                               return readNext();
                             });
                           };
@@ -5414,8 +5570,24 @@ function qmlStyleToReearth(xmlText, opts){
                           });
                         }
                         return fileP.then(function(file) {
-                          return mod.parquetReadObjects({ file: file, compressors: mod.compressors }).then(function(rows) {
-                            return Promise.resolve(mod.parquetMetadata ? mod.parquetMetadata(file) : null).then(function(meta) {
+                          // Read the footer metadata first — cheap (ranged
+                          // reads only for URL sources) and the uncompressed
+                          // column bytes are a lower bound on the decoded
+                          // GeoJSON (every column lands in properties/geometry
+                          // as JSON text), so a footer already reporting >4MB
+                          // can never fit the bridge cap. Tombstone without
+                          // reading the row data. Skipped when limit= is set:
+                          // row truncation can still bring the output under.
+                          return Promise.resolve(mod.parquetMetadata ? mod.parquetMetadata(file) : null).then(function(meta) {
+                            var ub = 0;
+                            try {
+                              var rgs = meta && meta.row_groups;
+                              if (Array.isArray(rgs)) for (var gi = 0; gi < rgs.length; gi++) ub += Number(rgs[gi] && rgs[gi].total_byte_size) || 0;
+                            } catch (e0) {}
+                            if (ub > 4 * 1024 * 1024 && !(Number(msg.limit) > 0)) {
+                              throw new Error('layer too large (' + Math.round(ub / 1048576) + 'MB uncompressed, >4MB) — set limit= to shrink it or host via qgis: <.kasc URL>');
+                            }
+                            return mod.parquetReadObjects({ file: file, compressors: mod.compressors }).then(function(rows) {
                               return { rows: rows || [], meta: meta };
                             });
                           });
@@ -5444,6 +5616,10 @@ function qmlStyleToReearth(xmlText, opts){
                         }
                         if (!geomColumn) throw new Error('geometry column not found');
                         var limit = Math.max(1, Number(msg.limit) || 200000);
+                        // Fail fast: track accumulated JSON size and bail at
+                        // the 4MB bridge cap instead of converting every row
+                        // just for gjTooBig to throw it away.
+                        var approxBytes = 2;
                         for (var i = 0; i < rows.length && features.length < limit; i++) {
                           var row = rows[i];
                           var value = row[geomColumn];
@@ -5453,7 +5629,13 @@ function qmlStyleToReearth(xmlText, opts){
                           var properties = {};
                           var keys = Object.keys(row);
                           for (var j = 0; j < keys.length; j++) { if (keys[j] !== geomColumn) properties[keys[j]] = row[keys[j]]; }
-                          features.push({ type: 'Feature', geometry: geometry, properties: properties });
+                          var feat = { type: 'Feature', geometry: geometry, properties: properties };
+                          try { approxBytes += JSON.stringify(feat).length + 1; }
+                          catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
+                          if (approxBytes > 4 * 1024 * 1024) {
+                            throw new Error('layer too large (>4MB decoded) — narrow the query (limit) or host via qgis: <.kasc URL>');
+                          }
+                          features.push(feat);
                         }
                         var fc = { type: 'FeatureCollection', features: features };
                         // JSON-safe for the sandbox bridge (parquet int64
@@ -5641,6 +5823,11 @@ function qmlStyleToReearth(xmlText, opts){
                             var geomKey = fields.indexOf('__geom__') >= 0 ? '__geom__' : null;
                             var features = [];
                             var rows = table.toArray();
+                            // Fail fast (same as gpkgLoad): results over the
+                            // 4MB bridge cap are rejected by gjTooBig anyway,
+                            // so track accumulated JSON size and bail instead
+                            // of converting every row just to throw it away.
+                            var approxBytes = 2;
                             for (var i = 0; i < rows.length; i++) {
                               var row = rows[i];
                               var geometry = null;
@@ -5659,7 +5846,13 @@ function qmlStyleToReearth(xmlText, opts){
                               if (!geometry) continue;
                               var props = {};
                               for (var j = 0; j < fields.length; j++) { if (fields[j] !== geomKey) props[fields[j]] = row[fields[j]]; }
-                              features.push({ type: 'Feature', geometry: geometry, properties: props });
+                              var feat = { type: 'Feature', geometry: geometry, properties: props };
+                              try { approxBytes += JSON.stringify(feat).length + 1; }
+                              catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
+                              if (approxBytes > 4 * 1024 * 1024) {
+                                throw new Error('layer too large (>4MB decoded) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns), or host via qgis: <.kasc URL>');
+                              }
+                              features.push(feat);
                             }
                             return { type: 'FeatureCollection', features: features };
                           });
@@ -5674,6 +5867,7 @@ function qmlStyleToReearth(xmlText, opts){
                   // alongside the FeatureCollection.
                   (function() {
                     var reply = function(geojson, error, qml) {
+                      try { console.log('[gpkg-timing] reply', msg.vecId, error ? 'err' : 'ok'); } catch (e4) {}
                       try {
                         if (geojson) {
                           geojson = JSON.parse(JSON.stringify(geojson, function(k, v) {
@@ -5684,6 +5878,7 @@ function qmlStyleToReearth(xmlText, opts){
                         parent.postMessage({ action: 'gpkgResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error, qml: qml || null }, '*');
                       } catch (e) {}
                     };
+                    try { console.log('[gpkg-timing] recv', msg.vecId, msg.url); } catch (e) {}
                     try {
                       gpkgQueryToGeoJson({
                         url: msg.url, dataB64: msg.dataB64 || null,
@@ -5771,6 +5966,56 @@ function qmlStyleToReearth(xmlText, opts){
                         reply(JSON.parse(text), null);
                       }).catch(function(e) { reply(null, String(e && e.message || e)); });
                     } catch (e) { reply(null, String(e)); }
+                  })();
+                } else if (msg.action === 'hubExternalize') {
+                  // bridge-hub /vector (CANVAS bridge-hub.exe :8511): probe the
+                  // hub, register the source when missing/stale, then reply.
+                  // GET + text/plain POST stay "simple requests" so the
+                  // opaque-origin iframe needs no CORS/PNA preflight.
+                  (function() {
+                    var done = function(ok, err) {
+                      try { parent.postMessage({ action: 'hubResult', reqId: msg.reqId, ok: ok, error: err || null }, '*'); } catch (e) {}
+                    };
+                    var ep = String(msg.endpoint || '');
+                    while (ep.length && ep.charAt(ep.length - 1) === '/') ep = ep.slice(0, -1);
+                    var reg = msg.register || null;
+                    if (!ep || !reg || !reg.name) { done(false, 'bad request'); return; }
+                    var hubGet = function(url, ms) {
+                      var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+                      var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, ms || 5000);
+                      var opt = { mode: 'cors' };
+                      if (ctl) opt.signal = ctl.signal;
+                      return fetch(url, opt).then(function(res) {
+                        clearTimeout(timer);
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                      });
+                    };
+                    hubGet(ep + '/vector/status', 3000)
+                      .then(function() { return hubGet(ep + '/vector/sources', 15000); })
+                      .then(function(list) {
+                        var cur = (list && list.sources && list.sources[reg.name]) || null;
+                        // kind:sql identity lives in the name hash — the
+                        // manifest stores no sql text, so an existing entry
+                        // for this name is definitionally fresh.
+                        var stale = !cur || (reg.kind !== 'sql' && (
+                                    String(cur.src || '') !== String(reg.src || '') ||
+                                    String(cur.where || '') !== String(reg.where || '') ||
+                                    (reg.kind && String(cur.kind || '') !== String(reg.kind))));
+                        if (!stale) return null;
+                        var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+                        var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, 280000);
+                        var opt = { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(reg) };
+                        if (ctl) opt.signal = ctl.signal;
+                        return fetch(ep + '/vector/sources', opt).then(function(res) {
+                          clearTimeout(timer);
+                          return res.json();
+                        }).then(function(j) {
+                          if (!j || !j.ok) throw new Error((j && j.error) || 'register failed');
+                        });
+                      })
+                      .then(function() { done(true, null); })
+                      .catch(function(e) { done(false, String(e && e.message || e)); });
                   })();
                 }
               } catch (e) {}
@@ -7630,7 +7875,7 @@ function qmlStyleToReearth(xmlText, opts){
           vectorRefreshBtn.addEventListener('click', () => {
             try {
               if (vectorStatus) vectorStatus.textContent = t('loading');
-              parent.postMessage({ action: 'getVectorFeatureIndex' }, '*');
+              parent.postMessage({ action: 'getVectorFeatureIndex', force: true }, '*');
             } catch (e) { console.error('vector refresh error', e); }
           });
         }
@@ -8141,11 +8386,13 @@ function applyPermalinkFromObject(state) {
 // Wrapper for reearth.ui.show(getUI()) that logs caller stack for debugging
 function safeShowUI(context) {
   try {
+    const _ssT0 = Date.now();
     try { sendLog('[safeShowUI] context:', context); } catch(e){}
     // capture stack to help identify call sites at runtime
     try { sendLog('[safeShowUI] stack:', (new Error()).stack); } catch(e){}
     if (reearth && reearth.ui && typeof reearth.ui.show === 'function') {
       try { reearth.ui.show(getUI(), { extended: true }); } catch(e) { try { sendError('[safeShowUI] show failed', e); } catch(_){} }
+      try { const _ssDt = Date.now() - _ssT0; if (_ssDt > 200) sendLog('[ssu-timing]', context, _ssDt + 'ms'); } catch (e) {}
       // Re-render resets the iframe to the base state, so drop any expanded flag.
       _attrPanelExpanded = false;
       // Re-apply the fixed panel width after re-render (show resets the iframe).
@@ -8154,6 +8401,45 @@ function safeShowUI(context) {
   } catch (e) {
     try { sendError('[safeShowUI] unexpected', e); } catch(_){}
   }
+}
+
+// Batch-noisy render calls (loading rows, tombstones, layer adds) fire once
+// per result — during a project import that means a dozen iframe
+// recreations in seconds. Each recreation re-parses the whole panel HTML,
+// re-runs its init, and re-posts every in-flight ownReq (qml compiles are
+// redone from scratch), so the re-render storm itself saturates the main
+// thread. Coalesce bursts into one trailing render; the pending marks and
+// layer ids are already recorded, so the final UI is identical.
+let _showUIGen = 0;
+function scheduleShowUI(context) {
+  const gen = ++_showUIGen;
+  waitViaUiTimer(250).then(() => {
+    if (gen !== _showUIGen) return;
+    try { safeShowUI(context); } catch (e) {}
+  });
+}
+
+// Extension-path (ctx-crossing) layer specs — gpkg / duckdb / sql /
+// flatgeobuf / parquet / kasczip geojson / qml-styled geojson — run as a
+// deferred serial queue, separate from the canonical URL-ref path. The
+// canonical layers (XYZ tiles, 3D Tiles, plain geojson URLs) are added first
+// so the map and UI become operable; extension items are then applied one at
+// a time with yields between them, so extensionMessage handling (AI tools,
+// user actions) keeps working during project imports. Each item still flows
+// through the normal ⏳ loading / tombstone lifecycle as it completes.
+const _extPathQueue = [];
+let _extPathScheduled = false;
+function enqueueExtPath(fn) {
+  _extPathQueue.push(fn);
+  if (_extPathScheduled) return;
+  _extPathScheduled = true;
+  waitViaUiTimer(50).then(pumpExtPathQueue);
+}
+function pumpExtPathQueue() {
+  const fn = _extPathQueue.shift();
+  if (!fn) { _extPathScheduled = false; return; }
+  try { fn(); } catch (e) { try { sendError('[extpath] item failed:', e); } catch (_) {} }
+  waitViaUiTimer(50).then(pumpExtPathQueue);
 }
 
 // Safe stringify for debug logging (handles circular refs and functions)
@@ -8347,6 +8633,7 @@ function removeTargetMarker(layerId) {
         // Initial attempt + a few immediate retries
         tryRemoveOnce();
         for (let i = 0; i < 2; i++) tryRemoveOnce();
+        markVectorIndexDirty();
       }
     } catch (e) {
       try { sendError('[removeTargetMarker] remove attempt error', e); } catch(_){}
@@ -8928,15 +9215,39 @@ const _qmlStyledLayerIds = new Set(); // skip applyGeojsonDrapeToAll override
 function clearLayerFailed(key) {
     if (!key) return;
     try { Object.keys(_failedLayerEntries).forEach(id => { if (_failedLayerEntries[id].key === key) delete _failedLayerEntries[id]; }); } catch (e) {}
+    // A fresh attempt on the same source supersedes any registered
+    // retry-on-move spec; on failure it is simply registered again.
+    try { Object.keys(_ddbFailedAdds).forEach(k => { if (_ddbFailedAdds[k].url === key) delete _ddbFailedAdds[k]; }); } catch (e) {}
+}
+// In-flight ⏳ rows: registered when a ctx-path vector load starts, cleared
+// when its result (layer add or tombstone) lands. Same key scheme as
+// _failedLayerEntries so one source never shows both rows.
+function clearLayerLoading(key) {
+    if (!key) return;
+    try { Object.keys(_loadingLayerEntries).forEach(id => { if (_loadingLayerEntries[id].key === key) delete _loadingLayerEntries[id]; }); } catch (e) {}
+}
+function markLayerLoading(key, title) {
+    try {
+        if (!key) return;
+        clearLayerLoading(key);
+        const id = 'load' + (++_failSeq);
+        _loadingLayerEntries[id] = { key: key, title: title || 'layer' };
+        try { scheduleShowUI('markLayerLoading'); } catch (e) {}
+    } catch (e) {}
+}
+function isLayerLoading(key) {
+    if (!key) return false;
+    try { return Object.keys(_loadingLayerEntries).some(id => _loadingLayerEntries[id].key === key); } catch (e) { return false; }
 }
 function markLayerFailed(key, title, reason) {
     try {
         if (!reason) return;
         clearLayerFailed(key);
+        clearLayerLoading(key);
         const id = 'fail' + (++_failSeq);
         _failedLayerEntries[id] = { key: key || id, title: title || 'layer', reason: String(reason) };
         try { sendError('[layer-failed]', title, reason); } catch (e) {}
-        try { safeShowUI('markLayerFailed'); } catch (e) {}
+        try { scheduleShowUI('markLayerFailed'); } catch (e) {}
     } catch (e) {}
 }
 
@@ -8989,6 +9300,9 @@ function requestQmlAppearance(styleUrl, props0, geojsonUrl, build) {
             else { qmlPayload.geoZipId = ze.zipId; qmlPayload.geoZipUrl = ze.zipUrl; qmlPayload.geoZipPath = ze.path; }
         }
     }
+    // Track the iframe-bound request so a mid-compile iframe recreate can
+    // re-post it (requestRestoreState) instead of hanging until the 300s TTL.
+    try { if (_qmlPending[id]) _qmlPending[id].ownReq = qmlPayload; } catch (e) {}
     try { postToUI(qmlPayload); }
     catch (e) {
         delete _qmlPending[id];
@@ -9005,17 +9319,20 @@ function finishStyledLayerAdd(base, appearance, visible, isBase, type) {
     if (appearance.polyline) layer.polyline = appearance.polyline;
     if (appearance.polygon) layer.polygon = appearance.polygon;
     let newId = null;
+    const _laT0 = Date.now();
     try { newId = reearth.layers.add(layer); } catch (e) {
         try { sendError('[qml] layers.add threw:', e); } catch (_) {}
     }
+    try { const _laDt = Date.now() - _laT0; if (_laDt > 200) sendLog('[la-timing/styled]', base && base.title, _laDt + 'ms'); } catch (e) {}
     if (newId) {
+        markVectorIndexDirty();
         _pluginAddedLayerIds.add(newId);
         _qmlStyledLayerIds.add(newId);
         if ((type || 'geojson') === 'geojson' && _pluginAddedGeojsonLayerIds.indexOf(newId) === -1) {
             _pluginAddedGeojsonLayerIds.push(newId);
         }
         if (visible === false) _layersPendingHide.add(newId);
-        try { safeShowUI('qmlStyledLayer'); } catch (e) {}
+        try { scheduleShowUI('qmlStyledLayer'); } catch (e) {}
     }
     return newId;
 }
@@ -9026,6 +9343,197 @@ function loadFlatGeobufLayer(url, title, visible, classification, limit, pending
 function loadParquetLayer(url, title, visible, classification, limit, pending, style) {
     loadVectorViaIframe('pqLoad', 'pq', _pqPending, url, title, visible, classification, limit, pending, () => 'pq' + (++_pqSeq), style);
 }
+// Route an iframe-decode request through the basemap-widget host iframe —
+// it persists across panel re-renders, so vector decodes (fgb/parquet/
+// geojson member) survive the ui.show that fires when the first result
+// lands. Same rules as ddbPost/gpkgPost: eager dataB64 (dropped .zip, can
+// be ~10MB base64) never crosses the host extension context and decodes in
+// our own iframe; when the host is missing or gives no ack within 3s the
+// request falls back to our own iframe.
+// Post a decode request to our own (ephemeral) iframe, recording the message
+// on the pending entry as `ownReq` so requestRestoreState can re-post it if
+// the iframe is recreated mid-flight.
+function postToOwnIframeTracked(pendMap, vecId, msg) {
+    const p = pendMap[vecId];
+    if (p) p.ownReq = msg;
+    try { postToUI(msg); } catch (e) {}
+}
+function vecHostPost(execAction, loadAction, pendMap, vecId, payload) {
+    let hosted = false;
+    const hostId = payload.dataB64 ? null : ddbHostId();
+    if (hostId) {
+        try {
+            reearth.extension.postMessage(hostId, Object.assign({ action: execAction }, payload));
+            hosted = true;
+        } catch (e) {}
+    }
+    if (hosted) {
+        waitViaUiTimer(3000).then(() => {
+            const p = pendMap[vecId];
+            if (p && !p.hostAck) {
+                ddbMarkHostDead();
+                postToOwnIframeTracked(pendMap, vecId, Object.assign({ action: loadAction }, payload));
+            }
+        });
+    } else {
+        postToOwnIframeTracked(pendMap, vecId, Object.assign({ action: loadAction }, payload));
+    }
+}
+
+// ---- bridge-hub /vector externalization ----
+// Ext-path vector sources whose src is a plain http(s) URL are registered to
+// the local bridge-hub vector service (127.0.0.1:8511, native DuckDB CLI
+// backend) when it is reachable. The hub materializes the source into its
+// persistent store and we add it back as a plain `geojson:` URL layer that
+// the host fetches itself — no ctx-crossing decode, no DuckDB-Wasm warm-up,
+// no 4MB cap, and repeat loads reuse the materialized table. If the hub is
+// unreachable or registration fails we run the original iframe-decode path.
+// `vectorHub: off` disables the attempt; `vectorHub: http://host:port`
+// overrides the endpoint (default: aiHub: value, else 127.0.0.1:8511).
+let _hubSeq = 0;
+const _hubPending = {};
+
+function hubEndpoint() {
+    const v = (_inspectorVectorHub || '').trim();
+    if (/^(off|none|local|disabled|false|0)$/i.test(v)) return null;
+    if (/^https?:\/\//i.test(v)) return v.replace(/\/+$/, '');
+    const a = (_inspectorAiHub || '').trim();
+    if (/^https?:\/\//i.test(a)) return a.replace(/\/+$/, '');
+    return 'http://127.0.0.1:8511';
+}
+
+// Deterministic source name: the same spec always maps to the same registered
+// table, so re-applies reuse it instead of re-ingesting.
+function hubNameFor(reg) {
+    const key = [reg.kind || '', reg.src || '', reg.sql || '', reg.layer || '', reg.where || '', String(reg.limit || ''), reg.lon || '', reg.lat || '', reg.geom_col || '', String(reg.materialize === false ? 'v' : 't')].join('\x1f');
+    let h = 0x811c9dc5;
+    for (let i = 0; i < key.length; i++) { h = ((h ^ key.charCodeAt(i)) * 0x01000193) >>> 0; }
+    return 'gs_' + h.toString(36);
+}
+
+// Build the POST /vector/sources body for an ext-path spec. Returns null when
+// the source cannot live on the hub (non-http(s) refs like kasczip members,
+// .duckdb database files, sql: queries) — the caller then runs the original
+// in-iframe decode path.
+function hubSpecFor(type, url, opt) {
+    if (!url || !/^https?:\/\//i.test(url)) return null;
+    const o = opt || {};
+    const reg = { src: url };
+    if (type === 'flatgeobuf') reg.kind = 'fgb';
+    else if (type === 'parquet') reg.kind = 'parquet';
+    else if (type === 'gpkg') { reg.kind = 'gpkg'; if (o.table) reg.layer = o.table; }
+    else if (type === 'duckdb') {
+        const f = String(o.format || '').toLowerCase();
+        if (f === 'duckdb' || /\.duckdb([?#]|$)/i.test(url)) return null;
+        if (f === 'gpkg' || /\.gpkg([?#]|$)/i.test(url)) { reg.kind = 'gpkg'; if (o.table) reg.layer = o.table; }
+        else if (f === 'parquet' || f === 'pq' || f === 'geoparquet') reg.kind = 'parquet';
+        else if (f === 'csv' || f === 'tsv') reg.kind = 'csv';
+        else if (f === 'json' || f === 'geojson') reg.kind = 'geojson';
+        else if (f === 'fgb' || f === 'flatgeobuf') reg.kind = 'fgb';
+        else if (f === 'read') {
+            // duckdb: format=read is the spatial ST_Read escape hatch — the
+            // service has no 'read' kind, so wrap it as a kind:sql view.
+            return hubSpecForSql("SELECT * FROM ST_Read('" + String(url).replace(/'/g, "''") + "')", o);
+        }
+        // no usable format hint → let the hub infer kind from the extension
+    } else return null;
+    if (o.where) reg.where = o.where;
+    if (Number.isInteger(o.limit) && o.limit > 0) reg.limit = o.limit;
+    if (o.lon) reg.lon = o.lon;
+    if (o.lat) reg.lat = o.lat;
+    if (o.geom) reg.geom_col = o.geom;
+    return reg;
+}
+
+// sql: arbitrary SELECT registered as a kind:sql VIEW on the hub.
+// materialize:false keeps it a pure query layer — the :bbox placeholder was
+// the wasm path's viewport hook; here the view bakes a world envelope and
+// the real filter rides on the ?bbox= URL param of the geojson endpoint.
+// Returns null when the query references browser-only bytes (kasczip://).
+function hubSpecForSql(query, opt) {
+    const q = String(query || '').trim();
+    if (!q || q.indexOf('kasczip://') >= 0) return null;
+    const o = opt || {};
+    const reg = { kind: 'sql', sql: q.replace(/:bbox\b/gi, 'ST_MakeEnvelope(-180, -90, 180, 90)').replace(/;\s*$/, ''), materialize: false };
+    if (o.lon) reg.lon = o.lon;
+    if (o.lat) reg.lat = o.lat;
+    if (o.geom) reg.geom_col = o.geom;
+    return reg;
+}
+
+// geojson URL for a registered source — static filters are baked into the
+// registration; columns= and the viewport bbox= ride as URL params so a
+// camera move only swaps the envelope (no re-registration, no ctx crossing).
+function hubGeoUrl(base, cols, bounds) {
+    const qs: string[] = [];
+    if (cols) qs.push('columns=' + cols);
+    if (bounds && bounds.ranges && bounds.ranges.length) {
+        const r = bounds.ranges[0];
+        const west = bounds.ranges.length > 1 ? -180 : r.west;
+        const east = bounds.ranges.length > 1 ? 180 : r.east;
+        qs.push('bbox=' + west + ',' + bounds.south + ',' + east + ',' + bounds.north);
+    }
+    return qs.length ? base + '?' + qs.join('&') : base;
+}
+
+// Ask the UI iframe to probe + register the source on the hub. On success the
+// layer is added as a plain geojson URL (handleHubResult); on failure
+// `fallback` runs the original decode path.
+function hubExternalize(reg, add, fallback) {
+    const ep = hubEndpoint();
+    if (!ep || !reg) { fallback(); return; }
+    reg.name = hubNameFor(reg);
+    const reqId = 'hub' + (++_hubSeq);
+    const cols = (add.columns && add.columns.length) ? add.columns.map(c => encodeURIComponent(c)).join(',') : '';
+    _hubPending[reqId] = {
+        url: add.url, title: add.title, visible: add.visible, zoom: add.zoom,
+        attribution: add.attribution, classification: add.classification, style: add.style,
+        geoBase: ep + '/vector/geojson/' + reg.name, cols: cols,
+        bboxAuto: !!add.bboxAuto, pending: add.pending || null,
+        fallback: fallback
+    };
+    _hubPending[reqId].geoUrl = hubGeoUrl(_hubPending[reqId].geoBase, cols, add.bboxAuto ? getViewportRanges() : null);
+    armPendingTtl(_hubPending, reqId, 'vectorHub');
+    try { markLayerLoading(add.url, add.title); } catch (e) {}
+    try { postToOwnIframeTracked(_hubPending, reqId, { action: 'hubExternalize', reqId: reqId, endpoint: ep, register: reg }); }
+    catch (e) {
+        delete _hubPending[reqId];
+        try { clearLayerLoading(add.url); } catch (e2) {}
+        fallback();
+    }
+}
+
+function handleHubResult(msg) {
+    const p = _hubPending[msg.reqId];
+    if (p === undefined) return;
+    delete _hubPending[msg.reqId];
+    try { clearLayerLoading(p.url); } catch (e) {}
+    if (msg.ok) {
+        try { sendLog('[vectorHub] externalized:', p.url, '->', p.geoUrl); } catch (e) {}
+        let newId = null;
+        try { newId = addXyzLayer(p.geoUrl, p.title, 'geojson', false, p.visible, p.zoom, p.attribution, p.classification, p.style); }
+        catch (e) { try { sendError('[vectorHub] geojson add failed:', e); } catch (_) {} }
+        // bbox=auto re-query: the viewport envelope is a URL param, so a
+        // camera move only overrides data.url — the host re-fetches it.
+        if (newId && p.bboxAuto) {
+            _ddbLayers[newId] = { engine: 'hubvec', geoBase: p.geoBase, cols: p.cols, bboxAuto: true };
+            ensureDuckDbMoveSubscription();
+        }
+        if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: p.title, externalized: true });
+        return;
+    }
+    try { sendLog('[vectorHub] hub unavailable or register failed — decoding in-iframe:', msg.error || 'unreachable'); } catch (e) {}
+    try { p.fallback && p.fallback(); } catch (e) {}
+}
+
+// bbox=auto refresh for hub-externalized layers — rebuild the geojson URL
+// with the fresh viewport envelope and let the host re-fetch it directly.
+function refreshHubVecLayer(layerId, spec) {
+    const url = hubGeoUrl(spec.geoBase, spec.cols, getViewportRanges());
+    try { reearth.layers.override(layerId, { data: { type: 'geojson', url: url } }); markVectorIndexDirty(); }
+    catch (e) { try { sendError('[vectorHub] data override failed', e); } catch (e2) {} }
+}
+
 function loadVectorViaIframe(action, prefix, pendMap, url, title, visible, classification, limit, pending, nextId, style) {
     if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url) && !isKascZipUrl(url)) {
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'url required' });
@@ -9035,15 +9543,17 @@ function loadVectorViaIframe(action, prefix, pendMap, url, title, visible, class
     clearLayerFailed(url);
     pendMap[id] = { url: url, title: title, visible: visible, classification: classification, pending: pending || null, style: style || null };
     armPendingTtl(pendMap, id, action);
-    const payload = { action: action, vecId: id, url: url, limit: limit };
+    const payload = { vecId: id, url: url, limit: limit };
     if (!attachZipData(payload, url)) {
         delete pendMap[id];
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: 'zip member not loaded: ' + url });
         return;
     }
-    try { postToUI(payload); }
+    try { markLayerLoading(url, title); } catch (e) {}
+    try { vecHostPost(prefix === 'fg' ? 'fgbExec' : 'pqExec', action, pendMap, id, payload); }
     catch (e) {
         delete pendMap[id];
+        clearLayerLoading(url);
         if (pending && pending.senderId) aiToolReply(pending.senderId, pending.reqId, false, { error: String(e) });
     }
 }
@@ -9057,14 +9567,15 @@ function loadGeoJsonViaIframe(url, title, visible, classification, style) {
     clearLayerFailed(url);
     _geoPending[id] = { url: url, title: title, visible: visible, classification: classification, style: style || null };
     armPendingTtl(_geoPending, id, 'geojson');
-    const payload = { action: 'geoLoad', vecId: id, url: url };
+    const payload = { vecId: id, url: url };
     if (!attachZipData(payload, url)) {
         delete _geoPending[id];
         try { sendError('[geojson] zip member not loaded:', url); } catch (e) {}
         return;
     }
-    try { postToUI(payload); }
-    catch (e) { delete _geoPending[id]; try { sendError('[geojson] geoLoad post failed:', e); } catch (_) {} }
+    try { markLayerLoading(url, title); } catch (e) {}
+    try { vecHostPost('geoExec', 'geoLoad', _geoPending, id, payload); }
+    catch (e) { delete _geoPending[id]; clearLayerLoading(url); try { sendError('[geojson] geoLoad post failed:', e); } catch (_) {} }
 }
 
 // DuckDB-Wasm query layers (kasugai duckdb: port). The UI iframe runs the
@@ -9073,6 +9584,23 @@ function loadGeoJsonViaIframe(url, title, visible, classification, style) {
 let _ddbSeq = 0;
 const _ddbPending = {};
 const _ddbLayers = {};
+
+// bbox=auto adds that failed (e.g. a >4MB result at a wide zoom) are kept
+// here and re-attempted on the next camera move — the layer appears once
+// the visible range decodes under the cap. The pending entry's spec object
+// is stored verbatim so the refresh loop can detect in-flight retries by
+// identity. Entries are dropped by clearLayerFailed (a fresh attempt or a
+// dismissed tombstone supersedes the registration) and on a successful add.
+const _ddbFailedAdds = {};
+function ddbFailedAddKey(engine, spec) {
+    return engine + '|' + (spec.url || '') + '|' + JSON.stringify([spec.table, spec.where, spec.limit, spec.columns, spec.query]);
+}
+function registerDdbFailedAdd(engine, spec) {
+    if (!spec || spec.bboxAuto === false || !spec.url) return;
+    try { spec.engine = engine; } catch (e) {}
+    _ddbFailedAdds[ddbFailedAddKey(engine, spec)] = spec;
+    ensureDuckDbMoveSubscription();
+}
 
 // Normalized viewport bounds for the iframe's ST_MakeEnvelope SQL
 // (antimeridian crossings become two ranges).
@@ -9209,11 +9737,11 @@ function ddbPost(vecId, spec, layerId) {
             const p = _ddbPending[vecId];
             if (p && !p.hostAck) {
                 ddbMarkHostDead();
-                try { postToUI(Object.assign({ action: 'ddbLoad' }, payload)); } catch (e) {}
+                postToOwnIframeTracked(_ddbPending, vecId, Object.assign({ action: 'ddbLoad' }, payload));
             }
         });
     } else {
-        try { postToUI(Object.assign({ action: 'ddbLoad' }, payload)); } catch (e) {}
+        postToOwnIframeTracked(_ddbPending, vecId, Object.assign({ action: 'ddbLoad' }, payload));
     }
 }
 
@@ -9243,6 +9771,7 @@ function loadDuckDbLayer(spec, pending) {
     const id = 'dd' + (++_ddbSeq);
     _ddbPending[id] = { kind: 'add', spec: spec, pending: pending || null };
     armPendingTtl(_ddbPending, id, 'duckdb');
+    try { markLayerLoading(spec.url, spec.title || ('DuckDB: ' + spec.url)); } catch (e) {}
     try { ddbPost(id, spec, null); }
     catch (e) {
         delete _ddbPending[id];
@@ -9284,6 +9813,7 @@ function gpkgPost(vecId, spec, layerId) {
     // Same rule as ddbPost: eager dataB64 (dropped .zip) never crosses the
     // host extension context — decode in our own iframe.
     const hostId = payload.dataB64 ? null : ddbHostId();
+    try { sendError('[gpkg-timing] post', vecId, hostId ? 'host' : 'own-iframe'); } catch (e) {}
     if (hostId) {
         try {
             reearth.extension.postMessage(hostId, Object.assign({ action: 'gpkgExec' }, payload));
@@ -9295,11 +9825,12 @@ function gpkgPost(vecId, spec, layerId) {
             const p = _gpkgPending[vecId];
             if (p && !p.hostAck) {
                 ddbMarkHostDead();
-                try { postToUI(Object.assign({ action: 'gpkgLoad' }, payload)); } catch (e) {}
+                try { sendError('[gpkg-timing] no-ack, fallback own iframe', vecId); } catch (e) {}
+                postToOwnIframeTracked(_gpkgPending, vecId, Object.assign({ action: 'gpkgLoad' }, payload));
             }
         });
     } else {
-        try { postToUI(Object.assign({ action: 'gpkgLoad' }, payload)); } catch (e) {}
+        postToOwnIframeTracked(_gpkgPending, vecId, Object.assign({ action: 'gpkgLoad' }, payload));
     }
 }
 function loadGpkgLayer(spec, pending) {
@@ -9322,6 +9853,7 @@ function loadGpkgLayer(spec, pending) {
     const id = 'gp' + (++_gpkgSeq);
     _gpkgPending[id] = { kind: 'add', spec: spec, pending: pending || null };
     armPendingTtl(_gpkgPending, id, 'gpkg');
+    try { markLayerLoading(spec.url, spec.title || ('GeoPackage: ' + spec.url)); } catch (e) {}
     try { gpkgPost(id, spec, null); }
     catch (e) {
         delete _gpkgPending[id];
@@ -9340,28 +9872,35 @@ function handleGpkgResult(msg) {
     const p = _gpkgPending[msg.vecId];
     if (p === undefined) return;
     delete _gpkgPending[msg.vecId];
+    try { clearLayerLoading((p.spec && p.spec.url) || msg.vecId); } catch (e) {}
     if (msg.error || !msg.geojson) {
         try { sendError('[gpkg] query failed:', msg.error); } catch (e) {}
-        if (p.kind === 'add') markLayerFailed((p.spec && p.spec.url) || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || 'GeoPackage', String(msg.error || 'query failed'));
+        if (p.kind === 'add') {
+            markLayerFailed((p.spec && p.spec.url) || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || 'GeoPackage', String(msg.error || 'query failed'));
+            // File-level rejections are permanent by spec — no camera-move retry.
+            if (!/^gpkg file too large/.test(String(msg.error || ''))) registerDdbFailedAdd('gpkg', p.spec);
+        }
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
         return;
     }
     if (geojsonMsgTooBig(msg.geojson)) {
-        const err = 'result too large for the extension bridge (>4MB) — narrow the query (where/limit/columns/bbox) or host via qgis: <.kasc URL>';
+        const err = 'result too large for the extension bridge (>4MB) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns/bbox), or host via qgis: <.kasc URL>';
         try { sendError('[gpkg]', err); } catch (e) {}
         markLayerFailed((p.spec && p.spec.url) || msg.layerId || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || msg.layerId || 'GeoPackage', err);
+        if (p.kind === 'add') registerDdbFailedAdd('gpkg', p.spec);
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
         return;
     }
     if (p.kind === 'refresh') {
         const spec = _ddbLayers[msg.layerId];
         if (spec && spec.req === msg.vecId) {
-            try { reearth.layers.override(msg.layerId, { data: { type: 'geojson', value: msg.geojson } }); }
+            try { reearth.layers.override(msg.layerId, { data: { type: 'geojson', value: msg.geojson } }); markVectorIndexDirty(); }
             catch (e) { try { sendError('[gpkg] data override failed', e); } catch (e2) {} }
         }
         return;
     }
     const s = p.spec;
+    try { delete _ddbFailedAdds[ddbFailedAddKey('gpkg', s)]; } catch (e) {}
     const title = s.title || ('GeoPackage: ' + s.url);
     const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
     // Embedded layer_styles QML is used when no explicit style= is given.
@@ -9375,6 +9914,36 @@ function handleGpkgResult(msg) {
         };
         ensureDuckDbMoveSubscription();
     }
+    if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: title, features: (msg.geojson.features || []).length });
+}
+
+// fgb / parquet / geojson-member decode finished — the work ran either in
+// our own iframe (dataB64 or host-dead fallback) or in the basemap-widget
+// host iframe (replies come back via extensionMessage). Shared handling:
+// too-big guard, then layer add or tombstone.
+function handleVecResult(msg) {
+    const label = msg.action === 'pqResult' ? 'GeoParquet' : (msg.action === 'geoResult' ? 'GeoJSON' : 'FlatGeobuf');
+    const pendMap = msg.action === 'pqResult' ? _pqPending : (msg.action === 'geoResult' ? _geoPending : _fgPending);
+    const p = pendMap[msg.vecId];
+    if (p === undefined) return;
+    delete pendMap[msg.vecId];
+    try { clearLayerLoading(p.url); } catch (e) {}
+    if (msg.error || !msg.geojson) {
+        try { sendError('[' + label + '] decode failed:', msg.error); } catch (e) {}
+        markLayerFailed(p.url, p.title || (label + ': ' + p.url), String(msg.error || 'decode failed'));
+        if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'decode failed') });
+        return;
+    }
+    if (geojsonMsgTooBig(msg.geojson)) {
+        const err = 'result too large for the extension bridge (>4MB) — narrow the query (limit) or host via qgis: <.kasc URL>';
+        try { sendError('[' + label + ']', err); } catch (e) {}
+        markLayerFailed(p.url, p.title || (label + ': ' + p.url), err);
+        if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
+        return;
+    }
+    const title = p.title || (label + ': ' + p.url);
+    const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
+    const newId = addGeoJsonValueLayer(msg.geojson, title, p.visible !== false, p.classification, label + ': ' + p.url, p.style, p0);
     if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: title, features: (msg.geojson.features || []).length });
 }
 
@@ -9402,7 +9971,19 @@ function scheduleDuckDbRefresh() {
             if (!lyr) { delete _ddbLayers[layerId]; continue; }
             if (lyr.visible === false) continue;
             if (spec.engine === 'gpkg') refreshGpkgLayer(layerId, spec);
+            else if (spec.engine === 'hubvec') refreshHubVecLayer(layerId, spec);
             else refreshDuckDbLayer(layerId, spec);
+        }
+        // Re-attempt bbox=auto adds that previously failed (e.g. a >4MB
+        // result at a wide zoom) — the shrunken viewport may now decode
+        // under the cap. Specs already in flight are skipped.
+        for (const key of Object.keys(_ddbFailedAdds)) {
+            const spec = _ddbFailedAdds[key];
+            const pendMap = spec.engine === 'gpkg' ? _gpkgPending : _ddbPending;
+            let inFlight = false;
+            for (const pid of Object.keys(pendMap)) { if (pendMap[pid] && pendMap[pid].spec === spec) { inFlight = true; break; } }
+            if (inFlight) continue;
+            try { if (spec.engine === 'gpkg') loadGpkgLayer(spec, null); else loadDuckDbLayer(spec, null); } catch (e) {}
         }
     });
 }
@@ -9415,7 +9996,7 @@ function ensureDuckDbMoveSubscription() {
     try {
         if (reearth.camera && typeof reearth.camera.on === 'function') {
             reearth.camera.on('move', () => {
-                try { if (Object.keys(_ddbLayers).length) scheduleDuckDbRefresh(); } catch (e) {}
+                try { if (Object.keys(_ddbLayers).length || Object.keys(_ddbFailedAdds).length) scheduleDuckDbRefresh(); } catch (e) {}
             });
         }
     } catch (e) {}
@@ -9437,28 +10018,34 @@ function handleDdbResult(msg) {
     const p = _ddbPending[msg.vecId];
     if (p === undefined) return;
     delete _ddbPending[msg.vecId];
+    try { clearLayerLoading((p.spec && p.spec.url) || msg.vecId); } catch (e) {}
     if (msg.error || !msg.geojson) {
         try { sendError('[duckdb] query failed:', msg.error); } catch (e) {}
-        if (p.kind === 'add') markLayerFailed((p.spec && p.spec.url) || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || 'DuckDB', String(msg.error || 'query failed'));
+        if (p.kind === 'add') {
+            markLayerFailed((p.spec && p.spec.url) || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || 'DuckDB', String(msg.error || 'query failed'));
+            registerDdbFailedAdd('duckdb', p.spec);
+        }
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
         return;
     }
     if (geojsonMsgTooBig(msg.geojson)) {
-        const err = 'result too large for the extension bridge (>4MB) — narrow the query (where/limit/columns/bbox) or host via qgis: <.kasc URL>';
+        const err = 'result too large for the extension bridge (>4MB) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns/bbox), or host via qgis: <.kasc URL>';
         try { sendError('[duckdb]', err); } catch (e) {}
         markLayerFailed((p.spec && p.spec.url) || msg.layerId || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || msg.layerId || 'DuckDB', err);
+        if (p.kind === 'add') registerDdbFailedAdd('duckdb', p.spec);
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
         return;
     }
     if (p.kind === 'refresh') {
         const spec = _ddbLayers[msg.layerId];
         if (spec && spec.req === msg.vecId) {
-            try { reearth.layers.override(msg.layerId, { data: { type: 'geojson', value: msg.geojson } }); }
+            try { reearth.layers.override(msg.layerId, { data: { type: 'geojson', value: msg.geojson } }); markVectorIndexDirty(); }
             catch (e) { try { sendError('[duckdb] data override failed', e); } catch (e2) {} }
         }
         return;
     }
     const s = p.spec;
+    try { delete _ddbFailedAdds[ddbFailedAddKey('duckdb', s)]; } catch (e) {}
     const title = s.title || ('DuckDB: ' + s.url);
     const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
     const newId = addGeoJsonValueLayer(msg.geojson, title, s.visible !== false, s.classification, 'DuckDB: ' + s.url, s.style, p0);
@@ -9492,18 +10079,23 @@ function addGeoJsonValueLayer(fc, title, visible, classification, label, style, 
         // generated per-feature conditional appearance.
         requestQmlAppearance(style, props0, null, (appearance, err) => {
             if (!appearance) { try { sendError('[qml] fallback to default style:', label, err); } catch (e) {}
-                finishStyledLayerAdd(layer, null, visible, false, 'geojson'); return; }
+                // {} not null — finishStyledLayerAdd(null) returns early and
+                // the layer was silently never added.
+                finishStyledLayerAdd(layer, {}, visible, false, 'geojson'); return; }
             finishStyledLayerAdd(layer, appearance, visible, false, 'geojson');
         });
         return '__qml_pending__';
     }
     try {
+        const _laT0 = Date.now();
         const newId = reearth.layers.add(layer);
+        try { const _laDt = Date.now() - _laT0; if (_laDt > 200) sendLog('[la-timing]', title, _laDt + 'ms'); } catch (e) {}
         if (newId) {
+            markVectorIndexDirty();
             _pluginAddedLayerIds.add(newId);
             if (_pluginAddedGeojsonLayerIds.indexOf(newId) === -1) _pluginAddedGeojsonLayerIds.push(newId);
             if (visible === false) _layersPendingHide.add(newId);
-            try { safeShowUI('addGeoJsonValueLayer'); } catch (e) {}
+            try { scheduleShowUI('addGeoJsonValueLayer'); } catch (e) {}
         }
         return newId || null;
     } catch (e) {
@@ -9891,7 +10483,7 @@ reearth.extension.on("message", (msg) => {
         }
       } else if (msg.action === 'getVectorFeatureIndex') {
         try {
-          buildVectorFeatureIndexFromLayers();
+          requestVectorFeatureIndexBuild(!!(msg && msg.force));
         } catch (e) { try { sendError('[getVectorFeatureIndex] error:', e); } catch(_) {} }
       } else if (msg.action === 'vectorFeatureData') {
         try {
@@ -9921,6 +10513,23 @@ reearth.extension.on("message", (msg) => {
           // The previous iframe's delegated timers died with it — re-arm them
           // here (the new iframe's listener is up, since it sent this).
           try { rearmUiTimers(); } catch (e) {}
+          // In-flight iframe-bound requests died with the old iframe —
+          // re-post them so decodes/compiles self-heal across re-renders
+          // instead of hanging until the pending TTL.
+          try {
+            [_ddbPending, _gpkgPending, _fgPending, _pqPending, _geoPending, _qmlPending, _hubPending].forEach(function(map) {
+              Object.keys(map).forEach(function(id) {
+                const req = map[id] && map[id].ownReq;
+                if (req) { try { postToUI(req); } catch (e) {} }
+              });
+            });
+            // kascZipLoad in 'loading' state is likewise re-requested (same
+            // rule as the inspector re-parse path).
+            Object.keys(_qgisZipRefs).forEach(function(id) {
+              const r = _qgisZipRefs[id];
+              if (r && r.status === 'loading') { try { postToUI({ action: 'kascZipLoad', url: r.url, zipId: id }); } catch (e) {} }
+            });
+          } catch (e) {}
         } catch (e) { try { sendError('[requestRestoreState] error:', e); } catch(_) {} }
       } else if (msg.action === 'flyInitRequest') {
           try {
@@ -10052,33 +10661,9 @@ reearth.extension.on("message", (msg) => {
           catch (e) { }
       }
       else if (msg.action === 'fgbResult' || msg.action === 'pqResult') {
-          // UI iframe finished decoding a FlatGeobuf/GeoParquet file — add it
-          // as a GeoJSON layer and resolve any pending AI tool call.
-          try {
-              const isPq = (msg.action === 'pqResult');
-              const pendMap = isPq ? _pqPending : _fgPending;
-              const label = isPq ? 'GeoParquet' : 'FlatGeobuf';
-              const p = pendMap[msg.vecId];
-              if (p !== undefined) delete pendMap[msg.vecId];
-              if (p) {
-                  if (msg.error || !msg.geojson) {
-                      try { sendError('[' + label + '] decode failed:', msg.error); } catch (e) {}
-                      markLayerFailed(p.url, p.title || (label + ': ' + p.url), String(msg.error || 'decode failed'));
-                      if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'decode failed') });
-                  } else if (geojsonMsgTooBig(msg.geojson)) {
-                      const err = 'result too large for the extension bridge (>4MB) — narrow the query (limit) or host via qgis: <.kasc URL>';
-                      try { sendError('[' + label + ']', err); } catch (e) {}
-                      markLayerFailed(p.url, p.title || (label + ': ' + p.url), err);
-                      if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
-                  } else {
-                      const title = p.title || (label + ': ' + p.url);
-                      const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
-                      const newId = addGeoJsonValueLayer(msg.geojson, title, p.visible !== false, p.classification, label + ': ' + p.url, p.style, p0);
-                      if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: title, features: (msg.geojson.features || []).length });
-                  }
-              }
-          }
-          catch (e) { }
+          // Vector decode finished in our own iframe (dataB64 or host-dead
+          // fallback — host-routed results arrive via extensionMessage).
+          try { handleVecResult(msg); } catch (e) {}
       }
       else if (msg.action === 'qmlResult') {
           // UI iframe finished a .qml -> appearance compile
@@ -10147,33 +10732,25 @@ reearth.extension.on("message", (msg) => {
       }
       else if (msg.action === 'dismissFailed') {
           // × on a failed-layer tombstone — drop the entry and re-render.
+          // Any registered retry-on-move spec for the same source goes too,
+          // so a dismissed layer cannot resurrect on the next camera move.
           try {
-              if (msg.failId && _failedLayerEntries[msg.failId]) delete _failedLayerEntries[msg.failId];
+              const fe = msg.failId && _failedLayerEntries[msg.failId];
+              if (fe) {
+                  delete _failedLayerEntries[msg.failId];
+                  try { Object.keys(_ddbFailedAdds).forEach(k => { if (_ddbFailedAdds[k].url === fe.key) delete _ddbFailedAdds[k]; }); } catch (e2) {}
+              }
               safeShowUI('dismissFailed');
           } catch (e) {}
       }
       else if (msg.action === 'geoResult') {
-          // UI iframe decoded a kasczip:// GeoJSON member — add as a
-          // GeoJSON-value layer (same path as fgb/parquet results).
-          try {
-              const p = _geoPending[msg.vecId];
-              if (p !== undefined) delete _geoPending[msg.vecId];
-              if (p) {
-                  if (msg.error || !msg.geojson) {
-                      try { sendError('[geojson] decode failed:', msg.error); } catch (e) {}
-                      markLayerFailed(p.url, p.title || ('GeoJSON: ' + p.url), String(msg.error || 'decode failed'));
-                  } else if (geojsonMsgTooBig(msg.geojson)) {
-                      const gErr = 'result too large for the extension bridge (>4MB) — host via qgis: <.kasc URL>';
-                      try { sendError('[geojson]', gErr); } catch (e) {}
-                      markLayerFailed(p.url, p.title || ('GeoJSON: ' + p.url), gErr);
-                  } else {
-                      const title = p.title || ('GeoJSON: ' + p.url);
-                      const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
-                      addGeoJsonValueLayer(msg.geojson, title, p.visible !== false, p.classification, 'GeoJSON: ' + p.url, p.style, p0);
-                  }
-              }
-          }
-          catch (e) { }
+          // Same shared handling as fgb/parquet results (own-iframe decode).
+          try { handleVecResult(msg); } catch (e) {}
+      }
+      else if (msg.action === 'hubResult') {
+          // bridge-hub /vector: registered → add geojson URL layer, else
+          // the stored fallback runs the in-iframe decode path.
+          try { handleHubResult(msg); } catch (e) {}
       }
       else if (msg.action === 'kascZipResult') {
           // qgis: include — the UI iframe fetched the .kasc (or unzipped the
@@ -10392,6 +10969,25 @@ try {
           try { handleGpkgResult(data); } catch (e) {}
           return;
         }
+        if (data && (data.action === 'fgbAck' || data.action === 'pqAck' || data.action === 'geoAck')) {
+          // Host iframe accepted the vector decode — suppress the own-iframe
+          // fallback (same ack contract as ddbAck/gpkgAck).
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
+          try {
+            const map = (data.action === 'fgbAck') ? _fgPending : (data.action === 'pqAck' ? _pqPending : _geoPending);
+            const p = map[data.vecId]; if (p) p.hostAck = true;
+          } catch (e) {}
+          return;
+        }
+        if (data && (data.action === 'fgbResult' || data.action === 'pqResult' || data.action === 'geoResult')) {
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
+          try {
+            const map = (data.action === 'fgbResult') ? _fgPending : (data.action === 'pqResult' ? _pqPending : _geoPending);
+            const p = map[data.vecId]; if (p) p.hostAck = true;
+          } catch (e) {}
+          try { handleVecResult(data); } catch (e) {}
+          return;
+        }
         if (data && data.action === 'requestBaseList') {
           const targetId = msg.sender || null;
           if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
@@ -10546,9 +11142,12 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
     sendLog("[addXyzLayer] received url:", url);
     sendLog("[addXyzLayer] encoded url:", encodedUrl);
     sendLog("[addXyzLayer] layer object:", layer);
+    const _laT0 = Date.now();
     const newId = reearth.layers.add(layer);
+    try { const _laDt = Date.now() - _laT0; if (_laDt > 200) sendLog('[la-timing/xyz]', title, _laDt + 'ms'); } catch (e) {}
     // Track this layer as plugin-added
     if (newId) {
+      markVectorIndexDirty();
       _pluginAddedLayerIds.add(newId);
       if (type === 'geojson' && _pluginAddedGeojsonLayerIds.indexOf(newId) === -1) {
         _pluginAddedGeojsonLayerIds.push(newId);
@@ -10614,6 +11213,10 @@ try {
   const textToProcess = (typeof textInit === 'string') ? textInit : _defaultInspectorText;
   if (textToProcess && textToProcess.trim()) {
     try { sendLog('[init] processing inspector text at startup, length:', textToProcess.length, 'isDefault:', textToProcess === _defaultInspectorText); } catch(e){}
+    // Seed the poll cache so the first poll tick doesn't re-process the same
+    // text — async ext-path items (parquet/fgb/duckdb/gpkg) would otherwise
+    // pass their deferred title dedupe twice and double-add layers.
+    _lastInspectorLayersJson = textToProcess;
     processInspectorText(textToProcess);
   }
 } catch(e) {}
@@ -10971,6 +11574,7 @@ function handleAiToolRequest(senderId, data) {
           else { fail('layers.delete unavailable'); return; }
           try { _pluginAddedLayerIds.delete(l.id); } catch (e) {}
           try { const gi = _pluginAddedGeojsonLayerIds.indexOf(l.id); if (gi >= 0) _pluginAddedGeojsonLayerIds.splice(gi, 1); } catch (e) {}
+          markVectorIndexDirty();
           try { safeShowUI('aiToolRequest:removeLayer'); } catch (e) {}
           aiToolReply(senderId, reqId, true, { id: l.id, title: l.title });
         } catch (e) { fail(String(e)); }
@@ -11115,7 +11719,12 @@ function handleAiToolRequest(senderId, data) {
             columns: toArr(args.columns), covering: toArr(args.covering),
             bboxAuto: (args.bbox === undefined || args.bbox === null) ? true : !!args.bbox
         };
-        loadDuckDbLayer(spec, { senderId: senderId, reqId: reqId });
+        const ddPending = { senderId: senderId, reqId: reqId };
+        // Same externalization as the inspector path: a reachable hub serves
+        // the source as a URL-type geojson layer, else the wasm fallback runs.
+        hubExternalize(hubSpecFor('duckdb', url, spec),
+          { url: url, title: spec.title || ('DuckDB: ' + url), visible: spec.visible, zoom: null, classification: null, style: null, columns: spec.columns, bboxAuto: spec.bboxAuto, pending: ddPending },
+          () => loadDuckDbLayer(spec, ddPending));
         return;
       }
       case 'setFlySettings': {
@@ -11548,6 +12157,19 @@ function processInspectorText(text) {
           _inspectorAiHub = val;
           try { sendLog('[processInspectorText] found inspector aiHub:', val); } catch(e){}
         }
+      } catch(e){}
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // bridge-hub /vector externalization: "vectorHub: off | http://host:port"
+    // Controls auto-externalization of fgb/parquet/gpkg/duckdb URL sources —
+    // registered sources come back as plain geojson: layers (no iframe decode).
+    if (/^vectorhub\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        _inspectorVectorHub = val || null;
+        try { sendLog('[processInspectorText] found vectorHub:', _inspectorVectorHub); } catch(e){}
       } catch(e){}
       if (keep !== false) nonCamLines.push(line);
       return;
@@ -12326,62 +12948,110 @@ function addXyzLayersFromArray(items) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate:', u); } catch(e){}
       continue;
     }
-    if (type === 'flatgeobuf' || type === 'parquet') {
-      // Decoded-to-geojson layers carry data.value (no data.url) so the
-      // url-based dup check above cannot see them — dedupe on the resolved
-      // title instead.
-      const vecLabel = (type === 'parquet') ? 'GeoParquet' : 'FlatGeobuf';
-      const vecTitle = t || (vecLabel + ': ' + u);
-      if (existing.find(l => l && l.title === vecTitle)) {
-        try { sendLog('[addXyzLayersFromArray] skip duplicate ' + type + ':', u); } catch(e){}
-        continue;
-      }
-      if (type === 'parquet') loadParquetLayer(u, vecTitle, visible, it.classification, it.limit, null, it.style);
-      else loadFlatGeobufLayer(u, vecTitle, visible, it.classification, it.limit, null, it.style);
-      continue;
-    }
-    if (type === 'duckdb') {
-      const ddTitle = t || ('DuckDB: ' + u);
-      if (existing.find(l => l && l.title === ddTitle)) {
-        try { sendLog('[addXyzLayersFromArray] skip duplicate duckdb:', u); } catch(e){}
-        continue;
-      }
-      const spec = Object.assign({ url: u, title: ddTitle, visible: visible, classification: it.classification }, it.ddb || {});
-      loadDuckDbLayer(spec, null);
-      continue;
-    }
-    if (type === 'gpkg') {
-      const gpTitle = t || ('GeoPackage: ' + u);
-      if (existing.find(l => l && l.title === gpTitle)) {
-        try { sendLog('[addXyzLayersFromArray] skip duplicate gpkg:', u); } catch(e){}
-        continue;
-      }
-      const spec = Object.assign({ url: u, title: gpTitle, visible: visible, classification: it.classification }, it.gpkg || {});
-      loadGpkgLayer(spec, null);
-      continue;
-    }
-    if (type === 'sql') {
-      const sqTitle = it.title || 'SQL query';
-      if (existing.find(l => l && l.title === sqTitle)) {
-        try { sendLog('[addXyzLayersFromArray] skip duplicate sql:', sqTitle); } catch(e){}
-        continue;
-      }
-      loadSqlLayer({ query: it.query, title: sqTitle, visible: visible, classification: it.classification, style: it.style || null, bboxAuto: /:bbox\b/i.test(it.query || '') }, null);
-      continue;
-    }
-    if (type === 'geojson' && isKascZipUrl(u)) {
-      // kasczip:// geojson — Cesium cannot fetch it; decode in the UI iframe
-      // and add via the data.value path (same as file import / fgb / parquet).
-      const gjTitle = t || ('GeoJSON: ' + u);
-      if (existing.find(l => l && l.title === gjTitle)) {
-        try { sendLog('[addXyzLayersFromArray] skip duplicate geojson(zip):', u); } catch(e){}
-        continue;
-      }
-      loadGeoJsonViaIframe(u, gjTitle, visible, it.classification, it.style);
+    // Extension-path (ctx-crossing) specs are deferred: canonical URL-ref
+    // layers land first so the map/UI is usable, these stream in serially.
+    // geojson with a `style=` needs an iframe QML compile, so it is ext-path
+    // too; plain geojson URLs stay canonical (the host fetches them itself).
+    if (type === 'flatgeobuf' || type === 'parquet' || type === 'duckdb' ||
+        type === 'gpkg' || type === 'sql' ||
+        (type === 'geojson' && (isKascZipUrl(u) || !!it.style))) {
+      enqueueExtPath(() => { try { applyExtPathItem(it, u, t, type, visible, zoom); } catch (e) {} });
       continue;
     }
     addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution, it.classification, it.style);
   }
+}
+
+// One deferred extension-path spec, run by pumpExtPathQueue. Dedupe is
+// re-evaluated against the CURRENT layer list (not the list captured when the
+// spec was parsed) — the queue may run well after a later pass added the same
+// layer, and inspector re-applies must not duplicate.
+function applyExtPathItem(it, u, t, type, visible, zoom) {
+  const existing = (reearth.layers && reearth.layers.layers) || [];
+  const titleDup = (title) => existing.find(l => l && l.title === title);
+  // In-flight dedupe: ext-path loads complete asynchronously (hub roundtrip /
+  // iframe decode), so a second processInspectorText pass that ran before the
+  // first layer landed would otherwise pass titleDup and double-add.
+  if (u && isLayerLoading(u)) {
+    try { sendLog('[applyExtPathItem] skip in-flight ' + type + ':', u); } catch(e){}
+    return;
+  }
+  if (type === 'flatgeobuf' || type === 'parquet') {
+    // Decoded-to-geojson layers carry data.value (no data.url) so a url-based
+    // dup check cannot see them — dedupe on the resolved title instead.
+    const vecLabel = (type === 'parquet') ? 'GeoParquet' : 'FlatGeobuf';
+    const vecTitle = t || (vecLabel + ': ' + u);
+    if (titleDup(vecTitle)) {
+      try { sendLog('[addXyzLayersFromArray] skip duplicate ' + type + ':', u); } catch(e){}
+      return;
+    }
+    // Try the bridge-hub /vector externalization first — a reachable hub
+    // serves the source as a plain geojson: URL (host-fetched, no ctx
+    // crossing). On failure/fallback the in-iframe decode path runs.
+    const vecRun = () => {
+      if (type === 'parquet') loadParquetLayer(u, vecTitle, visible, it.classification, it.limit, null, it.style);
+      else loadFlatGeobufLayer(u, vecTitle, visible, it.classification, it.limit, null, it.style);
+    };
+    hubExternalize(hubSpecFor(type, u, { limit: it.limit }),
+      { url: u, title: vecTitle, visible: visible, zoom: zoom, attribution: it.attribution, classification: it.classification, style: it.style }, vecRun);
+    return;
+  }
+  if (type === 'duckdb') {
+    const ddTitle = t || ('DuckDB: ' + u);
+    if (titleDup(ddTitle)) {
+      try { sendLog('[addXyzLayersFromArray] skip duplicate duckdb:', u); } catch(e){}
+      return;
+    }
+    const spec = Object.assign({ url: u, title: ddTitle, visible: visible, classification: it.classification }, it.ddb || {});
+    const ddbRun = () => loadDuckDbLayer(spec, null);
+    hubExternalize(hubSpecFor('duckdb', u, it.ddb || {}),
+      { url: u, title: ddTitle, visible: visible, zoom: zoom, attribution: it.attribution, classification: it.classification, style: (it.ddb && it.ddb.style) || null, columns: (it.ddb && it.ddb.columns) || null, bboxAuto: !!(it.ddb && it.ddb.bboxAuto) }, ddbRun);
+    return;
+  }
+  if (type === 'gpkg') {
+    const gpTitle = t || ('GeoPackage: ' + u);
+    if (titleDup(gpTitle)) {
+      try { sendLog('[addXyzLayersFromArray] skip duplicate gpkg:', u); } catch(e){}
+      return;
+    }
+    const spec = Object.assign({ url: u, title: gpTitle, visible: visible, classification: it.classification }, it.gpkg || {});
+    const gpkgRun = () => loadGpkgLayer(spec, null);
+    hubExternalize(hubSpecFor('gpkg', u, it.gpkg || {}),
+      { url: u, title: gpTitle, visible: visible, zoom: zoom, attribution: it.attribution, classification: it.classification, style: (it.gpkg && it.gpkg.style) || null, columns: (it.gpkg && it.gpkg.columns) || null, bboxAuto: !!(it.gpkg && it.gpkg.bboxAuto) }, gpkgRun);
+    return;
+  }
+  if (type === 'sql') {
+    const sqTitle = it.title || 'SQL query';
+    if (isLayerLoading('sql:' + sqTitle) || titleDup(sqTitle)) {
+      try { sendLog('[addXyzLayersFromArray] skip duplicate sql:', sqTitle); } catch(e){}
+      return;
+    }
+    const sqlSpec = { query: it.query, title: sqTitle, visible: visible, classification: it.classification, style: it.style || null, bboxAuto: /:bbox\b/i.test(it.query || '') };
+    // kind:sql VIEW on the hub — the :bbox world envelope is baked into the
+    // view and the real viewport filter rides on the ?bbox= URL param.
+    hubExternalize(hubSpecForSql(it.query, {}),
+      { url: 'sql:' + sqTitle, title: sqTitle, visible: visible, zoom: zoom, attribution: it.attribution, classification: it.classification, style: it.style || null, bboxAuto: sqlSpec.bboxAuto }, () => loadSqlLayer(sqlSpec, null));
+    return;
+  }
+  if (type === 'geojson' && isKascZipUrl(u)) {
+    // kasczip:// geojson — Cesium cannot fetch it; decode in the UI iframe
+    // and add via the data.value path (same as file import / fgb / parquet).
+    const gjTitle = t || ('GeoJSON: ' + u);
+    if (titleDup(gjTitle)) {
+      try { sendLog('[addXyzLayersFromArray] skip duplicate geojson(zip):', u); } catch(e){}
+      return;
+    }
+    loadGeoJsonViaIframe(u, gjTitle, visible, it.classification, it.style);
+    return;
+  }
+  // geojson with style= — canonical layer object, but the QML compile runs
+  // through the iframe before finishStyledLayerAdd lands the layer.
+  const encoded2 = u.replace(/[\u0080-\uFFFF]/g, (c) => encodeURIComponent(c));
+  if (existing.find(l => l && l.data && l.data.url && (l.data.url === encoded2 || (typeof l.data.url === 'string' && l.data.url.indexOf(encoded2) !== -1)))) {
+    try { sendLog('[addXyzLayersFromArray] skip duplicate geojson(style):', u); } catch(e){}
+    return;
+  }
+  addXyzLayer(u, t, type, false, visible, zoom, it.attribution, it.classification, it.style);
 }
 
 // Send info URL to UI to load in iframe
@@ -12510,6 +13180,29 @@ function csvRowsToFeatures(rows, headers, csvConfig) {
   }).filter(Boolean);
 }
 
+// getVectorFeatureIndex arrives once from every recreated iframe — during a
+// batch layer add that means a dozen back-to-back rebuilds, each a
+// multi-second synchronous scan of every vector feature on the main thread.
+// Coalesce bursts to the latest request (generation debounce) and answer
+// unchanged-layer requests by replaying the cached payload instead of
+// rescanning. force (the UI refresh button) always rebuilds.
+function requestVectorFeatureIndexBuild(force) {
+  if (force) { _vectorIndexDirty = true; }
+  else if (_vectorFeatureIndex && !_vectorIndexDirty && _vectorIndexPosted) {
+    try { postToUI(_vectorIndexPosted); } catch (e) {}
+    return;
+  }
+  const gen = ++_vectorIndexReqGen;
+  waitViaUiTimer(300).then(() => {
+    if (gen !== _vectorIndexReqGen) return;
+    if (_vectorFeatureIndex && !_vectorIndexDirty && _vectorIndexPosted) {
+      try { postToUI(_vectorIndexPosted); } catch (e) {}
+      return;
+    }
+    try { buildVectorFeatureIndexFromLayers(); } catch (e) {}
+  });
+}
+
 function requestVectorFeatureIndex() {
   try {
     const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
@@ -12533,12 +13226,31 @@ function requestVectorFeatureIndex() {
   }
 }
 
+// Error objects coming back across the QuickJS bridge are Proxies whose
+// .message may itself throw — extract a readable string defensively.
+function vixDescribeErr(e) {
+  try { if (e && e.message) return String(e.message); } catch (_) {}
+  try { return String(e); } catch (_) { return 'unreadable bridge error'; }
+}
+// Compact shape descriptor for a data.value we couldn't parse into features —
+// log-only aid for diagnosing layers the index skips.
+function vixDescribeValue(v) {
+  try {
+    if (typeof v === 'string') return 'string(' + v.length + ') ' + JSON.stringify(v.slice(0, 80));
+    if (Array.isArray(v)) return 'array(' + v.length + ')';
+    if (v && typeof v === 'object') { let ks = ''; try { ks = Object.keys(v).slice(0, 8).join(','); } catch (_) {} return 'object keys=' + ks; }
+    return String(typeof v);
+  } catch (e) { return 'unreadable value'; }
+}
+
 // Build the vector feature index directly from Re:Earth's computed layers.
 // This uses reearth.layers.layers[i].computed?.features, avoiding the need
 // to fetch data.url / data.value from the UI iframe.
 function buildVectorFeatureIndexFromLayers() {
   try {
+    const _vixT0 = Date.now();
     const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
+    try { sendLog('[vix-timing] layers fetched:', layersAll.length, Date.now() - _vixT0 + 'ms'); } catch (e) {}
     const layerInfo = {};
     const allAttrSet = new Set();
     const allValuesByAttr = {};
@@ -12560,7 +13272,11 @@ function buildVectorFeatureIndexFromLayers() {
         const title = (l.title || (l.layer && l.layer.title) || l.id || 'Layer');
         const id = l.id || String(layerOptions.length);
 
-        let features = (l.computed && l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed && l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null);
+        // l.computed / l.data.value are live bridge proxies — a getter that
+        // throws (observed as unreadable "Proxy(Error)") must not kill the
+        // whole layer; fall through to the data.value / iframe-fetch paths.
+        let features = null;
+        try { features = (l.computed && l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed && l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null); } catch (e) { features = null; }
         if (!features || !features.length) {
           // computed not ready — index value-backed sources directly here.
           // The old path shipped the whole value to the UI iframe which posted
@@ -12583,19 +13299,36 @@ function buildVectorFeatureIndexFromLayers() {
                   features = csvRowsToFeatures(rows, headers, l.data.csv || null);
                 } else {
                   const vFeat = Array.isArray(vObj) ? vObj : ((vObj && (vObj.features || vObj.Feature)) || null);
-                  if (Array.isArray(vFeat) && vFeat.length) features = vFeat;
+                  // data.value crosses the bridge as a proxy — Array.isArray on
+                  // a proxied array fails, dropping object-form
+                  // FeatureCollections ({type,features}) from the index.
+                  // Materialize array-like values into a real array instead.
+                  if (vFeat && !Array.isArray(vFeat)) {
+                    try {
+                      const n = Number(vFeat.length);
+                      if (Number.isFinite(n) && n > 0 && n <= 500000) {
+                        const arr = [];
+                        for (let i = 0; i < n; i++) arr.push(vFeat[i]);
+                        if (arr.length) features = arr;
+                      }
+                    } catch (e) {}
+                  } else if (Array.isArray(vFeat) && vFeat.length) {
+                    features = vFeat;
+                  }
                 }
               }
             } catch (e) {}
           }
           if (!features || !features.length) {
-            // Only URL-backed sources still need the iframe fetch (payload is
-            // budgeted iframe-side); a value source we couldn't parse is
-            // skipped — sending it to the iframe would just round-trip bytes.
-            if (v === undefined || v === null) {
+            // URL-backed sources can still be fetched by the iframe directly
+            // (payload is budgeted iframe-side) — even when data.value threw
+            // or failed to parse. Only value-only sources we couldn't parse
+            // are skipped outright: sending them to the iframe would just
+            // round-trip bytes.
+            if (l.data.url || v === undefined || v === null) {
               missingSources.push({ id: id, title: title, type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null });
             } else {
-              try { sendError('[vectorIndex] skipped unparsable value layer:', title); } catch (e) {}
+              try { sendError('[vectorIndex] skipped unparsable value layer:', title, '(' + vixDescribeValue(v) + ')'); } catch (e) {}
             }
             return;
           }
@@ -12606,7 +13339,18 @@ function buildVectorFeatureIndexFromLayers() {
         const featureByAttr = {};
         const rawRows = [];
 
-        features.forEach((f) => {
+        // features may be a live bridge proxy — every element read crosses
+        // into this ctx, so cap the scan per layer (a search index doesn't
+        // need exhaustive coverage; unbounded proxy scans were an
+        // intermittent QuickJS OOM vector during project imports).
+        const MAX_INDEX_FEATURES = 50000;
+        let _featLen = 0;
+        try { _featLen = (features && features.length) | 0; } catch (e) {}
+        const scanN = Math.min(_featLen, MAX_INDEX_FEATURES);
+        try { if (_featLen > scanN) sendLog('[vectorIndex] capped scan:', title, scanN + '/' + _featLen); } catch (e) {}
+        for (let fi = 0; fi < scanN; fi++) {
+          let f = null;
+          try { f = features[fi]; } catch (e) { continue; }
           try {
             const props = (f && f.properties) || {};
             const geom = (f && f.geometry) || null;
@@ -12637,7 +13381,7 @@ function buildVectorFeatureIndexFromLayers() {
               } catch (e) {}
             });
           } catch (e) {}
-        });
+        }
 
         const sortedAttributes = Array.from(attrSet).sort();
         const sortedValuesByAttr = {};
@@ -12653,7 +13397,10 @@ function buildVectorFeatureIndexFromLayers() {
         layerInfo[id] = { title: title, attributes: sortedAttributes, valuesByAttr: sortedValuesByAttr, featureByAttr: featureByAttr, rows: rows };
         layerOptions.push({ id: id, title: title });
       } catch (e) {
-        try { sendError('[buildVectorFeatureIndexFromLayers] failed for', l && l.id, e); } catch (_) {}
+        try { sendError('[buildVectorFeatureIndexFromLayers] failed for', l && l.id, vixDescribeErr(e)); } catch (_) {}
+        // URL-backed layers are still indexable via the iframe fetch path —
+        // a proxied getter throwing mid-scan must not drop the layer.
+        try { if (l && l.data && l.data.url) missingSources.push({ id: l.id || '', title: l.title || l.id || '', type: 'geojson', url: l.data.url, csv: l.data.csv || null }); } catch (_) {}
       }
     });
 
@@ -12688,7 +13435,11 @@ function buildVectorFeatureIndexFromLayers() {
       uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr, rows: l.rows };
     });
 
-    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, rows: allRows }, layers: uiLayers, layerOptions: layerOptions });
+    const vixPayload = { action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, rows: allRows }, layers: uiLayers, layerOptions: layerOptions };
+    _vectorIndexPosted = vixPayload;
+    _vectorIndexDirty = false;
+    postToUI(vixPayload);
+    try { sendLog('[vix-timing] build done:', Date.now() - _vixT0 + 'ms'); } catch (e) {}
     try { sendLog('[buildVectorFeatureIndexFromLayers] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
 
     if (missingSources.length) {
@@ -12698,6 +13449,7 @@ function buildVectorFeatureIndexFromLayers() {
   } catch (e) {
     try { sendError('[buildVectorFeatureIndexFromLayers] error:', e); } catch (_) {}
     _vectorFeatureIndex = null;
+    _vectorIndexPosted = null;
   }
 }
 
@@ -12865,11 +13617,15 @@ function buildVectorFeatureIndexFromData(layersData) {
       uiLayers[id] = { title: l.title, attributes: l.attributes, valuesByAttr: l.valuesByAttr, rows: l.rows };
     });
 
-    postToUI({ action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, rows: allRows }, layers: uiLayers, layerOptions: layerOptions });
+    const vixPayload = { action: 'vectorFeatureIndex', all: { attributes: allAttributes, valuesByAttr: allSortedValuesByAttr, rows: allRows }, layers: uiLayers, layerOptions: layerOptions };
+    _vectorIndexPosted = vixPayload;
+    _vectorIndexDirty = false;
+    postToUI(vixPayload);
     try { sendLog('[buildVectorFeatureIndex] built index with', allAttributes.length, 'attributes across', layerOptions.length, 'layers'); } catch (e) {}
   } catch (e) {
     try { sendError('[buildVectorFeatureIndex] error:', e); } catch (_) {}
     _vectorFeatureIndex = null;
+    _vectorIndexPosted = null;
   }
 }
 

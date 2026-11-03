@@ -643,6 +643,11 @@ const html: string = `
                       var geomKey = fields.indexOf('__geom__') >= 0 ? '__geom__' : null;
                       var features = [];
                       var rows = table.toArray();
+                      // Fail fast (same as gpkgLoad): results over the 4MB
+                      // bridge cap are rejected by gjTooBig anyway, so track
+                      // accumulated JSON size and bail instead of converting
+                      // every row just to throw it away.
+                      var approxBytes = 2;
                       for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
                         var geometry = null;
@@ -661,7 +666,13 @@ const html: string = `
                         if (!geometry) continue;
                         var props = {};
                         for (var j = 0; j < fields.length; j++) { if (fields[j] !== geomKey) props[fields[j]] = row[fields[j]]; }
-                        features.push({ type: 'Feature', geometry: geometry, properties: props });
+                        var feat = { type: 'Feature', geometry: geometry, properties: props };
+                        try { approxBytes += JSON.stringify(feat).length + 1; }
+                        catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
+                        if (approxBytes > 4 * 1024 * 1024) {
+                          throw new Error('layer too large (>4MB decoded) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns), or host via qgis: <.kasc URL>');
+                        }
+                        features.push(feat);
                       }
                       return { type: 'FeatureCollection', features: features };
                     });
@@ -728,13 +739,26 @@ const html: string = `
                 var dbP = window._gpkgDbs[dbKey];
                 if (!dbP) {
                   dbP = window._sqljsModule.then(function(SQL) {
+                    // Spec: GeoPackage files over the 4MB cap are rejected
+                    // outright — even when a table=/where=/limit=/columns=/
+                    // bbox filter could produce a smaller result. Content-
+                    // Length is checked before the body is read (bytes still
+                    // verified after, since gzip reports compressed size).
+                    var fileTooLarge = function(n) {
+                        return 'gpkg file too large (' + Math.round(n / 104857.6) / 10 + 'MB > 4MB) — oversized GeoPackage files are rejected outright (spec)';
+                    };
                     var bufP = (msg.dataB64 || msg.zipPath)
                       ? zipOrB64(msg)
                       : fetch(msg.url, { mode: 'cors' }).then(function(res) {
                           if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                          var cl = Number(res.headers.get('content-length')) || 0;
+                          if (cl > 4 * 1024 * 1024) throw new Error(fileTooLarge(cl));
                           return res.arrayBuffer();
                         }).then(function(buf) { return new Uint8Array(buf); });
-                    return bufP.then(function(bytes) { return new SQL.Database(bytes); });
+                    return bufP.then(function(bytes) {
+                        if (bytes.length > 4 * 1024 * 1024) throw new Error(fileTooLarge(bytes.length));
+                        return new SQL.Database(bytes);
+                    });
                   });
                   dbP.catch(function() { if (window._gpkgDbs[dbKey] === dbP) delete window._gpkgDbs[dbKey]; });
                   window._gpkgDbs[dbKey] = dbP;
@@ -758,6 +782,67 @@ const html: string = `
                     + (Number.isInteger(msg.limit) && msg.limit > 0 ? ' LIMIT ' + Math.floor(msg.limit) : '');
                   var stmt = db.prepare(sql);
                   var colNames = stmt.getColumnNames();
+                  // Fast pre-decode probe: sum the raw byte volume that would
+                  // cross the bridge (WKB blob bytes + property text lengths +
+                  // per-feature JSON overhead) without decoding a single
+                  // geometry. bbox=auto applies the same envelope filter to
+                  // the estimate, reading only each row's 40-byte GPkgBinary
+                  // header (SUBSTR) — full blobs are never touched for the
+                  // estimate. Raw bytes already over the cap cannot decode
+                  // smaller, so reject here instead of after ~4MB of wasted
+                  // decode.
+                  var propCols = colNames.filter(function(c) { return c !== geomCol; });
+                  var propLenExpr = propCols.length ? propCols.map(function(c) { return 'LENGTH(' + qIdent(c) + ')'; }).join('+') : '0';
+                  var probeRows = 0, probeWkb = 0, probeProp = 0;
+                  try {
+                      if (msg.bounds) {
+                          // Fastest path: the gpkg rtree_<table>_<geom> index
+                          // is a plain table (id, minx, maxx, miny, maxy)
+                          // readable without the RTree module, so the bbox
+                          // estimate is a single aggregate query — no
+                          // per-row JS at all.
+                          var probed = false;
+                          try {
+                              var rtName = 'rtree_' + tableName + '_' + geomCol;
+                              var rtOk = db.exec('SELECT 1 FROM sqlite_master WHERE name = ' + qLit(rtName) + ' LIMIT 1');
+                              var pkRes = db.exec('SELECT name FROM pragma_table_info(' + qLit(tableName) + ') WHERE pk > 0 ORDER BY pk LIMIT 1');
+                              var pkName = pkRes[0] && pkRes[0].values[0] && pkRes[0].values[0][0];
+                              if (rtOk[0] && rtOk[0].values.length && pkName) {
+                                  var propLenG = propCols.length ? propCols.map(function(c) { return 'LENGTH(g.' + qIdent(c) + ')'; }).join('+') : '0';
+                                  var lonPred = (msg.bounds.ranges || []).map(function(r) {
+                                      return '(r.maxx >= ' + Number(r.west) + ' AND r.minx <= ' + Number(r.east) + ')';
+                                  }).join(' OR ') || '0';
+                                  var bb = '((' + lonPred + ') AND r.maxy >= ' + Number(msg.bounds.south) + ' AND r.miny <= ' + Number(msg.bounds.north) + ')';
+                                  var rtRes = db.exec('SELECT COUNT(*), SUM(LENGTH(g.' + qIdent(geomCol) + ')), SUM(' + propLenG + ')'
+                                      + ' FROM (' + sql + ') g JOIN ' + qIdent(rtName) + ' r ON g.' + qIdent(pkName) + ' = r.id WHERE ' + bb);
+                                  var rv = rtRes[0] && rtRes[0].values && rtRes[0].values[0];
+                                  if (rv) { probeRows = Number(rv[0]) || 0; probeWkb = Number(rv[1]) || 0; probeProp = Number(rv[2]) || 0; probed = true; }
+                              }
+                          } catch (e2) { probed = false; }
+                          if (!probed) {
+                              // No rtree index (or pk not in the column
+                              // subset): envelope-only SUBSTR pass — still
+                              // no WKB decode.
+                              var ps = db.prepare('SELECT SUBSTR(' + qIdent(geomCol) + ',1,40), LENGTH(' + qIdent(geomCol) + '), ' + propLenExpr
+                                  + ' FROM (' + sql + ')');
+                              while (ps.step()) {
+                                  var prow = ps.get();
+                                  if (!gpkgEnvIntersects(gpkgBinEnvelope(prow[0]), msg.bounds)) continue;
+                                  probeRows++; probeWkb += Number(prow[1]) || 0; probeProp += Number(prow[2]) || 0;
+                              }
+                              ps.free();
+                          }
+                      } else {
+                          var pres = db.exec('SELECT COUNT(*), SUM(LENGTH(' + qIdent(geomCol) + ')), SUM(' + propLenExpr + ') FROM (' + sql + ')');
+                          var pv = pres[0] && pres[0].values && pres[0].values[0];
+                          if (pv) { probeRows = Number(pv[0]) || 0; probeWkb = Number(pv[1]) || 0; probeProp = Number(pv[2]) || 0; }
+                      }
+                  } catch (e) { probeRows = 0; probeWkb = 0; probeProp = 0; /* advisory probe — fall through to the decode loop */ }
+                  var probeEst = probeWkb + probeProp + probeRows * (64 + propCols.length * 12);
+                  if (probeEst > 4 * 1024 * 1024) {
+                      stmt.free();
+                      throw new Error('layer too large (raw ~' + Math.round(probeEst / 104857.6) / 10 + 'MB, >4MB decoded) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns/table), or host DATA/ and use qgis: <.kasc URL>');
+                  }
                   var features = [];
                   // Fail fast: anything over the 4MB bridge cap is discarded
                   // by gjTooBig anyway, so track the accumulated JSON size and
@@ -778,7 +863,7 @@ const html: string = `
                     catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
                     if (approxBytes > 4 * 1024 * 1024) {
                       stmt.free();
-                      throw new Error('layer too large (>4MB decoded) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>');
+                      throw new Error('layer too large (>4MB decoded) — zoom in (bbox=auto retries on move), narrow the query (where/limit/columns/table), or host DATA/ and use qgis: <.kasc URL>');
                     }
                     features.push(feat);
                   }
@@ -791,6 +876,189 @@ const html: string = `
                   } catch (e) {}
                   reply({ type: 'FeatureCollection', features: features }, null, qml);
                 }, function(e) { reply(null, String(e && e.message || e)); });
+              } catch (e) { reply(null, String(e)); }
+            })();
+          } else if (msg.action === 'fgbLoad') {
+            // FlatGeobuf decode — mirror of the layer panel's fgbLoad. Runs
+            // here when the panel host-routes the request: this iframe
+            // survives panel re-renders, so concurrent decodes are not killed
+            // mid-flight by ui.show.
+            (function() {
+              var reply = function(geojson, error) {
+                try {
+                  if (geojson) {
+                    geojson = JSON.parse(JSON.stringify(geojson, function(k, v) {
+                      return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
+                    }));
+                  }
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; if (sz > 4 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded, >4MB) — narrow the query (limit) or host via qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
+                  postToParent({ action: 'fgbResult', vecId: msg.vecId, geojson: geojson, error: error });
+                } catch (e) {}
+              };
+              try { postToParent({ action: 'fgbAck', vecId: msg.vecId }); } catch (e) {}
+              try {
+                if (!window._fgbModule) {
+                  window._fgbModule = import('https://cdn.jsdelivr.net/npm/flatgeobuf@4.4.0/lib/mjs/geojson.js/+esm');
+                }
+                window._fgbModule.then(function(mod) {
+                  var srcP = (msg.dataB64 || msg.zipPath)
+                    ? zipOrB64(msg)
+                    : fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                        if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                        if (!res.body) throw new Error('empty response body');
+                        return res.body;
+                      });
+                  return srcP.then(function(src) {
+                    var features = [];
+                    var limit = Math.max(1, Number(msg.limit) || 200000);
+                    var iter = mod.deserialize(src);
+                    // Fail fast (same as gpkgLoad): results over the 4MB
+                    // bridge cap are discarded anyway — bail mid-stream.
+                    var approxBytes = 2;
+                    var readNext = function() {
+                      return iter.next().then(function(r) {
+                        if (r.done || features.length >= limit) return { type: 'FeatureCollection', features: features };
+                        var f = r.value;
+                        if (f && f.geometry) {
+                          features.push(f);
+                          try { approxBytes += JSON.stringify(f).length + 1; }
+                          catch (e0) { approxBytes += 4096; }
+                          if (approxBytes > 4 * 1024 * 1024) {
+                            throw new Error('layer too large (>4MB decoded) — narrow the query (limit) or host via qgis: <.kasc URL>');
+                          }
+                        }
+                        return readNext();
+                      });
+                    };
+                    return readNext();
+                  });
+                }).then(function(fc) {
+                  reply(fc, null);
+                }).catch(function(e) { reply(null, String(e && e.message || e)); });
+              } catch (e) { reply(null, String(e)); }
+            })();
+          } else if (msg.action === 'pqLoad') {
+            // GeoParquet decode — mirror of the layer panel's pqLoad.
+            (function() {
+              var reply = function(geojson, error) {
+                try {
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; if (sz > 4 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded, >4MB) — narrow the query (limit) or host via qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
+                  postToParent({ action: 'pqResult', vecId: msg.vecId, geojson: geojson, error: error });
+                } catch (e) {}
+              };
+              try { postToParent({ action: 'pqAck', vecId: msg.vecId }); } catch (e) {}
+              var wkbToGeoJson = vecWkbToGeoJson;
+              try {
+                if (!window._pqModule) {
+                  window._pqModule = Promise.all([
+                    import('https://cdn.jsdelivr.net/npm/hyparquet@1.30.1/+esm'),
+                    import('https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm')
+                  ]).then(function(mods) {
+                    return {
+                      parquetReadObjects: mods[0].parquetReadObjects,
+                      parquetMetadata: mods[0].parquetMetadataAsync || mods[0].parquetMetadata,
+                      asyncBufferFromUrl: mods[0].asyncBufferFromUrl,
+                      compressors: mods[1].compressors
+                    };
+                  });
+                }
+                window._pqModule.then(function(mod) {
+                  var fileP;
+                  if (msg.dataB64 || msg.zipPath) {
+                    fileP = zipOrB64(msg).then(function(b) { return b.buffer; });
+                  } else {
+                    try { fileP = mod.asyncBufferFromUrl({ url: msg.url }); } catch (e) { fileP = Promise.reject(e); }
+                    fileP = fileP.catch(function() {
+                      return fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                        if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                        return res.arrayBuffer();
+                      });
+                    });
+                  }
+                  return fileP.then(function(file) {
+                    // Footer metadata first (ranged reads only for URLs):
+                    // uncompressed column bytes are a lower bound on the
+                    // decoded GeoJSON, so >4MB here can never fit the bridge
+                    // cap — skip reading the row data entirely.
+                    return Promise.resolve(mod.parquetMetadata ? mod.parquetMetadata(file) : null).then(function(meta) {
+                      var ub = 0;
+                      try {
+                        var rgs = meta && meta.row_groups;
+                        if (Array.isArray(rgs)) for (var gi = 0; gi < rgs.length; gi++) ub += Number(rgs[gi] && rgs[gi].total_byte_size) || 0;
+                      } catch (e0) {}
+                      if (ub > 4 * 1024 * 1024 && !(Number(msg.limit) > 0)) {
+                        throw new Error('layer too large (' + Math.round(ub / 1048576) + 'MB uncompressed, >4MB) — set limit= to shrink it or host via qgis: <.kasc URL>');
+                      }
+                      return mod.parquetReadObjects({ file: file, compressors: mod.compressors }).then(function(rows) {
+                        return { rows: rows || [], meta: meta };
+                      });
+                    });
+                  });
+                }).then(function(r0) {
+                  var rows = r0.rows;
+                  var features = [];
+                  if (!rows.length) return reply({ type: 'FeatureCollection', features: [] }, null);
+                  var geomColumn = null;
+                  try {
+                    var kv = r0.meta && (r0.meta.key_value_metadata || r0.meta.metadata || []);
+                    var entry = Array.isArray(kv) ? kv.find(function(it) { return it && it.key === 'geo'; }) : (kv instanceof Map ? { value: kv.get('geo') } : null);
+                    var rawGeo = entry && entry.value;
+                    var geoText = rawGeo instanceof Uint8Array ? new TextDecoder().decode(rawGeo) : rawGeo;
+                    var geo = geoText ? JSON.parse(geoText) : null;
+                    if (geo && geo.primary_column) geomColumn = geo.primary_column;
+                  } catch (e) {}
+                  var isGeom = function(v) {
+                    return v instanceof Uint8Array || (v && typeof v === 'object' && typeof v.type === 'string' && ('coordinates' in v || 'geometries' in v));
+                  };
+                  var firstRow = rows[0];
+                  if (!geomColumn || !(geomColumn in firstRow)) {
+                    geomColumn = ('geometry' in firstRow) ? 'geometry' : Object.keys(firstRow).find(function(k) { return isGeom(firstRow[k]); });
+                  }
+                  if (!geomColumn) throw new Error('geometry column not found');
+                  var limit = Math.max(1, Number(msg.limit) || 200000);
+                  var approxBytes = 2;
+                  for (var i = 0; i < rows.length && features.length < limit; i++) {
+                    var row = rows[i];
+                    var value = row[geomColumn];
+                    var geometry = value instanceof Uint8Array ? wkbToGeoJson(value) : (isGeom(value) ? value : null);
+                    if (!geometry) continue;
+                    var properties = {};
+                    var keys = Object.keys(row);
+                    for (var j = 0; j < keys.length; j++) { if (keys[j] !== geomColumn) properties[keys[j]] = row[keys[j]]; }
+                    var feat = { type: 'Feature', geometry: geometry, properties: properties };
+                    try { approxBytes += JSON.stringify(feat).length + 1; }
+                    catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
+                    if (approxBytes > 4 * 1024 * 1024) {
+                      throw new Error('layer too large (>4MB decoded) — narrow the query (limit) or host via qgis: <.kasc URL>');
+                    }
+                    features.push(feat);
+                  }
+                  reply({ type: 'FeatureCollection', features: features }, null);
+                }).then(function() {}, function(e) { reply(null, String(e && e.message || e)); });
+              } catch (e) { reply(null, String(e)); }
+            })();
+          } else if (msg.action === 'geoLoad') {
+            // kasczip:// / remote GeoJSON decode — mirror of the panel's
+            // geoLoad. Bytes stay inside this iframe via zipOrB64.
+            (function() {
+              var reply = function(geojson, error) {
+                try {
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; if (sz > 4 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded, >4MB) — host via qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
+                  postToParent({ action: 'geoResult', vecId: msg.vecId, geojson: geojson, error: error });
+                } catch (e) {}
+              };
+              try { postToParent({ action: 'geoAck', vecId: msg.vecId }); } catch (e) {}
+              try {
+                var gjP = (msg.dataB64 || msg.zipPath)
+                  ? zipOrB64(msg)
+                  : fetch(msg.url, { mode: 'cors' }).then(function(res) {
+                      if (!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
+                      return res.arrayBuffer();
+                    }).then(function(b) { return new Uint8Array(b); });
+                gjP.then(function(bytes) {
+                  var text = new TextDecoder('utf-8').decode(bytes);
+                  reply(JSON.parse(text), null);
+                }).catch(function(e) { reply(null, String(e && e.message || e)); });
               } catch (e) { reply(null, String(e)); }
             })();
           }
@@ -904,6 +1172,12 @@ try {
           try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, layerId: msg.layerId || null, geojson: msg.geojson || null, error: msg.error || null, qml: msg.qml || null }, msg.action === 'gpkgResult'); } catch (e) {}
           return;
         }
+        if (msg.action === 'fgbAck' || msg.action === 'fgbResult' || msg.action === 'pqAck' || msg.action === 'pqResult' || msg.action === 'geoAck' || msg.action === 'geoResult') {
+          // Host-routed vector decodes (fgb/parquet/geojson member) — forward
+          // ack + result to the requesting extension (usually the layer panel).
+          try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, geojson: msg.geojson || null, error: msg.error || null }, /Result$/.test(msg.action)); } catch (e) {}
+          return;
+        }
         if (msg.action === 'requestBasemaps') {
           sendBasemapsToUI();
         } else if (msg.action === 'selectBasemap') {
@@ -972,6 +1246,21 @@ try {
               table: data.table || null,
               where: data.where || null, limit: data.limit || null,
               columns: data.columns || null, bounds: data.bounds || null
+            });
+          } catch (e) {}
+        } else if (data.action === 'fgbExec' || data.action === 'pqExec' || data.action === 'geoExec') {
+          // fgb/parquet/geojson-member decode request from the layer panel —
+          // same host pattern as ddbExec/gpkgExec: this iframe persists across
+          // panel re-renders, so decodes survive the ui.show that follows a
+          // result (the panel iframe's own decodes die with it).
+          try {
+            if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
+            const loadAction = data.action === 'fgbExec' ? 'fgbLoad' : (data.action === 'pqExec' ? 'pqLoad' : 'geoLoad');
+            postToUIWhenReady({
+              action: loadAction, vecId: data.vecId,
+              url: data.url, limit: data.limit || null,
+              dataB64: data.dataB64 || null, zipName: data.zipName || null,
+              zipId: data.zipId || null, zipUrl: data.zipUrl || null, zipPath: data.zipPath || null
             });
           } catch (e) {}
         } else if (data.action === 'requestBaseList') {

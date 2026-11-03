@@ -171,6 +171,27 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 </ul>
 <p>ハブの詳細仕様（導入・自動セットアップ・プロバイダ別前提・環境変数）は KASUGAI Canvas 側のドキュメントが正本です: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
 
+<h2>/vector — ベクトルソースの自動外部 GeoJSON 化（v22.2.0〜）</h2>
+<p>ハブの <code>/vector</code> サービス（ネイティブ DuckDB CLI をバックエンドに parquet/gpkg/fgb/geojson/csv/shp を永続 <code>.duckdb</code> へ取り込み GeoJSON 配信）が稼働している環境では、拡張経路ベクトル構文のうち <strong>http(s) URL を持つ <code>fgb:</code>・<code>parquet:</code>・<code>gpkg:</code>・<code>duckdb:</code> のソースを自動でハブ登録</strong>し、<code>geojson: http://&lt;hub&gt;/vector/geojson/&lt;name&gt;</code> の素の URL レイヤとして追加します。</p>
+<p>これにより DuckDB-Wasm の ~15s 初期化・opaque origin のキャッシュ不可・拡張コンテキスト 4MB 制約を全て回避できます（結果は ctx を横断せずホストが直接 fetch）。同一ソースは <code>gs_&lt;hash&gt;</code> の決定的名で登録されるため、再読込・他クライアントで取込み済みテーブルが共有されます。</p>
+<table>
+<thead><tr><th>インスペクタ側オプション</th><th>ハブ側へのマップ</th></tr></thead>
+<tbody>
+<tr><td><code>where=</code>・<code>limit=</code>・<code>table=</code>（gpkg は <code>layer=</code>）・<code>lon=</code>/<code>lat=</code>・<code>geom=</code>（<code>geom_col</code>）</td><td><code>POST /vector/sources</code> の登録ボディ</td></tr>
+<tr><td><code>format=</code>（duckdb）</td><td><code>kind</code>（parquet/csv/json→geojson/gpkg/fgb。未指定は拡張子からハブが推定）</td></tr>
+<tr><td><code>columns=</code></td><td>配信 URL の <code>?columns=a,b</code>（登録ではなく配信時の列選択）</td></tr>
+<tr><td><code>style=</code>/<code>qml=</code>・<code>| off</code>・分類（terrain 等）</td><td>追加される geojson レイヤへそのまま引継ぎ</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>対象外（従来どおり iframe 内デコード）</strong>: kasczip メンバ・eager <code>dataB64</code>・<code>.duckdb</code> ファイル・<code>sql:</code> 行・AI ツール経由の追加・<code>geojson:</code> 行自体（元からホスト fetch）</li>
+<li><strong>フォールバック</strong>: ハブ未到達（<code>/vector/status</code> プローブ 3s タイムアウト）・登録失敗時は既存の iframe デコード経路をそのまま実行するため、ハブの有無で挙動が壊れません</li>
+<li><strong>制御行</strong>: <code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。省略時は <code>aiHub:</code> の値、それも無ければ <code>127.0.0.1:8511</code> を自動検出（AI チャットと同じエンドポイント解決）</li>
+<li><strong>bbox=auto の扱い</strong>: 外部化されるソースはビューポート連動クエリではなくハブの実体化テーブル全体を GeoJSON で配信するため、範囲絞り込みは不要になります（オプション自体は無害に無視）</li>
+<li>デコード失敗時のトゥームストーン・⏳ ロード中行・<code>armPendingTtl</code>（300s）は既存経路と同じ枠組みで処理されます</li>
+</ul>
+<p><small>通信面の補足: ハブ呼出しはパネル iframe の <code>hubExternalize</code> ハンドラで <code>GET /vector/status</code> → <code>GET /vector/sources</code> → 必要時のみ <code>POST /vector/sources</code>（text/plain・プリフライト不要のシンプルリクエスト）を1往復で行い、結果は <code>hubResult</code> で拡張ctxへ返ります。登録ボディの <code>name</code> は kind/src/where/limit/lon/lat/geom_col の FNV-1a ハッシュから決定的に生成します。</small></p>
+
 <h2>設計上の制約・注意</h2>
 <ul>
 <li><strong>通信は全て iframe 側で行う</strong> — QuickJS 拡張コンテキストには <code>fetch</code> が無いため、<code>callAgent</code>・<code>detectHub</code>・<code>/models</code> 取得はすべて ai-chat UI iframe 内ブラウザ JS です</li>
@@ -185,7 +206,7 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
 <tbody>
 <tr><td><code>geo_suite/src/ai-chat.ts</code></td><td>プロバイダ選択 UI・<code>callAgent()</code>（detectHub・POST /agent・toolResults 往復）・<code>/models</code> 取得・<code>report</code> → showReport</td></tr>
-<tr><td><code>geo_suite/src/layers-and-tiles-list.ts</code></td><td><code>aiHub:</code> インスペクタ行解析・管理パネル「AI Bridge (CANVAS)」ブロック（入力・疎通テスト・設定テキスト双方向同期）・<code>aiConfig</code> での伝搬</td></tr>
+<tr><td><code>geo_suite/src/layers-and-tiles-list.ts</code></td><td><code>aiHub:</code>/<code>vectorHub:</code> インスペクタ行解析・管理パネル「AI Bridge (CANVAS)」ブロック（入力・疎通テスト・設定テキスト双方向同期）・<code>aiConfig</code> での伝搬・<code>hubExternalize</code>/<code>hubResult</code> による /vector 自動外部化</td></tr>
 <tr><td><code>geo_suite/src/navigation-toolbar.ts</code></td><td>ブリッジツール <code>canvasApi</code>（外部ブリッジ越しのハブ REST アクセス。永続 iframe 内で実行）</td></tr>
 <tr><td><code>kasugai_canvas/server/src/bridge/</code>（別リポジトリ）</td><td>bridge-hub 本体。<code>mod.rs</code> が /agent・/models・/setup・/mcp を振り分け、<code>copilot.rs</code>/<code>devin.rs</code>/<code>antigravity.rs</code> が各 CLI を子プロセス起動して JSON-RPC/ACP 中継</td></tr>
 </tbody>

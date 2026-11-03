@@ -37,9 +37,27 @@ const _qmlGisRgba = s => (s && s.split(',').length >= 3)
 function qmlRendererConds(rendererEl, props0, warnings){
   const type = rendererEl.getAttribute('type') || 'singleSymbol';
   let attr = rendererEl.getAttribute('attr');
-  if (attr && (!/^\w+$/.test(attr) || !(attr in (props0||{})))) {
-    warnings.push(`renderer attr '${attr}' is an expression or missing field -> fallback`);
-    attr = null;
+  if (attr){
+    // "field"-quoted attrs (QGIS writes attr='"field"' for quoted refs):
+    // recover the bare name and match the property case-insensitively.
+    const bare = String(attr).replace(/^"+|"+$/g, '');
+    const keys = Object.keys(props0 || {});
+    if (bare in (props0||{})) attr = bare;
+    else {
+      const ci = keys.find(k => k.toLowerCase() === bare.toLowerCase());
+      if (ci) attr = ci;
+      else if (/^\w+$/.test(bare)) {
+        // Declared but absent from the data: keep the declared name so
+        // ${attr} evaluates to null and the ELSE symbol applies — same as
+        // QGIS treating the field as NULL. Swapping in an unrelated first
+        // property would silently mis-classify every feature.
+        warnings.push(`renderer attr '${attr}' missing in feature properties -> ELSE rules apply`);
+        attr = bare;
+      } else {
+        warnings.push(`renderer attr '${attr}' is an expression or missing field -> fallback`);
+        attr = null;
+      }
+    }
   }
   if (!attr && props0){
     const cands = ['FEATURECLA','featurecla','NAME','name'];
@@ -47,6 +65,10 @@ function qmlRendererConds(rendererEl, props0, warnings){
   }
   const conds = [];
   let elseName = null;
+  if (type === 'nullSymbol'){
+    // "no symbol" renderer: geometry draws nothing, labels still apply.
+    return { conds: null, elseName: null, nullRenderer: true };
+  }
   if (type === 'singleSymbol'){
     const s = rendererEl.querySelector('symbols > symbol');
     return { conds: null, elseName: s ? s.getAttribute('name') : null };
@@ -69,7 +91,9 @@ function qmlRendererConds(rendererEl, props0, warnings){
     });
     return { conds, elseName };
   }
-  if (type === 'RuleBased'){
+  // "RuleRenderer" is the type name QGIS actually writes; "RuleBased" is
+  // kept for hand-authored/renamed files.
+  if (type === 'RuleBased' || type === 'RuleRenderer'){
     const walk = (ruleEl, parentCond) => {
       const filter = ruleEl.getAttribute('filter');
       const sym = ruleEl.getAttribute('symbol');
@@ -156,7 +180,7 @@ function qmlStyleToReearth(xmlText, opts){
       catch(e){ specByName.set(name, null); }
     }
   }
-  const { conds, elseName, warn } = qmlRendererConds(rendererEl, props0, warnings);
+  const { conds, elseName, warn, nullRenderer } = qmlRendererConds(rendererEl, props0, warnings);
   if (warn) { warnings.push(warn); return { error: warn, warnings }; }
   const fbField = ('FEATURECLA' in props0) ? 'FEATURECLA' : ('NAME' in props0 ? 'NAME' : (Object.keys(props0)[0]||null));
   const label = qmlLabelInfo(doc.querySelector('labeling'), fbField);
@@ -187,15 +211,17 @@ function qmlStyleToReearth(xmlText, opts){
   };
 
   const marker = {};
-  const img = condOrVal(conds, f=>f.markerImage, elseName);
-  if (img !== undefined){
-    marker.style = 'image'; marker.image = img; marker.imageSize = 1;
-    marker.imageHorizontalOrigin = 'center'; marker.imageVerticalOrigin = 'center';
-  } else {
-    const pt = condOrVal(conds, f=>f.point, elseName);
-    marker.style = 'point';
-    marker.pointColor = pt && pt.color ? (typeof pt === 'string' ? pt : qmlRgbaCss(pt.color)) : '#3388ff';
-    marker.pointSize = pt && pt.sizePx ? pt.sizePx : 8;
+  if (!nullRenderer){
+    const img = condOrVal(conds, f=>f.markerImage, elseName);
+    if (img !== undefined){
+      marker.style = 'image'; marker.image = img; marker.imageSize = 1;
+      marker.imageHorizontalOrigin = 'center'; marker.imageVerticalOrigin = 'center';
+    } else {
+      const pt = condOrVal(conds, f=>f.point, elseName);
+      marker.style = 'point';
+      marker.pointColor = pt && pt.color ? (typeof pt === 'string' ? pt : qmlRgbaCss(pt.color)) : '#3388ff';
+      marker.pointSize = pt && pt.sizePx ? pt.sizePx : 8;
+    }
   }
   if (label){
     marker.label = true; marker.labelPosition = 'righttop';
@@ -210,21 +236,28 @@ function qmlStyleToReearth(xmlText, opts){
   } else {
     marker.style = marker.style || 'none';
   }
+  if (nullRenderer) marker.style = 'none'; // no glyph; labels (if any) still apply
 
   const polyline = { clampToGround: true };
-  const sc = condOrVal(conds, f=>f.line && qmlRgbaCss(f.line.color), elseName);
-  const sw = condOrVal(conds, f=>f.line && Math.max(1,Math.round(f.line.widthPx)), elseName);
-  if (sc !== undefined){ polyline.strokeColor = sc; polyline.strokeWidth = (sw!==undefined?sw:1); }
-  else polyline.show = false;
+  if (nullRenderer) polyline.show = false;
+  else {
+    const sc = condOrVal(conds, f=>f.line && qmlRgbaCss(f.line.color), elseName);
+    const sw = condOrVal(conds, f=>f.line && Math.max(1,Math.round(f.line.widthPx)), elseName);
+    if (sc !== undefined){ polyline.strokeColor = sc; polyline.strokeWidth = (sw!==undefined?sw:1); }
+    else polyline.show = false;
+  }
   const dashWarn = [...frags.values()].some(f=>f.line&&f.line.dash) || [...frags.values()].some(f=>f.outline&&f.outline.dash);
   if (dashWarn) warnings.push('dash/dot line styles degrade to solid lines');
 
   const polygon = { fill:true, stroke:false, heightReference:'clamp' };
-  const fc = condOrVal(conds, f=>f.fill && qmlRgbaCss(f.fill.color), elseName);
-  const oc = condOrVal(conds, f=>f.outline && qmlRgbaCss(f.outline.color), elseName);
-  const ow = condOrVal(conds, f=>f.outline && Math.max(1,Math.round(f.outline.widthPx)), elseName);
-  if (fc !== undefined) polygon.fillColor = fc;
-  if (oc !== undefined){ polygon.stroke = true; polygon.strokeColor = oc; polygon.strokeWidth = (ow!==undefined?ow:1); }
+  if (nullRenderer) polygon.fill = false;
+  else {
+    const fc = condOrVal(conds, f=>f.fill && qmlRgbaCss(f.fill.color), elseName);
+    const oc = condOrVal(conds, f=>f.outline && qmlRgbaCss(f.outline.color), elseName);
+    const ow = condOrVal(conds, f=>f.outline && Math.max(1,Math.round(f.outline.widthPx)), elseName);
+    if (fc !== undefined) polygon.fillColor = fc;
+    if (oc !== undefined){ polygon.stroke = true; polygon.strokeColor = oc; polygon.strokeWidth = (ow!==undefined?ow:1); }
+  }
 
   const legend = (style.legend||[]).map(e=>({ label: e.label, symbolName: e.symbolName }));
   return { marker, polyline, polygon, warnings, legend };

@@ -1,5 +1,53 @@
 # Changelog
 
+## v22.2.0
+- 新規: bridge-hub `/vector` サービスへの自動外部 GeoJSON 化 — `fgb:`/`parquet:`/`gpkg:`/`duckdb:` の http(s) ソースを、検出できた bridge-hub（`vector.status` で疎通確認）へ `POST /vector/sources` で登録し、`geojson: http://<hub>/vector/geojson/<name>` の素の URL レイヤとして追加。ネイティブ DuckDB CLI が永続 `.duckdb` に取り込むため、DuckDB-Wasm の ~15s 初期化・opaque origin キャッシュ不可・拡張ctx 4MB 制約を全て回避し、同一ソースは `gs_<hash>` の決定的名で再取込みせず共有される。`where=`/`limit=`/`table=`/`lon=`/`lat=`/`geom=` は登録ボディへ、`columns=` は geojson URL の `?columns=` へマップ。kasczip メンバ・`.duckdb` ファイルは対象外で従来どおり iframe デコード。ハブ未到達・登録失敗時も既存デコード経路へフォールバックするため挙動は環境非依存。
+- 新規: インスペクタ行 `vectorHub:` — `off` で自動外部化を無効化、`http://host:port` で接続先を指定（省略時は `aiHub:` の値、それも無ければ `127.0.0.1:8511` を自動検出）。
+- 実装メモ: ハブ呼出しはパネル iframe の `hubExternalize` ハンドラで probe（GET /vector/status 3s）→ sources 照合 → 必要時のみ register（text/plain POST・プリフライト不要）を1往復で実施。`_hubPending` は ownReq 再送対象で iframe 再生成にも自己修復、`armPendingTtl` でトゥームストーン化。
+- 拡張: `sql:` レイヤーと AI ツール `addDuckDbLayer` も外部化対象に追加 — クエリは `kind:"sql"` の VIEW（materialize:false）として登録し、`:bbox` はビュー内で世界範囲エンベロープへ置換して実フィルタは `?bbox=` URL パラメータへ移譲。`duckdb:` の `format=read` は `SELECT * FROM ST_Read(url)` の kind:sql ビューに変換。
+- 拡張: 外部化レイヤーの `bbox=auto` 対応 — `duckdb:`/`gpkg:`/`sql:` の geojson URL に viewport エンベロープを `?bbox=` として付与し `_ddbLayers` へ `engine:'hubvec'` で登録。カメラ移動時は `refreshHubVecLayer` が `layers.override` で `data.url` を差し替えホストが再取得（ctx 横断ゼロ・4MB 上限非該当）。
+- 変更: 登録名ハッシュ（`hubNameFor`）に `sql`/`materialize` をキー追加し kind:sql を冪等化。iframe の stale 判定は kind:sql では既存エントリを fresh 扱い（マニフェストに sql 文は保存されないため名前一致=同一クエリ）。
+- 修正: 起動時に `parquet:`/`fgb:`/`gpkg:`/`duckdb:` 等の拡張経路レイヤが二重追加されていた問題 — init の `processInspectorText` がポーリング用キャッシュ `_lastInspectorLayersJson` を設定していなかったため、起動直後の poll が同一テキストを必ず再処理し、非同期完了のキュー項目が両方とも遅延 title dedupe を通過していた。init で処理したテキストをキャッシュへ事前設定＋`applyExtPathItem` 冒頭に `isLayerLoading`（in-flight ⏳マーカー）チェックを追加し、再適用・連続適用でも二重追加しない。
+
+## v22.1.0
+- 修正: ベクター索引が `data.value` のオブジェクト形式 FeatureCollection をスキップしていた問題 — ブリッジ越しの Proxy 配列は `Array.isArray` が偽を返すため `{type,features}` のままでは `features` 未設定となり、市区町村名/都道府県名等のレイヤが Attr/検索索引から抜け落ちていた。array-like（数値 length）を実配列へ材料化して索引化。また索引走査を `forEach`（全要素をブリッジ越しに読む）から上限5万地物の for ループへ変更し、Proxy 要素読みを実際に制限 — 取込中の間欠的な QuickJS ctx OOM 死亡（UI 無応答の原因）の主要ベクターを低減。
+- 修正: ベクター索引（Attr/検索の内部インデックス）が `Proxy(Error)` でレイヤを丸ごと落としていた問題 — `l.computed.features`/`l.data.value` はブリッジ越しのライブ Proxy で、getter が投げると従来はそのレイヤが索引から完全に抜け落ちていた。computed アクセスを個別 try でガードし、失敗・パース不能時は `data.url` を持つレイヤを `missingSources`（iframe が URL を直接 fetch）へ回して索引を維持。エラーログは Proxy 越しに読めなかった `Proxy(Error)` から、防御的に抽出したメッセージ＋値の形状（型/サイズ/先頭80文字）へ改善。
+- 修正: プロジェクト取込直後にビューアが数十秒フリーズする問題を緩和 — 結果到着ごとの `safeShowUI` がパネル iframe を都度再生成し、再生成 iframe がロード時に無条件で `getVectorFeatureIndex` を要求、ctx 側が都度 全ベクターレイヤの同期スキャンを実行していた。`getVectorFeatureIndex` を世代デバウンス(300ms)でバースト集約＋索引を dirty フラグ/キャッシュペイロード化（未変更なら再構築せず応答、手動リフレッシュは `force` で再構築）。`markVectorIndexDirty()` を全レイヤ追加/削除/data override 箇所に設置。さらに `markLayerLoading`/`markLayerFailed`/`addGeoJsonValueLayer`/`qmlStyledLayer` の再描画を `scheduleShowUI`(250ms デバウンス)に変更し iframe 再生成自体を集約。
+- 改善: レイヤ追加経路を正規経路/拡張経路に分離 — XYZ・3D Tiles・URL参照の素の `geojson:`（ホスト側が取得する非横断系）は従来どおり即時追加し、ctx 横断が必要な拡張経路（`gpkg:`/`duckdb:`/`sql:`/`flatgeobuf:`/`parquet:`/kasczip geojson/`style=` 付き geojson）は直列遅延キュー `_extPathQueue` へ。取込中も extensionMessage（AIツール・ユーザー操作）をさばけるよう、キューは `waitViaUiTimer(50)` の yield を挟んで1件ずつ適用する（各アイテムは従来の ⏳/トゥームストーン経路で逐次反映）。計測: 取込中のツール応答が >20s タイムアウト → 0.3-4s に改善。重複チェックはキュー実行時点のレイヤ一覧で再評価するため、取込パスをまたいだ二重追加も防げる。
+- 修正: AI チャットの外部エージェント（Copilot / External agent）が「検索をキューに入れました」のまま動かなくなる問題 — `callAgent` が `/agent` の応答 `actions` を実行した結果を破棄し、`toolResults` を返送しないまま1往復で終了していた。bridge-hub のプロトコルは「actions 実行 → toolResults で返送 → 結果を踏えた続きの回答/追加 actions」の往復が前提のため、エージェント側が結果待ちのまま停止していた。KASUGAI Canvas の `callExternalAgent` と同じ往復ループに修正。
+    - `/agent` へ送る `camera`/`layers`/`basemaps` が `null`/`[]` 固定だったのを、各ラウンドで `getCamera`/`listLayers`/`listBasemaps` ツール経由の実値を送るよう変更（ハブ側ローカル参照ツールが実値を返せる）。
+    - agent/copilot プロバイダでユーザー発言が `_pxHist` に記録されず `history` が常に空だったのを修正し、assistant 応答も記録。
+    - `/agent` POST に 120 秒の AbortController タイムアウトを追加（無応答時の永久ハング防止）。
+    - `data.report` ペイロードを `showReport` ツールと同等にモーダル表示するよう対応（KASUGAI 側と同じ扱い）。
+- 新規: AI チャットに「Sakura AI Engine（さくらAI）」プロバイダを追加（KASUGAI Canvas と同仕様）— 固定エンドポイント `https://api.ai.sakura.ad.jp` の OpenAI 互換プロバイダで、アカウントトークンを API キーとして設定。モデル未指定時は `gpt-oss-120b` を既定使用、`/v1/models` で一覧取得して組込候補（`gpt-oss-120b`/`gpt-oss-20b`）と併合表示。ツール往復・function calling は OpenAI 互換経路（`callOpenAICompat`）を共有。
+- 改善: AI チャットのモデル選択肢をプロバイダ別に拡充（KASUGAI Canvas と同じカタログ方式）— Gemini は組込カタログ（`gemini-3.1-flash-lite`/`3.6-flash`/`3.5-flash`/`3.1-pro-preview`）を常時表示し、APIキー設定時は `generativelanguage.googleapis.com/v1beta/models` で generateContent 対応モデルを実取得して併合。OpenAI互換/Anthropic も組込候補を既定表示し、キー入力済みなら `/v1/models` 取得結果と併合（取得失敗時は既定候補のまま）。
+- 新規: ツール往復上限を設定可能化（KASUGAI Canvas の `geminiToolMaxSteps` 相当）— 設定パネルの「Max tool round trips」入力（1-20・既定10）と AI ツール `setToolMaxSteps` で変更でき、全プロバイダのツール往復（Gemini/OpenAI互換/Anthropic の step ループ・agent/copilot の `/agent` 往復）に適用される。上限到達時は「あと{n}往復続けますか？」の継続確認を出し、承認なら上限を加算して続行、拒否・モーダル不可なら従来どおり上限到達メッセージで終了。値はプラグインストレージ `aiToolMaxSteps` に永続化（iframe は opaque origin のため localStorage 不可・clientStorage 経由）。`aiChatSet` の `maxSteps`・`runCode` の `api.setToolMaxSteps` からも変更可。
+
+## v22.0.0
+- 修正: AI チャットの OpenAI互換/Azure/Anthropic プロバイダでツール宣言が空になっていた問題 — `pxToolDecls` が Gemini ラッパー `[{functionDeclarations:[...]}]` の外側をそのまま map していたため、全エントリが name/description 不明の無効宣言になっていた（v21.3.2 で bridge-hub 経路のみ直っていた残存バグ）。ラッパーを展開してから各プロバイダ形式へ変換するよう修正。
+- 修正: QML `RuleRenderer`（QGIS が実際に書き出す型名）が未対応で `compile failed → 既定スタイル` に落ちていた問題を解消 — `compileRenderer` と `qmlRendererConds` の両経路で `RuleBased` の別名として受理（`vendor/qml-style.js`・`vendor/qml-to-reearth.js`）。
+- 修正: QML `nullSymbol` レンダラ（非表示ジオメトリ＋ラベルのみ）を対応 — 従来は unsupported で既定スタイルにフォールバックしていた。ジオメトリ（marker/polyline/polygon）は描かず `labeling` のラベルのみ表示する QGIS 準拠の動作に変更。
+- 改善: QML `attr` 参照の堅牢化 — `attr='"field"'` の引用符除去と大文字小文字を無視したプロパティ照合を追加。宣言されたフィールドがデータに存在しない場合は先頭プロパティへの差替え（全地物の誤分類）をやめ、宣言名を維持して ELSE ルールへ流す QGIS の NULL セマンティクスに統一（式属性は従来どおりフォールバック＋警告）。
+- 改善: `bbox=auto` レイヤの失敗時カメラ移動リトライ — `gpkg:`/`duckdb:` の初回追加が >4MB で失敗すると `_ddbLayers` 未登録のまま永続トゥームストーンになっていた。失敗 spec を `_ddbFailedAdds` に保持し、次のカメラ移動（600ms デバウンス）で縮小したビューポート bounds により再追加。ズームインで上限を下回れば自動的にレイヤが表示される。トゥームストーンの × 削除・同一ソースの再処理で登録解除。
+    - 上限超過のトゥームストーン文言に「zoom in (bbox=auto retries on move)」を追加（gpkg/duckdb の throw 文は layers-and-tiles-list / basemap-widget の両 iframe で同期）。
+- 新規（仕様）: 4MB を超える GeoPackage ファイルは**恒久的に拒否** — `gpkgOpenDb` で `Content-Length`（応答ヘッダ報告時・本文読込前）と実バイト数を検査し、`table=`/`where=`/`limit=`/`columns=`/bbox 絞り込みで結果が収まり得る場合でもファイル自体が上限超過なら開かず拒否する。仕様として `docs/payload-limits.html` に明記。カメラ移動リトライの対象外（`gpkg file too large` エラーは `_ddbFailedAdds` に登録しない）。
+- 改善: `gpkg:` の 4MB 超過判定を事前プローブ化 — 従来は 4MB 分デコードしてから打ち切っていたため大きなレイヤのトゥームストーンが遅かった。デコード前に raw バイト量（`SUM(LENGTH(geom))` + プロパティ `LENGTH()` 合計 + 地物あたり JSON オーバーヘッド）を集計し、上限超過が確実なら 1 地物もデコードせず即拒否。bbox=auto は gpkg の `rtree_<table>_<geom>` インデックステーブルへ join した単一集計クエリ（JS 行走査なし・rtree 不在や pk 非選択時は `SUBSTR(geom,1,40)` エンベロープ pass へフォールバック）でビューポートフィルタ適用後の見積りを取るため、ズームイン時のリトライも再デコードなしで即判定される。`where=`/`limit=`/`columns=` はプローブにも反映。プローブ失敗時は従来のデコード途中打切りへフォールバック。layers-and-tiles-list / basemap-widget の両 iframe で同一実装に揃えた。
+- 改善: 4MB 上限超過レイヤの早期トゥームストーン — 上限超過が確定するまで全量 fetch・デコードしてから捨てていた経路を、デコード途中または読込前に打ち切るよう変更。起動時に超過レイヤがある場合、フルコストの末にトゥームストーンが出ていた待ちを短縮。
+    - `duckdb:` 行→GeoJSON 変換ループで JSON サイズを積算し 4MB 到達時点で中断（layers-and-tiles-list / basemap-widget の両 iframe ハンドラ）。クエリ自体は走り切るが支配的な変換コストを削減。
+    - `flatgeobuf:` ストリーム読みに積算打切りを追加（`fgbLoad` およびドロップ取込の両経路）。従来は `limit=`（既定20万件）まで全件収集してから捨てていた。
+    - `parquet:` は `parquetMetadata`（footer のみ・URL ソースは Range 読み）を先に取得し、非圧縮 `total_byte_size` が 4MB 超なら本体を読まずにトゥームストーン。非圧縮カラムバイトはデコード後 GeoJSON の下限となるため厳密判定（`limit=` 指定時は行数切詰めで収まり得るため適用除外）。
+    - gpkg は既存の行ごと積算打切り（v21.3.x〜）で済。geojson メンバはパース自体が軽く pretty-print ソースで誤判定し得るため事前判定なし。
+- サイト: 主な機能カードに「拡張経路ベクトルデータ」を追加（`gpkg:`/`flatgeobuf:`/`parquet:`/ファイルドロップ取込/`qgis:` ZIP 一括取込）。機能カード枚数＝メジャーバージョン規約に従い V22 へ。
+- サイト: `docs/` を Markdown から HTML ページへ移行し `dist/docs/` としてデプロイ（索引 `docs/index.html` 新設・mermaid 対応・トップ/一覧へのナビ付き）。index.html のドキュメントリンクを生成ページへ付け替え、Vercel 上で 404 になっていた相対 `.md` リンクを解消。
+- サイト: ヘッダーのバージョン表示をビルド時埋め込みに変更 — `scripts/stamp_version.js` が `package.json` のバージョンを `dist/index.html` の `#app-version` へ確定書込み（従来の起動時 `reearth.yml` fetch はフォールバックとして継続）。ソース直書きの `v18.1.0` を廃止。
+- 改善: 拡張経路ベクトルのデコードを basemap-widget 永続 iframe のホスト経路へ移行（`fgbExec`/`pqExec`/`geoExec`）— これまで `flatgeobuf:`/`parquet:`/kasczip geojson メンバは短命なパネル iframe でデコードしていたため、起動時の `processInspectorText` 末尾 `safeShowUI` や最初の結果到着時の再描画で in-flight デコードが殺され、結果が来ず TTL(300s) まで宙に浮いていた。`ddbExec`/`gpkgExec` と同じ ack ウォッチドッグ(3s)→自 iframe フォールバック・dead 隔離(15s) を適用。eager `dataB64` は従来どおり自 iframe（ホストctx を巨大 base64 が通らない）。
+    - 結果ハンドラを `handleVecResult` に共通化（fgb/pq/geo の自 iframe 返送と extensionMessage 返送を統一処理）。
+    - parquet の行変換ループにも積算打切りを追加（ホスト側・パネル側で同一実装に揃えた）。
+- 新規: 読み込み中レイヤの `⏳` グレー行 — ctx 横断ベクトル（duckdb/gpkg/fgb/parquet/kasczip geojson）のロード開始時に一覧へ即表示し、結果到着順に実レイヤ or トゥームストーンへ解決。起動時に一覧が一度に完成し、追加が逐次見えるようになった。
+- 修正: QML フォールバックがレイヤを追加していなかった致命的な既存バグ — qml コンパイル失敗/タイムアウト時に `finishStyledLayerAdd(layer, null, ...)` が `if (!appearance) return null` で早期 return するため、「default style へフォールバック」とログしつつ**レイヤが一切追加されなかった**（style 付き gpkg/geojson 全般に影響）。`{}` を渡して既定スタイルで実際に追加するよう修正。
+- 修正: iframe 再生成による in-flight 作業の自動自己修復 — 自 iframe へ投げた要求（ddb/gpkg フォールバック・fgb/pq/geo フォールバック・`qmlStyle` コンパイル・`kascZipLoad`）を `ownReq` として pending エントリに記録し、iframe 再生成後の `requestRestoreState` で全再送。従来は再描画でデコード/コンパイルが殺されると結果が永遠に来ず 300s TTL 待ちになっていた。
+- 修正: プロジェクト取込直後にビューアが数十秒フリーズする問題を緩和 — 原因は再描画ストームで、①結果到着ごとの `safeShowUI` が iframe を都度再生成し、②再生成 iframe がロード時に無条件で `getVectorFeatureIndex` を要求し、③ctx 側が都度 全ベクターレイヤの同期スキャン（メインスレッド）を実行していた。対策: `getVectorFeatureIndex` を世代デバウンス(300ms)でバースト集約し、索引を dirty フラグ＋キャッシュペイロード化してレイヤ未変更時は再構築せず応答（手動リフレッシュは `force` で常に再構築）。`markVectorIndexDirty()` を全レイヤ追加/削除/data override 箇所に設置。さらに `markLayerLoading`/`markLayerFailed`/`addGeoJsonValueLayer`/`qmlStyledLayer` の再描画を `scheduleShowUI`(250ms デバウンス)に変更し iframe 再生成自体を集約。
+
 ## v21.3.3
 - 修正: `_ddbHostDead` が一度立つとセッション中復帰しない問題を解消 — 起動直後の拡張登録レース・basemap iframe 未ready時のクエリドロップ・一時的な ack 遅延で誤判定されると、以降すべての duckdb/gpkg クエリが短命なパネル iframe で実行され、re-render ごとに ~60MB wasm 再初期化（13-22s）が発生していた。
     - dead 判定を「15秒の隔離期間付きの暫定評決」に変更（`ddbHostId()`/`ddbMarkHostDead()`）。隔離中は自 iframe へ即フォールバック（遅延なし）、期限後の次クエリでホストを再試行。拡張未登録は dead 判定にせず毎クエリ再解決するため、遅れて登録されたホストも拾われる。
