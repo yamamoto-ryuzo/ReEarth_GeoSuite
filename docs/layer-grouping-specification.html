@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レイヤ階層化・排他グループ機能 仕様書 | Re:Earth GeoSuite</title>
+<link rel="stylesheet" href="style.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📚 レイヤ階層化・排他グループ機能 仕様書</h1>
+    <nav>
+      <a href="../index.html">🏠 GeoSuite トップ</a>
+      <a href="index.html">ドキュメント一覧</a>
+      <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
+    </nav>
+  </header>
+  <div class="content">
+<h2>1. 概要</h2>
+<p>Re:Earth GeoSuite プラグインにおいて、レイヤリストを階層的（ツリー状）に表示し、グループごとの一括制御や排他制御（ラジオボタン動作）を提供する機能の仕様について記述する。</p>
+<h2>2. グループの定義方法</h2>
+<p>レイヤのグループ化は、レイヤが持つメタデータまたはタイトル文字列を解析して行われる。</p>
+<h3>2.1. データ優先 (<code>layer.data.group</code>)</h3>
+<p>Re:Earthのレイヤデータ (<code>layer.data.group</code>) にパス文字列が設定されている場合、これを最優先で使用して階層構造を構築する。
+ウィジェットやデータセット側で明示的にグループを指定する場合に推奨される。</p>
+<h3>2.2. タイトル解析 (Fallback)</h3>
+<p><code>layer.data.group</code> が未設定の場合、レイヤタイトル (<code>layer.title</code>) に含まれるスラッシュ (<code>/</code>) を区切り文字として解析し、階層構造を構築する。</p>
+<ul>
+<li>例: タイトルが <code>東京都/千代田区/建物</code> の場合<ul>
+<li>第1階層: <code>東京都</code></li>
+<li>第2階層: <code>千代田区</code></li>
+<li>レイヤ名: <code>建物</code></li>
+</ul>
+</li>
+</ul>
+<h2>3. グループの種類と記法</h2>
+<p>パスの区切り文字によって、グループの挙動（通常または排他）が決定される。
+同名のグループであっても、区切り文字の種類が異なれば、システム内部では「別のグループ」として扱われ、ツリー上でも分離して表示される。</p>
+<table>
+<thead>
+<tr>
+<th align="left">種類</th>
+<th align="left">記法</th>
+<th align="left">例</th>
+<th align="left">概念</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>通常グループ</strong></td>
+<td align="left"><code>/</code> (シングルスラッシュ)</td>
+<td align="left"><code>親/子</code></td>
+<td align="left">フォルダ。複数選択可能。</td>
+</tr>
+<tr>
+<td align="left"><strong>排他グループ</strong></td>
+<td align="left"><code>//</code> (ダブルスラッシュ)</td>
+<td align="left"><code>親//子</code></td>
+<td align="left">ラジオボタン。グループ内で<strong>1つのみ</strong>選択可能。</td>
+</tr>
+</tbody></table>
+<h2>4. 詳細動作仕様</h2>
+<h3>4.1. 通常グループ (<code>/</code>)</h3>
+<p>フォルダのような振る舞いをする標準的なグループ。</p>
+<ul>
+<li><strong>親（グループ）チェックボックス操作</strong>:<ul>
+<li><strong>ONにする</strong>: グループに含まれる<strong>すべての</strong>子レイヤ・孫レイヤに対して <code>show</code> (表示) メッセージを送信する。</li>
+<li><strong>OFFにする</strong>: グループに含まれる<strong>すべての</strong>子レイヤ・孫レイヤに対して <code>hide</code> (非表示) メッセージを送信する。</li>
+</ul>
+</li>
+<li><strong>子レイヤ操作</strong>:<ul>
+<li>個別にON/OFFの切り替えが可能。</li>
+<li>ある子レイヤを操作しても、兄弟レイヤ（同じグループ内の他のレイヤ）の表示状態には影響しない。</li>
+<li><strong>親へのUI連動</strong>: 親グループがOFF（未チェック）の状態で、ある子レイヤをONにした場合、親グループのチェックボックスを<strong>UI上のみ</strong>ON（チェック状態）に変更する。<ul>
+<li><em>注: この際、親グループとしての <code>show</code> メッセージは送信されない（他の子はOFFのまま維持される）。</em></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3>4.2. 排他グループ (<code>//</code>)</h3>
+<p>ラジオボタンのような振る舞いをする、選択式のグループ。</p>
+<ul>
+<li><strong>親（グループ）チェックボックス操作</strong>:<ul>
+<li><strong>ONにする</strong>: グループ内の<strong>一番上（リスト先頭）の子レイヤのみ</strong>を表示 (<code>show</code>) し、それ以外の子レイヤをすべて非表示 (<code>hide</code>) にする。</li>
+<li><strong>OFFにする</strong>: グループ内のすべての子レイヤを非表示 (<code>hide</code>) にする。</li>
+</ul>
+</li>
+<li><strong>子レイヤ操作</strong>:<ul>
+<li><strong>ONにする</strong>: 選択したレイヤを表示 (<code>show</code>) し、<strong>同じグループ内の他のすべての兄弟レイヤを自動的に非表示 (<code>hide</code>)</strong> にする。</li>
+</ul>
+</li>
+<li><strong>初期化時の強制挙動</strong>:<ul>
+<li>プラグイン読み込み時（初期化時）に、排他グループ内で「表示 (Visible)」になっているレイヤを確認する。</li>
+<li><strong>誰もONでない場合</strong>: 強制的にリストの一番上の子レイヤをONにする。</li>
+<li><strong>複数がONの場合</strong>: リストの一番上のONレイヤを残し、他を強制的にOFFにする。</li>
+<li>これにより、排他グループは（親がOFFでない限り）「常にどれか1つだけが選ばれている」状態を維持する。</li>
+</ul>
+</li>
+</ul>
+<h3>4.3. レイヤのリフレッシュ処理と待機要件</h3>
+<p>レイヤの表示/非表示（ON/OFF）操作は非同期なリフレッシュ処理を伴うため、直後に続けて別の切替や再読み込みを行うと競合や表示の不整合が発生する可能性がある。実装では以下のいずれかの方法で待機を確保することを推奨する。</p>
+<ul>
+<li>レイヤのロード完了・アンロード完了を示すイベント（例: <code>loaded</code> / <code>unloaded</code>）やコールバックを待ってから次の操作を許可する。</li>
+<li>明示的なイベントが無い場合は、操作間に短い遅延（例: 300〜500ms）を挟むか、操作をデバウンスして連続処理を抑制する。</li>
+<li>複数レイヤに対する一括操作では、個別リクエストを直列化して順に実行し、各リクエスト完了を待ってから次へ進める。</li>
+</ul>
+<p>UI上は操作中にスピナーや無効化（グレーアウト）等のフィードバックを表示し、ユーザーに処理待機が必要であることを明確に示すこと。</p>
+<p>この待機仕様は、特に外部データソース（タイルサーバや3D Tiles等）を使うレイヤの追加・削除・再読み込み時に重要である。</p>
+<h2>5. UI/UX仕様</h2>
+<p>ユーザーがグループの種類を直感的に判別できるよう、視覚的な差異を設ける。</p>
+<h3>5.1. 通常グループ</h3>
+<ul>
+<li><strong>表示</strong>: 標準的なツリー表示。</li>
+<li><strong>チェックボックス</strong>: 標準的な四角いチェックボックス (☐)。</li>
+</ul>
+<h3>5.2. 排他グループ</h3>
+<ul>
+<li><strong>グループ名表示</strong>: グループ名の後ろに <code>⊚</code> (二重丸) アイコンを表示し、特別なグループであることを示す。</li>
+<li><strong>子レイヤの表示</strong>:<ul>
+<li>子レイヤのチェックボックスを CSS で**円形（ラジオボタン風）**にスタイリングする。</li>
+<li>これにより、「この中から1つしか選べない」というアフォーダンスを提供する。</li>
+</ul>
+</li>
+</ul>
+<h2>6. システムレイヤ制御</h2>
+<p>プラグイン（Inspector）の設定テキストを用いて、Re:Earth本体側ですでに登録されているシステムレイヤ（プリセットレイヤ）の初期表示状態を制御する機能を提供する。</p>
+<h3>6.1. レイヤ名による表示制御</h3>
+<ul>
+<li><strong>記法</strong>: <code>layer: レイヤ名 | off</code> （または <code>on</code>）</li>
+<li><strong>動作</strong>:<ul>
+<li>プラグイン読み込み時に、指定された名前と一致するシステムレイヤを検索する。</li>
+<li><code>off</code> が指定されている場合、対象レイヤを非表示 (<code>hide</code>) にする。</li>
+<li><code>on</code> が指定されている場合、対象レイヤを表示 (<code>show</code>) にする。</li>
+<li>UI上のチェックボックスの初期状態も、この設定に合わせて反映される。</li>
+</ul>
+</li>
+<li><strong>用途</strong>:<ul>
+<li>デフォルトで表示されている不要なシステムレイヤを隠す。</li>
+<li>特定のレイヤのみを初期表示にする。</li>
+</ul>
+</li>
+</ul>
+</div>
+  <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
+</div>
+
+</body>
+</html>

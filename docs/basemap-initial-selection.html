@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ベースマップ初期選択（仕様・確認手順） | Re:Earth GeoSuite</title>
+<link rel="stylesheet" href="style.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📚 ベースマップ初期選択（仕様・確認手順）</h1>
+    <nav>
+      <a href="../index.html">🏠 GeoSuite トップ</a>
+      <a href="index.html">ドキュメント一覧</a>
+      <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
+    </nav>
+  </header>
+  <div class="content">
+<h2>仕様</h2>
+<ul>
+<li>プラグインは Inspector の <code>base:</code> 行を上から順に解析します。</li>
+<li>初期表示されるベースマップは、Inspector に並んだ <code>base:</code> エントリの「上から最初のもの」を優先して選択するようになっています。</li>
+<li>ただし、パーマリンクやユーザ操作で <code>_lastAddedBasemapUrl</code> が設定されている場合はそちらが優先されます。</li>
+</ul>
+<h2>確認手順</h2>
+<ol>
+<li>Re:Earth Visualizer 上で本プラグインを読み込む／ウィジェットを開く。 </li>
+<li>Inspector（一括設定）の <code>inspectorText</code> に複数の <code>base:</code> 行を上から順に記述する（例: OpenStreetMap を先頭）。</li>
+<li>ウィジェットをリロードまたは <code>Refresh</code> を実行して設定を反映させる。</li>
+<li>UI 上部のベースマップドロップダウンを確認する。初期で選択されているのが Inspector 上で上から最初に書いた <code>base:</code> のはずです。</li>
+</ol>
+<h2>備考</h2>
+<ul>
+<li>もし &quot;最後のもの&quot; を初期にしたい場合、<code>processInspectorText</code> 実行後に <code>_lastAddedBasemapUrl</code> をその最後の <code>base:</code> に設定する変更を行う必要があります（今回のパッチは <code>上から最初</code> を意図しています）。</li>
+</ul>
+</div>
+  <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
+</div>
+
+</body>
+</html>

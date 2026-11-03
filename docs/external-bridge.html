@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外部ブリッジ（実装構成） | Re:Earth GeoSuite</title>
+<link rel="stylesheet" href="style.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📚 外部ブリッジ（実装構成）</h1>
+    <nav>
+      <a href="../index.html">🏠 GeoSuite トップ</a>
+      <a href="index.html">ドキュメント一覧</a>
+      <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
+    </nav>
+  </header>
+  <div class="content">
+<p>QGIS live_driver の <code>bridge_call</code> / <code>describe_plugins</code> に相当する機能を Re:Earth プラグインへ移植したものです。Re:Earth のサンドボックス（QuickJS 拡張コンテキスト + opaque origin iframe）越しに、ローカルハーネスや AI エージェントから地図ツールを呼び出せます。</p>
+<p>v21.3.0 追加。</p>
+<h2>全体構成</h2>
+<pre><code>外部（サンドボックス外）                    geo_suite プラグイン内
+┌────────────────────┐                     ┌──────────────────────────────┐
+│ bridge_server.js   │  GET /events (SSE)  │ navigation-toolbar iframe    │
+│ 127.0.0.1:8977     │◄──── コマンド配信 ──│ window.__geoBridge           │
+│                    │                     │   ├ bridgeInvoke(name,args)  │
+│  POST /call        │  POST /result       │   ├ runCode / describe       │
+│   {name,args} ─────┼──── 結果返送 ──────►│   ↕ postToParent             │
+│  GET /status       │                     ├──────────────────────────────┤
+│  GET /tools        │                     │ navigation-toolbar 拡張ctx   │
+└────────────────────┘                     │   bridgeCall → ai-chat へ中継 │
+┌────────────────────┐                     │   bridgeResult → postToUI   │
+│ bridge.js          │  CDP Runtime.eval   │   ↕ extensionMessage        │
+│ (dev ドライバ)      │────────────────────►│ ai-chat 拡張ctx              │
+│  call/list/serve   │  window.__geoBridge │   dispatchToolCall          │
+└────────────────────┘      .call()        │   ├ LOCAL_TOOLS → reearth.*  │
+                                           │   └ PANEL_TOOLS → extension │
+                                           │      .postMessage → パネル   │
+                                           └──────────────────────────────┘
+</code></pre>
+<h2>コンテキスト別の役割</h2>
+<p>Re:Earth プラグインは2種類のサンドボックスで動作し、外部 I/O は <strong>iframe 側にしか実装できません</strong>（QuickJS 拡張コンテキストには <code>fetch</code>・<code>setTimeout</code>・ソケットが存在しないため）。</p>
+<table>
+<thead>
+<tr>
+<th>コンテキスト</th>
+<th>実行環境</th>
+<th>ブリッジでの役割</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>navigation-toolbar <strong>UI iframe</strong></td>
+<td>ブラウザ JS（fetch/EventSource/new Function 可・opaque origin）</td>
+<td>ブリッジクライアント <code>window.__geoBridge</code>。SSE でコマンド受信、POST で結果返送。<code>runCode</code> の実行場所</td>
+</tr>
+<tr>
+<td>navigation-toolbar <strong>拡張ctx</strong></td>
+<td>QuickJS（reearth.* API + メッセージ中継のみ）</td>
+<td>リレー: <code>bridgeCall</code> を ai-chat へ <code>extension.postMessage</code> 転送、<code>bridgeResult</code>/<code>bridgeConfig</code> を iframe へ <code>postToUI</code></td>
+</tr>
+<tr>
+<td>ai-chat <strong>拡張ctx</strong></td>
+<td>QuickJS</td>
+<td>ツールディスパッチャ <code>dispatchToolCall</code>（aiToolCall と共通）。local ツールは <code>reearth.*</code> で即実行、PANEL_TOOLS は layers-and-tiles-list へ転送</td>
+</tr>
+<tr>
+<td>layers-and-tiles-list <strong>拡張ctx</strong></td>
+<td>QuickJS</td>
+<td><code>aiToolRequest</code> 実行 + <code>bridge:</code> インスペクタ行の解析 → <code>bridgeConfig</code> を nav-toolbar へ転送</td>
+</tr>
+</tbody></table>
+<h2>メッセージプロトコル</h2>
+<h3>内部（iframe ↔ 拡張ctx ↔ 拡張ctx）</h3>
+<table>
+<thead>
+<tr>
+<th>メッセージ</th>
+<th>経路</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>{action:&#39;bridgeCall&#39;, reqId, name, args}</code></td>
+<td>iframe → 自拡張ctx → ai-chat 拡張ctx</td>
+<td>ツール呼出し</td>
+</tr>
+<tr>
+<td><code>{action:&#39;bridgeResult&#39;, reqId, result}</code></td>
+<td>ai-chat → nav-toolbar 拡張ctx → iframe</td>
+<td>結果返送（<code>msg.sender</code> が返送先ウィジェット id）</td>
+</tr>
+<tr>
+<td><code>{action:&#39;bridgeConfig&#39;, url}</code></td>
+<td>パネル → nav-toolbar 拡張ctx → iframe</td>
+<td><code>bridge:</code> インスペクタ行の反映</td>
+</tr>
+<tr>
+<td><code>{action:&#39;requestBridgeConfig&#39;}</code></td>
+<td>iframe → nav-toolbar 拡張ctx → パネル</td>
+<td>初期化競合回避の pull</td>
+</tr>
+<tr>
+<td><code>{action:&#39;aiToolRequest&#39;, reqId, name, args}</code></td>
+<td>ai-chat → パネル</td>
+<td>PANEL_TOOLS 転送（既存）</td>
+</tr>
+<tr>
+<td><code>{action:&#39;aiToolResult&#39;, reqId, result}</code></td>
+<td>パネル → ai-chat</td>
+<td>転送ツールの結果（既存、<code>_pendingForward</code> で reply にルーティング）</td>
+</tr>
+</tbody></table>
+<h3>外部（bridge_server.js ↔ iframe ↔ 呼出し側）</h3>
+<table>
+<thead>
+<tr>
+<th>エンドポイント</th>
+<th>方向</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /status</code></td>
+<td>任意</td>
+<td><code>{geosuiteBridge:1, connected, pending}</code> — iframe の自動プローブ先</td>
+</tr>
+<tr>
+<td><code>GET /events</code></td>
+<td>サーバ → iframe</td>
+<td>SSE で <code>{reqId,name,args}</code> を配信（EventSource 自動再接続）</td>
+</tr>
+<tr>
+<td><code>POST /result</code></td>
+<td>iframe → サーバ</td>
+<td><code>{reqId,result}</code>（<code>Content-Type: text/plain</code>、後述の PNA 対策）</td>
+</tr>
+<tr>
+<td><code>POST /call</code></td>
+<td>呼出し側 → サーバ</td>
+<td><code>{name,args,timeoutMs?}</code>。結果が返るまで保持する RPC ファサード</td>
+</tr>
+<tr>
+<td><code>GET /tools</code></td>
+<td>呼出し側 → サーバ</td>
+<td><code>describe</code> を発行してカタログ取得</td>
+</tr>
+</tbody></table>
+<h2>呼び出せるツール</h2>
+<p><code>describe</code> 呼出しで取得できるカタログ（<code>execLocalTool</code> + <code>PANEL_TOOLS</code> + ブリッジ固有）:</p>
+<ul>
+<li><strong>local（ai-chat 拡張ctx で実行）</strong>: <code>getCamera</code> <code>flyTo</code> <code>listLayers</code> <code>setLayerVisible</code> <code>focusLayer</code> <code>addGeoJsonLayer</code> <code>addTileLayer</code> <code>add3dTilesLayer</code> <code>removeLayer</code> <code>captureView</code> <code>getShareUrl</code> <code>buildShareUrl</code> <code>setCamera</code> <code>lookAt</code> <code>zoomIn</code> <code>zoomOut</code> <code>openUrl</code></li>
+<li><strong>panel（layers-and-tiles-list へ転送）</strong>: カメラプリセット・ベースマップ・FLY ルート・vector 検索・FlatGeobuf/Parquet/DuckDB レイヤー・inspectorText 操作・凡例/属性パネル等 35種</li>
+<li><strong>bridge（iframe 側で実行）</strong>: <code>describe</code>（カタログ）・<code>runCode</code>（<code>api.&lt;tool&gt;</code> プロキシ + <code>fetch</code> 付き sandboxed JS。QGIS <code>pyeval</code> 相当の多段実行プリミティブ）</li>
+</ul>
+<p>引数スキーマは <code>geo_suite/src/ai-chat.ts</code> の <code>TOOL_DECLS</code>（Gemini functionDeclarations）と同一です。</p>
+<h2>有効化と無効化</h2>
+<table>
+<thead>
+<tr>
+<th>設定</th>
+<th>動作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>未設定（既定）</td>
+<td><strong>完全に不活性</strong>（プローブも接続も行わない・コストゼロ）。CDP ドライバ <code>bridge.js</code> だけは <code>__geoBridge.configure()</code> で明示有効化します</td>
+</tr>
+<tr>
+<td><code>bridge: on</code></td>
+<td>既定エンドポイントへプローブ</td>
+</tr>
+<tr>
+<td><code>bridge: http://host:port</code></td>
+<td>指定エンドポイントへ直接接続（<code>?token=</code> 付与可）</td>
+</tr>
+<tr>
+<td><code>bridge: off</code></td>
+<td>完全無効（プローブも行わない）</td>
+</tr>
+</tbody></table>
+<p>設定はインスペクタの一括設定テキスト（<code>inspectorText</code>）に <code>bridge:</code> 行として記述します。パネルが <code>bridgeConfig</code> として nav-toolbar へ転送します。</p>
+<h2>使い方</h2>
+<h3>経路A: CDP ドライバ（dev/検証）</h3>
+<pre><code class="language-bash">npm run dev                                    # Workbench 起動 (localhost:8787)
+node workbench/bridge.js list                  # ツールカタログ (describe)
+node workbench/bridge.js call flyTo &#39;{&quot;lat&quot;:35.36,&quot;lng&quot;:138.73,&quot;height&quot;:3000}&#39;
+node workbench/bridge.js serve                 # stdin/stdout JSONL セッション
+#   → {&quot;reqId&quot;:&quot;1&quot;,&quot;name&quot;:&quot;flyTo&quot;,&quot;args&quot;:{...}}
+#   ← {&quot;reqId&quot;:&quot;1&quot;,&quot;result&quot;:{...}}
+
+BRIDGE_ATTACH=9555 node workbench/bridge.js ... # 既存デバッグ Chrome に接続
+</code></pre>
+<h3>経路B: ハーネスサーバ（本番 dial-out / エージェント常駐）</h3>
+<pre><code class="language-bash">node workbench/bridge_server.js                # 127.0.0.1:8977 で待受（npm run bridge:server）
+node workbench/bridge_server.js call getCamera &#39;{}&#39;
+node workbench/bridge_server.js tools
+curl -X POST http://127.0.0.1:8977/call -d &#39;{&quot;name&quot;:&quot;flyTo&quot;,&quot;args&quot;:{&quot;lat&quot;:35.68,&quot;lng&quot;:139.69,&quot;height&quot;:2000}}&#39;
+</code></pre>
+<p>共有秘密: <code>BRIDGE_TOKEN=xxx node workbench/bridge_server.js</code> + インスペクタ <code>bridge: http://127.0.0.1:8977/?token=xxx</code></p>
+<h2>設計上の制約（実測由来・重要）</h2>
+<h3>1. QuickJS のマイクロタスク欠食</h3>
+<p><code>extensionMessage</code> ハンドラ内で <code>promise.then(cb)</code> に応答処理を委ねると、継続は<strong>次のイベントが来るまで実行されません</strong>（ブリッジ応答だけ滞留する症状）。イベント起点の応答経路は同期で完結させる必要があり、<code>execLocalTool</code> はこのため同期関数化しています（Promise が返りうる場合のみ <code>then</code> フォールバック、<code>replyLocal</code> 参照）。</p>
+<h3>2. iframe → localhost の PNA/CORS</h3>
+<p>opaque origin の iframe から <code>127.0.0.1</code> への <code>Content-Type: application/json</code> POST はプリフライト + Private Network Access でブロックされます。GET（<code>/status</code>・EventSource）は通るため「受信は来るが返送だけ落ちる」非対称症状になります。対策は iframe 側の <code>text/plain</code> POST（シンプルリクエスト化）+ サーバ側の <code>Access-Control-Allow-Private-Network: true</code> 付与です。</p>
+<h3>3. ブリッジホスト = navigation-toolbar の理由</h3>
+<p>basemap-widget 拡張ctx は ddbExec/gpkgExec の巨大ペイロード（<code>dataB64</code> 数 MB〜）を中継するため、重いプロジェクト（既定 inspector の <code>qgis:</code> ZIP 取込等）や連続ホットリロードで QuickJS が <code>InternalError: out of memory</code>（<code>Proxy.unwrapResult</code>）を出して死亡し、ブリッジを道連れにする事象を実測確認しました。nav-toolbar 拡張は重い中継を持たず、iframe も <code>ui.show</code> 一度きりで永続します。<strong>basemap 拡張の OOM はブリッジ以前から存在する既存問題</strong>であり、大きな GPKG/プロジェクト読込で拡張コンテキスト自体が死ぬ可能性がある点に注意してください。サイズ上限と超過時の挙動は <a href="./payload-limits.html">payload-limits.html</a> を参照。</p>
+<h3>4. セキュリティ</h3>
+<ul>
+<li><code>bridge_server.js</code> は 127.0.0.1 のみにバインドしますが、<strong>このポートへ到達できる者は接続中の地図を操作できます</strong>。dev/エージェント用のエンドポイントとして扱ってください（必要なら <code>BRIDGE_TOKEN</code> を設定）。</li>
+<li>プラグイン側は常に <strong>dial-out</strong>（自分から接続）です。外部から iframe への侵入経路はありません。</li>
+<li>既定では未接続時に一度だけ localhost をプローブします。公開配布で完全に抑止したい場合は <code>bridge: off</code> を設定してください。</li>
+</ul>
+<h2>ファイル対応表</h2>
+<table>
+<thead>
+<tr>
+<th>ファイル</th>
+<th>役割</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>geo_suite/src/ai-chat.ts</code></td>
+<td><code>dispatchToolCall</code> 共通化・<code>bridgeCall</code> 受信・<code>describe</code> カタログ・<code>execLocalTool</code> 同期化</td>
+</tr>
+<tr>
+<td><code>geo_suite/src/navigation-toolbar.ts</code></td>
+<td>ブリッジリレー（拡張ctx）+ ブリッジクライアント <code>__geoBridge</code>（iframe）</td>
+</tr>
+<tr>
+<td><code>geo_suite/src/layers-and-tiles-list.ts</code></td>
+<td><code>bridge:</code> インスペクタ行解析・<code>bridgeConfig</code> 転送・<code>requestBridgeConfig</code> 応答</td>
+</tr>
+<tr>
+<td><code>workbench/bridge_server.js</code></td>
+<td>SSE+POST ハーネス（経路B・無依存）</td>
+</tr>
+<tr>
+<td><code>workbench/bridge.js</code></td>
+<td>CDP ドライバ（経路A・無依存・JSONL serve 対応）</td>
+</tr>
+<tr>
+<td><code>plugin/reearth.yml</code></td>
+<td><code>bridge:</code> 行のドキュメント記述</td>
+</tr>
+</tbody></table>
+</div>
+  <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
+</div>
+
+</body>
+</html>

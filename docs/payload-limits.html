@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ペイロード制限（QuickJS OOM 対策） | Re:Earth GeoSuite</title>
+<link rel="stylesheet" href="style.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📚 ペイロード制限（QuickJS OOM 対策）</h1>
+    <nav>
+      <a href="../index.html">🏠 GeoSuite トップ</a>
+      <a href="index.html">ドキュメント一覧</a>
+      <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
+    </nav>
+  </header>
+  <div class="content">
+<blockquote>
+<p><strong>基本的にはこの制約を受けません。</strong> <code>geojson:</code>/<code>xyz:</code>/<code>3dtiles:</code>/<code>base:</code> など URL 指定レイヤーは Re:Earth 正規経路（<code>data.url</code>）で Visualizer ホスト側が直接 fetch・パースするため、本ページの上限は一切関係ありません。制約が掛かるのは<strong>プラグイン拡張経路</strong>（iframe でデコード→<code>data.value</code> 注入）だけであり、<strong>これは Cesium・ブラウザ・GeoJSON 仕様の制限ではなく、Re:Earth Visualizer のプラグインサンドボックス固有の上限です</strong>（Cesium 本体ははるかに大きなデータを描画できます）。</p>
+</blockquote>
+<p>Re:Earth のプラグイン拡張は QuickJS wasm コンテキストで実行され、<strong>全拡張が同一の wasm linear memory を共有</strong>します。コンテキスト間・iframe 間のメッセージはすべて <code>JSON.stringify → wasm メモリへの文字列コピー → ctx 内 JSON.parse</code> でマーシャルされるため、巨大なペイロードは共有ヒープを圧迫し、1拡張の OOM で拡張コンテキストが全滅します（<code>InternalError: out of memory</code> / <code>memory access out of bounds</code>、<code>Proxy.unwrapResult</code> で観測）。</p>
+<p>つまり<strong>制約がかかるのは「拡張コンテキストを横断するデータ」だけ</strong>です。<code>data.url</code> は URL 文字列だけが ctx を通り本体はホスト側で処理されるため 4MB 制限の対象外（ベクター検索インデックスだけは別途予算制約あり）。制限が掛かるのは iframe でデコード→<code>data.value</code> として注入する経路です。</p>
+<pre class="mermaid">flowchart TB
+  subgraph R[&quot;■ Re:Earth 正規経路（サンドボックス非横断）&quot;]
+    direction TB
+    A[&quot;geojson: / xyz: / 3dtiles:&lt;br&gt;URL 指定レイヤー&quot;]
+    H[&quot;Visualizer ホスト&lt;br&gt;直接 fetch・パース&lt;br&gt;4MB 制約なし&quot;]
+    A -- &quot;data.url&lt;br&gt;URL 文字列のみ ctx 通過&quot; --&gt; H
+  end
+  subgraph E[&quot;■ プラグイン拡張経路（ctx 横断）&quot;]
+    direction TB
+    B[&quot;duckdb: / gpkg: / fgb: / parquet:&lt;br&gt;ファイル取込・kasczip メンバ&lt;br&gt;(iframe でデコード)&quot;]
+    L{&quot;結果 ≤4MB ?&quot;}
+    C[&quot;拡張ctx → ホスト&lt;br&gt;reearth.layers.add&quot;]
+    T[&quot;⚠ トゥームストーン&lt;br&gt;グレーアウト行 + 理由&quot;]
+    B -- &quot;data.value&lt;br&gt;全ペイロードが ctx 横断&quot; --&gt; L
+    L -- &quot;はい&quot; --&gt; C
+    L -- &quot;いいえ&quot; --&gt; T
+  end
+  H --&gt; OK[&quot;地図へ描画&quot;]
+  C --&gt; OK
+  style R fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  style E fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+  style A fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style H fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style B fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style L fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style C fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style T fill:#ffebee,stroke:#c62828,stroke-width:2px
+  style OK fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+  linkStyle 0,4 stroke:#1976d2,stroke-width:2px
+  linkStyle 1,2,5 stroke:#ef6c00,stroke-width:2px
+  linkStyle 3 stroke:#c62828,stroke-width:2px</pre>
+<h2>「結果 ≤4MB」判定の段階構成（gpkg:）</h2>
+<p>上図の <code>結果 ≤4MB ?</code> は一段の判定ではなく、早い順に3段＋最終防衛線のパイプラインです。確実に収まらないと分かった時点で即座に打ち切り、デコード済み結果だけが後段へ進みます。</p>
+<pre class="mermaid">flowchart TB
+  S[&quot;gpkg: デコード要求&quot;]
+  F{&quot;① ファイルサイズ &gt;4MB?&lt;br&gt;Content-Length / 実バイト&quot;}
+  P{&quot;② raw バイト量プローブ&lt;br&gt;SUM(LENGTH(geom))＋プロパティ長&lt;br&gt;bbox は rtree join / SUBSTR pass&quot;}
+  D{&quot;③ デコード途中積算&lt;br&gt;approxBytes &gt;4MB?&quot;}
+  G{&quot;④ reply gjTooBig&lt;br&gt;結果 JSON &gt;4MB?&quot;}
+  X{&quot;⑤ ctx geojsonMsgTooBig&lt;br&gt;&gt;4MB?&quot;}
+  A[&quot;reearth.layers.add&lt;br&gt;→ 地図へ描画&quot;]
+  T[&quot;⚠ トゥームストーン&lt;br&gt;グレー行＋理由&quot;]
+  S --&gt; F
+  F -- &quot;はい&lt;br&gt;恒久拒否（仕様）&quot; --&gt; T
+  F -- &quot;いいえ&quot; --&gt; P
+  P -- &quot;見積超過&lt;br&gt;bbox=auto は移動で再試行&quot; --&gt; T
+  P -- &quot;収まり見込み&quot; --&gt; D
+  D -- &quot;4MB 到達で中断&quot; --&gt; T
+  D -- &quot;全行完了&quot; --&gt; G
+  G -- &quot;はい&quot; --&gt; T
+  G -- &quot;いいえ&quot; --&gt; X
+  X -- &quot;はい&quot; --&gt; T
+  X -- &quot;いいえ&quot; --&gt; A
+  style T fill:#ffebee,stroke:#c62828,stroke-width:2px
+  style A fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+  style S fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style F fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style P fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style D fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style G fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style X fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px</pre>
+<ul>
+<li><strong>① ファイルサイズ</strong>: GeoPackage ファイル自体が 4MB 超なら仕様上開かず恒久拒否。Content-Length が取れる場合は本文受信前に打ち切る</li>
+<li><strong>② プローブ</strong>: DB は既にメモリ内なので <code>SUM(LENGTH(geom))</code>＋プロパティ長の集計はほぼ無料。bbox=auto は <code>rtree_&lt;table&gt;_&lt;geom&gt;</code> インデックスへ join した単一集計（不在時は <code>SUBSTR(geom,1,40)</code> のエンベロープのみ走査）</li>
+<li><strong>③ デコード途中</strong>: 行ごとの JSON サイズ積算で 4MB 到達時点で中断</li>
+<li><strong>④⑤</strong>: iframe→ctx 送信前と ctx→ホスト注入前の同値ガード（通常は前段で済む防衛線）</li>
+</ul>
+<p>このため GeoSuite 側には以下の<strong>明示的な上限</strong>があります。上限を超えたレイヤは追加されず、レイヤ一覧に理由付きのグレーアウト行（トゥームストーン）として残ります。</p>
+<h2>数値上限（v21.3.3〜）</h2>
+<table>
+<thead>
+<tr>
+<th>制限</th>
+<th>値</th>
+<th>場所</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GeoPackage ファイルサイズ（仕様）</td>
+<td><strong>4MB</strong>（バイト）</td>
+<td>iframe <code>gpkgOpenDb</code> の bufP（URL fetch・dataB64・kasczip メンバ共通。Content-Length が報告される場合は本文読込前に拒否）</td>
+<td><strong>仕様上の恒久拒否</strong>: <code>table=</code>/<code>where=</code>/<code>limit=</code>/<code>columns=</code>/bbox 絞り込みで結果が収まり得る場合でも、ファイル自体が上限超過なら開かず拒否（<code>gpkg file too large (XMB &gt; 4MB)</code>）。カメラ移動リトライ対象外</td>
+</tr>
+<tr>
+<td>デコード済み GeoJSON（iframe→ctx）</td>
+<td><strong>4MB</strong>（JSON.stringify 長）</td>
+<td>iframe 側 <code>gjTooBig</code>（layers-and-tiles-list / basemap-widget の各 decoder reply、全て同値）</td>
+<td>ctx への流入そのものを遮断。超過時は <code>layer too large (XMB decoded, &gt;4MB)</code> を返す</td>
+</tr>
+<tr>
+<td>GeoJSON（ctx→<code>reearth.layers.add/override</code>）</td>
+<td><strong>4MB</strong></td>
+<td>ctx 側 <code>geojsonMsgTooBig</code> / <code>GEOJSON_MSG_MAX_BYTES</code></td>
+<td>ホストブリッジへの再マーシャルでの OOM 死亡を防止（iframe 側と同値のため通常はここに到達しない防衛線）</td>
+</tr>
+<tr>
+<td>ドロップ .zip の eager メンバ合計</td>
+<td><strong>8MB</strong>（バイト）</td>
+<td>iframe <code>zipToKascResult(eager=true)</code></td>
+<td>base64 化すると ~10.7MB になり ctx を通るため。超過時は <code>zip members too large for file drop (XMB &gt; 8MB)</code></td>
+</tr>
+<tr>
+<td>デコード結果の待機 TTL</td>
+<td><strong>300s</strong></td>
+<td>ctx <code>armPendingTtl</code>（qml/geojson/duckdb/gpkg/sql/fgb/parquet/kasczip + streetview/places 全 pending マップ）</td>
+<td>ホスト ctx の OOM 死亡・iframe 再生成で結果が永遠に来ない場合に pending を解放し AI 呼出しへエラー返却</td>
+</tr>
+<tr>
+<td>AI/ブリッジツール結果</td>
+<td><strong>4MB</strong>（JSON.stringify 長）</td>
+<td><code>aiToolReply</code>（パネル→ai-chat）・<code>capToolResult</code>（ai-chat→iframe/bridgeResult）</td>
+<td><code>captureView</code> の dataURL 等大きな結果が拡張ctx を通る際の OOM をエラー返却に変更</td>
+</tr>
+<tr>
+<td>ベクター検索インデックス（<code>vectorFeatureData</code>）</td>
+<td>1ソース <strong>4MB</strong> / 合計 <strong>8MB</strong></td>
+<td>iframe <code>requestVectorFeatureData</code> ハンドラ</td>
+<td>超過ソースは <code>tooLarge</code> マーカーに置換され検索対象から除外（レイヤ自体は地図上に生存）</td>
+</tr>
+</tbody></table>
+<h2>ルーティング上の制約</h2>
+<ul>
+<li><strong>eager <code>dataB64</code>（ドロップ zip メンバ）は basemap-widget 拡張ctx を中継しない</strong>。<code>ddbPost</code>/<code>gpkgPost</code> は <code>payload.dataB64</code> がある場合ホスト経由をスキップし、自 iframe で直接デコードする。URL 由来・lazy kasczip メンバ（<code>zipId/zipUrl/zipPath</code>）のみホスト経由</li>
+<li><strong>URL 経由の kasczip メンバはバイトを ctx に通さない</strong>。デコード側 iframe が <code>zipOrB64</code>/<code>_zipCache</code> で zip 自体を再 fetch して解凍する（<code>_zipCache</code> は iframe 内に閉じる）</li>
+<li><code>duckdb:</code> 行のホスト wasm ウォームは eager メンバのみの構成では送らない（自 iframe 経路のため不要）</li>
+<li><strong>ベクター検索の value レイヤは ctx 内で直接インデックス化</strong>（v21.3.3〜）。<code>computed.features</code> 未取得時、従来は <code>l.data.value</code> を iframe へ往復させていた（2回横断）が、<code>buildVectorFeatureIndexFromLayers</code> が geojson オブジェクト/文字列・csv テキスト/配列を ctx 内で直接変換する（1回の読込のみ）。URL ソースのみ iframe 経由の raw fetch（上記予算ガード付き）</li>
+</ul>
+<h2>トゥームストーン（グレーアウト行）の仕様</h2>
+<p>上限超過・デコード不達はエラーログだけでなく、レイヤ一覧に <code>⚠ &lt;タイトル&gt;</code> + 赤い理由テキスト + 無効化チェックボックス + <code>×</code> ボタンの行として残ります。</p>
+<ul>
+<li>記録されるケース: ctx 4MB ガード超過（ddb/gpkg/fgb/pq/geojson/import）、iframe 4MB デコード超過、ドロップ zip メンバ超過（<code>qgis:</code>/取込の <code>kascZipResult</code> エラー全般）、TTL タイムアウト、インポート失敗全般（非対応形式・デコード失敗）</li>
+<li>早期判定（v22.0.0〜）: 超過が確定するまで全量を読まない。gpkg はファイルサイズによる仕様拒否（Content-Length/実バイト、恒久・リトライなし）→ raw バイト量プローブ（<code>SUM(LENGTH(geom))</code>＋プロパティ長、bbox は <code>rtree_&lt;table&gt;_&lt;geom&gt;</code> インデックス join または <code>SUBSTR(geom,1,40)</code> エンベロープ pass でフィルタ後の見積り）→ デコード途中積算の3段判定。duckdb/fgb はデコード途中の JSON サイズ積算で 4MB 到達時に中断、parquet は footer メタデータの非圧縮 <code>total_byte_size</code> で読込前に確定（<code>limit=</code> 指定時は除外）</li>
+<li>bbox=auto 失敗の自動リトライ: <code>gpkg:</code>/<code>duckdb:</code> の初回追加が結果 4MB 超過等で失敗すると、次のカメラ移動で縮小したビューポート bounds により再追加を試みる（600ms デバウンス）。ズームインで収まればトゥームストーンが自動解消。<strong>ファイルサイズ仕様拒否は恒久のためリトライしない</strong>。トゥームストーンの × 削除・同一ソースの再処理で登録解除</li>
+<li>消去条件: 同一ソース（URL/ファイル名）の再ロード開始時、<code>qgis:</code> 取込成功時、<code>×</code> による手動削除。パネル再描画（<code>safeShowUI</code>）を跨いで持続</li>
+<li><strong>記録しないケース</strong>: <code>qml</code> スタイルコンパイルの失敗/タイムアウト（デフォルトスタイルへフォールバックしレイヤ自体は追加されるため）、<code>zip member not loaded</code>（zip 未到着の一時状態）、<code>refresh</code> 系クエリの一般エラー（レイヤは stale のまま地図上に生存）— ただし refresh でも <strong>4MB ガード超過は記録する</strong>（上限超過の可視化）。ベクター検索の <code>tooLarge</code> 除外はレイヤ追加の失敗ではないため記録しない（検索 UI に出ないだけ）</li>
+</ul>
+<h2>未解決の残存リスク</h2>
+<ul>
+<li><code>memoryLimitBytes</code> は Re:Earth ランタイム側の設定で、プラグインからは変更不可</li>
+<li><code>computed.features</code> の属性走査自体は ctx 内で行うため、巨大レイヤのインデックス構築は依然として重い（上限内で済む設計だが、極端に多いユニーク値ではヒープ圧力が残る可能性）</li>
+</ul>
+<h2>回避策（ユーザー向け）</h2>
+<ul>
+<li>上限を超えるデータは <strong><code>qgis: &lt;.kasc URL&gt;</code> でホスト側に置いて取り込む</strong>（DATA/ を外部ホストし、メンバは lazy fetch）。ドロップ zip ではなく URL 参照にすることでバイト列が ctx を通らなくなる</li>
+<li>クエリ結果が大きい場合は <code>where=</code>/<code>limit=</code>/<code>columns=</code>/<code>bbox=auto</code> で絞る（bbox=auto はビューポート連動の再クエリ）</li>
+<li><strong>4MB を超える GeoPackage ファイル自体は仕様上読み込みません</strong>（恒久的に拒否・ズームインしても復帰しません）。QGIS 側でレイヤを分割・軽量化（地物削減・ジオメトリ簡素化・不要カラム削除）して 4MB 未満にするか、複数テーブル/ファイルへの分割を行ってください</li>
+</ul>
+</div>
+  <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>try { mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { htmlLabels: true } }); } catch (e) {}</script>
+</body>
+</html>
