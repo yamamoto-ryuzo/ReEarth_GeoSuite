@@ -701,6 +701,11 @@ const GEO_I18N = {
 let _geojsonClassification = 'terrain';
 let _pluginAddedGeojsonLayerIds = []; // track GeoJSON layer ids for runtime classification updates
 
+// Tombstones for layer adds that hit a hard limit (see markLayerFailed below).
+// Declared early: getUI() reads this during the first render.
+const _failedLayerEntries = {};
+let _failSeq = 0;
+
 // Ensure globe and scene background are white before any tiles are applied
 try {
   if (typeof reearth !== "undefined" && reearth.viewer && reearth.viewer.overrideProperty) {
@@ -969,6 +974,26 @@ function getUI() {
       return `<option value="i:${i}">${escOpt(title)}</option>`;
   }).join('');
 
+  // Failed-layer tombstones: recorded when a layer add hits a hard limit
+  // (bridge payload size, decoder/OOM death, oversized zip member). Rendered
+  // greyed-out with the reason; × posts dismissFailed to drop the entry.
+  const failedLayerItems = Object.keys(_failedLayerEntries).map(fid => {
+    const f = _failedLayerEntries[fid];
+    const title = escOpt(f.title || 'layer');
+    const reason = escOpt(f.reason || '');
+    return `
+    <li class="layer-item layer-failed" title="${escOpt((f.title || '') + ' — ' + (f.reason || ''))}">
+      <div class="layer-item-left">
+        <input class="layer-checkbox" type="checkbox" disabled />
+        <span class="layer-name">⚠ ${title}</span>
+        <span class="layer-fail-reason">${reason}</span>
+      </div>
+      <div class="actions">
+        <button class="btn-icon dismiss-failed-btn" data-fail-id="${fid}" aria-label="Close" data-i18n-aria="closeAria">×</button>
+      </div>
+    </li>`;
+  }).join('');
+
   // Information panel content
   // (Info content will be loaded from configured URL and injected into #info-content)
   // Prepare legend HTML (Sub-tabs structure)
@@ -1132,6 +1157,39 @@ function getUI() {
   .layer-name:hover {
     color: #000;
   }
+
+  /* Failed layer tombstones (size limits, decoder death): greyed-out row
+     showing the reason; the checkbox is inert and × dismisses the entry. */
+  .layer-item.layer-failed {
+    background-color: rgba(0,0,0,0.05);
+    border-style: dashed;
+  }
+  .layer-item.layer-failed:hover { background-color: rgba(0,0,0,0.06); }
+  .layer-item.layer-failed .layer-checkbox { opacity: 0.3; cursor: not-allowed; }
+  .layer-item.layer-failed .layer-name { color: #999; font-weight: 400; cursor: default; }
+  .layer-item.layer-failed .layer-name:hover { color: #999; }
+  .layer-fail-reason {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72em;
+    color: #b04a3a;
+    max-width: 55%;
+  }
+  .btn-icon.dismiss-failed-btn {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    border-radius: 4px;
+  }
+  .btn-icon.dismiss-failed-btn:hover { color: #333; background: rgba(0,0,0,0.06); }
 
   /* nested lists: indent to show tree structure */
   .layers-list ul {
@@ -1651,7 +1709,7 @@ function getUI() {
     </div>
 
     <ul class="layers-list">
-      ${combinedLayerItems}
+      ${combinedLayerItems}${failedLayerItems}
     </ul>
   </div>
 
@@ -4241,9 +4299,17 @@ function qmlStyleToReearth(xmlText, opts){
               const importFile = function(file) {
                 var type = importDetect(file.name);
                 var done = function(gj) {
+                  var tb = gjTooBig(gj);
+                  if (tb) { try { parent.postMessage({ action: 'importAdd', title: file.name, geojson: null, error: tb }, '*'); } catch (e) {} return; }
                   try { parent.postMessage({ action: 'importAdd', title: file.name, geojson: gj }, '*'); } catch (e) {}
                 };
-                var fail = function(e) { setImportStatus(file.name + ': ' + String(e && e.message || e), true); };
+                var fail = function(e) {
+                  var err = String(e && e.message || e);
+                  setImportStatus(file.name + ': ' + err, true);
+                  // Also post as a failed add so the panel registers a greyed-out
+                  // tombstone with the reason (unsupported type, decode errors, etc).
+                  try { parent.postMessage({ action: 'importAdd', title: file.name, geojson: null, error: err }, '*'); } catch (e2) {}
+                };
                 try {
                   if (type === 'kasc') {
                     file.text().then(function(t) {
@@ -4469,6 +4535,10 @@ function qmlStyleToReearth(xmlText, opts){
                 var stmt = db.prepare(sql);
                 var colNames = stmt.getColumnNames();
                 var features = [];
+                // Fail fast: anything over the 4MB bridge cap is discarded by
+                // gjTooBig anyway, so track the accumulated JSON size and bail
+                // instead of decoding the whole table just to throw it away.
+                var approxBytes = 2;
                 while (stmt.step()) {
                   var row = stmt.get();
                   var rec = {};
@@ -4479,7 +4549,14 @@ function qmlStyleToReearth(xmlText, opts){
                   if (!geometry) continue;
                   var properties = {};
                   for (var i = 0; i < colNames.length; i++) { var c = colNames[i]; if (c !== geomCol) properties[c] = rec[c]; }
-                  features.push({ type: 'Feature', geometry: geometry, properties: properties });
+                  var feat = { type: 'Feature', geometry: geometry, properties: properties };
+                  try { approxBytes += JSON.stringify(feat).length + 1; }
+                  catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
+                  if (approxBytes > 4 * 1024 * 1024) {
+                    stmt.free();
+                    throw new Error('layer too large (>4MB decoded) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>');
+                  }
+                  features.push(feat);
                 }
                 stmt.free();
                 var qml = null;
@@ -4679,7 +4756,7 @@ function qmlStyleToReearth(xmlText, opts){
             // used by both the qgis: URL include (eager=false — members are
             // fetched lazily via zipOrB64 so big archives never cross the
             // extension) and a .zip dropped on the file-import button
-            // (eager=true, 24MB cap). With no .kasc inside, a minimal text
+            // (eager=true, 8MB cap). With no .kasc inside, a minimal text
             // is synthesized so every decodable member still becomes a layer.
             var zipToKascResult = function(zfiles, zipId, eager) {
               var names = Object.keys(zfiles).filter(function(n) { return !/\\/$/.test(n); });
@@ -4710,7 +4787,7 @@ function qmlStyleToReearth(xmlText, opts){
                 // shipped as base64 (capped: they cross the extension context)
                 var total = 0;
                 Object.keys(rr.needed).forEach(function(p) { if (zfiles[p]) total += zfiles[p].length; });
-                if (total > 8 * 1024 * 1024) throw new Error('zip members too large for file drop (' + Math.round(total / 1048576) + 'MB > 24MB) - host the zip and use qgis: <url>');
+                if (total > 8 * 1024 * 1024) throw new Error('zip members too large for file drop (' + Math.round(total / 1048576) + 'MB > 8MB) - host the zip and use qgis: <url>');
                 out = {};
                 Object.keys(rr.needed).forEach(function(p) { if (zfiles[p]) out[p] = bytesToB64(zfiles[p]); });
               }
@@ -4740,11 +4817,15 @@ function qmlStyleToReearth(xmlText, opts){
             // Decoded-GeoJSON size guard — the result must cross the
             // extension context (QuickJS heap), so oversized layers are
             // skipped with a hint instead of OOMing the whole plugin.
+            // Decoded-result cap — must match the extension-side
+            // geojsonMsgTooBig limit (4MB). Anything larger would be rejected
+            // after crossing the QuickJS context anyway, so reject it HERE
+            // before the payload ever leaves this iframe.
             var gjTooBig = function(geojson) {
               try {
                 var sz = JSON.stringify(geojson).length;
                 try { console.log('[gj-size] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e) {}
-                return sz > 8 * 1024 * 1024 ? ('layer too large (' + Math.round(sz / 1048576) + 'MB decoded) — host DATA/ and use qgis: <.kasc URL>') : null;
+                return sz > 4 * 1024 * 1024 ? ('layer too large (' + Math.round(sz / 1048576) + 'MB decoded, >4MB) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>') : null;
               } catch (e) { return null; }
             };
             // Member bytes for a kasczip payload — eager dataB64 (dropped
@@ -4990,6 +5071,22 @@ function qmlStyleToReearth(xmlText, opts){
                       } catch (e2) { console.error('[requestVectorFeatureData] source error', e2); }
                     });
                     Promise.all(fetches).then(function() {
+                      // The whole results object crosses the QuickJS
+                      // extension context — a huge layer's raw text would
+                      // OOM-kill it. Cap per-source and total payloads;
+                      // flagged sources are skipped (not indexed) upstream.
+                      try {
+                        var PER = 4 * 1024 * 1024, TOTAL = 8 * 1024 * 1024, used = 0;
+                        Object.keys(results).forEach(function(k) {
+                          try {
+                            var e = results[k];
+                            if (!e) return;
+                            var sz = JSON.stringify(e).length;
+                            used += sz;
+                            if (sz > PER || used > TOTAL) results[k] = { title: e.title, type: e.type, tooLarge: true };
+                          } catch (e2) {}
+                        });
+                      } catch (e) {}
                       if (window.parent) window.parent.postMessage({ action: 'vectorFeatureData', layers: results }, '*');
                     });
                   } catch (e) { console.error('[requestVectorFeatureData] UI error', e); }
@@ -6496,6 +6593,20 @@ function qmlStyleToReearth(xmlText, opts){
                 }
               } catch(e){}
             } catch (e) {}
+          });
+        } catch (e) {}
+      });
+
+      // Dismiss buttons on failed-layer tombstones (size-limit/decode deaths)
+      Array.from(document.querySelectorAll('.dismiss-failed-btn')).forEach(btn => {
+        try {
+          btn.addEventListener('click', function(e) {
+            try {
+              e.preventDefault();
+              e.stopPropagation();
+              const fid = btn.getAttribute('data-fail-id');
+              if (fid) parent.postMessage({ action: 'dismissFailed', failId: fid }, '*');
+            } catch (err) {}
           });
         } catch (e) {}
       });
@@ -8334,13 +8445,16 @@ async function getCurrentLocation() {
 // QuickJS runtime has no setTimeout: delegate waits to the UI iframe.
 // The UI runs setTimeout and replies with { action: 'timerDone', id } which
 // resolves the pending promise (see 'timerDone' in the extension message handler).
+// Entries keep {ms, t0} so they can be RE-ARMED on the new iframe after a
+// re-render — the old iframe's timers die with it, which would otherwise
+// leave every pending wait (ack fallbacks, TTL watchdogs, debounces) hanging.
 let _waitSeq = 0;
 const _pendingWaits = Object.create(null);
 function waitViaUiTimer(ms) {
   return new Promise((resolve) => {
     if (typeof setTimeout === 'function') { setTimeout(resolve, ms); return; }
     const id = 'wait-' + (++_waitSeq) + '-' + Date.now();
-    _pendingWaits[id] = resolve;
+    _pendingWaits[id] = { resolve: resolve, ms: ms, t0: Date.now() };
     try {
       postToUI({ action: 'startTimer', id: id, ms: ms });
     } catch (e) {
@@ -8348,6 +8462,19 @@ function waitViaUiTimer(ms) {
       resolve();
     }
   });
+}
+// The recreated iframe announces itself via requestRestoreState; re-post any
+// outstanding startTimer requests with their remaining time (they never
+// reached the new iframe, so without this the waits would never resolve).
+function rearmUiTimers() {
+  try {
+    const now = Date.now();
+    for (const id of Object.keys(_pendingWaits)) {
+      const w = _pendingWaits[id];
+      const rem = Math.max(0, w.ms - (now - w.t0));
+      try { postToUI({ action: 'startTimer', id: id, ms: rem }); } catch (e) {}
+    }
+  } catch (e) {}
 }
 
 async function flyToAndNotify(lat, lng, opts) {
@@ -8792,12 +8919,63 @@ let _qmlSeq = 0;
 const _qmlPending = {};
 const _qmlStyledLayerIds = new Set(); // skip applyGeojsonDrapeToAll override
 
+// Tombstones for layer adds that hit a hard limit (bridge payload size,
+// decoder/OOM death, oversized zip members, result never arriving). They
+// render as greyed-out entries in the layer list with the failure reason;
+// key = source url/file so re-processing replaces the entry and a later
+// success removes it. The backing map is declared near the top (getUI reads
+// it during the first render).
+function clearLayerFailed(key) {
+    if (!key) return;
+    try { Object.keys(_failedLayerEntries).forEach(id => { if (_failedLayerEntries[id].key === key) delete _failedLayerEntries[id]; }); } catch (e) {}
+}
+function markLayerFailed(key, title, reason) {
+    try {
+        if (!reason) return;
+        clearLayerFailed(key);
+        const id = 'fail' + (++_failSeq);
+        _failedLayerEntries[id] = { key: key || id, title: title || 'layer', reason: String(reason) };
+        try { sendError('[layer-failed]', title, reason); } catch (e) {}
+        try { safeShowUI('markLayerFailed'); } catch (e) {}
+    } catch (e) {}
+}
+
+// Decoder/compile results that never arrive (host extension OOM, iframe
+// re-render mid-decode) would leak the pending entry and hang any waiting AI
+// tool call — arm a generous TTL that reports failure and frees the slot.
+// noTombstone: non-layer pendings (Street View verify, Places search) get the
+// timeout + error reply but no greyed-out layer-list entry.
+function armPendingTtl(map, id, label, noTombstone) {
+    waitViaUiTimer(300000).then(function () {
+        const p = map[id];
+        if (p === undefined) return;
+        delete map[id];
+        // build-style pendings (qml) recover by falling back to the default
+        // style — the layer still gets added, so no tombstone for those.
+        if (!noTombstone && (!p || typeof p.build !== 'function')) {
+            markLayerFailed(
+                (p && (p.url || (p.spec && p.spec.url))) || id,
+                (p && (p.title || (p.spec && (p.spec.title || p.spec.url)) || p.url)) || id,
+                label + ' timed out — result never arrived (decoder iframe or host extension may have died)'
+            );
+        } else {
+            try { sendError('[' + label + '] result never arrived (decoder iframe or host extension may have died)'); } catch (e) {}
+        }
+        // Pending reply shape varies: {pending:{senderId,reqId}} (vec layers)
+        // or {senderId,reqId} directly (sv/places).
+        const rep = (p && p.pending && p.pending.senderId) ? p.pending : ((p && p.senderId) ? p : null);
+        if (rep && rep.senderId) aiToolReply(rep.senderId, rep.reqId, false, { error: label + ' timed out' });
+        if (p && typeof p.build === 'function') { try { p.build(null, label + ' timed out'); } catch (e) {} }
+    });
+}
+
 // Ask the iframe to compile styleUrl into a Re:Earth appearance, then add
 // the layer (or override appearance) via build(appearance).
 // build gets called with null + error string on failure.
 function requestQmlAppearance(styleUrl, props0, geojsonUrl, build) {
     const id = 'qml' + (++_qmlSeq);
     _qmlPending[id] = { url: styleUrl, build: build };
+    armPendingTtl(_qmlPending, id, 'qml');
     // styleUrl may be a URL string or { qmlText } for embedded QML (e.g. GPKG layer_styles).
     const qmlPayload = { action: 'qmlStyle', vecId: id, url: (typeof styleUrl === 'string') ? styleUrl : null, qmlText: (styleUrl && typeof styleUrl === 'object' && styleUrl.qmlText) ? styleUrl.qmlText : null, props0: props0 || null, geojsonUrl: geojsonUrl || null };
     // kasczip:// refs ship their zip member bytes so the iframe never fetches.
@@ -8854,7 +9032,9 @@ function loadVectorViaIframe(action, prefix, pendMap, url, title, visible, class
         return;
     }
     const id = nextId();
+    clearLayerFailed(url);
     pendMap[id] = { url: url, title: title, visible: visible, classification: classification, pending: pending || null, style: style || null };
+    armPendingTtl(pendMap, id, action);
     const payload = { action: action, vecId: id, url: url, limit: limit };
     if (!attachZipData(payload, url)) {
         delete pendMap[id];
@@ -8874,7 +9054,9 @@ let _geoSeq = 0;
 const _geoPending = {};
 function loadGeoJsonViaIframe(url, title, visible, classification, style) {
     const id = 'gj' + (++_geoSeq);
+    clearLayerFailed(url);
     _geoPending[id] = { url: url, title: title, visible: visible, classification: classification, style: style || null };
+    armPendingTtl(_geoPending, id, 'geojson');
     const payload = { action: 'geoLoad', vecId: id, url: url };
     if (!attachZipData(payload, url)) {
         delete _geoPending[id];
@@ -8913,8 +9095,15 @@ function getViewportRanges() {
 // The basemap-widget iframe is long-lived (its ui.show runs once), so its
 // DuckDB-Wasm instance survives panel re-renders. Prefer it as the query
 // host; fall back to our own iframe when it does not acknowledge.
+// _ddbHostDead is a TENTATIVE verdict: it only suppresses host attempts for
+// DDB_HOST_RETRY_MS, then the next query re-probes. Startup registration
+// races, iframe not-ready drops and hot-reload id changes must not stick for
+// the whole session — a permanent verdict forces every query through the
+// ephemeral panel iframe, re-paying the ~60MB wasm init after each re-render.
 let _ddbHostId = null;
 let _ddbHostDead = false;
+let _ddbHostRetryAt = 0;
+const DDB_HOST_RETRY_MS = 15000;
 function findExtensionInstanceId(extensionId) {
     try {
         const list = (reearth && reearth.extension && reearth.extension.list) || [];
@@ -8922,32 +9111,66 @@ function findExtensionInstanceId(extensionId) {
         return t ? t.id : null;
     } catch (e) { return null; }
 }
+// Resolve the host instance id, or null when this query should run in our own
+// iframe. Extension-not-found is NOT a dead verdict — it costs one list scan
+// per query, which is trivial, and lets a late-registered host be picked up.
+function ddbHostId() {
+    if (_ddbHostDead) {
+        if (Date.now() < _ddbHostRetryAt) return null;
+        _ddbHostDead = false;
+        _ddbHostId = null;
+        _ddbHostRetryAt = Date.now() + DDB_HOST_RETRY_MS;
+    }
+    const id = _ddbHostId || findExtensionInstanceId('basemap-widget');
+    if (id) _ddbHostId = id;
+    return id;
+}
+// No ack within the fallback window — quarantine the host, then re-probe on
+// the next query after DDB_HOST_RETRY_MS. The cached id may be stale (hot
+// reload gives extensions a new instance id), so drop it too.
+function ddbMarkHostDead() {
+    _ddbHostDead = true;
+    _ddbHostId = null;
+    _ddbHostRetryAt = Date.now() + DDB_HOST_RETRY_MS;
+}
+// Any host-originated reply proves the host path works — clear the dead flag
+// and refresh the cached instance id. On revival also re-kick ddbWarm: the
+// initial warmup may have gone to our own (ephemeral) iframe while the host
+// was "dead", leaving the persistent host iframe cold.
+function ddbNoteHostAlive(senderId) {
+    if (senderId) _ddbHostId = String(senderId);
+    if (_ddbHostDead) {
+        _ddbHostDead = false;
+        _ddbHostRetryAt = 0;
+        try { sendLog('[ddbHost] host revived'); } catch (e) {}
+        if (_ddbHostId) { try { reearth.extension.postMessage(_ddbHostId, { action: 'ddbWarm' }); } catch (e) {} }
+    }
+}
 // Pre-warm the DuckDB-Wasm module in the host iframe as soon as the config
 // mentions a duckdb:/sql: layer — the ~60MB download+init then overlaps
 // startup instead of sitting on the first query's critical path. When the
-// host extension is not registered yet it retries once, then falls back to
-// our own iframe (its instance dies on re-render, but the download still
-// warms the path).
+// host extension is not registered yet it retries, then falls back to our own
+// iframe (its instance dies on re-render, but the download still warms the
+// path). A dead verdict does not gate this — a ddbWarm to a live host is
+// harmless and a dead host may simply be mid-revival.
 let _ddbWarmSent = false;
 function warmupDuckDbHost(tries) {
     if (_ddbWarmSent) return;
     tries = (typeof tries === 'number') ? tries : 0;
     try {
-        if (!_ddbHostDead) {
-            const hostId = _ddbHostId || findExtensionInstanceId('basemap-widget');
-            if (hostId) {
-                _ddbHostId = hostId;
-                reearth.extension.postMessage(hostId, { action: 'ddbWarm' });
-                _ddbWarmSent = true;
-                try { sendLog('[ddbWarm] requested (host iframe)'); } catch (e) {}
-                return;
-            }
-            // Host extension may simply not be registered yet — keep retrying
-            // for a while before falling back to our own (ephemeral) iframe.
-            if (tries < 10) {
-                try { waitViaUiTimer(2000).then(function () { warmupDuckDbHost(tries + 1); }); } catch (e) { _ddbWarmSent = true; }
-                return;
-            }
+        const hostId = _ddbHostId || findExtensionInstanceId('basemap-widget');
+        if (hostId) {
+            _ddbHostId = hostId;
+            reearth.extension.postMessage(hostId, { action: 'ddbWarm' });
+            _ddbWarmSent = true;
+            try { sendLog('[ddbWarm] requested (host iframe)'); } catch (e) {}
+            return;
+        }
+        // Host extension may simply not be registered yet — keep retrying
+        // for a while before falling back to our own (ephemeral) iframe.
+        if (tries < 10) {
+            try { waitViaUiTimer(2000).then(function () { warmupDuckDbHost(tries + 1); }); } catch (e) { _ddbWarmSent = true; }
+            return;
         }
         // Host unreachable — warm our own iframe (its instance dies on
         // re-render, but the started download still warms the path).
@@ -8968,16 +9191,15 @@ function ddbPost(vecId, spec, layerId) {
         bounds: spec.bboxAuto ? getViewportRanges() : null
     };
     let hosted = false;
-    if (!_ddbHostDead) {
+    // Eager member bytes (dropped .zip — dataB64 can be ~10MB) must never be
+    // relayed through the basemap extension context: marshalling them in and
+    // out of its QuickJS heap has OOM-killed the whole sandbox. Decode in our
+    // own iframe instead. URL-sourced/lazy members still go hosted.
+    const hostId = payload.dataB64 ? null : ddbHostId();
+    if (hostId) {
         try {
-            const hostId = _ddbHostId || findExtensionInstanceId('basemap-widget');
-            if (hostId) {
-                _ddbHostId = hostId;
-                reearth.extension.postMessage(hostId, Object.assign({ action: 'ddbExec' }, payload));
-                hosted = true;
-            } else {
-                _ddbHostDead = true;
-            }
+            reearth.extension.postMessage(hostId, Object.assign({ action: 'ddbExec' }, payload));
+            hosted = true;
         } catch (e) {}
     }
     if (hosted) {
@@ -8986,7 +9208,7 @@ function ddbPost(vecId, spec, layerId) {
         waitViaUiTimer(3000).then(() => {
             const p = _ddbPending[vecId];
             if (p && !p.hostAck) {
-                _ddbHostDead = true;
+                ddbMarkHostDead();
                 try { postToUI(Object.assign({ action: 'ddbLoad' }, payload)); } catch (e) {}
             }
         });
@@ -9011,6 +9233,7 @@ function loadDuckDbLayer(spec, pending) {
         else { spec.zipId = ze.zipId; spec.zipUrl = ze.zipUrl; spec.zipPath = ze.path; }
         spec.zipName = ze.name;
     }
+    clearLayerFailed(spec.url);
     // .gpkg / format=gpkg is routed to the sql.js path (kasugai isGpkgBackedItem).
     const format = String(spec.format || '').toLowerCase();
     if (format === 'gpkg' || /\.gpkg([?#]|$)/i.test(spec.url || '')) {
@@ -9019,6 +9242,7 @@ function loadDuckDbLayer(spec, pending) {
     }
     const id = 'dd' + (++_ddbSeq);
     _ddbPending[id] = { kind: 'add', spec: spec, pending: pending || null };
+    armPendingTtl(_ddbPending, id, 'duckdb');
     try { ddbPost(id, spec, null); }
     catch (e) {
         delete _ddbPending[id];
@@ -9035,6 +9259,7 @@ function loadSqlLayer(spec, pending) {
     const id = 'dd' + (++_ddbSeq);
     spec.engine = 'duckdb';
     _ddbPending[id] = { kind: 'add', spec: spec, pending: pending || null };
+    armPendingTtl(_ddbPending, id, 'sql');
     try { ddbPost(id, spec, null); }
     catch (e) {
         delete _ddbPending[id];
@@ -9056,23 +9281,20 @@ function gpkgPost(vecId, spec, layerId) {
         bounds: spec.bboxAuto ? getViewportRanges() : null
     };
     let hosted = false;
-    if (!_ddbHostDead) {
+    // Same rule as ddbPost: eager dataB64 (dropped .zip) never crosses the
+    // host extension context — decode in our own iframe.
+    const hostId = payload.dataB64 ? null : ddbHostId();
+    if (hostId) {
         try {
-            const hostId = _ddbHostId || findExtensionInstanceId('basemap-widget');
-            if (hostId) {
-                _ddbHostId = hostId;
-                reearth.extension.postMessage(hostId, Object.assign({ action: 'gpkgExec' }, payload));
-                hosted = true;
-            } else {
-                _ddbHostDead = true;
-            }
+            reearth.extension.postMessage(hostId, Object.assign({ action: 'gpkgExec' }, payload));
+            hosted = true;
         } catch (e) {}
     }
     if (hosted) {
         waitViaUiTimer(3000).then(() => {
             const p = _gpkgPending[vecId];
             if (p && !p.hostAck) {
-                _ddbHostDead = true;
+                ddbMarkHostDead();
                 try { postToUI(Object.assign({ action: 'gpkgLoad' }, payload)); } catch (e) {}
             }
         });
@@ -9096,8 +9318,10 @@ function loadGpkgLayer(spec, pending) {
         else { spec.zipId = ze.zipId; spec.zipUrl = ze.zipUrl; spec.zipPath = ze.path; }
         spec.zipName = ze.name;
     }
+    clearLayerFailed(spec.url);
     const id = 'gp' + (++_gpkgSeq);
     _gpkgPending[id] = { kind: 'add', spec: spec, pending: pending || null };
+    armPendingTtl(_gpkgPending, id, 'gpkg');
     try { gpkgPost(id, spec, null); }
     catch (e) {
         delete _gpkgPending[id];
@@ -9108,6 +9332,7 @@ function refreshGpkgLayer(layerId, spec) {
     const id = 'gp' + (++_gpkgSeq);
     spec.req = id;
     _gpkgPending[id] = { kind: 'refresh', layerId: layerId };
+    armPendingTtl(_gpkgPending, id, 'gpkg');
     try { gpkgPost(id, spec, layerId); }
     catch (e) { delete _gpkgPending[id]; }
 }
@@ -9117,12 +9342,14 @@ function handleGpkgResult(msg) {
     delete _gpkgPending[msg.vecId];
     if (msg.error || !msg.geojson) {
         try { sendError('[gpkg] query failed:', msg.error); } catch (e) {}
+        if (p.kind === 'add') markLayerFailed((p.spec && p.spec.url) || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || 'GeoPackage', String(msg.error || 'query failed'));
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
         return;
     }
     if (geojsonMsgTooBig(msg.geojson)) {
         const err = 'result too large for the extension bridge (>4MB) — narrow the query (where/limit/columns/bbox) or host via qgis: <.kasc URL>';
         try { sendError('[gpkg]', err); } catch (e) {}
+        markLayerFailed((p.spec && p.spec.url) || msg.layerId || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || msg.layerId || 'GeoPackage', err);
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
         return;
     }
@@ -9155,6 +9382,7 @@ function refreshDuckDbLayer(layerId, spec) {
     const id = 'dd' + (++_ddbSeq);
     spec.req = id; // stale-response guard: only the latest query result is applied
     _ddbPending[id] = { kind: 'refresh', layerId: layerId };
+    armPendingTtl(_ddbPending, id, 'duckdb');
     try { ddbPost(id, spec, layerId); }
     catch (e) { delete _ddbPending[id]; }
 }
@@ -9211,12 +9439,14 @@ function handleDdbResult(msg) {
     delete _ddbPending[msg.vecId];
     if (msg.error || !msg.geojson) {
         try { sendError('[duckdb] query failed:', msg.error); } catch (e) {}
+        if (p.kind === 'add') markLayerFailed((p.spec && p.spec.url) || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || 'DuckDB', String(msg.error || 'query failed'));
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'query failed') });
         return;
     }
     if (geojsonMsgTooBig(msg.geojson)) {
         const err = 'result too large for the extension bridge (>4MB) — narrow the query (where/limit/columns/bbox) or host via qgis: <.kasc URL>';
         try { sendError('[duckdb]', err); } catch (e) {}
+        markLayerFailed((p.spec && p.spec.url) || msg.layerId || msg.vecId, (p.spec && (p.spec.title || p.spec.url)) || msg.layerId || 'DuckDB', err);
         if (p.kind === 'add' && p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
         return;
     }
@@ -9321,9 +9551,8 @@ function openStreetViewFromCamera(pending) {
         if (_inspectorGoogleMapsApiKey) {
             const svId = 'sv' + (++_svSeq);
             _svPending[svId] = pending || true;
+            armPendingTtl(_svPending, svId, 'openStreetView', true);
             try { postToUI({ action: 'svVerify', svId: svId, lat: lat, lng: lng }); } catch (e) {}
-            // The UI always answers svResult (key missing/fetch failure included),
-            // and the sandbox has no timers — no fallback timeout needed.
             return;
         }
         try { reearth.viewer.open(plainUrl); } catch (e) {}
@@ -9360,10 +9589,10 @@ reearth.extension.on("message", (msg) => {
   if (msg && msg.action) {
     // Resolve pending waits delegated to the UI timer (see waitViaUiTimer)
     if (msg.action === "timerDone" && msg.id) {
-      const resolveWait = _pendingWaits[msg.id];
-      if (resolveWait) {
+      const w = _pendingWaits[msg.id];
+      if (w) {
         delete _pendingWaits[msg.id];
-        try { resolveWait(); } catch(e) {}
+        try { w.resolve(); } catch(e) {}
       }
       return;
     }
@@ -9689,6 +9918,9 @@ reearth.extension.on("message", (msg) => {
             postToUI({ action: 'activateTab', tab: _pendingActiveTab });
             _pendingActiveTab = null;
           }
+          // The previous iframe's delegated timers died with it — re-arm them
+          // here (the new iframe's listener is up, since it sent this).
+          try { rearmUiTimers(); } catch (e) {}
         } catch (e) { try { sendError('[requestRestoreState] error:', e); } catch(_) {} }
       } else if (msg.action === 'flyInitRequest') {
           try {
@@ -9831,7 +10063,13 @@ reearth.extension.on("message", (msg) => {
               if (p) {
                   if (msg.error || !msg.geojson) {
                       try { sendError('[' + label + '] decode failed:', msg.error); } catch (e) {}
+                      markLayerFailed(p.url, p.title || (label + ': ' + p.url), String(msg.error || 'decode failed'));
                       if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: String(msg.error || 'decode failed') });
+                  } else if (geojsonMsgTooBig(msg.geojson)) {
+                      const err = 'result too large for the extension bridge (>4MB) — narrow the query (limit) or host via qgis: <.kasc URL>';
+                      try { sendError('[' + label + ']', err); } catch (e) {}
+                      markLayerFailed(p.url, p.title || (label + ': ' + p.url), err);
+                      if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, false, { error: err });
                   } else {
                       const title = p.title || (label + ': ' + p.url);
                       const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
@@ -9875,13 +10113,17 @@ reearth.extension.on("message", (msg) => {
           // FeatureCollection as a normal GeoJSON layer.
           try {
               const fc = msg.geojson || null;
-              if (fc && Array.isArray(fc.features)) {
+              if (fc && Array.isArray(fc.features) && !geojsonMsgTooBig(fc)) {
                   const title = msg.title || 'Imported file';
                   const p0 = ((fc.features || [])[0] || {}).properties || null;
                   addGeoJsonValueLayer(fc, title, true, msg.classification || null, 'Import: ' + title, null, p0);
                   try { postToUI({ action: 'importDone', title: title, count: fc.features.length }); } catch (e) {}
               } else {
-                  try { postToUI({ action: 'importDone', error: msg.error || 'empty data' }); } catch (e) {}
+                  const iErr = msg.error || (fc && Array.isArray(fc.features)
+                      ? 'result too large for the extension bridge (>4MB) — host via qgis: <.kasc URL>'
+                      : 'empty data');
+                  markLayerFailed('import:' + (msg.title || 'file'), msg.title || 'Imported file', iErr);
+                  try { postToUI({ action: 'importDone', error: iErr }); } catch (e) {}
               }
           } catch (e) {}
       }
@@ -9903,6 +10145,13 @@ reearth.extension.on("message", (msg) => {
               }
           } catch (e) {}
       }
+      else if (msg.action === 'dismissFailed') {
+          // × on a failed-layer tombstone — drop the entry and re-render.
+          try {
+              if (msg.failId && _failedLayerEntries[msg.failId]) delete _failedLayerEntries[msg.failId];
+              safeShowUI('dismissFailed');
+          } catch (e) {}
+      }
       else if (msg.action === 'geoResult') {
           // UI iframe decoded a kasczip:// GeoJSON member — add as a
           // GeoJSON-value layer (same path as fgb/parquet results).
@@ -9912,6 +10161,11 @@ reearth.extension.on("message", (msg) => {
               if (p) {
                   if (msg.error || !msg.geojson) {
                       try { sendError('[geojson] decode failed:', msg.error); } catch (e) {}
+                      markLayerFailed(p.url, p.title || ('GeoJSON: ' + p.url), String(msg.error || 'decode failed'));
+                  } else if (geojsonMsgTooBig(msg.geojson)) {
+                      const gErr = 'result too large for the extension bridge (>4MB) — host via qgis: <.kasc URL>';
+                      try { sendError('[geojson]', gErr); } catch (e) {}
+                      markLayerFailed(p.url, p.title || ('GeoJSON: ' + p.url), gErr);
                   } else {
                       const title = p.title || ('GeoJSON: ' + p.url);
                       const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
@@ -9934,6 +10188,7 @@ reearth.extension.on("message", (msg) => {
               if (msg.error) {
                   rec.status = 'error';
                   try { sendError('[qgis:] include failed:', msg.url || zipId, msg.error); } catch (e) {}
+                  markLayerFailed('qgis:' + (msg.url || zipId), msg.title || msg.url || zipId, String(msg.error));
                   try { postToUI({ action: 'importDone', error: String(msg.error) }); } catch (e) {}
               } else {
                   const fmap: any = {};
@@ -9943,6 +10198,7 @@ reearth.extension.on("message", (msg) => {
                   _zipFiles[zipId] = { url: rec.url || msg.url || '', files: fmap };
                   _qgisZipTexts[zipId] = (typeof msg.text === 'string') ? msg.text : '';
                   rec.status = 'ok';
+                  clearLayerFailed('qgis:' + (msg.url || zipId));
                   if (Array.isArray(msg.skipped) && msg.skipped.length) {
                       try { sendLog('[qgis:] skipped entries:', msg.skipped.join(' ; ')); } catch (e) {}
                       try { postToUI({ action: 'importDone', error: 'skipped: ' + msg.skipped.join(' ; ') }); } catch (e) {}
@@ -10113,20 +10369,25 @@ try {
         const data = (msg && msg.data !== undefined) ? msg.data : msg;
         if (data && data.action === 'ddbAck') {
           // The basemap-widget host iframe accepted the query — suppress the
-          // fallback that would re-run it in our own iframe.
+          // fallback that would re-run it in our own iframe. A reply also
+          // proves the host is alive, clearing any stale dead verdict.
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
           try { const p = _ddbPending[data.vecId]; if (p) p.hostAck = true; } catch (e) {}
           return;
         }
         if (data && data.action === 'ddbResult') {
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
           try { const p = _ddbPending[data.vecId]; if (p) p.hostAck = true; } catch (e) {}
           try { handleDdbResult(data); } catch (e) {}
           return;
         }
         if (data && data.action === 'gpkgAck') {
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
           try { const p = _gpkgPending[data.vecId]; if (p) p.hostAck = true; } catch (e) {}
           return;
         }
         if (data && data.action === 'gpkgResult') {
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
           try { const p = _gpkgPending[data.vecId]; if (p) p.hostAck = true; } catch (e) {}
           try { handleGpkgResult(data); } catch (e) {}
           return;
@@ -10462,6 +10723,15 @@ function postSelectBasemap(url) {
 
 function aiToolReply(senderId, reqId, ok, result) {
   try {
+    // Results >4MB have OOM-killed extension contexts when marshalled —
+    // return a graceful error instead of sending the payload (same cap as
+    // the GeoJSON bridge guard).
+    try {
+      if (result && JSON.stringify(result).length > 4 * 1024 * 1024) {
+        ok = false;
+        result = { error: 'result too large for the extension bridge (>4MB) — narrow the query' };
+      }
+    } catch (e) { ok = false; result = { error: 'result not serializable' }; }
     if (senderId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
       reearth.extension.postMessage(senderId, { action: 'aiToolResult', reqId: reqId, ok: ok, result: result });
     }
@@ -10805,6 +11075,7 @@ function handleAiToolRequest(senderId, data) {
         if (!_inspectorGoogleMapsApiKey) { fail('googleMapsApiKey not set (add "googleMapsApiKey: ..." to the plugin inspector)'); return; }
         const psId = 'ps' + (++_psSeq);
         _placesPending[psId] = { senderId: senderId, reqId: reqId };
+        armPendingTtl(_placesPending, psId, 'searchPlaces', true);
         try { postToUI({ action: 'placesSearch', psId: psId, query: q, limit: args.limit }); }
         catch (e) {
           delete _placesPending[psId];
@@ -11586,12 +11857,17 @@ function processInspectorText(text) {
     //         geom=.. | lon=.. | lat=.. | columns=a,b | covering=xmin,xmax,ymin,ymax |
     //         bbox=auto|off | on/off | classification
     if (lowerLine.startsWith('duckdb:')) {
-      // gpkg-backed duckdb lines route to sql.js, not DuckDB-Wasm — skip those.
-      try { if (!/\.gpkg([?#\s|]|$)|format\s*=\s*gpkg/i.test(line)) warmupDuckDbHost(); } catch (e) {}
       const ddStr = line.substring(line.indexOf(':') + 1).trim();
       const parts = ddStr.split('|').map(p => p.trim());
       const title = parts[0] || null;
       const url = (parts[1] && /^(https?|kasczip):\/\//.test(parts[1])) ? parts[1] : null;
+      // gpkg-backed duckdb lines route to sql.js, and eager kasczip members
+      // (dropped zips) decode in our own iframe — neither needs the hosted
+      // wasm warm-up.
+      try {
+        const zeW = (url && isKascZipUrl(url)) ? resolveZipEntry(url) : null;
+        if (!/\.gpkg([?#\s|]|$)|format\s*=\s*gpkg/i.test(line) && !(zeW && zeW.b64)) warmupDuckDbHost();
+      } catch (e) {}
       let visible = true;
       let classification = null;
       const opt = {};
@@ -12284,11 +12560,45 @@ function buildVectorFeatureIndexFromLayers() {
         const title = (l.title || (l.layer && l.layer.title) || l.id || 'Layer');
         const id = l.id || String(layerOptions.length);
 
-        const features = (l.computed && l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed && l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null);
+        let features = (l.computed && l.computed.features && Array.isArray(l.computed.features)) ? l.computed.features : ((l.computed && l.computed.originalFeatures && Array.isArray(l.computed.originalFeatures)) ? l.computed.originalFeatures : null);
         if (!features || !features.length) {
-          // computed features not ready yet: request raw data from the UI iframe as a fallback
-          missingSources.push({ id: id, title: title, type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null, value: l.data.value });
-          return;
+          // computed not ready — index value-backed sources directly here.
+          // The old path shipped the whole value to the UI iframe which posted
+          // it straight back: two full marshal crossings through this QuickJS
+          // heap for zero benefit (and an unbounded OOM vector).
+          const v = l.data.value;
+          if (v !== undefined && v !== null) {
+            try {
+              if (isCsv && typeof v === 'string') {
+                const pr = parseCsv(v, !!(l.data.csv && l.data.csv.noHeader));
+                features = csvRowsToFeatures(pr.rows, pr.headers, l.data.csv || null);
+              } else {
+                const vObj = (typeof v === 'string') ? JSON.parse(v) : v;
+                if (isCsv && Array.isArray(vObj) && vObj.length) {
+                  const headers = (vObj[0] && Array.isArray(vObj[0])) ? vObj[0].map((_, i) => String(i)) : Object.keys(vObj[0] || {});
+                  const rows = vObj.map((r) => {
+                    if (Array.isArray(r)) { const row = {}; headers.forEach((h, i) => { row[h] = (r[i] !== undefined) ? r[i] : ''; }); return row; }
+                    return r || {};
+                  });
+                  features = csvRowsToFeatures(rows, headers, l.data.csv || null);
+                } else {
+                  const vFeat = Array.isArray(vObj) ? vObj : ((vObj && (vObj.features || vObj.Feature)) || null);
+                  if (Array.isArray(vFeat) && vFeat.length) features = vFeat;
+                }
+              }
+            } catch (e) {}
+          }
+          if (!features || !features.length) {
+            // Only URL-backed sources still need the iframe fetch (payload is
+            // budgeted iframe-side); a value source we couldn't parse is
+            // skipped — sending it to the iframe would just round-trip bytes.
+            if (v === undefined || v === null) {
+              missingSources.push({ id: id, title: title, type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null });
+            } else {
+              try { sendError('[vectorIndex] skipped unparsable value layer:', title); } catch (e) {}
+            }
+            return;
+          }
         }
 
         const attrSet = new Set();
@@ -12413,6 +12723,10 @@ function buildVectorFeatureIndexFromData(layersData) {
 
     Object.keys(vectorSources).forEach((id) => {
       const source = vectorSources[id];
+      if (source && source.tooLarge) {
+        try { sendError('[vectorIndex] source too large to index, skipped:', source.title || id); } catch (e) {}
+        return;
+      }
       const vl = { id: id, title: source.title, type: source.type, csv: source.csv, raw: source.raw, value: source.value };
       try {
         let rawText = null;

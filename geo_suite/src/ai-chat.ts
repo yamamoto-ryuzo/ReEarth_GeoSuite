@@ -489,6 +489,19 @@ function bridgeToolCatalog(): any {
   };
 }
 
+// Result-size cap for cross-context replies: a marshalled result >4MB has
+// OOM-killed QuickJS contexts (same class as the layer payload guards).
+// Oversized results are replaced by a graceful error instead of being sent.
+const TOOL_RESULT_MAX_BYTES = 4 * 1024 * 1024;
+function capToolResult(r: any): any {
+  try {
+    if (r && typeof r === 'object' && JSON.stringify(r).length > TOOL_RESULT_MAX_BYTES) {
+      return { error: 'result too large for the extension bridge (>4MB) — narrow the query or fetch the data directly' };
+    }
+  } catch (e) { return { error: 'result not serializable' }; }
+  return r;
+}
+
 // Shared dispatch for aiToolCall (chat UI) and bridgeCall (external harness).
 // reply(result) routes the result back through the caller's channel.
 function dispatchToolCall(reqId: any, name: string, args: any, reply: (r: any) => void): void {
@@ -546,7 +559,7 @@ try {
         if (msg.action === 'aiToolCall') {
           const reqId = msg.reqId;
           dispatchToolCall(reqId, String(msg.name || ''), msg.args || {}, (result: any) => {
-            postToUI({ action: 'aiToolResult', reqId: reqId, result: result });
+            postToUI({ action: 'aiToolResult', reqId: reqId, result: capToolResult(result) });
           });
         } else if (msg.action === 'aiGetConfig') {
           // Ask the layer panel for inspector-provided values, then reply with merged config.
@@ -620,8 +633,8 @@ try {
               if (r && r.id) _aiAddedLayerIds.add(r.id);
             }
           } catch (e) {}
-          if (meta && typeof meta.reply === 'function') meta.reply(data.result);
-          else postToUI({ action: 'aiToolResult', reqId: data.reqId, result: data.result });
+          if (meta && typeof meta.reply === 'function') meta.reply(capToolResult(data.result));
+          else postToUI({ action: 'aiToolResult', reqId: data.reqId, result: capToolResult(data.result) });
         } else if (data.action === 'bridgeCall') {
           // External bridge request (relayed by the basemap-widget host iframe
           // from a local harness). The result goes back to the requesting
@@ -631,7 +644,7 @@ try {
           dispatchToolCall(bReqId, String(data.name || ''), data.args || {}, (result: any) => {
             try {
               if (replyTo && reearth.extension && typeof reearth.extension.postMessage === 'function') {
-                reearth.extension.postMessage(replyTo, { action: 'bridgeResult', reqId: bReqId, result: result });
+                reearth.extension.postMessage(replyTo, { action: 'bridgeResult', reqId: bReqId, result: capToolResult(result) });
               }
             } catch (e) {}
           });

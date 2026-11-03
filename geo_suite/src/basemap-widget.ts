@@ -485,7 +485,10 @@ const html: string = `
                       return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
                     }));
                   }
-                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; try { console.log('[gj-size/ddb] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e2) {} if (sz > 8 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded) — host DATA/ and use qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
+                  // Cap matches the panel extension's 4MB result guard —
+                  // reject here so the payload never crosses a QuickJS
+                  // extension context.
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; try { console.log('[gj-size/ddb] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e2) {} if (sz > 4 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded, >4MB) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
                   postToParent({ action: 'ddbResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error });
                 } catch (e) {}
               };
@@ -672,13 +675,14 @@ const html: string = `
             // re-download the file.
             (function() {
               var reply = function(geojson, error, qml) {
+                try { console.log('[gpkg-timing] reply', msg.vecId, error ? 'err' : 'ok'); } catch (e3) {}
                 try {
                   if (geojson) {
                     geojson = JSON.parse(JSON.stringify(geojson, function(k, v) {
                       return (typeof v === 'bigint') ? (Number.isSafeInteger(Number(v)) ? Number(v) : String(v)) : v;
                     }));
                   }
-                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; try { console.log('[gj-size/gpkg] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e2) {} if (sz > 8 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded) — host DATA/ and use qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
+                  if (geojson) { var tb = null; try { var sz = JSON.stringify(geojson).length; try { console.log('[gj-size/gpkg] ' + Math.round(sz / 104857.6) / 10 + 'MB'); } catch (e2) {} if (sz > 4 * 1024 * 1024) tb = 'layer too large (' + Math.round(sz / 1048576) + 'MB decoded, >4MB) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>'; } catch (e) {} if (tb) { geojson = null; error = tb; } }
                   postToParent({ action: 'gpkgResult', vecId: msg.vecId, layerId: msg.layerId || null, geojson: geojson, error: error, qml: qml || null });
                 } catch (e) {}
               };
@@ -709,6 +713,7 @@ const html: string = `
                 return (bbox.ranges || []).some(function(r) { return env.east >= Number(r.west) && env.west <= Number(r.east); });
               };
               try { postToParent({ action: 'gpkgAck', vecId: msg.vecId }); } catch (e) {}
+              try { console.log('[gpkg-timing] recv', msg.vecId, msg.url); } catch (e) {}
               try {
                 if (!window._sqljsModule) {
                   var lp = import('https://cdn.jsdelivr.net/npm/sql.js@1.13.0/+esm').then(function(mod) {
@@ -735,6 +740,7 @@ const html: string = `
                   window._gpkgDbs[dbKey] = dbP;
                 }
                 dbP.then(function(db) {
+                  try { console.log('[gpkg-timing] db-ready', msg.vecId); } catch (e) {}
                   var qIdent = function(n) { return '"' + String(n).replace(/"/g, '""') + '"'; };
                   var qLit = function(v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
                   var tableName = msg.table || null;
@@ -753,6 +759,10 @@ const html: string = `
                   var stmt = db.prepare(sql);
                   var colNames = stmt.getColumnNames();
                   var features = [];
+                  // Fail fast: anything over the 4MB bridge cap is discarded
+                  // by gjTooBig anyway, so track the accumulated JSON size and
+                  // bail instead of decoding the whole table just to throw it.
+                  var approxBytes = 2;
                   while (stmt.step()) {
                     var row = stmt.get();
                     var rec = {};
@@ -763,7 +773,14 @@ const html: string = `
                     if (!geometry) continue;
                     var properties = {};
                     for (var i = 0; i < colNames.length; i++) { var c = colNames[i]; if (c !== geomCol) properties[c] = rec[c]; }
-                    features.push({ type: 'Feature', geometry: geometry, properties: properties });
+                    var feat = { type: 'Feature', geometry: geometry, properties: properties };
+                    try { approxBytes += JSON.stringify(feat).length + 1; }
+                    catch (e) { approxBytes += JSON.stringify(geometry).length + 512; }
+                    if (approxBytes > 4 * 1024 * 1024) {
+                      stmt.free();
+                      throw new Error('layer too large (>4MB decoded) — narrow the query (where/limit/columns/table) or host DATA/ and use qgis: <.kasc URL>');
+                    }
+                    features.push(feat);
                   }
                   stmt.free();
                   var qml = null;
@@ -931,7 +948,10 @@ try {
           // unlike the panel iframe which is recreated on every ui.show.
           try {
             if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
-            postToUI({
+            // postToUIWhenReady: a query arriving before the iframe's listener
+            // is registered must queue, not drop — a drop would make the
+            // sender's ack watchdog declare this host permanently dead.
+            postToUIWhenReady({
               action: 'ddbLoad', vecId: data.vecId, layerId: data.layerId || null,
               url: data.url, format: data.format || null, where: data.where || null,
               limit: data.limit || null, geom: data.geom || null, lon: data.lon || null, lat: data.lat || null,
@@ -945,7 +965,7 @@ try {
           // as ddbExec — this iframe's sql.js instance and open DBs persist).
           try {
             if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
-            postToUI({
+            postToUIWhenReady({
               action: 'gpkgLoad', vecId: data.vecId, layerId: data.layerId || null,
               url: data.url, dataB64: data.dataB64 || null,
               zipId: data.zipId || null, zipUrl: data.zipUrl || null, zipPath: data.zipPath || null,

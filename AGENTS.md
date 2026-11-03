@@ -82,9 +82,11 @@
 ## DuckDB-Wasm の実行ホスト（重要）
 - `duckdb:` レイヤーのクエリは **basemap-widget の UI iframe 内で実行される**。理由: レイヤーパネルの iframe は `safeShowUI`（`ui.show` の再呼出し）のたびに破棄・再生成されるため、そこに置くと wasm インスタンス（`window._ddbModule`）がレイヤー追加のたびに失われ、初期化（wasm インスタンス化 + httpfs/spatial/parquet 拡張ロード）が毎回発生していた。basemap-widget は `ui.show` を初期化時に一度だけ呼ぶため iframe が永続し、インスタンスが温存される（計測: 初回 ~17s → 2回目以降 ~3-10s。旧構成では 13-22s が毎回発生）。
 - メッセージ経路: パネル `ddbPost` → `reearth.extension.postMessage(basemap-widget, {action:'ddbExec',...})` → basemap 拡張が `postToUI({action:'ddbLoad',...})` で自分の iframe へ転送 → iframe が `ddbAck`（受理即時）/`ddbResult`（完了時）を返し、basemap 拡張が送信元へ `extensionMessage` で返送 → パネルの `handleDdbResult` が処理。
-- **フォールバック**: パネルは `ddbExec` 送信後 3 秒以内に `ddbAck` が来なければホスト iframe 消失（widget 非表示等）とみなし、自分の iframe で `ddbLoad` を再実行する（`layers-and-tiles-list.ts` の `ddbPost`/`_ddbHostDead`）。パネル iframe 側にも同一の `ddbLoad` ハンドラを残してあるので、両者を同期して変更すること。
+- **フォールバック**: パネルは `ddbExec` 送信後 3 秒以内に `ddbAck` が来なければホスト iframe 消失（widget 非表示等）とみなし、自分の iframe で `ddbLoad` を再実行する（`layers-and-tiles-list.ts` の `ddbPost`/`ddbMarkHostDead`）。パネル iframe 側にも同一の `ddbLoad` ハンドラを残してあるので、両者を同期して変更すること。
+- **dead 判定は暫定的（v21.3.3〜）**: `_ddbHostDead` は永久フラグではなく `DDB_HOST_RETRY_MS`（15s）の隔離期間を持つ。隔離中のクエリは自 iframe で即実行され、期限後の次クエリで `ddbHostId()` がホストを再試行する。拡張未登録は dead 判定にならず毎クエリ再解決される。ホスト由来の `ddbAck`/`ddbResult`/`gpkgAck`/`gpkgResult` を受信した時点でも dead は解除され（`ddbNoteHostAlive`）、復帰時は `ddbWarm` を再送する。basemap 側は `ddbExec`/`gpkgExec`/`ddbWarm` を iframe ready まで `postToUIWhenReady` でキューするため「拡張登録済み・iframe未ready」のドロップは起きない。
 - `window._ddbModule` は Promise キャッシュ（初期化失敗時は null に戻る）。iframe 側の DuckDB コードは `basemap-widget.ts` と `layers-and-tiles-list.ts` に2か所ある（WKB デコーダ `vecWkbToGeoJson` も同様）。
 - **ブラウザ再起動・再訪では DuckDB アセットは必ず再ダウンロードされる**（実測: 再起動後 16.9s ≈ コールド）。プラグイン UI iframe は `allow-same-origin` なしサンドボックス（opaque origin）のため、HTTP キャッシュは同一ドキュメント内の再 fetch すら全バイト再転送され、CacheStorage/localStorage/IndexedDB/ServiceWorker はアクセス自体が SecurityError。KASUGAI の Service Worker + CacheStorage 方式は構造上移植不可。拡張側 `clientStorage` への wasm バイナリ保存は容量・メッセージ橋の制約から実用性が低い。「セッション毎に1回 ~15s 初期化、その後は warm」が現状の最適。
+- **ペイロードの拡張ctx 横断は 4MB がハード上限（v21.3.3〜）**: QuickJS 拡張コンテキストは大きな JSON のマーシャルで `InternalError: out of memory` 死亡する。iframe 側デコード結果キャップ（`gjTooBig`、両ファイル）と拡張側 `geojsonMsgTooBig`/`capToolResult`/`aiToolReply` は全て **4MB で統一** — 超過分はコンテキストに入る前に拒否しトゥームストーン表示。`dataB64` 付きリクエストは basemap 拡張を中継せず自 iframe でデコード。ベクター検索の `vectorFeatureData` は 1ソース4MB・合計8MB の予算ガード。新しい大きなペイロード経路を作る場合もこの上限に従うこと。
 - **先行ウォーム（v21.3.1〜）**: inspector に `duckdb:`/`sql:` 行（qgis: ZIP 取込分含む、`format=gpkg` を除く）が現れた時点で `handleInspectorLine` → `warmupDuckDbHost()` が basemap-widget へ `ddbWarm` を送り、永続 iframe の `ensureDdbModule()`（ddbLoad と共有）が wasm DL+初期化をバックグラウンド開始する。ホスト拡張の登録待ちは ~20s リトライ。basemap 拡張側は iframe ready（最初の `requestBaseList`）まで `postToUI` をキューする。永続化は依然不可のため「1セッション1回の初期化を起動処理とオーバーラップさせる」設計。
 
 ## Workbench の resize script 注入バグ（重要）
@@ -93,6 +95,7 @@
 
 ## QuickJS 拡張コンテキストには setTimeout が無い
 - 拡張側での遅延は `waitViaUiTimer(ms)`（UI iframe がブラウザ `setTimeout` を実行し `timerDone` で返送）を使うこと。直接 `setTimeout` を書くと ReferenceError。
+- パネル iframe は `safeShowUI` で再生成されると旧 iframe のタイマーが全滅するため、新 iframe の ready 合図（`requestRestoreState`）で `_pendingWaits` を残時間付きで再武装する（`rearmUiTimers`、v21.3.3〜）。これが無いと ack フォールバック・TTL ウォッチドッグ・デバウンスが永久に発火しない。
 
 ## 外部ブリッジ（QGIS bridge_call 相当・v21.3.0〜）
 - サンドボックス外のローカルハーネスやエージェントから地図ツールを呼ぶ経路。**navigation-toolbar の永続 iframe** にブリッジクライアント `window.__geoBridge` を常駐させる。

@@ -1,5 +1,19 @@
 # Changelog
 
+## v21.3.3
+- 修正: `_ddbHostDead` が一度立つとセッション中復帰しない問題を解消 — 起動直後の拡張登録レース・basemap iframe 未ready時のクエリドロップ・一時的な ack 遅延で誤判定されると、以降すべての duckdb/gpkg クエリが短命なパネル iframe で実行され、re-render ごとに ~60MB wasm 再初期化（13-22s）が発生していた。
+    - dead 判定を「15秒の隔離期間付きの暫定評決」に変更（`ddbHostId()`/`ddbMarkHostDead()`）。隔離中は自 iframe へ即フォールバック（遅延なし）、期限後の次クエリでホストを再試行。拡張未登録は dead 判定にせず毎クエリ再解決するため、遅れて登録されたホストも拾われる。
+    - `extensionMessage` でホスト由来の `ddbAck`/`ddbResult`/`gpkgAck`/`gpkgResult` を受け取った時点で dead を解除し `_ddbHostId` を sender で更新（ホットリロードによるインスタンスID変化にも追従）。復帰時は `ddbWarm` を再送して永続 iframe を温め直す。
+    - basemap-widget 拡張側: `ddbExec`/`gpkgExec` も `postToUIWhenReady` 経由に変更 — iframe のリスナ登録前に届いたクエリがドロップされ誤って dead 判定される経路を根絶（v21.3.1 で `ddbWarm` だけが保護されていた残存穴）。
+    - `waitViaUiTimer` を iframe 再生成に対応 — 再生成前 iframe に委譲したタイマーは破棄されるため、新 iframe の ready 合図（`requestRestoreState`）で残時間を再武装。従来はタイマー喪失で ack フォールバック・TTL ウォッチドッグ・デバウンスが永久に発火し得なかった。
+- 修正: ドロップ ZIP のファイル取込ガード強化 — デコード済み GeoJSON の上限チェック（`gjTooBig`）を import 経路にも適用し、eager dataB64 の ZIP メンバ上限のエラーメッセージを実装どおり 8MB に修正（実装は従来から 8MB、メッセージだけが 24MB と誤表示していた）。巨大ペイロードの拡張コンテキスト通過による QuickJS OOM 死亡を抑止。
+- 修正: iframe 側デコード結果キャップを 8MB→4MB に統一 — 拡張側 `geojsonMsgTooBig` ガード（4MB）と一致させ、4〜8MB 帯の結果が「拡張ctx を2回素通りした末に捨てられる」無駄で危険な横断を排除。拒否は QuickJS コンテキストに入る前の iframe 側で行う（duckdb/gpkg/geojson/fgb/parquet/import 全経路、basemap-widget iframe 側も同値）。
+- 修正: ベクター属性検索インデックスの OOM ベクター解消 — `computed.features` 未取得レイヤのフォールバックで、value 保持レイヤは全データを iframe へ往復マーシャルしていた（2回横断）のを、拡張側で直接インデックス化に変更（1回の読込のみ）。URL ソースの raw テキスト返却には iframe 側に 1ソース4MB・合計8MB の予算ガードを追加し、超過分は `tooLarge` マーカーで検索対象から除外（OOM させずスキップ）。
+- 修正: eager `dataB64`（ドロップ zip メンバ、~10MB）を basemap-widget 拡張ctx へ中継しないよう変更 — `ddbPost`/`gpkgPost` は dataB64 付きペイロードをホスト経由せず自 iframe でデコードする。拡張ctx を2回素通りする最大の OOM ベクターを遮断。URL/lazy メンバは従来どおりホスト経由。
+- 修正: デコーダ結果不達時のリーク対策 — `armPendingTtl`（300s TTL）を全 pending マップ（qml/geojson/duckdb/gpkg/sql/fgb/parquet/kasczip/streetview/places）に適用。結果が永遠に来ない場合に pending エントリを解放し待機中の AI ツールへエラー返却。
+- 新規: 限界超過レイヤのトゥームストーン表示 — 上限超過（4MB/8MB ガード）・デコード不達・取込失敗で追加されなかったレイヤを、レイヤ一覧に `⚠ タイトル + 理由` のグレーアウト行として表示（`×` で削除、同一ソースの再処理で自動置換、成功で消去）。失敗がログにしか残らず気付けなかった問題を解消。
+- 修正: ツール結果のサイズガード — `aiToolReply`/`aiToolResult`/`bridgeResult` の結果ペイロードに 4MB 上限を追加（`capToolResult`）。`captureView` のスクリーンショット等の大きな結果が ai-chat/nav-toolbar 拡張ctx を通る際の OOM を graceful なエラー返却に変更。
+
 ## v21.3.2
 - 修正: 外部プロキシ（bridge-hub / canvasApi 経路）へ送る `tools` ペイロードを Gemini ラッパー `[{functionDeclarations:[...]}]` ではなくフラットな宣言配列へ正規化。ラッパー形式のままだとハブ側でツール数が 0 と解釈され function calling が無効化されていた。
 

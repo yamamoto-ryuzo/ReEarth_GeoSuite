@@ -117,7 +117,7 @@ curl -X POST http://127.0.0.1:8977/call -d '{"name":"flyTo","args":{"lat":35.68,
 opaque origin の iframe から `127.0.0.1` への `Content-Type: application/json` POST はプリフライト + Private Network Access でブロックされます。GET（`/status`・EventSource）は通るため「受信は来るが返送だけ落ちる」非対称症状になります。対策は iframe 側の `text/plain` POST（シンプルリクエスト化）+ サーバ側の `Access-Control-Allow-Private-Network: true` 付与です。
 
 ### 3. ブリッジホスト = navigation-toolbar の理由
-basemap-widget 拡張ctx は ddbExec/gpkgExec の巨大ペイロード（`dataB64` 数 MB〜）を中継するため、重いプロジェクト（既定 inspector の `qgis:` ZIP 取込等）や連続ホットリロードで QuickJS が `InternalError: out of memory`（`Proxy.unwrapResult`）を出して死亡し、ブリッジを道連れにする事象を実測確認しました。nav-toolbar 拡張は重い中継を持たず、iframe も `ui.show` 一度きりで永続します。**basemap 拡張の OOM はブリッジ以前から存在する既存問題**であり、大きな GPKG/プロジェクト読込で拡張コンテキスト自体が死ぬ可能性がある点に注意してください。
+basemap-widget 拡張ctx は ddbExec/gpkgExec の巨大ペイロード（`dataB64` 数 MB〜）を中継するため、重いプロジェクト（既定 inspector の `qgis:` ZIP 取込等）や連続ホットリロードで QuickJS が `InternalError: out of memory`（`Proxy.unwrapResult`）を出して死亡し、ブリッジを道連れにする事象を実測確認しました。nav-toolbar 拡張は重い中継を持たず、iframe も `ui.show` 一度きりで永続します。**basemap 拡張の OOM はブリッジ以前から存在する既存問題**であり、大きな GPKG/プロジェクト読込で拡張コンテキスト自体が死ぬ可能性がある点に注意してください。サイズ上限と超過時の挙動は [payload-limits.md](./payload-limits.md) を参照。
 
 ### 4. セキュリティ
 - `bridge_server.js` は 127.0.0.1 のみにバインドしますが、**このポートへ到達できる者は接続中の地図を操作できます**。dev/エージェント用のエンドポイントとして扱ってください（必要なら `BRIDGE_TOKEN` を設定）。

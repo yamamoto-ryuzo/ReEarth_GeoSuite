@@ -280,6 +280,97 @@
             </section>
             
             <section>
+                <h2>📏 拡張経路のベクトルデータ容量目安（必読）</h2>
+                <p><strong>基本的にはこの制約を受けません。</strong> <code>geojson:</code> / <code>xyz:</code> / <code>3dtiles:</code> / <code>base:</code> など URL 指定レイヤーは Re:Earth 正規経路（<code>data.url</code>）で Visualizer ホスト側が直接 fetch・パースするため、後述の 4MB 上限は一切関係ありません。通常のレイヤー追加はこの経路です。</p>
+                <p>制約が掛かるのは<strong>プラグイン拡張経路だけ</strong> — geo_suite がブラウザ内 iframe でデコードして <code>data.value</code> として注入する経路（<code>duckdb:</code> / <code>gpkg:</code> / <code>flatgeobuf:</code> / <code>parquet:</code> / ファイル取込・kasczip メンバ）です。Re:Earth のプラグイン拡張は QuickJS (WebAssembly) コンテキストで実行され、<strong>全拡張が 1 つの wasm 線形メモリを共有</strong>します。iframe ↔ 拡張 ↔ ホスト間のメッセージは全て <code>JSON.stringify → 共有メモリへの文字列コピー → JSON.parse</code> で往復するため、巨大なペイロードは共有ヒープを圧迫し、OOM で<strong>拡張コンテキストごと全滅</strong>します。つまり<strong>Cesium やブラウザの性能ではなく、Re:Earth サンドボックス固有の上限</strong>です。</p>
+                <p>このため拡張経路に「<strong>横断ペイロード 1回あたり 4MB（JSON サイズ）</strong>」のハード上限を設けています。超過したレイヤは追加されずレイヤ一覧に <strong>⚠ グレーアウト行（理由付き）</strong>として残ります。</p>
+                <pre class="mermaid">
+flowchart TB
+  subgraph R["■ Re:Earth 正規経路（サンドボックス非横断）"]
+    direction TB
+    A["geojson: / xyz: / 3dtiles:<br>URL 指定レイヤー"]
+    H["Visualizer ホスト<br>直接 fetch・パース<br>4MB 制約なし"]
+    A -- "data.url<br>URL 文字列のみ ctx 通過" --> H
+  end
+  subgraph E["■ プラグイン拡張経路（ctx 横断）"]
+    direction TB
+    B["duckdb: / gpkg: / fgb: / parquet:<br>ファイル取込・kasczip メンバ<br>(iframe でデコード)"]
+    L{"結果 ≤4MB ?"}
+    C["拡張ctx → ホスト<br>reearth.layers.add"]
+    T["⚠ トゥームストーン<br>グレーアウト行 + 理由"]
+    B -- "data.value<br>全ペイロードが ctx 横断" --> L
+    L -- "はい" --> C
+    L -- "いいえ" --> T
+  end
+  H --> OK["地図へ描画"]
+  C --> OK
+  style R fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  style E fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+  style A fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style H fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style B fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style L fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style C fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style T fill:#ffebee,stroke:#c62828,stroke-width:2px
+  style OK fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+  linkStyle 0,4 stroke:#1976d2,stroke-width:2px
+  linkStyle 1,2,5 stroke:#ef6c00,stroke-width:2px
+  linkStyle 3 stroke:#c62828,stroke-width:2px
+                </pre>
+                <div class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0;">
+                    <h3>注入方式ごとの推奨容量</h3>
+                    <table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+                        <tr style="border-bottom:1px solid #ddd; text-align:left;">
+                            <th style="padding:6px 8px;">方式</th>
+                            <th style="padding:6px 8px;">上限</th>
+                            <th style="padding:6px 8px;">推奨の目安</th>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:6px 8px;"><code>geojson:</code> &lt;URL&gt;（ホスト側が直接 fetch）</td>
+                            <td style="padding:6px 8px;"><strong>4MB 制約なし</strong></td>
+                            <td style="padding:6px 8px;">Visualizer が URL を直接取得するためサンドボックスを通らない。<strong>大きな GeoJSON はまずこの方式</strong>（検索インデックスは 8MB 上限の対象）</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:6px 8px;">ファイル取込 / <code>geojson:</code> の kasczip メンバ（デコード注入）</td>
+                            <td style="padding:6px 8px;"><strong>4MB</strong></td>
+                            <td style="padding:6px 8px;">iframe でデコード→ctx 注入のため制限あり。超えたら <code>qgis:</code> 外部ホスト参照へ</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:6px 8px;"><code>duckdb:</code> / <code>sql:</code> / <code>gpkg:</code>（クエリ結果）</td>
+                            <td style="padding:6px 8px;"><strong>4MB</strong> / クエリ</td>
+                            <td style="padding:6px 8px;"><code>bbox=auto</code>（既定・表示範囲連動）＋ <code>where=</code>/<code>limit=</code>/<code>columns=</code>/<code>table=</code> で絞れば <strong>元データは数百MBでも可</strong></td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:6px 8px;"><code>flatgeobuf:</code> / <code>parquet:</code>（全件デコード）</td>
+                            <td style="padding:6px 8px;"><strong>4MB</strong></td>
+                            <td style="padding:6px 8px;">全件読みのため小〜中規模向き。大規模は <code>duckdb:</code> に置き換え推奨</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:6px 8px;"><code>qgis:</code> ZIP ドロップ取込（eager メンバ）</td>
+                            <td style="padding:6px 8px;"><strong>8MB</strong> 合計</td>
+                            <td style="padding:6px 8px;">ZIP は <strong>URL 参照（ホスト配置）推奨</strong> — メンバは遅延 fetch され本体容量を問わない</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:6px 8px;">ベクター検索インデックス</td>
+                            <td style="padding:6px 8px;">1ソース <strong>4MB</strong> / 合計 <strong>8MB</strong></td>
+                            <td style="padding:6px 8px;">超過レイヤは検索対象外になるだけで<strong>表示は有効</strong></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="install-steps" style="border-left:4px solid #667eea; margin-top:10px;">
+                    <h3>運用の推奨</h3>
+                    <ul style="margin:0; padding-left:20px;">
+                        <li><strong>まず「URL 経由」を選ぶ</strong>: <code>geojson:</code>/<code>3dtiles:</code>/<code>xyz:</code> 等の URL 指定レイヤーは Visualizer ホスト側が直接 fetch するため、サンドボックス上限を受けません。ファイルはドロップではなく CMS 等に置いて URL で参照するのが基本です。</li>
+                        <li><strong>総量の目安</strong>: ハード制約は「ctx を横断する結果 ≤4MB/回」のみ。レイヤ数自体に上限はありませんが、属性検索・一覧を快適に使うなら<strong>検索対象のベクトルデータ合計で数10MB 程度</strong>を目安にしてください。</li>
+                        <li><strong>大規模データは絞り込み前提で</strong>: 巨大ファイルは <code>duckdb:</code>（GeoParquet/CSV/JSON）か <code>gpkg:</code> で、<code>bbox=auto</code> の部分読み込み＋属性フィルタを使い、「クエリ結果だけが 4MB 以下」になるよう設計してください。元データのサイズは問いません。</li>
+                        <li><strong>配布は URL 参照で</strong>: プロジェクト一式は CMS 等に置いた <code>qgis: &lt;.kasc または .zip の URL&gt;</code> を推奨。ZIP の中身はブラウザが直接 fetch するため容量制限を受けません（ただし ZIP 内 geojson 等は kasczip デコード注入のため 4MB/件）。</li>
+                        <li><strong>失敗は可視化されます</strong>: 上限超過レイヤは消えず、レイヤ一覧に理由付きのグレーアウト行として残ります（× で削除、条件を直して再読み込みで自動置換）。</li>
+                    </ul>
+                </div>
+                <p style="margin-top:10px; font-size:0.9em;">技術詳細: <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/blob/main/docs/payload-limits.md" target="_blank" class="github-link">docs/payload-limits.md</a></p>
+            </section>
+            
+            <section>
                 <h2>✨ 主な機能</h2>
                 <div class="features">
                     <div class="feature-card">
@@ -709,6 +800,10 @@ npm run shot       # → エージェント用スクリーンショット取得�
                 }
             })
             .catch(e => console.log('Version fetch failed:', e));
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        try { mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { htmlLabels: true } }); } catch (e) {}
     </script>
 </body>
 </html>
