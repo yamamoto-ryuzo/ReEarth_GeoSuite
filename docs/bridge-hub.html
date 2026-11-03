@@ -20,6 +20,7 @@
   <div class="content">
 <p>AI チャットのプロバイダのうち <strong>GitHub Copilot</strong> と <strong>External agent（外部エージェント）</strong> は、API キーで直接叩く系統とは別経路で、ローカル常駐の <strong>CANVAS ブリッジハブ（bridge-hub.exe・127.0.0.1:8511）</strong> へ HTTP POST する「ブリッジ系」です。v21.3.0 追加。</p>
 <p>本ページは「ブラウザ → エージェント」（チャットから AI を使う）方向の説明です。逆方向「エージェント → ブラウザ」（外部ハーネスから地図ツールを遠隔実行する外部ブリッジ / <code>bridge:</code> 行 / <code>__geoBridge</code>）は <a href="./external-bridge.html">external-bridge.html</a> を参照してください。</p>
+<p>bridge-hub は <strong>オプションの拡張コンポーネント</strong>です。geo_suite の地図表示・レイヤー管理・Gemini 等の API 直接プロバイダはハブなしで動作します。必要になるのは <strong>GitHub Copilot (bridge hub)</strong> プロバイダと、後述の <code>/vector</code> 自動外部化を使う場合だけです（<code>/vector</code> 外部化はハブ未到達時に従来の iframe デコードへフォールバックします）。KASUGAI Canvas アプリをインストール済みの環境ではセットアップが自動導入するため個別インストールは不要です。</p>
 
 <h2>全体構成</h2>
 <pre class="mermaid">
