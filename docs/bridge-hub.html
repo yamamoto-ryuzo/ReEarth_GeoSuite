@@ -184,10 +184,10 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 </tbody>
 </table>
 <ul>
-<li><strong>対象外（従来どおり iframe 内デコード）</strong>: kasczip メンバ・eager <code>dataB64</code>・<code>.duckdb</code> ファイル・<code>sql:</code> 行・AI ツール経由の追加・<code>geojson:</code> 行自体（元からホスト fetch）</li>
+<li><strong>対象外（従来どおり iframe 内デコード）</strong>: kasczip メンバ・eager <code>dataB64</code>・<code>.duckdb</code> ファイル・<code>geojson:</code> 行自体（元からホスト fetch）。<code>sql:</code> 行と AI ツール <code>addDuckDbLayer</code> も外部化対象で、<code>sql:</code> クエリは <code>kind:"sql"</code> の VIEW（materialize:false）として登録されます（<code>duckdb: … format=read</code> は <code>SELECT * FROM ST_Read(url)</code> の kind:sql ビューに変換）</li>
 <li><strong>フォールバック</strong>: ハブ未到達（<code>/vector/status</code> プローブ 3s タイムアウト）・登録失敗時は既存の iframe デコード経路をそのまま実行するため、ハブの有無で挙動が壊れません</li>
 <li><strong>制御行</strong>: <code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。省略時は <code>aiHub:</code> の値、それも無ければ <code>127.0.0.1:8511</code> を自動検出（AI チャットと同じエンドポイント解決）</li>
-<li><strong>bbox=auto の扱い</strong>: 外部化されるソースはビューポート連動クエリではなくハブの実体化テーブル全体を GeoJSON で配信するため、範囲絞り込みは不要になります（オプション自体は無害に無視）</li>
+<li><strong>bbox=auto の扱い</strong>: 外部化されたレイヤの geojson URL にはビューポート範囲が <code>?bbox=</code> パラメータとして付き、カメラ移動時は <code>data.url</code> の差替えのみでホストが再 fetch します（再登録・ctx 横断なし）。<code>sql:</code> 側の <code>:bbox</code> はビュー内で世界エンベロープへ焼き込み、実フィルタは URL 側に移譲されます</li>
 <li>デコード失敗時のトゥームストーン・⏳ ロード中行・<code>armPendingTtl</code>（300s）は既存経路と同じ枠組みで処理されます</li>
 </ul>
 <p><small>通信面の補足: ハブ呼出しはパネル iframe の <code>hubExternalize</code> ハンドラで <code>GET /vector/status</code> → <code>GET /vector/sources</code> → 必要時のみ <code>POST /vector/sources</code>（text/plain・プリフライト不要のシンプルリクエスト）を1往復で行い、結果は <code>hubResult</code> で拡張ctxへ返ります。登録ボディの <code>name</code> は kind/src/where/limit/lon/lat/geom_col の FNV-1a ハッシュから決定的に生成します。</small></p>
