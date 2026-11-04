@@ -118,3 +118,8 @@
 ## プラグイン iframe → localhost fetch の PNA/CORS（実測）
 - opaque origin の iframe から `127.0.0.1` への `Content-Type: application/json` POST はプリフライト＋Private Network Access でブロックされる。GET（`/status`・EventSource）はシンプルリクエストで通るため「受信は来るが返送だけ落ちる」非対称症状になる。
 - 対策: iframe 側は `Content-Type: text/plain` で POST（シンプルリクエスト＝プリフライト不要）。サーバ側も `Access-Control-Allow-Private-Network: true` を全応答に付与してある（bridge_server.js）。
+
+## 公開シーンでは loopback 到達不可 — AssetSecurity SW が全 fetch を仲介（v22.4.0 実機検証・Chrome 156）
+- 公開サイト（`*.visualizer.reearth.io`）は `/sw.js`（AssetSecurity・scope `/`・protectedDomains はタイルサーバのみ）を登録し、fetch ハンドラが **GET/非GET 問わず全リクエストを `respondWith(fetch(e))` で仲介**する。このためプローブレイヤ（`data.url` → `http://127.0.0.1`）を含む文書発 fetch は SW コンテキスト起点の再送出に変わる。
+- SW 起点の loopback fetch は **LNA 権限プロンプトをアンカーする document を持たず**、許可状態 `prompt` のまま即座に `ERR_FAILED` で死ぬ（ページ console に LNA エラーも出ない）。対照実験で、SW 非制御の公開ページ（example.com）の同一 fetch はプロンプト表示待ちで pending になることを確認。SW ターゲット内での直接 fetch も失敗するため「1回許可すれば解放」の経路自体が公開シーンでは成立しない。
+- 教訓: bridge-hub / bridge_server 等の `127.0.0.1` 接続は**公開 Visualizer では `aiHub:`/`vectorHub:`/`bridge:` へ https トンネル URL（cloudflared・Tailscale serve 等）を指定する方式が必須**。Workbench（localhost・LNA 非対象）とエディタではこの問題は出ない。

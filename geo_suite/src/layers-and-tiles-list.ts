@@ -88,6 +88,7 @@ let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector 
 let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
 let _inspectorAiHub = null; // optional aiHub: CANVAS bridge-hub endpoint (forwarded to ai-chat widget)
 let _inspectorVectorHub = null; // optional vectorHub: off | http://host:port — /vector externalization endpoint
+let _inspectorSceneUrl = null; // optional sceneUrl: published scene URL for the KASUGAI viewer handoff link
 // CDN download URL of the bridge-hub bundle (kasugai-canvas-web stable
 // channel). The zip is preferred over the bare exe because some environments
 // block direct .exe downloads. The extracted bridge-hub.exe self-installs to
@@ -156,7 +157,7 @@ const GEO_I18N = {
     flyViewHint: 'Ride: camera travels on the route looking ahead. Aerial: camera tracks the moving point from behind and above.',
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = ride on the route looking ahead; center (=chase) = aerial tracking of the point from behind/above.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
     svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save',
-    hubPromoNote: 'Optional component: bridge-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download bridge-hub.zip', hubPromoWait: 'Downloaded. Extract the zip and run bridge-hub.exe to auto-install & start — waiting for the hub...', hubPromoOk: 'bridge-hub detected', hubPromoRetry: 'Still not detected — extract the downloaded zip and run bridge-hub.exe.', hubPromoSteps: 'Steps: 1) Download the zip  2) Extract it  3) Run bridge-hub.exe — it auto-installs & starts the hub.', hubPromoPrompt: 'If the browser shows a local network access prompt, click Allow — it unblocks bridge-hub for this site.'
+    hubPromoNote: 'Optional component: bridge-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download bridge-hub.zip', hubPromoWait: 'Downloaded. Extract the zip and run bridge-hub.exe to auto-install & start — waiting for the hub...', hubPromoOk: 'bridge-hub detected', hubPromoRetry: 'Still not detected — extract the downloaded zip and run bridge-hub.exe.', hubPromoSteps: 'Steps: 1) Download the zip  2) Extract it  3) Run bridge-hub.exe — it auto-installs & starts the hub.', hubPromoPrompt: 'If the browser shows a local network access prompt, click Allow — it unblocks bridge-hub for this site.', hubPromoView: 'Open in KASUGAI viewer'
 , hubPromoExt: 'Ext'
   },
   ja: {
@@ -187,7 +188,7 @@ const GEO_I18N = {
     flyViewHint: '搭乗: ルート上を進み前方を見る視点。空撮: 後方上空から移動点を追う視点。',
     flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=ルート上を進み前方を見る搭乗視点 / center(=chase)=後方上空から移動点を追う空撮視点。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
     svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存',
-    hubPromoNote: '拡張コンポーネント: bridge-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'bridge-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して bridge-hub.exe を実行すると自動インストール＆起動します — ハブを待機中…', hubPromoOk: 'bridge-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して bridge-hub.exe を実行してください。', hubPromoSteps: '手順: ① ZIP をダウンロード → ② 展開 → ③ bridge-hub.exe を実行（自動インストール＆起動）', hubPromoPrompt: 'ブラウザにローカルネットワーク接続の許可プロンプトが表示されたら「許可」を押してください — このサイトで bridge-hub が使えるようになります。'
+    hubPromoNote: '拡張コンポーネント: bridge-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'bridge-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して bridge-hub.exe を実行すると自動インストール＆起動します — ハブを待機中…', hubPromoOk: 'bridge-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して bridge-hub.exe を実行してください。', hubPromoSteps: '手順: ① ZIP をダウンロード → ② 展開 → ③ bridge-hub.exe を実行（自動インストール＆起動）', hubPromoPrompt: 'ブラウザにローカルネットワーク接続の許可プロンプトが表示されたら「許可」を押してください — このサイトで bridge-hub が使えるようになります。', hubPromoView: 'KASUGAI viewer で開く'
 , hubPromoExt: '拡張'
   },
   'zh-CN': {
@@ -1801,6 +1802,7 @@ function getUI() {
       <div style="margin-top:5px;font-size:0.78em;line-height:1.45;color:#5a4a1a;" data-i18n="hubPromoSteps">Steps: 1) Download the zip  2) Extract it  3) Run bridge-hub.exe — it auto-installs &amp; starts the hub.</div>
       <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
         <button id="hub-promo-dl" class="btn-primary p-6" data-i18n="hubPromoBtn">Download bridge-hub.zip</button>
+        <a id="hub-view-open" href="kasugai-hub://open" style="font-size:0.78em;color:#3367d6;white-space:nowrap;" data-i18n="hubPromoView">Open in KASUGAI viewer</a>
         <span id="hub-promo-status" style="font-size:0.78em;color:#666;">&nbsp;</span>
       </div>
     </div>
@@ -4033,7 +4035,7 @@ function qmlStyleToReearth(xmlText, opts){
   window._GEO_LANG_CONF = ${JSON.stringify(_inspectorLang || 'auto')};
   // bridge-hub promo config — endpoint resolved by hubEndpoint() ('' when
   // vectorHub: off disables it; probes and the promo row are then skipped)
-  window._hubInstallCfg = ${JSON.stringify({ endpoint: (function(){ try { return hubEndpoint() || ''; } catch (e) { return ''; } })(), download: HUB_DOWNLOAD_URL, dismissed: !!_hubPromoDismissed })};
+  window._hubInstallCfg = ${JSON.stringify({ endpoint: (function(){ try { return hubEndpoint() || ''; } catch (e) { return ''; } })(), download: HUB_DOWNLOAD_URL, dismissed: !!_hubPromoDismissed, scene: _inspectorSceneUrl || '' })};
   var GEO_I18N = window._GEO_I18N || {};
   var GEO_SUPPORTED = ${JSON.stringify(GEO_SUPPORTED)};
   var GEO_LANG = (function() {
@@ -4474,6 +4476,13 @@ function qmlStyleToReearth(xmlText, opts){
                 if (hub2Block && !(hubCfg && hubCfg.endpoint)) hub2Block.style.display = 'none';
                 if ((hubRow || hub2Block) && hubCfg && hubCfg.endpoint) {
                   var hubEp = String(hubCfg.endpoint).replace(/[/]+$/, '');
+                  // KASUGAI viewer handoff: kasugai-hub://open?url=<scene>.
+                  // The scene URL only travels when declared via 'sceneUrl:'
+                  // (the sandboxed iframe cannot read the parent location).
+                  var hubViewHref = 'kasugai-hub://open' +
+                    (hubCfg.scene ? '?url=' + encodeURIComponent(hubCfg.scene) : '');
+                  var hubViewA = document.getElementById('hub-view-open');
+                  if (hubViewA) hubViewA.href = hubViewHref;
                   var hubPoll = null;
                   var hubSetStatus = function(key) {
                     var s = key ? t(key) : '';
@@ -12475,6 +12484,18 @@ function processInspectorText(text) {
         const val = line.substring(line.indexOf(':') + 1).trim();
         _inspectorVectorHub = val || null;
         try { sendLog('[processInspectorText] found vectorHub:', _inspectorVectorHub); } catch(e){}
+      } catch(e){}
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // Published-scene URL for the KASUGAI viewer handoff ("Open in KASUGAI
+    // viewer" promo link → kasugai-hub://open?url=<scene>). The sandboxed
+    // iframe cannot read the parent URL, so the site owner declares it.
+    if (/^sceneurl\s*:/i.test(lowerLine)) {
+      try {
+        const val = line.substring(line.indexOf(':') + 1).trim();
+        _inspectorSceneUrl = /^https?:\/\//i.test(val) ? val : null;
       } catch(e){}
       if (keep !== false) nonCamLines.push(line);
       return;

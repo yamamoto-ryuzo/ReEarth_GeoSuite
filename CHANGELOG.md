@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.1
+- 新規: Ext プロモ行に「KASUGAI viewer で開く」リンクを追加 — 公開シーン（*.visualizer.reearth.io）では AssetSecurity SW が全 fetch を `respondWith(fetch(e))` で仲介するため、v22.4.0 のプローブレイヤによる LNA 自動アンロックが構造的に機能しない（実機検証・Chrome 156: SW 起点 fetch はプロンプトをアンカーできず即 ERR_FAILED）。対策として bridge-hub 側に `kasugai-hub://` カスタムプロトコル＋`--view <url>`（LNA 無効化済み WebView2 シーンビューア）を実装し、プロモ行のリンクから OS 経由で遷移できるようにした。`sceneUrl: <公開シーン URL>` インスペクタ行を設定するとリンクに URL が自動付与される（sandboxed iframe からは親 URL を読めないため明示指定）。kasugai_canvas v6.19.x+ の bridge-hub が必要。ドキュメント: docs/bridge-hub.html に公開シーンではトンネル or viewer が必須である旨を追記
+
 ## v22.4.0
 - 新規: Chrome Local Network Access (LNA) 自動アンロック — Chrome 142+ では公開 HTTPS ページ上の sandboxed iframe（opaque origin）から `127.0.0.1` への fetch が LNA 権限未許可だとサイレントに拒否され、プロンプト自体も iframe 起点では出せない（権限状態は `prompt` のまま失敗）。一方 **ホスト（トップレベル）コンテキストの loopback fetch は標準の許可プロンプトを出せ、1回許可すればサイト権限が iframe プローブも全て解放する**（実機検証済み）。そこでハブ未検出時（ユーザーが Ext を開く・ダウンロード後ポーリング開始時）に `{hub}/vector/probe.geojson` を指す一時 `geojson:` レイヤを拡張 ctx 経由で追加し、ホスト fetch 経由で Chrome の許可プロンプトを自動表示 → iframe 側は `/health` を最長120秒ポーリングして検出次第「bridge-hub detected」に復帰・プローブレイヤは自動除去。ブラウザ権限プロンプトの1クリック以外の操作・設定変更は不要（サイト設定を手で探す必要なし）。LNA 非施行環境（Firefox・localhost workbench等）ではプローブレイヤの fetch がそのまま成功/失敗するだけで無害。新規 i18n キー `hubPromoPrompt`（全20言語）。bridge-hub 側に `GET /vector/probe.geojson`（空 FeatureCollection、kasugai_canvas v6.19.0）を追加 — 旧ハブでも 404 応答でもプロンプトは発火するため後方互換あり。
 
