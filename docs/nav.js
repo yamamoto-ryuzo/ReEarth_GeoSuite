@@ -44,7 +44,7 @@
   ];
 
   const DEMOS = [
-    { href: 'https://re-earth-geo-suite.vercel.app/', text: '▶ デプロイ済みサイト（Vercel）' },
+    { href: 'https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io', text: '🚀 サンプルサイトを見る' },
     { href: 'https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/issues', text: '🐛 問い合わせ（GitHub Issues）' }
   ];
 
