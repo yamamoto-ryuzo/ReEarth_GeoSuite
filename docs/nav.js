@@ -17,7 +17,7 @@
     {
       label: null,
       items: [
-        { href: 'index.html', text: '1. トップ・ドキュメント一覧' }
+        { href: 'index.html', text: '1. プラグインの配布（ZIP）' }
       ]
     },
     {

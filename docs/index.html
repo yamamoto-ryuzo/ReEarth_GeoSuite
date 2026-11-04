@@ -3,31 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ドキュメント一覧 | Re:Earth GeoSuite</title>
+<title>プラグインの配布（ZIP） | Re:Earth GeoSuite</title>
 <link rel="stylesheet" href="style.css">
+<style>
+    .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: linear-gradient(90deg,#5b7be3,#7a4bb8);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(90,110,230,0.18);
+        transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+        font-weight: 600;
+        font-size: 0.9em;
+    }
+    .copy-btn:active { transform: translateY(1px) scale(.995); }
+    .copy-btn:focus { outline: 3px solid rgba(102,126,234,0.18); }
+    .copy-btn svg { width: 16px; height: 16px; display:block; }
+    .copy-msg {
+        margin-left: 8px;
+        font-size: 0.9em;
+        color: #1b9b3a;
+        opacity: 0;
+        transform: translateY(-6px);
+        transition: opacity .18s ease, transform .18s ease;
+        white-space: nowrap;
+    }
+    .copy-msg.visible { opacity: 1; transform: translateY(0); }
+    .visually-hidden { position: absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
+</style>
 <script src="nav.js" defer></script>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>📚 ドキュメント一覧</h1>
+    <h1>📦 プラグインの配布（ZIP）</h1>
     <nav>
       <a href="../index.html">🏠 GeoSuite トップ</a>
-      <a href="index.html">ドキュメント一覧</a>
       <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
     </nav>
   </header>
   <div class="content">
-<ul class="doc-list">
-  <li><a href="layer-grouping-specification.html">レイヤ階層化・排他グループ機能 仕様書</a><div class="desc">Re:Earth GeoSuite プラグインにおいて、レイヤリストを階層的（ツリー状）に表示し、グループごとの一括制御や排他制御（ラジオボタン動作）を提供する機能の仕様について記述する。</div></li>
-  <li><a href="basemap-initial-selection.html">ベースマップ初期選択（仕様・確認手順）</a><div class="desc">Inspector の base: 行の上から最初のエントリが初期ベースマップとして選択される仕様と確認手順。</div></li>
-  <li><a href="payload-limits.html">ペイロード制限（QuickJS OOM 対策）</a><div class="desc">サンドボックスを横断しない経路（URL 指定レイヤー＋bridge-hub 外部化）は容量制約なし。制約が掛かるのはフォールバックのプラグイン拡張経路（iframe デコード→data.value 注入）だけであり、本…</div></li>
-  <li><a href="external-bridge.html">外部ブリッジ（実装構成）</a><div class="desc">QGIS live_driver の bridge_call / describe_plugins に相当する機能を Re:Earth プラグインへ移植したものです。Re:Earth のサンドボックス（QuickJS 拡張コンテキスト + …</div></li>
-  <li><a href="bridge-hub.html">AIチャット → ブリッジハブ連携</a><div class="desc">AI チャットの GitHub Copilot / External agent プロバイダが CANVAS ブリッジハブ（bridge-hub.exe・127.0.0.1:8511）へ POST /agent する通信仕様。エンドポイント解決・queued-action 往復ループ・aiHub: 行・/vector 自動外部 GeoJSON 化（vectorHub: 行）・Ext ボタン/管理パネル Ext タブからの導入導線（bridge-hub.zip）。</div></li>
-  <li><a href="duckdb-persistence.html">DuckDB-Wasm 永続化検証（解決済・検証記録）</a><div class="desc">【参考資料】プラグイン iframe の opaque origin 制約により DuckDB-Wasm の永続キャッシュが不可能だった課題の検証記録。bridge-hub /vector 外部化により解決済み（reearth-visualizer#2497）。フォーマット別（geojson/fgb/parquet/duckdb）の選び方・実測比較も収録。</div></li>
-</ul></div>
+<h2>📦 ZIPファイル（配布用）</h2>
+<p>安定版の配布用 ZIP はローカルの以下フォルダに配置しています。Marketplace が利用可能になり次第、Marketplace での配布も開始します。</p>
+<p><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/releases" target="_blank">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/releases</a></p>
+<p>ローカルにある ZIP を Re:Earth のプラグインインポート機能から指定してインストールしてください。</p>
+
+<h2>📦 ZIPファイル（開発版）</h2>
+<div style="display:flex;align-items:center;gap:8px;">
+    <code id="devZipUrl">https://re-earth-geo-suite.vercel.app/artifacts/geo_suite.zip</code>
+    <button class="copy-btn" data-target="devZipUrl" aria-label="コピー">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
+        <span class="visually-hidden">コピー</span>
+    </button>
+    <span class="copy-msg" id="devZipUrl-msg" aria-hidden="true"></span>
+</div>
+<p>※ こちらは Vercel による開発版 ZIP です。開発用の配布物であり、本番リリースとは別です。</p>
+</div>
   <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
 </div>
 
+<script>
+(function () {
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      copyToClipboard(btn.getAttribute('data-target'));
+    });
+  });
+
+  function copyToClipboard(targetId) {
+    var target = document.getElementById(targetId);
+    if (!target) return;
+    var text = target.textContent.trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        showCopyMsg(targetId, 'コピーしました');
+      }, function() {
+        fallbackCopy(text, targetId);
+      });
+    } else {
+      fallbackCopy(text, targetId);
+    }
+  }
+
+  function fallbackCopy(text, targetId) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showCopyMsg(targetId, 'コピーしました');
+    } catch (e) {
+      showCopyMsg(targetId, 'コピーに失敗しました');
+    }
+    document.body.removeChild(ta);
+  }
+
+  function showCopyMsg(targetId, message) {
+    var msgEl = document.getElementById(targetId + '-msg');
+    if (!msgEl) return;
+    msgEl.textContent = message;
+    msgEl.classList.add('visible');
+    setTimeout(function() {
+      msgEl.classList.remove('visible');
+    }, 1600);
+  }
+})();
+</script>
 </body>
 </html>
