@@ -22,6 +22,16 @@
 <p>本ページは「ブラウザ → エージェント」（チャットから AI を使う）方向の説明です。逆方向「エージェント → ブラウザ」（外部ハーネスから地図ツールを遠隔実行する外部ブリッジ / <code>bridge:</code> 行 / <code>__geoBridge</code>）は <a href="./external-bridge.html">external-bridge.html</a> を参照してください。</p>
 <p>bridge-hub は <strong>オプションの拡張コンポーネント</strong>です。geo_suite の地図表示・レイヤー管理・Gemini 等の API 直接プロバイダはハブなしで動作します。必要になるのは <strong>GitHub Copilot (bridge hub)</strong> プロバイダと、後述の <code>/vector</code> 自動外部化を使う場合だけです（<code>/vector</code> 外部化はハブ未到達時に従来の iframe デコードへフォールバックします）。KASUGAI Canvas アプリをインストール済みの環境ではセットアップが自動導入するため個別インストールは不要です。</p>
 
+<h2>導入方法（Ext ボタン／管理パネル Ext タブ・v22.3.0〜）</h2>
+<p>ハブが未検出の環境ではプラグイン内に導入導線が表示されます。導入手順は <strong>① ZIP をダウンロード → ② 展開 → ③ bridge-hub.exe を実行</strong> の3ステップで、exe は1回実行するだけで <code>%LOCALAPPDATA%\kasugai\bridge-hub\</code> へ自己インストールされ、ログイン時の自動起動も登録されます。</p>
+<ul>
+<li><strong>レイヤーパネルの Ext ボタン</strong>（レイヤー見出し「Note」の右）: パネル iframe は起動ごとに、エンドポイント解決結果（<code>vectorHub:</code> &gt; <code>aiHub:</code> &gt; <code>127.0.0.1:8511</code>）へ <code>GET /health</code> を1回プローブし、<code>hub:true</code> が返らない場合ボタンをアンバー強調します（未導入の訴求）。押下で直下のプロモ行を開閉します</li>
+<li><strong>「Download bridge-hub.zip」ボタン</strong>: <code>&lt;a download&gt;</code> で kasugai-canvas-web CDN（stable チャンネル）から ZIP を取得します。環境によって裸 <code>.exe</code> の直ダウンロードがブロックされるため v22.3.1 で ZIP 同梱形式へ切替済みです。押下後は起動待ち表示へ切替り、<code>/health</code> を2秒間隔・最長3分ポーリングし、検出次第「connected」表示 → 4秒後に行を自動で閉じます（期限超過時はリトライ案内を表示）</li>
+<li><strong>プロモ行右端の − ボタン</strong>: セッション中はプロモ行とボタン/サブタブの強調を非表示にします（dismiss 状態は <code>_hubInstallCfg.dismissed</code> として注入されるため iframe 再生成を跨いでも消えたまま）</li>
+<li><strong>管理パネル（⚙️）の Ext サブタブ</strong>（v22.3.1〜）: <code>bridge-hub: ON/OFF</code> の状態行＋疎通確認ボタンと、レイヤーパネルと同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインに移動済み</strong>です。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
+<li><strong><code>vectorHub: off</code> 指定時</strong>: Ext ボタンと Ext ペイン内の bridge-hub ブロックは非表示になります（AI Bridge 設定は残ります）</li>
+</ul>
+
 <h2>全体構成</h2>
 <pre class="mermaid">
 flowchart LR
