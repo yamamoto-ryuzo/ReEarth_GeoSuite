@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.0
+- 新規: Chrome Local Network Access (LNA) 自動アンロック — Chrome 142+ では公開 HTTPS ページ上の sandboxed iframe（opaque origin）から `127.0.0.1` への fetch が LNA 権限未許可だとサイレントに拒否され、プロンプト自体も iframe 起点では出せない（権限状態は `prompt` のまま失敗）。一方 **ホスト（トップレベル）コンテキストの loopback fetch は標準の許可プロンプトを出せ、1回許可すればサイト権限が iframe プローブも全て解放する**（実機検証済み）。そこでハブ未検出時（ユーザーが Ext を開く・ダウンロード後ポーリング開始時）に `{hub}/vector/probe.geojson` を指す一時 `geojson:` レイヤを拡張 ctx 経由で追加し、ホスト fetch 経由で Chrome の許可プロンプトを自動表示 → iframe 側は `/health` を最長120秒ポーリングして検出次第「bridge-hub detected」に復帰・プローブレイヤは自動除去。ブラウザ権限プロンプトの1クリック以外の操作・設定変更は不要（サイト設定を手で探す必要なし）。LNA 非施行環境（Firefox・localhost workbench等）ではプローブレイヤの fetch がそのまま成功/失敗するだけで無害。新規 i18n キー `hubPromoPrompt`（全20言語）。bridge-hub 側に `GET /vector/probe.geojson`（空 FeatureCollection、kasugai_canvas v6.19.0）を追加 — 旧ハブでも 404 応答でもプロンプトは発火するため後方互換あり。
+
 ## v22.3.1
 - 変更: 管理パネル（⚙️）をサブタブ化し Ext（拡張）タブを追加 — 従来1列だった「設定テキスト／ファイル取り込み／AI Bridge」を `Set`・`Import`・`Ext` の3ペインに分割。Ext ペインには bridge-hub の状態行（`bridge-hub: ON/OFF`＋疎通確認ボタン）と導入ブロック（レイヤーパネルの Ext ボタンが開くプロモと同一内容・同一プローブ/ダウンロード/ポーリング処理を共有）を常設し、AI Bridge (CANVAS) エンドポイント設定も同ペインへ移動。これにより bridge-hub の導入・状態確認・再接続が管理パネルからも行える。ハブ未検出時はレイヤーパネルの Ext ボタンと同様に Ext サブタブもアンバー強調（`.sub-tab.hub-attn`、dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示。`vectorHub: off` 時は Ext ペイン内の bridge-hub ブロックごと非表示（AI Bridge 設定は残る）。サブタブのラベルは既存 i18n キー（`tabSet`/`importTitle`/`hubPromoExt`）を再利用し新規キー追加なし。
 - 変更: bridge-hub のダウンロードを裸 exe から ZIP 同梱版へ切替 — 環境によって `.exe` 直ダウンロードがブロックされるため `bridge-hub.zip`（自己インストール型 exe 内包）を配布物に変更し、プロモ行に「①ダウンロード → ②展開 → ③実行」の手順行を追加（`hubPromoSteps`、全20言語）。ダウンロードボタンのラベルと待機/リトライ文言も ZIP 前提へ更新。

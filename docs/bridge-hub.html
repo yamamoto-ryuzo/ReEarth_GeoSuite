@@ -177,7 +177,7 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 <li><strong>Rust 製の単一 exe</strong>（Node.js 不要）で <code>127.0.0.1:8511</code> のみバインド。<code>%LOCALAPPDATA%\kasugai\bridge-hub\</code> へ自己インストール＋ログイン時自動起動</li>
 <li>プロバイダは <code>copilot</code> / <code>devin</code> / <code>antigravity</code> の 3 系統。<strong>実際に使われた時点で対応 CLI を子プロセス起動</strong>（未使用時はゼロコスト）。CLI 未導入なら <code>POST /setup</code> で公式手順の自動インストールも可能</li>
 <li>認証は CLI 側（Copilot なら <code>copilot</code> CLI の対話ログイン or <code>COPILOT_GITHUB_TOKEN</code>/<code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code>）。クォータは利用者本人のものを消費</li>
-<li>API: <code>GET /health</code>・<code>GET /models?provider=</code>・<code>POST /agent</code>・<code>GET|POST /setup</code>・<code>POST|DELETE /mcp[/&lt;project&gt;]</code>・<code>GET /</code>（状態ページ）</li>
+<li>API: <code>GET /health</code>・<code>GET /models?provider=</code>・<code>POST /agent</code>・<code>GET|POST /setup</code>・<code>POST|DELETE /mcp[/&lt;project&gt;]</code>・<code>GET /</code>（状態ページ）・<code>/vector/*</code>（status/sources/geojson/query + <code>probe.geojson</code> は LNA アンロック用プローブ、v6.19.0〜）</li>
 <li>GeoSuite の AI チャットが送れるのは <code>provider:"copilot"</code>（専用選択肢）と汎用 <code>provider:"agent"</code>。devin/antigravity 宛の送信は現状 GeoSuite 側 UI に無い</li>
 </ul>
 <p>ハブの詳細仕様（導入・自動セットアップ・プロバイダ別前提・環境変数）は KASUGAI Canvas 側のドキュメントが正本です: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
@@ -212,10 +212,18 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 <li><strong>再適用の二重追加は抑止済み</strong> — ext-path アイテムは <code>isLayerLoading(url)</code> の in-flight チェック＋着地後の title 重複判定で、適用が短時間に重なっても同一ソースを重複追加しません（v22.2.0 で全 type に適用。sql: 行がディスパッチされず外部化に到達しない問題も同版で修正）</li>
 <li><strong>ハブ側の既知課題（kasugai_canvas）</strong> — <code>duckdb_lock</code> の直列化により取込みハング時に全 /vector リクエストが無音待機になります（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/46" target="_blank">#46</a>。クライアント側は <code>hubResult</code> が来ず 300s TTL まで無応答）。また sources.json↔実テーブル不整合で manifest 比較のみの stale 判定をすり抜け、死んだ geojson URL を指すレイヤが追加され得ます（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/42" target="_blank">#42</a>）</li>
 </ul>
+<h2>Chrome Local Network Access (LNA) と自動アンロック（v22.4.0〜）</h2>
+<ul>
+<li><strong>症状</strong>: Chrome 142+ では公開 HTTPS ページ上のプラグイン iframe（opaque origin）から <code>127.0.0.1:8511</code> への fetch がサイレントに拒否されます（コンソールには <code>Permission was denied for this request to access the loopback address space</code>）。権限状態は <code>prompt</code> のまま失敗し、<strong>iframe 起点では許可プロンプト自体を出せません</strong>。ハブ・ZIP・URL・CORS が全て正常でも接続できません</li>
+<li><strong>権限はトップレベルサイト紐づき</strong>: いったん許可すれば iframe のプローブも全て解放されます。そして <strong>トップレベル（ホスト）コンテキストの loopback fetch だけは標準の許可プロンプトを出せます</strong></li>
+<li><strong>自動アンロック（v22.4.0〜）</strong>: ハブ未検出のままユーザーが Ext を開いた時・ダウンロード後の起動待ち時に、<code>{hub}/vector/probe.geojson</code> を指す一時 geojson レイヤを追加します。<code>data.url</code> はホスト側が fetch するため Chrome の「ローカルネットワークへのアクセス」プロンプトが自動表示され、<strong>1回「許可」するだけで以後の全接続が解放</strong>されます。検出次第プローブレイヤは自動除去（最長120秒ポーリング）。bridge-hub v6.19.0 で専用エンドポイントを追加済みですが、旧ハブ（404 応答）でもプロンプトは発火します</li>
+<li><strong>代替経路</strong>: Firefox（LNA 未施行）・Chrome 起動フラグ <code>--disable-features=LocalNetworkAccessChecks</code>・企業ポリシー・または <code>aiHub:</code>/<code>vectorHub:</code> へ https トンネル URL（cloudflared・Tailscale serve 等）を指定すれば宛先が公開 https になり LNA の対象外です。プロンプトで「拒否」を選んだ場合はサイト設定から手動で許可し直してください</li>
+</ul>
+
 <h2>設計上の制約・注意</h2>
 <ul>
 <li><strong>通信は全て iframe 側で行う</strong> — QuickJS 拡張コンテキストには <code>fetch</code> が無いため、<code>callAgent</code>・<code>detectHub</code>・<code>/models</code> 取得はすべて ai-chat UI iframe 内ブラウザ JS です</li>
-<li><strong>opaque origin からの localhost POST</strong> — iframe はサンドボックス（opaque origin）なので <code>application/json</code> POST は本来 PNA プリフライトが必要ですが、<strong>ハブ側が <code>Access-Control-Allow-Private-Network: true</code> 付きの permissive CORS</strong> で応答するためそのまま通ります（外部ブリッジ側で text/plain 化しているのとは対照的に、ハブがサーバ側で対策済み）</li>
+<li><strong>opaque origin からの localhost POST</strong> — iframe はサンドボックス（opaque origin）なので <code>application/json</code> POST は本来 PNA プリフライトが必要ですが、<strong>ハブ側が <code>Access-Control-Allow-Private-Network: true</code> 付きの permissive CORS</strong> で応答するためそのまま通ります（外部ブリッジ側で text/plain 化しているのとは対照的に、ハブがサーバ側で対策済み）。<strong>ただし Chrome 142+ の LNA は CORS より先に効く</strong>ため、上記の自動アンロック（サイトへの loopback 権限付与）が前提になります</li>
 <li><strong>ローカル・本人利用限定</strong> — ハブの各プロバイダは公式連携ではなく公開インターフェースを使うサードパーティ製クライアントです。127.0.0.1 バインド・本人アカウントの CLI で使ってください</li>
 <li><strong>apiKey は送らない</strong> — Copilot/agent プロバイダではキー欄が無効（<code>no key (bridge)</code>）。外部エージェントへキーを同梱する経路は GeoSuite 側にはありません</li>
 <li><strong>ハブがいなければ失敗するだけ</strong> — 8511 プローブは 1 回だけ。ハブ未起動でも地図・他プロバイダには影響しません</li>
