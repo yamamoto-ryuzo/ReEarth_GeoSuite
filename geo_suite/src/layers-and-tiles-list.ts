@@ -12530,7 +12530,7 @@ function processInspectorText(text) {
     }
 
     // External bridge endpoint: "bridge: off | on | http://host:port"
-    // Controls the basemap-widget bridge client that lets a local harness
+    // Controls the navigation-toolbar bridge client that lets a local harness
     // call map tools from outside the sandbox.
     if (/^bridge\s*:/i.test(lowerLine)) {
       try {

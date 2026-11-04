@@ -278,6 +278,47 @@
                 <a href="https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io" class="demo-link" target="_blank">🚀 サンプルサイトを見る</a>
                 <a href="https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/?lat=35.188733&lng=138.610404&height=9807.7&heading=28.56&pitch=-24.72" class="demo-link" target="_blank">🌐 URL指定サンプルを見る</a>
                 </div>
+                <h3>サンドボックス構成と制約（セッション内永続 iframe・外部ブリッジ・QuickJS）</h3>
+                <pre class="mermaid">
+flowchart TB
+  subgraph SB["🔒 Re:Earth プラグインサンドボックス<br>（QuickJS ctx ＋ opaque origin iframe）"]
+    direction TB
+    subgraph HOST["① セッション内永続 iframe（重い処理の隔離先）"]
+      BM["basemap-widget<br>＝ ベクターデコード<br>fgb/parquet/gpkg/duckdb/sql<br>＋ kasczip・ファイル・dataB64<br>（パネルiframe再生成から隔離）"]
+      NAV["navigation-toolbar<br>＝ __geoBridge<br>（basemap ctx の OOM 死から隔離）"]
+    end
+
+    PANEL["layers-and-tiles-list<br>（パネル・iframe は頻繁に再生成）"]
+
+    PANEL -- "fgb/parquet/gpkg/duckdb/sql のデコード依頼<br>（ネイティブ geojson/xyz/3dtiles/base はホスト直接 fetch）" --> BM
+    BM -- "Ack 3秒以内 → 結果返送" --> PANEL
+    BM -. "Ack 無し" .-> FB["自iframeで再実行<br>15s 隔離後にホスト再試行"]
+    FB -.-> PANEL
+  end
+
+  subgraph EXT["② 外部ブリッジ（永続化・公開 Visualizer URL 前提）"]
+    direction TB
+    SW["AssetSecurity SW が<br>全 fetch を仲介"]
+    BLOCK["127.0.0.1 直行 → ERR_FAILED<br>許可プロンプトすら出ない"]
+    ALT["迂回路 2択:<br>① https トンネル URL<br>（bridge:/aiHub:/vectorHub:）<br>② KASUGAI viewer（WebView2）"]
+    SRV["外部ブリッジ: bridge_server.js :8977<br>ツール呼出し（SSE ⇄ POST）<br>＋ CDP bridge.js"]
+    HUB["bridge-hub :8511<br>/vector 外部化:<br>fgb/parquet/gpkg/duckdb/sql<br>→ ネイティブ DuckDB へ永続化<br>（.duckdb・セッション跨ぎ可）<br>→ geojson 配信"]
+    SW --> BLOCK --> ALT
+    ALT --> SRV
+    ALT --> HUB
+  end
+
+  subgraph SYNC["③ QuickJS の制約"]
+    direction TB
+    STALL["extensionMessage 起点の<br>async 応答は次イベントまで滞留"]
+    SYNCOK["→ 返送経路はすべて同期完結"]
+    STALL --> SYNCOK
+  end
+
+  NAV == "ツール呼出し<br>ダイヤルアウト" ==> SW
+  PANEL -. "ベクターデータ<br>ダイヤルアウト" .-> SW
+                </pre>
+                <p><small>※ ② の外部ブリッジ（bridge_server.js :8977）は外部からのツール呼出し専用の経路です。巨大ベクターソースはサンドボックス内で永続化・デコードできず（opaque origin のため DuckDB-Wasm アセットが毎セッション再ダウンロード＋~15s 初期化、元データも毎回再取得・結果は 4MB 上限）、これが動作を遅くしていたため、別経路として bridge-hub（127.0.0.1:8511）の <code>/vector</code> サービスへ外部化しています — ハブ側のネイティブ DuckDB がローカル <code>.duckdb</code> へ永続取込みし、<code>geojson:</code> URL レイヤーとしてホストへ直接配信します（<a href="docs/bridge-hub.html" class="github-link">詳細</a>・次節の容量目安を参照）。</small></p>
             </section>
             
             <section>
@@ -291,32 +332,40 @@
                 <p>このため拡張経路に「<strong>横断ペイロード 1回あたり 4MB（JSON サイズ）</strong>」のハード上限を設けています。超過したレイヤは追加されずレイヤ一覧に <strong>⚠ グレーアウト行（理由付き）</strong>として残ります。</p>
                 <pre class="mermaid">
 flowchart TB
-  subgraph R["■ Re:Earth 正規経路（サンドボックス非横断）"]
+  subgraph R["■ ネイティブ形式（サンドボックス非横断）"]
     direction TB
-    A["geojson: / xyz: / 3dtiles:<br>URL 指定レイヤー"]
+    A["geojson: / xyz: / 3dtiles: / base:<br>URL 指定レイヤー"]
     H["Visualizer ホスト<br>直接 fetch・パース<br>4MB 制約なし"]
     A -- "data.url<br>URL 文字列のみ ctx 通過" --> H
   end
-  subgraph V["■ bridge-hub /vector 外部化（サンドボックス非横断）"]
+  subgraph V["■ 拡張形式 fgb: / parquet: / gpkg: / duckdb: / sql:"]
     direction TB
-    V0["fgb: / parquet: / gpkg: / duckdb: / sql:<br>http(s) ソース"]
-    V1{"bridge-hub 到達?"}
+    V0["http(s) ソース"]
+    V1{"bridge-hub 到達?<br>（vectorHub: off で無効化）"}
     V2["POST /vector/sources<br>ハブ側永続 DuckDB へ取込"]
+    V3["フォールバック: iframe 内デコード<br>（DuckDB-Wasm ~15s 初期化）"]
+    INJ["ctx 横断して注入<br>（data.value）"]
     V0 --> V1
     V1 -- "はい" --> V2
+    V1 -- "いいえ / 非 http(s)<br>（ファイル・kasczip・dataB64）" --> V3
+    V3 -. "※ ソース CORS 必須<br>＋ 結果 ≤4MB" .-> INJ
   end
   V2 -- "geojson: &lt;hub&gt;/vector/geojson/&lt;name&gt;<br>URL レイヤーとして追加" --> H
+  INJ --> H
   H --> OK["地図へ描画"]
   style R fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-  style V fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+  style V fill:#fff8e1,stroke:#f9a825,stroke-width:2px
   style A fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
   style H fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
   style V0 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
   style V1 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
   style V2 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style V3 fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style INJ fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
   style OK fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-  linkStyle 0,4 stroke:#1976d2,stroke-width:2px
-  linkStyle 1,2,3 stroke:#2e7d32,stroke-width:2px
+  linkStyle 0,7 stroke:#1976d2,stroke-width:2px
+  linkStyle 1,2,3,5 stroke:#2e7d32,stroke-width:2px
+  linkStyle 4,6 stroke:#ef6c00,stroke-width:2px
                 </pre>
                 <p style="margin-top:8px;">図は<strong>制約の掛からない2経路</strong>（正規経路＋v22.2.0〜の bridge-hub 外部化）を示しています。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。4MB 上限が掛かる iframe デコードの拡張経路（<code>data.value</code> 注入）はフォールバック位置づけで、ハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます。</p>
                 <div class="install-steps" style="border-left:4px solid #dc3545; background:#fff1f0;">
@@ -556,28 +605,6 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                 
                 <!-- GitHub リポジトリ URL 表示は削除されました -->
                 
-                <div class="url-box">
-                    <h3>📦 ZIPファイル（配布用）</h3>
-                    <p style="margin-top: 6px; font-size: 1em; color: #333;">安定版の配布用 ZIP はローカルの以下フォルダに配置しています。Marketplace が利用可能になり次第、Marketplace での配布も開始します。</p>
-                    <p style="margin-top: 8px; font-size: 0.95em; color: #666;"><a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/releases" target="_blank">https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/releases</a></p>
-                    <p style="margin-top:8px; font-size:0.9em; color:#666;">ローカルにある ZIP を Re:Earth のプラグインインポート機能から指定してインストールしてください。</p>
-                </div>
-
-                <div class="url-box">
-                    <h3>📦 ZIPファイル（開発版）</h3>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <code id="devZipUrl">https://re-earth-geo-suite.vercel.app/artifacts/geo_suite.zip</code>
-                        <button class="copy-btn" data-target="devZipUrl" aria-label="コピー">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1z" fill="#fff" opacity=".9"/><path d="M20 5H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h12v14z" fill="#fff"/></svg>
-                            <span class="visually-hidden">コピー</span>
-                        </button>
-                        <span class="copy-msg" id="devZipUrl-msg" aria-hidden="true"></span>
-                    </div>
-                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                        ※ こちらは Vercel による開発版 ZIP です。開発用の配布物であり、本番リリースとは別です。
-                    </p>
-                </div>
-                             
             </section>
 
             <section>
@@ -753,9 +780,6 @@ npm run shot       # → エージェント用スクリーンショット取得�
             var htmlEl = document.getElementById('htmlUrl');
             if (htmlEl) htmlEl.textContent = window.location.origin + '/ryu.html';
             // `zipUrl` は静的に Release のダウンロード先を指す（上の初期値）
-            // 開発版 ZIP の URL を設定
-            var devZipEl = document.getElementById('devZipUrl');
-            if (devZipEl) devZipEl.textContent = window.location.origin + '/artifacts/geo_suite.zip';
 
             // コピー機能の初期化
             document.querySelectorAll('.copy-btn').forEach(function(btn) {

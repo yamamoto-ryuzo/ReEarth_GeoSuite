@@ -1,5 +1,5 @@
 // External bridge harness server for geo_suite — the dial-out target for the
-// in-plugin bridge client hosted in the basemap-widget iframe. No npm deps.
+// in-plugin bridge client hosted in the navigation-toolbar iframe. No npm deps.
 //
 // Endpoints (all CORS-open; the plugin iframe has an opaque origin):
 //   GET  /status   -> { geosuiteBridge:1, connected, pending }

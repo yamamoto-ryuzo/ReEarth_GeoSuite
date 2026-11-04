@@ -512,7 +512,7 @@ function execLocalTool(name: string, args: any): any {
 }
 
 // Bridge catalog (describe): the tool set reachable through the external
-// bridge channel. runCode executes in the bridge host iframe (basemap-widget).
+// bridge channel. runCode executes in the bridge host iframe (navigation-toolbar).
 function bridgeToolCatalog(): any {
   return {
     plugin: 'geo_suite',
@@ -686,7 +686,7 @@ try {
           if (meta && typeof meta.reply === 'function') meta.reply(capToolResult(data.result));
           else postToUI({ action: 'aiToolResult', reqId: data.reqId, result: capToolResult(data.result) });
         } else if (data.action === 'bridgeCall') {
-          // External bridge request (relayed by the basemap-widget host iframe
+          // External bridge request (relayed by the navigation-toolbar host iframe
           // from a local harness). The result goes back to the requesting
           // widget instead of our own UI iframe.
           const replyTo = (msg && msg.sender) ? String(msg.sender) : null;

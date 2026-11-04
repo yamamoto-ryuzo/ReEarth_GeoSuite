@@ -13,7 +13,7 @@
     <h1>📚 外部ブリッジ（実装構成）</h1>
     <nav>
       <a href="../index.html">🏠 GeoSuite トップ</a>
-      <a href="index.html">ドキュメント一覧</a>
+      <a href="index.html">プラグインの配布（ZIP）</a>
       <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
     </nav>
   </header>
@@ -24,10 +24,10 @@
 <pre><code>外部（サンドボックス外）                    geo_suite プラグイン内
 ┌────────────────────┐                     ┌──────────────────────────────┐
 │ bridge_server.js   │  GET /events (SSE)  │ navigation-toolbar iframe    │
-│ 127.0.0.1:8977     │◄──── コマンド配信 ──│ window.__geoBridge           │
+│ 127.0.0.1:8977     │──── コマンド配信 ──►│ window.__geoBridge           │
 │                    │                     │   ├ bridgeInvoke(name,args)  │
-│  POST /call        │  POST /result       │   ├ runCode / describe       │
-│   {name,args} ─────┼──── 結果返送 ──────►│   ↕ postToParent             │
+│  POST /call        │  POST /result       │   ├ runCode / canvasApi      │
+│   {name,args}      │◄──── 結果返送 ──────│   ↕ parent.postMessage       │
 │  GET /status       │                     ├──────────────────────────────┤
 │  GET /tools        │                     │ navigation-toolbar 拡張ctx   │
 └────────────────────┘                     │   bridgeCall → ai-chat へ中継 │
@@ -35,7 +35,8 @@
 │ bridge.js          │  CDP Runtime.eval   │   ↕ extensionMessage        │
 │ (dev ドライバ)      │────────────────────►│ ai-chat 拡張ctx              │
 │  call/list/serve   │  window.__geoBridge │   dispatchToolCall          │
-└────────────────────┘      .call()        │   ├ LOCAL_TOOLS → reearth.*  │
+└────────────────────┘      .call()        │   ├ describe → カタログ      │
+                                           │   ├ LOCAL_TOOLS → reearth.*  │
                                            │   └ PANEL_TOOLS → extension │
                                            │      .postMessage → パネル   │
                                            └──────────────────────────────┘
@@ -53,7 +54,7 @@
 <tbody><tr>
 <td>navigation-toolbar <strong>UI iframe</strong></td>
 <td>ブラウザ JS（fetch/EventSource/new Function 可・opaque origin）</td>
-<td>ブリッジクライアント <code>window.__geoBridge</code>。SSE でコマンド受信、POST で結果返送。<code>runCode</code> の実行場所</td>
+<td>ブリッジクライアント <code>window.__geoBridge</code>。SSE でコマンド受信、POST で結果返送。<code>runCode</code>・<code>canvasApi</code> の実行場所</td>
 </tr>
 <tr>
 <td>navigation-toolbar <strong>拡張ctx</strong></td>
@@ -151,8 +152,10 @@
 <p><code>describe</code> 呼出しで取得できるカタログ（<code>execLocalTool</code> + <code>PANEL_TOOLS</code> + ブリッジ固有）:</p>
 <ul>
 <li><strong>local（ai-chat 拡張ctx で実行）</strong>: <code>getCamera</code> <code>flyTo</code> <code>listLayers</code> <code>setLayerVisible</code> <code>focusLayer</code> <code>addGeoJsonLayer</code> <code>addTileLayer</code> <code>add3dTilesLayer</code> <code>removeLayer</code> <code>captureView</code> <code>getShareUrl</code> <code>buildShareUrl</code> <code>setCamera</code> <code>lookAt</code> <code>zoomIn</code> <code>zoomOut</code> <code>openUrl</code></li>
-<li><strong>panel（layers-and-tiles-list へ転送）</strong>: カメラプリセット・ベースマップ・FLY ルート・vector 検索・FlatGeobuf/Parquet/DuckDB レイヤー・inspectorText 操作・凡例/属性パネル等 35種</li>
-<li><strong>bridge（iframe 側で実行）</strong>: <code>describe</code>（カタログ）・<code>runCode</code>（<code>api.&lt;tool&gt;</code> プロキシ + <code>fetch</code> 付き sandboxed JS。QGIS <code>pyeval</code> 相当の多段実行プリミティブ）</li>
+<li><strong>panel（layers-and-tiles-list へ転送）</strong>: カメラプリセット・ベースマップ・FLY ルート・vector 検索・FlatGeobuf/Parquet/DuckDB レイヤー・inspectorText 操作・凡例/属性パネル等 33種</li>
+<li><strong>bridge（iframe 側で実行）</strong>: <code>runCode</code>（<code>api.&lt;tool&gt;</code> プロキシ + <code>fetch</code> 付き sandboxed JS。QGIS <code>pyeval</code> 相当の多段実行プリミティブ）・<code>canvasApi</code>（<a href="./bridge-hub.html">bridge-hub</a> :8511 の REST をブリッジ越しに呼ぶ）</li>
+<li><strong>describe（ai-chat 拡張ctx で実行）</strong>: 上記カタログの取得</li>
+<li><strong>chat（ai-chat UI iframe 経由で実行）</strong>: <code>aiChatSend</code> <code>aiChatStatus</code> <code>aiChatSet</code> — 外部から AI チャットへ発言・状態取得・設定変更</li>
 </ul>
 <p>引数スキーマは <code>geo_suite/src/ai-chat.ts</code> の <code>TOOL_DECLS</code>（Gemini functionDeclarations）と同一です。</p>
 <h2>有効化と無効化</h2>
@@ -210,7 +213,7 @@ curl -X POST http://127.0.0.1:8977/call -d &#39;{&quot;name&quot;:&quot;flyTo&qu
 <ul>
 <li><code>bridge_server.js</code> は 127.0.0.1 のみにバインドしますが、<strong>このポートへ到達できる者は接続中の地図を操作できます</strong>。dev/エージェント用のエンドポイントとして扱ってください（必要なら <code>BRIDGE_TOKEN</code> を設定）。</li>
 <li>プラグイン側は常に <strong>dial-out</strong>（自分から接続）です。外部から iframe への侵入経路はありません。</li>
-<li>既定では未接続時に一度だけ localhost をプローブします。公開配布で完全に抑止したい場合は <code>bridge: off</code> を設定してください。</li>
+<li>既定（<code>bridge:</code> 行なし）ではプローブも接続も行いません。<code>bridge: on</code> は既定エンドポイントへの1回プローブのみ、<code>bridge: &lt;url&gt;</code> は指定先への接続のみ行います。明示的に無効化したい場合は <code>bridge: off</code> を設定してください。</li>
 </ul>
 <h2>ファイル対応表</h2>
 <table>

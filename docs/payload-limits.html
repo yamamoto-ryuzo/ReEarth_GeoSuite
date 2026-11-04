@@ -13,7 +13,7 @@
     <h1>📚 ペイロード制限（QuickJS OOM 対策）</h1>
     <nav>
       <a href="../index.html">🏠 GeoSuite トップ</a>
-      <a href="index.html">ドキュメント一覧</a>
+      <a href="index.html">プラグインの配布（ZIP）</a>
       <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
     </nav>
   </header>
@@ -24,32 +24,40 @@
 <p>Re:Earth のプラグイン拡張は QuickJS wasm コンテキストで実行され、<strong>全拡張が同一の wasm linear memory を共有</strong>します。コンテキスト間・iframe 間のメッセージはすべて <code>JSON.stringify → wasm メモリへの文字列コピー → ctx 内 JSON.parse</code> でマーシャルされるため、巨大なペイロードは共有ヒープを圧迫し、1拡張の OOM で拡張コンテキストが全滅します（<code>InternalError: out of memory</code> / <code>memory access out of bounds</code>、<code>Proxy.unwrapResult</code> で観測）。</p>
 <p>つまり<strong>制約がかかるのは「拡張コンテキストを横断するデータ」だけ</strong>です。<code>data.url</code> は URL 文字列だけが ctx を通り本体はホスト側で処理されるため 4MB 制限の対象外（ベクター検索インデックスだけは別途予算制約あり）。制限が掛かるのは iframe でデコード→<code>data.value</code> として注入する経路です。</p>
 <pre class="mermaid">flowchart TB
-  subgraph R[&quot;■ Re:Earth 正規経路（サンドボックス非横断）&quot;]
+  subgraph R[&quot;■ ネイティブ形式（サンドボックス非横断）&quot;]
     direction TB
-    A[&quot;geojson: / xyz: / 3dtiles:&lt;br&gt;URL 指定レイヤー&quot;]
+    A[&quot;geojson: / xyz: / 3dtiles: / base:&lt;br&gt;URL 指定レイヤー&quot;]
     H[&quot;Visualizer ホスト&lt;br&gt;直接 fetch・パース&lt;br&gt;4MB 制約なし&quot;]
     A -- &quot;data.url&lt;br&gt;URL 文字列のみ ctx 通過&quot; --&gt; H
   end
-  subgraph V[&quot;■ bridge-hub /vector 外部化（サンドボックス非横断）&quot;]
+  subgraph V[&quot;■ 拡張形式 fgb: / parquet: / gpkg: / duckdb: / sql:&quot;]
     direction TB
-    V0[&quot;fgb: / parquet: / gpkg: / duckdb: / sql:&lt;br&gt;http(s) ソース&quot;]
-    V1{&quot;bridge-hub 到達?&quot;}
+    V0[&quot;http(s) ソース&quot;]
+    V1{&quot;bridge-hub 到達?&lt;br&gt;（vectorHub: off で無効化）&quot;}
     V2[&quot;POST /vector/sources&lt;br&gt;ハブ側永続 DuckDB へ取込&quot;]
+    V3[&quot;フォールバック: iframe 内デコード&lt;br&gt;（DuckDB-Wasm ~15s 初期化）&quot;]
+    INJ[&quot;ctx 横断して注入&lt;br&gt;（data.value）&quot;]
     V0 --&gt; V1
     V1 -- &quot;はい&quot; --&gt; V2
+    V1 -- &quot;いいえ / 非 http(s)&lt;br&gt;（ファイル・kasczip・dataB64）&quot; --&gt; V3
+    V3 -. &quot;※ ソース CORS 必須&lt;br&gt;＋ 結果 ≤4MB&quot; .-&gt; INJ
   end
   V2 -- &quot;geojson: &lt;hub&gt;/vector/geojson/&lt;name&gt;&lt;br&gt;URL レイヤーとして追加&quot; --&gt; H
+  INJ --&gt; H
   H --&gt; OK[&quot;地図へ描画&quot;]
   style R fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-  style V fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+  style V fill:#fff8e1,stroke:#f9a825,stroke-width:2px
   style A fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
   style H fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
   style V0 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
   style V1 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
   style V2 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style V3 fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style INJ fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
   style OK fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-  linkStyle 0,4 stroke:#1976d2,stroke-width:2px
-  linkStyle 1,2,3 stroke:#2e7d32,stroke-width:2px</pre>
+  linkStyle 0,7 stroke:#1976d2,stroke-width:2px
+  linkStyle 1,2,3,5 stroke:#2e7d32,stroke-width:2px
+  linkStyle 4,6 stroke:#ef6c00,stroke-width:2px</pre>
 <p>図は<strong>制約の掛からない2経路</strong>（正規経路＋v22.2.0〜の bridge-hub 外部化）を示しています。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。本ページの上限が掛かる iframe デコード経路（<code>data.value</code> 注入）はフォールバック位置づけで、ハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます（詳細: <a href="./bridge-hub.html">bridge-hub.html</a>）。</p>
 <h2>「結果 ≤4MB」判定の段階構成（gpkg:）</h2>
 <p>フォールバックの拡張経路（iframe デコード→<code>data.value</code> 注入）で行われる「結果 ≤4MB」判定は一段の判定ではなく、早い順に3段＋最終防衛線のパイプラインです。確実に収まらないと分かった時点で即座に打ち切り、デコード済み結果だけが後段へ進みます。</p>

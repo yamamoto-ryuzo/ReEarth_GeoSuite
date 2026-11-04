@@ -13,7 +13,7 @@
 // Env: BRIDGE_CDP_PORT (default 9555), BRIDGE_URL or --url (default http://localhost:8787/)
 //
 // Two call paths, tried in order:
-//   1. window.__geoBridge.call(name,args) inside the basemap-widget iframe
+//   1. window.__geoBridge.call(name,args) inside the navigation-toolbar iframe
 //      (the persistent bridge host — works even when the AI Chat widget is closed)
 //   2. legacy: post {action:'aiToolCall'} inside the AI Chat widget iframe
 //      (older plugin builds without __geoBridge; requires the widget to be open)
@@ -102,7 +102,7 @@ function connect(wsUrl) {
   return open;
 }
 
-// Find the bridge host iframe (basemap-widget, has window.__geoBridge).
+// Find the bridge host iframe (navigation-toolbar, has window.__geoBridge).
 // Plugin UI iframes are sandboxed (opaque origin) -> separate CDP targets.
 async function findBridgeConn(timeoutMs = 60000) {
   const t0 = Date.now();
