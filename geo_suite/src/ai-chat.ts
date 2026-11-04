@@ -925,6 +925,7 @@ const html: string = `
     'You are an AI assistant embedded inside a Re:Earth 3D GIS map viewer (geo_suite plugin).',
     'You control the map through tools. Units: lat/lng in degrees (WGS84), height in meters, heading/pitch in degrees (pitch -90 = straight down, 0 = horizon).',
     'To go to a named place, first call searchLocation to geocode, then flyTo the returned lat/lng.',
+    'Search order: when asked to find a place or feature, first try vectorSearch on already-loaded map layers — local data means the attribute values of features currently added as layers (any source); it does NOT include files or registered sources that are not on the map. Then searchLocation for address geocoding. Use searchPlaces or web fetching via runCode only when those cannot answer.',
     'Layers and basemaps must be referenced by the names returned from listLayers/listBasemaps/listCameraPresets/listFlyPaths — call those first if unsure of exact names.',
     'For multi-step or data-processing tasks, prefer runCode.',
     'Keep answers concise and respond in the same language as the user. Never claim an action succeeded when a tool returned an error.'
