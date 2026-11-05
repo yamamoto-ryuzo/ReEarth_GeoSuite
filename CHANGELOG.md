@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.12
+- 変更: geosuite-hub を **ReEarth_GeoSuite リポジトリへ完全移行（完全分離）** — `hub/` に独立 Rust クレート `geosuite-hub`（kasugai_canvas の bridge-hub から GeoSuite 専用部分を切り出し。8514 ブリッジ + providers・/vector・8515 ビューアシェル・`geosuite-hub://`・自己インストールを全て自前化）を新設。配布物は `tools/build_hub.py` でローカル `cargo build --release` → `releases/geosuite-hub.zip`（exe ルート配置）をコミットし、`HUB_DOWNLOAD_URL` を `raw.githubusercontent.com/.../releases/geosuite-hub.zip` へ変更（kasugai-canvas-web CDN への依存を解消）。ハブのバージョンはプラグインと同一採番（Cargo.toml `22.x.y`）で、今後のハブ変更はプラグインとアトミックにリリースできる
+
 ## v22.4.11
 - 修正: 「GeoSuite viewer で開く」が呼び出し元シーンではなく前回のシーン（scene.txt）を開く重大な欠陥を修正 — `hub-view-open` リンクが裸の `geosuite-hub://open` を発行しており、かつハブ側のプロトコル登録も起動 URI を破棄する固定コマンドだったため、呼び出したサイトの URL が一切渡らず開発時の残存シーンが開いていた。リンク側は `document.referrer`（sandboxed iframe からも取れる親ページの完全 URL）→ `location.ancestorOrigins[0]` のフォールバックで `geosuite-hub://open?url=<scene>` を構成し、ハブ側（kasugai_canvas 6.19.1）はプロトコル登録を `--view "%1"` に変更して `url=` を 8515 ビューアシェルへ転送（v22.4.8 で撤去した URL 引き継ぎを exe 直処理として復活）
 

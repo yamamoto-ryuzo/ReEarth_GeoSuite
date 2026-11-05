@@ -88,13 +88,13 @@ let _inspectorGeminiApiKey = null; // optional geminiApiKey read from inspector 
 let _inspectorGeminiModel = null; // optional geminiModel read from inspector text
 let _inspectorAiHub = null; // optional aiHub: CANVAS bridge-hub endpoint (forwarded to ai-chat widget)
 let _inspectorVectorHub = null; // optional vectorHub: off | http://host:port — /vector externalization endpoint
-// CDN download URL of the bridge-hub bundle (kasugai-canvas-web stable
-// channel). The zip is preferred over the bare exe because some environments
-// block direct .exe downloads. The extracted bridge-hub.exe self-installs to
-// %LOCALAPPDATA%\geosuite-hub (renamed binary), registers a logon autostart
-// and serves 127.0.0.1:8514 — a GeoSuite-dedicated instance, independent of
-// KASUGAI's shared bridge-hub on 8511.
-const HUB_DOWNLOAD_URL = 'https://yamamoto-ryuzo.github.io/kasugai-canvas-web/stable/download/geosuite-hub.zip';
+// Download URL of the geosuite-hub bundle (this repo's releases/, built
+// locally via tools/build_hub.py from hub/). The zip is preferred over the
+// bare exe because some environments block direct .exe downloads. The
+// extracted geosuite-hub.exe self-installs to %LOCALAPPDATA%\geosuite-hub,
+// registers a logon autostart and serves 127.0.0.1:8514 — a
+// GeoSuite-dedicated instance, fully independent of KASUGAI's bridge-hub.
+const HUB_DOWNLOAD_URL = 'https://raw.githubusercontent.com/yamamoto-ryuzo/ReEarth_GeoSuite/main/releases/geosuite-hub.zip';
 
 // Session-level dismiss of the hub promo row (the − button posts hubPromoDismiss;
 // injected into _hubInstallCfg so re-rendered iframes keep it hidden)
