@@ -95,16 +95,16 @@ export const html: string = `
           } catch (e) { fin({ error: String(e && e.message || e) }); }
         });
       }
-      // CANVAS bridge-hub access (bridge-hub.exe on 8511), then fetches
+      // geosuite-hub access (geosuite-hub.exe on 8514), then fetches
       // <base>+path. Exposed as bridge tool 'canvasApi'.
       var _hubDetected = null;
       function hubDetect(ep) {
         var e = String(ep || '').trim();
         if (e) { _hubDetected = e.replace(/[/]+agent[\/]?$/, ''); return Promise.resolve(_hubDetected); }
         if (_hubDetected) return Promise.resolve(_hubDetected);
-        var ports = [8511];
+        var ports = [8514];
         function probe(i) {
-          if (i >= ports.length) return Promise.reject(new Error('hub not found on 8511'));
+          if (i >= ports.length) return Promise.reject(new Error('hub not found on 8514'));
           return fetch('http://127.0.0.1:' + ports[i] + '/health', { cache: 'no-store' }).then(function(r) {
             if (r && r.ok) { _hubDetected = 'http://127.0.0.1:' + ports[i]; return _hubDetected; }
             return probe(i + 1);

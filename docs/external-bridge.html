@@ -168,7 +168,7 @@ flowchart TB
 <ul>
 <li><strong>local（ai-chat 拡張ctx で実行）</strong>: <code>getCamera</code> <code>flyTo</code> <code>listLayers</code> <code>setLayerVisible</code> <code>focusLayer</code> <code>addGeoJsonLayer</code> <code>addTileLayer</code> <code>add3dTilesLayer</code> <code>removeLayer</code> <code>captureView</code> <code>getShareUrl</code> <code>buildShareUrl</code> <code>setCamera</code> <code>lookAt</code> <code>zoomIn</code> <code>zoomOut</code> <code>openUrl</code></li>
 <li><strong>panel（layers-and-tiles-list へ転送）</strong>: カメラプリセット・ベースマップ・FLY ルート・vector 検索・FlatGeobuf/Parquet/DuckDB レイヤー・inspectorText 操作・凡例/属性パネル等 33種</li>
-<li><strong>bridge（iframe 側で実行）</strong>: <code>runCode</code>（<code>api.&lt;tool&gt;</code> プロキシ + <code>fetch</code> 付き sandboxed JS。QGIS <code>pyeval</code> 相当の多段実行プリミティブ）・<code>canvasApi</code>（<a href="./bridge-hub.html">bridge-hub</a> :8511 の REST をブリッジ越しに呼ぶ）</li>
+<li><strong>bridge（iframe 側で実行）</strong>: <code>runCode</code>（<code>api.&lt;tool&gt;</code> プロキシ + <code>fetch</code> 付き sandboxed JS。QGIS <code>pyeval</code> 相当の多段実行プリミティブ）・<code>canvasApi</code>（<a href="./bridge-hub.html">geosuite-hub</a> :8514 の REST をブリッジ越しに呼ぶ）</li>
 <li><strong>describe（ai-chat 拡張ctx で実行）</strong>: 上記カタログの取得</li>
 <li><strong>chat（ai-chat UI iframe 経由で実行）</strong>: <code>aiChatSend</code> <code>aiChatStatus</code> <code>aiChatSet</code> — 外部から AI チャットへ発言・状態取得・設定変更</li>
 </ul>

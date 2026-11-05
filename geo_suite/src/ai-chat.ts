@@ -964,7 +964,7 @@ const html: string = `
       el.style.display = ((el.getAttribute('data-pv') || '').indexOf(pv) >= 0) ? '' : 'none';
     });
     if (pv === 'copilot') {
-      if (endpointInput && !endpointInput.value.trim()) endpointInput.value = 'http://127.0.0.1:8511/agent';
+      if (endpointInput && !endpointInput.value.trim()) endpointInput.value = 'http://127.0.0.1:8514/agent';
       if (modelInput && /^gemini-/.test(modelInput.value)) modelInput.value = '';
     }
     if (pv === 'sakura') {
@@ -1559,8 +1559,8 @@ const html: string = `
   // CANVAS bridge-hub contract: POST /agent {provider,model,message,camera,
   // layers,basemaps,history,tools} -> {reply,actions:[{name,args}]}
   var _hubDetected = null;
-  // Explicit endpoint wins; otherwise probe bridge-hub.exe on port 8511
-  // (CANVAS spec: unified to 8511 only).
+  // Explicit endpoint wins; otherwise probe geosuite-hub.exe on port 8514
+  // (GeoSuite-dedicated hub, independent of KASUGAI's shared 8511 bridge-hub).
   function detectHub() {
     if (_hubDetected) return Promise.resolve(_hubDetected);
     var ep = ((endpointInput && endpointInput.value) || '').trim();
@@ -1568,9 +1568,9 @@ const html: string = `
       _hubDetected = ep.replace(/[/]+agent[\/]?$/, '');
       return Promise.resolve(_hubDetected);
     }
-    var ports = [8511];
+    var ports = [8514];
     function probe(i) {
-      if (i >= ports.length) return Promise.reject(new Error('hub not found on 8511'));
+      if (i >= ports.length) return Promise.reject(new Error('hub not found on 8514'));
       return fetch('http://127.0.0.1:' + ports[i] + '/health', { cache: 'no-store' }).then(function(r) {
         if (r && r.ok) { _hubDetected = 'http://127.0.0.1:' + ports[i]; return _hubDetected; }
         return probe(i + 1);
@@ -1716,7 +1716,7 @@ const html: string = `
       }).then(function(d) {
         var ms = (d && d.models) || [];
         fill(ms, (d && d.fallback) || !ms.length ? 'hub: connected, but no model list (not signed in?)' : 'hub: ' + ms.length + ' models');
-      }).catch(function() { st.style.display = ''; st.textContent = 'hub: unreachable — install/start bridge-hub.exe (port 8511)'; });
+      }).catch(function() { st.style.display = ''; st.textContent = 'hub: unreachable — install/start geosuite-hub.exe (port 8514)'; });
       return;
     }
     if (pv === 'gemini') {

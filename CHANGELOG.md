@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.2
+- 変更: geosuite-hub を GeoSuite 専用インスタンス化 — KASUGAI の共有 bridge-hub（127.0.0.1:8511）から分離し、専用ポート **127.0.0.1:8514** へ移行。8512/8513 は KASUGAI 側（bridge-hub.exe・kasugai_canvas.exe）が「旧ブリッジ」として起動時に PID 単位で強制終了する掃除対象ポートのため選択不可と判明し、隣接する未使用の 8514 を採用。`geosuite-hub-install.cmd` は bridge-hub バイナリを `%LOCALAPPDATA%\geosuite-hub\geosuite-hub.exe` として**リネーム配置**（イメージ名一致 kill を回避）し、`BRIDGE_HUB_PORT=8514` を与えた `run-hidden.vbs` + HKCU Run キーでログイン時に非表示自動起動（env 指定時はバイナリの自己インストール・掃除パスをスキップ）。既に bridge-hub.exe が導入済みなら複製を使い回してダウンロードを省略。`geosuite-hub://` プロトコル shim・プロモ行ポーリング・`hubEndpoint()` 既定値・AI チャット/ナビゲーションの自動プローブはすべて 8514 を指すよう更新。従来 `aiHub:`/`vectorHub:` で 8511 を明示指定していた設定はそのまま KASUGAI 側ハブを指し続けるため後方互換を維持
+
 ## v22.4.1
 - 新規: Ext プロモ行に「KASUGAI viewer で開く」リンクを追加 — 公開シーン（*.visualizer.reearth.io）では AssetSecurity SW が全 fetch を `respondWith(fetch(e))` で仲介するため、v22.4.0 のプローブレイヤによる LNA 自動アンロックが構造的に機能しない（実機検証・Chrome 156: SW 起点 fetch はプロンプトをアンカーできず即 ERR_FAILED）。対策として bridge-hub 側に `kasugai-hub://` カスタムプロトコル＋`--view <url>`（LNA 無効化済み WebView2 シーンビューア）を実装し、プロモ行のリンクから OS 経由で遷移できるようにした。`sceneUrl: <公開シーン URL>` インスペクタ行を設定するとリンクに URL が自動付与される（sandboxed iframe からは親 URL を読めないため明示指定）。kasugai_canvas v6.19.x+ の bridge-hub が必要。ドキュメント: docs/bridge-hub.html に公開シーンではトンネル or viewer が必須である旨を追記
 

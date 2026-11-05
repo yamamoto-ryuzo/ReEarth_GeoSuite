@@ -116,7 +116,7 @@
                 セッション内では「初回のみ ~15–17s の初期化、以後 warm（~3–9s）で継続利用」を実現した。
                 ただしブラウザ再起動・再訪では <strong>アセットは必ず再ダウンロードされる</strong>。
                 これは Re:Earth プラグイン iframe のサンドボックス制約（opaque origin）によるもので、アプリ側では回避不可能。<br>
-                <span class="muted">※ v22.2.0 で bridge-hub <code>/vector</code> 外部化が追加され、ハブ到達環境では
+                <span class="muted">※ v22.2.0 で geosuite-hub <code>/vector</code> 外部化が追加され、ハブ到達環境では
                 wasm 経路自体を使わない第3の経路が存在する（§5.5）。本結論は wasm 経路についてのもの。</span>
             </div>
         </section>
@@ -250,9 +250,9 @@
                 <li><code>bbox=auto</code> レイヤは失敗 spec を <code>_ddbFailedAdds</code> に保持し、ズームイン後のカメラ移動で自動リトライ</li>
             </ul>
 
-            <h3>5.5 bridge-hub <code>/vector</code> 外部化 — wasm 経路自体の回避（v22.2.0）</h3>
+            <h3>5.5 geosuite-hub <code>/vector</code> 外部化 — wasm 経路自体の回避（v22.2.0）</h3>
             <p>
-                最も大きな変更。到達可能な bridge-hub（<code>vectorHub:</code> 行 → <code>aiHub:</code> → 既定 <code>127.0.0.1:8511</code> の順で解決）が
+                最も大きな変更。到達可能な geosuite-hub（<code>vectorHub:</code> 行 → <code>aiHub:</code> → 既定 <code>127.0.0.1:8514</code> の順で解決）が
                 ある環境では、<code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを
                 ハブへ <code>POST /vector/sources</code> で登録し、<code>geojson: &lt;hub&gt;/vector/geojson/&lt;name&gt;</code> の
                 <strong>素の URL 型レイヤー</strong>として追加する（AI ツール <code>addDuckDbLayer</code> も同経路）。
@@ -303,7 +303,7 @@
                 <tr><td>Service Worker + CacheStorage（KASUGAI 方式）</td><td class="ng">不可</td><td>sandbox で SecurityError</td></tr>
                 <tr><td>拡張側 <code>clientStorage</code> に wasm バイナリ保存→次回注入</td><td class="warn">理論上可能だが非推奨</td><td>wasm+worker+拡張で ~6–8MB → base64 ~10MB 超。localStorage 系上限・メッセージ橋のバイナリ転送制約あり</td></tr>
                 <tr><td>永続 iframe ホスト（basemap-widget）</td><td class="ok">採用</td><td>セッション内の再初期化を排除（本実装）。v22.0.0 で全 ext ベクターの共通デコードホストへ拡張（§5.3）</td></tr>
-                <tr><td>bridge-hub <code>/vector</code> 外部化（v22.2.0〜）</td><td class="ok">採用（併用）</td><td>ハブ到達時は wasm 経路自体を回避し、ハブ側の永続 <code>.duckdb</code> へ取込。opaque origin 制約がそもそも無関係になる。未到達時は永続 iframe 経路へフォールバック（§5.5）</td></tr>
+                <tr><td>geosuite-hub <code>/vector</code> 外部化（v22.2.0〜）</td><td class="ok">採用（併用）</td><td>ハブ到達時は wasm 経路自体を回避し、ハブ側の永続 <code>.duckdb</code> へ取込。opaque origin 制約がそもそも無関係になる。未到達時は永続 iframe 経路へフォールバック（§5.5）</td></tr>
             </table>
         </section>
 
@@ -417,12 +417,12 @@
                 <strong>対応結果 — 外部アプリ化で解決（本課題はクローズ扱い）</strong>:
                 メンテナ回答は「opaque-origin sandbox は意図的な分離モデルであり、host-managed caching は検討に値するが
                 対応目処・タイムラインのコミットなし（Issue は open のまま）」。
-                上流改修を待たず、<strong>bridge-hub <code>/vector</code> 外部化（§5.5）を本課題への実回答</strong>とした。
+                上流改修を待たず、<strong>geosuite-hub <code>/vector</code> 外部化（§5.5）を本課題への実回答</strong>とした。
                 ハブ側の永続 <code>.duckdb</code> に処理を寄せる構成のため、wasm 再 DL・opaque origin・
                 4MB 制約・SAB 不可のすべてが無関係になる。<br>
                 対応結果は Issue へコメント起票済み:
                 <a href="https://github.com/reearth/reearth-visualizer/issues/2497#issuecomment-6615527578">issuecomment-6615527578</a>
-                （bridge-hub 概要・/vector 経路の仕組み・各制約の無効化・計測プローブの内訳を記録）。
+                （geosuite-hub 概要・/vector 経路の仕組み・各制約の無効化・計測プローブの内訳を記録）。
             </div>
 
             <h3>9.2 QuickJS 拡張コンテキストには <code>setTimeout</code> が無い</h3>
@@ -459,7 +459,7 @@
             <h2>10. 結論</h2>
             <div class="box">
                 <strong>現状の最適構成（v22.2.0 時点）</strong> — 3 段構え:
-                ① bridge-hub が到達可能なら <code>/vector</code> 外部化で wasm を一切使わない（最良・初期化コスト皆無）、
+                ① geosuite-hub が到達可能なら <code>/vector</code> 外部化で wasm を一切使わない（最良・初期化コスト皆無）、
                 ② wasm 経路でも先行ウォームにより「1セッション1回の初期化」を起動処理とオーバーラップさせ、以後は warm で使い回す、
                 ③ ブラウザ再起動・再訪でのアセット再ダウンロードは依然不可避。
                 修正前はレイヤー追加のたびに 13–22s の再初期化が発生していたため、
@@ -468,7 +468,7 @@
             <p>
                 <strong>本課題の最終的な解決は外部アプリ化</strong>:
                 reearth-visualizer#2497 に対し上流は「sandbox は意図的・対応時期未定」と回答したため、
-                bridge-hub <code>/vector</code> 外部化を本課題への正式な回答として確定した（§9.1）。
+                geosuite-hub <code>/vector</code> 外部化を本課題への正式な回答として確定した（§9.1）。
                 wasm 経路はハブ未導入環境向けの graceful degradation として残置する。
             </p>
             <p class="muted">

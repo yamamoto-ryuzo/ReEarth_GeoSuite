@@ -302,11 +302,11 @@
                     </div>
                     <div class="feature-card">
                         <h3>🧩 拡張経路ベクトルデータ</h3>
-                        <p>ブラウザ内でデコードしてレイヤー化する経路。<code>gpkg:</code>・<code>flatgeobuf:</code>・<code>parquet:</code>・<code>duckdb:</code>/<code>sql:</code>（SQL 絞り込み）のほか、ファイルドロップ・QGIS 出力 <code>qgis:</code> の一括取込に対応。bridge-hub 稼働時は http(s) ソースが外部化されるためフォールバック経路です。属性検索・属性パネルも利用可能。<a href="docs/payload-limits.html" class="github-link" style="font-size:0.9em;">容量上限（4MB/回）&rarr;</a></p>
+                        <p>ブラウザ内でデコードしてレイヤー化する経路。<code>gpkg:</code>・<code>flatgeobuf:</code>・<code>parquet:</code>・<code>duckdb:</code>/<code>sql:</code>（SQL 絞り込み）のほか、ファイルドロップ・QGIS 出力 <code>qgis:</code> の一括取込に対応。geosuite-hub 稼働時は http(s) ソースが外部化されるためフォールバック経路です。属性検索・属性パネルも利用可能。<a href="docs/payload-limits.html" class="github-link" style="font-size:0.9em;">容量上限（4MB/回）&rarr;</a></p>
                     </div>
                     <div class="feature-card">
-                        <h3>🌉 bridge-hub（拡張コンポーネント）</h3>
-                        <p>任意導入のローカル常駐ハブ（<code>bridge-hub.exe</code>）。<code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを <code>geojson:</code> URL レイヤーへ自動外部化し、wasm 初期化・4MB 上限・再取得を回避。AI ブリッジ系プロバイダ（Copilot・外部エージェント）も有効になります。未導入時は Ext ボタン／Ext タブから導入できます。<a href="docs/bridge-hub.html" class="github-link" style="font-size:0.9em;">詳細 &rarr;</a></p>
+                        <h3>🌉 geosuite-hub（拡張コンポーネント）</h3>
+                        <p>任意導入のローカル常駐ハブ（<code>geosuite-hub.exe</code>）。<code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを <code>geojson:</code> URL レイヤーへ自動外部化し、wasm 初期化・4MB 上限・再取得を回避。AI ブリッジ系プロバイダ（Copilot・外部エージェント）も有効になります。未導入時は Ext ボタン／Ext タブから導入できます。<a href="docs/bridge-hub.html" class="github-link" style="font-size:0.9em;">詳細 &rarr;</a></p>
                     </div>
                     <div class="feature-card">
                         <h3>📑 レイヤー一覧UI</h3>
@@ -431,8 +431,8 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>background:</strong> 地図の背景色を指定します（例: <code>background: #ffffff</code>。<code>bg:</code> でも可）。</li>
                         <li><strong>yahooAppId:</strong> / <strong>googleMapsApiKey:</strong> 地名検索（検索パネル）で使う API キーを指定します。Yahoo! ジオコーダ利用時は <code>yahooAppId:</code> を設定してください。</li>
                         <li><strong>bridge:</strong> 外部ブリッジ（ローカルハーネスから地図ツールを遠隔実行する開発・自動化用機能）を制御します。<code>bridge: off | on | http://host:port</code>。未設定時は localhost:8977 への一度だけの自動プローブを行い、<code>bridge: off</code> で完全に無効化できます。</li>
-                        <li><strong>aiHub:</strong> 外部エージェント・/vector サービスを提供する bridge-hub（bridge-hub.exe）の接続先を指定します（例: <code>aiHub: http://127.0.0.1:8511</code>。省略時は 127.0.0.1:8511 を自動検出）。</li>
-                        <li><strong>vectorHub:</strong> <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを bridge-hub の /vector サービスへ自動登録し、<code>geojson:</code> URL レイヤーとして追加する機能の接続先を指定します。<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。省略時は <code>aiHub:</code> の値を引き継ぎます。ハブ稼働時はブラウザ内デコード（wasm 初期化・4MB 制約）を回避し、再読込も高速です。ハブ未到達時は従来どおりブラウザ内デコードで読み込みます（<a href="docs/vector-externalization.html" class="github-link">詳細</a>）。</li>
+                        <li><strong>aiHub:</strong> 外部エージェント・/vector サービスを提供する geosuite-hub（geosuite-hub.exe）の接続先を指定します（例: <code>aiHub: http://127.0.0.1:8514</code>。省略時は 127.0.0.1:8514 を自動検出）。</li>
+                        <li><strong>vectorHub:</strong> <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを geosuite-hub の /vector サービスへ自動登録し、<code>geojson:</code> URL レイヤーとして追加する機能の接続先を指定します。<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。省略時は <code>aiHub:</code> の値を引き継ぎます。ハブ稼働時はブラウザ内デコード（wasm 初期化・4MB 制約）を回避し、再読込も高速です。ハブ未到達時は従来どおりブラウザ内デコードで読み込みます（<a href="docs/vector-externalization.html" class="github-link">詳細</a>）。</li>
                         <li><strong>行プレフィックスの別名:</strong> <code>tile:</code> = <code>xyz:</code>、<code>3d-tiles:</code> = <code>3dtiles:</code>、<code>preset:</code> = <code>layer:</code>、<code>bg:</code> = <code>background:</code>、<code>fgb:</code> = <code>flatgeobuf:</code>、<code>geoparquet:</code> = <code>parquet:</code> として解釈されます。</li>
                         <li><strong>geminiApiKey:</strong> / <strong>geminiModel:</strong> AI チャットウィジェットで使う Gemini API キーとモデル名（省略可）を指定します。キーは AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄または ⚙ 設定からも入力できます（優先順: AI Chat Inspector 欄 &gt; 設定テキストの <code>geminiApiKey:</code> 行 &gt; セッション入力 &gt; ブラウザ保存）。Gemini 以外のプロバイダ（OpenAI互換・Anthropic・Azure・Sakura AI Engine 等）のキーは ⚙ 設定からのみ入力でき、プロバイダごとに独立してブラウザへ保存されます。注意: Inspector に書いたキーは公開サイトでは全訪問者に配信されます。公開サイトではサーバーサイドプロキシ（環境変数 <code>GEMINI_API_KEY</code> → <code>/api/gemini</code>）の利用を推奨します。</li>
                     </ul>
@@ -452,7 +452,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><code>/api/gemini</code> プロキシ自体は公開エンドポイントです（プラグイン iframe は sandboxed で <code>Origin: null</code> を送るためリファラー制限が不可能）。URL を知れば誰でもクォータを消費できるため、<strong>Google Cloud でキーに API 制限（Generative Language API のみ）と日次クォータ上限を必ず設定</strong>してください。</li>
                         <li>ブラウザからの直接呼び出しは Referer が付かないため、HTTP リファラー制限は使えません（掛けると全リクエストが拒否されます）。</li>
                         <li>キーの送信先はプロバイダの API エンドポイントのみです（Gemini → <code>generativelanguage.googleapis.com</code> またはサイトの <code>/api/gemini</code>／Sakura AI Engine → <code>api.ai.sakura.ad.jp</code>／Anthropic → <code>api.anthropic.com</code>／OpenAI互換・Azure → 設定したエンドポイント）。第三者へは送信されません。</li>
-                        <li>GitHub Copilot・外部エージェント（ブリッジ系）は APIキー不要で、代わりに指定エンドポイント（既定はローカルの bridge-hub <code>127.0.0.1:8511</code>）へ会話内容が送信されます。</li>
+                        <li>GitHub Copilot・外部エージェント（ブリッジ系）は APIキー不要で、代わりに指定エンドポイント（既定はローカルの geosuite-hub <code>127.0.0.1:8514</code>）へ会話内容が送信されます。</li>
                         <li>チャットの ⚙ 設定画面では、現在使用中のキーの出所（<code>inspector</code> / <code>storage</code> / <code>session</code> / <code>server proxy</code>）が表示されます。</li>
                     </ul>
                 </div>
@@ -551,7 +551,7 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                     <div>
                         <p style="color:#333;">
                             <code>duckdb:</code> レイヤーは初回クエリ時に DuckDB-Wasm（wasm + worker + httpfs/spatial/parquet 拡張）をダウンロード・初期化するため、<strong>セッションの最初の読み込みに約15秒</strong>かかります。2回目以降はインスタンスが温存されるため約3〜10秒に短縮されますが、<strong>ブラウザ再起動・再訪では必ず再ダウンロードが発生します</strong>（Re:Earth プラグイン iframe が <code>allow-same-origin</code> なしのサンドボックスで、HTTP キャッシュ・CacheStorage・Service Worker が一切使えない構造的制約のため）。<br>
-                            なお <strong>bridge-hub（127.0.0.1:8511）が動作している環境では <code>/vector</code> 外部化により wasm 経路自体を使わないため、この制約は丸ごと回避されます</strong>（推奨構成。詳細: <a href="docs/vector-externalization.html" class="github-link">ベクター外部化</a>）。<br>
+                            なお <strong>geosuite-hub（127.0.0.1:8514）が動作している環境では <code>/vector</code> 外部化により wasm 経路自体を使わないため、この制約は丸ごと回避されます</strong>（推奨構成。詳細: <a href="docs/vector-externalization.html" class="github-link">ベクター外部化</a>）。<br>
                             小〜中規模データでは初回読み込みが速い <code>geojson:</code> / <code>flatgeobuf:</code> / <code>parquet:</code> の方が適する場合があります。フォーマットの選び方・実測値は <a href="docs/duckdb-persistence.html" class="github-link">DuckDB-Wasm 永続化検証・フォーマット比較レポート</a> を参照してください。
                         </p>
                     </div>

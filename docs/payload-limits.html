@@ -19,7 +19,7 @@
   </header>
   <div class="content">
 <blockquote>
-<p><strong>サンドボックスを横断しない経路は容量の制約がありません。</strong> <code>geojson:</code>/<code>xyz:</code>/<code>3dtiles:</code>/<code>base:</code> など URL 指定レイヤーは Re:Earth 正規経路（<code>data.url</code>）で Visualizer ホスト側が直接 fetch・パースし、bridge-hub（<code>127.0.0.1:8511</code>）稼働時は <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースも <code>geojson:</code> URL レイヤー化して同経路に合流するため、本ページの上限は一切関係ありません。制約が掛かるのは<strong>フォールバックのプラグイン拡張経路</strong>（iframe でデコード→<code>data.value</code> 注入）だけであり、<strong>これは Cesium・ブラウザ・GeoJSON 仕様の制限ではなく、Re:Earth Visualizer のプラグインサンドボックス固有の上限です</strong>（Cesium 本体ははるかに大きなデータを描画できます）。</p>
+<p><strong>サンドボックスを横断しない経路は容量の制約がありません。</strong> <code>geojson:</code>/<code>xyz:</code>/<code>3dtiles:</code>/<code>base:</code> など URL 指定レイヤーは Re:Earth 正規経路（<code>data.url</code>）で Visualizer ホスト側が直接 fetch・パースし、geosuite-hub（<code>127.0.0.1:8514</code>）稼働時は <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースも <code>geojson:</code> URL レイヤー化して同経路に合流するため、本ページの上限は一切関係ありません。制約が掛かるのは<strong>フォールバックのプラグイン拡張経路</strong>（iframe でデコード→<code>data.value</code> 注入）だけであり、<strong>これは Cesium・ブラウザ・GeoJSON 仕様の制限ではなく、Re:Earth Visualizer のプラグインサンドボックス固有の上限です</strong>（Cesium 本体ははるかに大きなデータを描画できます）。</p>
 </blockquote>
 <p>Re:Earth のプラグイン拡張は QuickJS wasm コンテキストで実行され、<strong>全拡張が同一の wasm linear memory を共有</strong>します。コンテキスト間・iframe 間のメッセージはすべて <code>JSON.stringify → wasm メモリへの文字列コピー → ctx 内 JSON.parse</code> でマーシャルされるため、巨大なペイロードは共有ヒープを圧迫し、1拡張の OOM で拡張コンテキストが全滅します（<code>InternalError: out of memory</code> / <code>memory access out of bounds</code>、<code>Proxy.unwrapResult</code> で観測）。</p>
 <p>つまり<strong>制約がかかるのは「拡張コンテキストを横断するデータ」だけ</strong>です。<code>data.url</code> は URL 文字列だけが ctx を通り本体はホスト側で処理されるため 4MB 制限の対象外（ベクター検索インデックスだけは別途予算制約あり）。制限が掛かるのは iframe でデコード→<code>data.value</code> として注入する経路です。</p>
@@ -32,7 +32,7 @@
     subgraph V[&quot;■ 拡張形式 fgb: / parquet: / gpkg: / duckdb: / sql:&quot;]
       direction TB
       V0[&quot;http(s) ソース（外部サーバ）&quot;]
-      V1{&quot;bridge-hub 到達?&lt;br&gt;（vectorHub: off で無効化）&quot;}
+      V1{&quot;geosuite-hub 到達?&lt;br&gt;（vectorHub: off で無効化）&quot;}
       V3[&quot;サンドボックス内デコード:&lt;br&gt;basemap セッション内永続 iframe&lt;br&gt;DuckDB-Wasm/sql.js（~15s 初期化）&lt;br&gt;Ack 無し → 自 iframe 再実行&lt;br&gt;※ ソース CORS 必須&quot;]
       GUARD[&quot;結果 ≤4MB ガード&lt;br&gt;（超過は拒否 → ⚠ トゥームストーン）&quot;]
       INJ[&quot;ctx 横断して注入&lt;br&gt;（data.value）&quot;]
@@ -44,7 +44,7 @@
 
   subgraph OUT[&quot;サンドボックス外&quot;]
     direction TB
-    V2[&quot;外部ブリッジ: bridge-hub :8511&lt;br&gt;POST /vector/sources&lt;br&gt;→ ネイティブ DuckDB 永続化&quot;]
+    V2[&quot;外部ブリッジ: geosuite-hub :8514&lt;br&gt;POST /vector/sources&lt;br&gt;→ ネイティブ DuckDB 永続化&quot;]
     H[&quot;Visualizer ホスト&lt;br&gt;直接 fetch・パース&lt;br&gt;4MB 制約なし&quot;]
   end
 
@@ -69,7 +69,7 @@
   linkStyle 4,8 stroke:#1976d2,stroke-width:2px
   linkStyle 0,5,6 stroke:#2e7d32,stroke-width:2px
   linkStyle 1,2,3,7 stroke:#ef6c00,stroke-width:2px</pre>
-<p>図は<strong>3経路</strong>を示しています — 制約の掛からない青（ネイティブ URL レイヤー）と緑（v22.2.0〜の bridge-hub 外部化）、4MB 上限が掛かるオレンジ（フォールバックのサンドボックス内デコード→<code>data.value</code> 注入）。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。オレンジ経路はハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます（詳細: <a href="./vector-externalization.html">vector-externalization.html</a>）。</p>
+<p>図は<strong>3経路</strong>を示しています — 制約の掛からない青（ネイティブ URL レイヤー）と緑（v22.2.0〜の geosuite-hub 外部化）、4MB 上限が掛かるオレンジ（フォールバックのサンドボックス内デコード→<code>data.value</code> 注入）。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。オレンジ経路はハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます（詳細: <a href="./vector-externalization.html">vector-externalization.html</a>）。</p>
 <h2>「結果 ≤4MB」判定の段階構成（gpkg:）</h2>
 <p>フォールバックの拡張経路（iframe デコード→<code>data.value</code> 注入）で行われる「結果 ≤4MB」判定は一段の判定ではなく、早い順に3段＋最終防衛線のパイプラインです。確実に収まらないと分かった時点で即座に打ち切り、デコード済み結果だけが後段へ進みます。</p>
 <pre class="mermaid">flowchart TB
@@ -183,7 +183,7 @@
 </ul>
 <h2>回避策（ユーザー向け）</h2>
 <ul>
-<li><strong>bridge-hub（<code>127.0.0.1:8511</code>）が稼働していれば制約自体を回避できます</strong>: <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースはハブの <code>/vector</code> サービスへ自動登録され <code>geojson:</code> URL レイヤーとして追加されるため、iframe デコードも ctx 横断も 4MB 上限も一切通りません（v22.2.0〜・<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。<a href="./vector-externalization.html">vector-externalization.html</a>）</li>
+<li><strong>geosuite-hub（<code>127.0.0.1:8514</code>）が稼働していれば制約自体を回避できます</strong>: <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースはハブの <code>/vector</code> サービスへ自動登録され <code>geojson:</code> URL レイヤーとして追加されるため、iframe デコードも ctx 横断も 4MB 上限も一切通りません（v22.2.0〜・<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。<a href="./vector-externalization.html">vector-externalization.html</a>）</li>
 <li>上限を超えるデータは <strong><code>qgis: &lt;.kasc URL&gt;</code> でホスト側に置いて取り込む</strong>（DATA/ を外部ホストし、メンバは lazy fetch）。ドロップ zip ではなく URL 参照にすることでバイト列が ctx を通らなくなる</li>
 <li>クエリ結果が大きい場合は <code>where=</code>/<code>limit=</code>/<code>columns=</code>/<code>bbox=auto</code> で絞る（bbox=auto はビューポート連動の再クエリ）</li>
 <li><strong>4MB を超える GeoPackage ファイル自体は仕様上読み込みません</strong>（恒久的に拒否・ズームインしても復帰しません）。QGIS 側でレイヤを分割・軽量化（地物削減・ジオメトリ簡素化・不要カラム削除）して 4MB 未満にするか、複数テーブル/ファイルへの分割を行ってください</li>
