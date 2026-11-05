@@ -38,7 +38,7 @@ echo @="URL:GeoSuite Hub Protocol"
 echo "URL Protocol"=""
 echo.
 echo [HKEY_CURRENT_USER\Software\Classes\geosuite-hub\shell\open\command]
-echo @="\"%DIR_ESC%\geosuite-hub.cmd\" \"%%1\""
+echo @="\"%DIR_ESC%\\geosuite-hub.cmd\" \"%%1\""
 ) > "%REG%"
 reg import "%REG%" >nul && del "%REG%"
 
