@@ -196,47 +196,67 @@ function applyBaseList(items: any[]): void {
   }
 }
 
+const GEO_I18N: { [key: string]: { [key: string]: string } } = {
+  "en": {"none":"(None)","openInGoogleEarth":"Open current view in Google Earth","hubPromoExt":"Ext","hubPromoNote":"Optional component: geosuite-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.","hubPromoBtn":"Download geosuite-hub-install.cmd","hubPromoWait":"Downloaded. Run geosuite-hub-install.cmd — it auto-installs geosuite-hub + the geosuite-hub:// protocol — waiting for the hub...","hubPromoOk":"geosuite-hub detected","hubPromoRetry":"Still not detected — run the downloaded geosuite-hub-install.cmd.","hubPromoSteps":"Steps: 1) Download geosuite-hub-install.cmd  2) Run it — auto-installs geosuite-hub + the geosuite-hub:// protocol (no admin needed).","hubPromoPrompt":"If the browser shows a local network access prompt, click Allow — it unblocks geosuite-hub for this site.","hubPromoView":"Open in GeoSuite viewer","hubPromoViewTitle":"Requires one-time geosuite-hub:// registration (run geosuite-hub-install.cmd)","closeAria":"Close"},
+  "ja": {"none":"(なし)","openInGoogleEarth":"Google Earth で現在の表示を開く","hubPromoExt":"拡張","hubPromoNote":"拡張コンポーネント: geosuite-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。","hubPromoBtn":"geosuite-hub-install.cmd をダウンロード","hubPromoWait":"ダウンロードしました。geosuite-hub-install.cmd を実行すると geosuite-hub と geosuite-hub:// プロトコルが自動インストールされます — ハブを待機中…","hubPromoOk":"geosuite-hub を検出しました","hubPromoRetry":"まだ未検出です — ダウンロードした geosuite-hub-install.cmd を実行してください。","hubPromoSteps":"手順: ① geosuite-hub-install.cmd をダウンロード → ② 実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）","hubPromoPrompt":"ブラウザにローカルネットワーク接続の許可プロンプトが表示されたら「許可」を押してください — このサイトで geosuite-hub が使えるようになります。","hubPromoView":"GeoSuite viewer で開く","hubPromoViewTitle":"geosuite-hub:// の登録が必要です（geosuite-hub-install.cmd を実行）","closeAria":"閉じる"},
+  "zh-CN": {"none":"（无）","openInGoogleEarth":"在 Google 地球中打开当前视图","hubPromoExt":"扩展","hubPromoNote":"可选组件：未检测到 geosuite-hub。安装一次即可加速矢量图层、解除 4MB 限制，并启用 AI 桥接提供程序。","hubPromoBtn":"下载 geosuite-hub-install.cmd","hubPromoWait":"已下载。运行 geosuite-hub-install.cmd 即可自动安装 geosuite-hub 和 geosuite-hub:// 协议 — 正在等待桥接中心…","hubPromoOk":"已检测到 geosuite-hub","hubPromoRetry":"仍未检测到 — 请运行已下载的 geosuite-hub-install.cmd。","hubPromoSteps":"步骤：1) 下载 geosuite-hub-install.cmd → 2) 运行（自动安装 geosuite-hub＋协议·无需管理员权限）","hubPromoPrompt":"如果浏览器显示本地网络访问提示，请点击\"允许\"— 即可在此站点启用 geosuite-hub。","hubPromoView":"在 GeoSuite viewer 中打开","hubPromoViewTitle":"需要一次性注册 geosuite-hub://（运行 geosuite-hub-install.cmd）","closeAria":"关闭"},
+  "zh-TW": {"none":"（無）","openInGoogleEarth":"在 Google 地球中開啟目前檢視","hubPromoExt":"擴充","hubPromoNote":"可選元件：未偵測到 geosuite-hub。安裝一次即可加速向量圖層、解除 4MB 限制，並啟用 AI 橋接提供者。","hubPromoBtn":"下載 geosuite-hub-install.cmd","hubPromoWait":"已下載。執行 geosuite-hub-install.cmd 即可自動安裝 geosuite-hub 和 geosuite-hub:// 協定 — 正在等待橋接中心…","hubPromoOk":"已偵測到 geosuite-hub","hubPromoRetry":"仍未偵測到 — 請執行已下載的 geosuite-hub-install.cmd。","hubPromoSteps":"步驟：1) 下載 geosuite-hub-install.cmd → 2) 執行（自動安裝 geosuite-hub＋協定·無需管理員權限）","hubPromoPrompt":"如果瀏覽器顯示本機網路存取提示，請點擊「允許」— 即可在此網站啟用 geosuite-hub。","hubPromoView":"在 GeoSuite viewer 中開啟","hubPromoViewTitle":"需要一次性註冊 geosuite-hub://（執行 geosuite-hub-install.cmd）","closeAria":"關閉"},
+  "ko": {"none":"(없음)","openInGoogleEarth":"Google 어스에서 현재 뷰 열기","hubPromoExt":"확장","hubPromoNote":"선택 구성 요소: geosuite-hub가 감지되지 않습니다. 한 번 설치하면 벡터 레이어가 빨라지고 4MB 제한이 해제되며 AI 브리지 프로바이더를 사용할 수 있습니다.","hubPromoBtn":"geosuite-hub-install.cmd 다운로드","hubPromoWait":"다운로드했습니다. geosuite-hub-install.cmd를 실행하면 geosuite-hub와 geosuite-hub:// 프로토콜이 자동 설치됩니다 — 허브를 기다리는 중…","hubPromoOk":"geosuite-hub가 감지되었습니다","hubPromoRetry":"아직 감지되지 않았습니다 — 다운로드한 geosuite-hub-install.cmd를 실행하세요.","hubPromoSteps":"순서: 1) geosuite-hub-install.cmd 다운로드 → 2) 실행(geosuite-hub＋프로토콜 자동 설치·관리자 권한 불필요)","hubPromoPrompt":"브라우저에 로컬 네트워크 액세스 프롬프트가 표시되면 \"허용\"을 클릭하세요 — 이 사이트에서 geosuite-hub를 사용할 수 있습니다.","hubPromoView":"GeoSuite viewer에서 열기","hubPromoViewTitle":"geosuite-hub:// 등록이 필요합니다(geosuite-hub-install.cmd 실행)","closeAria":"닫기"},
+  "es": {"none":"(Ninguno)","openInGoogleEarth":"Abrir vista actual en Google Earth","hubPromoExt":"Ext.","hubPromoNote":"Componente opcional: geosuite-hub no está en ejecución. Instálelo una vez para acelerar las capas vectoriales, eliminar el límite de 4MB y desbloquear los proveedores de puente de IA.","hubPromoBtn":"Descargar geosuite-hub-install.cmd","hubPromoWait":"Descargado. Ejecute geosuite-hub-install.cmd — instala automáticamente geosuite-hub y el protocolo geosuite-hub:// — esperando al hub…","hubPromoOk":"geosuite-hub detectado","hubPromoRetry":"Aún no detectado — ejecute el geosuite-hub-install.cmd descargado.","hubPromoSteps":"Pasos: 1) Descargue geosuite-hub-install.cmd  2) Ejecútelo — instala automáticamente geosuite-hub y el protocolo geosuite-hub:// (sin derechos de administrador).","hubPromoPrompt":"Si el navegador muestra el aviso de acceso a la red local, haga clic en Permitir — habilita geosuite-hub en este sitio.","hubPromoView":"Abrir en GeoSuite viewer","hubPromoViewTitle":"Requiere el registro único de geosuite-hub:// (ejecute geosuite-hub-install.cmd)","closeAria":"Cerrar"},
+  "fr": {"none":"(Aucun)","openInGoogleEarth":"Ouvrir la vue actuelle dans Google Earth","hubPromoExt":"Ext.","hubPromoNote":"Composant optionnel : geosuite-hub n'est pas détecté. Installez-le une fois pour accélérer les couches vectorielles, lever la limite de 4 Mo et débloquer les fournisseurs de pont IA.","hubPromoBtn":"Télécharger geosuite-hub-install.cmd","hubPromoWait":"Téléchargé. Exécutez geosuite-hub-install.cmd — il installe automatiquement geosuite-hub et le protocole geosuite-hub:// — en attente du hub…","hubPromoOk":"geosuite-hub détecté","hubPromoRetry":"Toujours non détecté — exécutez le geosuite-hub-install.cmd téléchargé.","hubPromoSteps":"Étapes : 1) Téléchargez geosuite-hub-install.cmd  2) Exécutez-le — installe automatiquement geosuite-hub et le protocole geosuite-hub:// (sans droits administrateur).","hubPromoPrompt":"Si le navigateur affiche une invite d'accès au réseau local, cliquez sur Autoriser — cela débloque geosuite-hub pour ce site.","hubPromoView":"Ouvrir dans GeoSuite viewer","hubPromoViewTitle":"Nécessite l'enregistrement unique de geosuite-hub:// (exécutez geosuite-hub-install.cmd)","closeAria":"Fermer"},
+  "de": {"none":"(Keine)","openInGoogleEarth":"Aktuelle Ansicht in Google Earth öffnen","hubPromoExt":"Ext.","hubPromoNote":"Optionale Komponente: geosuite-hub wurde nicht erkannt. Einmalig installieren, um Vektorebenen zu beschleunigen, das 4MB-Limit aufzuheben und KI-Bridge-Anbieter freizuschalten.","hubPromoBtn":"geosuite-hub-install.cmd herunterladen","hubPromoWait":"Heruntergeladen. Führen Sie geosuite-hub-install.cmd aus — es installiert automatisch geosuite-hub und das geosuite-hub://-Protokoll. Warte auf den Hub…","hubPromoOk":"geosuite-hub erkannt","hubPromoRetry":"Noch nicht erkannt — führen Sie die heruntergeladene geosuite-hub-install.cmd aus.","hubPromoSteps":"Schritte: 1) geosuite-hub-install.cmd herunterladen  2) Ausführen — installiert automatisch geosuite-hub und das geosuite-hub://-Protokoll (keine Adminrechte nötig).","hubPromoPrompt":"Wenn der Browser eine Abfrage zum lokalen Netzwerkzugriff zeigt, klicken Sie auf Zulassen — dadurch wird geosuite-hub für diese Seite freigeschaltet.","hubPromoView":"In GeoSuite viewer öffnen","hubPromoViewTitle":"Erfordert einmalige Registrierung von geosuite-hub:// (geosuite-hub-install.cmd ausführen)","closeAria":"Schließen"},
+  "it": {"none":"(Nessuna)","openInGoogleEarth":"Apri vista corrente in Google Earth","hubPromoExt":"Ext.","hubPromoNote":"Componente opzionale: geosuite-hub non rilevato. Installalo una volta per velocizzare i layer vettoriali, rimuovere il limite di 4MB e sbloccare i provider bridge AI.","hubPromoBtn":"Scarica geosuite-hub-install.cmd","hubPromoWait":"Scaricato. Esegui geosuite-hub-install.cmd — installa automaticamente geosuite-hub e il protocollo geosuite-hub:// — in attesa dell'hub…","hubPromoOk":"geosuite-hub rilevato","hubPromoRetry":"Ancora non rilevato — esegui il geosuite-hub-install.cmd scaricato.","hubPromoSteps":"Passaggi: 1) Scarica geosuite-hub-install.cmd  2) Eseguilo — installa automaticamente geosuite-hub e il protocollo geosuite-hub:// (senza diritti di amministratore).","hubPromoPrompt":"Se il browser mostra la richiesta di accesso alla rete locale, fai clic su Consenti — abilita geosuite-hub per questo sito.","hubPromoView":"Apri in GeoSuite viewer","hubPromoViewTitle":"Richiede la registrazione una tantum di geosuite-hub:// (esegui geosuite-hub-install.cmd)","closeAria":"Chiudi"},
+  "pt": {"none":"(Nenhum)","openInGoogleEarth":"Abrir vista atual no Google Earth","hubPromoExt":"Ext.","hubPromoNote":"Componente opcional: geosuite-hub não detectado. Instale-o uma vez para acelerar as camadas vetoriais, remover o limite de 4MB e desbloquear os provedores de ponte de IA.","hubPromoBtn":"Baixar geosuite-hub-install.cmd","hubPromoWait":"Baixado. Execute geosuite-hub-install.cmd — ele instala automaticamente o geosuite-hub e o protocolo geosuite-hub:// — aguardando o hub…","hubPromoOk":"geosuite-hub detectado","hubPromoRetry":"Ainda não detectado — execute o geosuite-hub-install.cmd baixado.","hubPromoSteps":"Passos: 1) Baixe geosuite-hub-install.cmd  2) Execute-o — instala automaticamente o geosuite-hub e o protocolo geosuite-hub:// (sem direitos de administrador).","hubPromoPrompt":"Se o navegador mostrar o aviso de acesso à rede local, clique em Permitir — isso desbloqueia o geosuite-hub neste site.","hubPromoView":"Abrir no GeoSuite viewer","hubPromoViewTitle":"Requer registro único de geosuite-hub:// (execute geosuite-hub-install.cmd)","closeAria":"Fechar"},
+  "ru": {"none":"(Нет)","openInGoogleEarth":"Открыть текущий вид в Google Earth","hubPromoExt":"Расш.","hubPromoNote":"Дополнительный компонент: geosuite-hub не обнаружен. Установите один раз, чтобы ускорить векторные слои, снять лимит 4 МБ и разблокировать ИИ-мосты.","hubPromoBtn":"Скачать geosuite-hub-install.cmd","hubPromoWait":"Загружено. Запустите geosuite-hub-install.cmd — он автоматически установит geosuite-hub и протокол geosuite-hub:// — ожидание хаба…","hubPromoOk":"geosuite-hub обнаружен","hubPromoRetry":"Пока не обнаружен — запустите скачанный geosuite-hub-install.cmd.","hubPromoSteps":"Шаги: 1) Скачайте geosuite-hub-install.cmd  2) Запустите — автоматически установит geosuite-hub и протокол geosuite-hub:// (права администратора не нужны).","hubPromoPrompt":"Если браузер показывает запрос доступа к локальной сети, нажмите «Разрешить» — это разблокирует geosuite-hub для сайта.","hubPromoView":"Открыть в GeoSuite viewer","hubPromoViewTitle":"Требуется однократная регистрация geosuite-hub:// (запустите geosuite-hub-install.cmd)","closeAria":"Закрыть"},
+  "nl": {"none":"(Geen)","openInGoogleEarth":"Huidige weergave openen in Google Earth","hubPromoExt":"Ext.","hubPromoNote":"Optionele component: geosuite-hub is niet gedetecteerd. Eenmalig installeren versnelt vectorlagen, heft de 4MB-limiet op en ontgrendelt AI-bridgeproviders.","hubPromoBtn":"geosuite-hub-install.cmd downloaden","hubPromoWait":"Gedownload. Voer geosuite-hub-install.cmd uit — het installeert automatisch geosuite-hub en het geosuite-hub://-protocol — wachten op de hub…","hubPromoOk":"geosuite-hub gedetecteerd","hubPromoRetry":"Nog niet gedetecteerd — voer het gedownloade geosuite-hub-install.cmd uit.","hubPromoSteps":"Stappen: 1) Download geosuite-hub-install.cmd  2) Voer het uit — installeert automatisch geosuite-hub en het geosuite-hub://-protocol (geen beheerdersrechten nodig).","hubPromoPrompt":"Als de browser om lokale netwerktoegang vraagt, klik op Toestaan — hiermee wordt geosuite-hub voor deze site ontgrendeld.","hubPromoView":"Openen in GeoSuite viewer","hubPromoViewTitle":"Vereist eenmalige registratie van geosuite-hub:// (voer geosuite-hub-install.cmd uit)","closeAria":"Sluiten"},
+  "pl": {"none":"(Brak)","openInGoogleEarth":"Otwórz bieżący widok w Google Earth","hubPromoExt":"Rozsz.","hubPromoNote":"Opcjonalny komponent: nie wykryto geosuite-hub. Zainstaluj raz, aby przyspieszyć warstwy wektorowe, znieść limit 4MB i odblokować dostawców mostu AI.","hubPromoBtn":"Pobierz geosuite-hub-install.cmd","hubPromoWait":"Pobrano. Uruchom geosuite-hub-install.cmd — automatycznie zainstaluje geosuite-hub i protokół geosuite-hub:// — oczekiwanie na hub…","hubPromoOk":"Wykryto geosuite-hub","hubPromoRetry":"Nadal niewykryty — uruchom pobrany geosuite-hub-install.cmd.","hubPromoSteps":"Kroki: 1) Pobierz geosuite-hub-install.cmd  2) Uruchom go — automatycznie instaluje geosuite-hub i protokół geosuite-hub:// (bez uprawnień administratora).","hubPromoPrompt":"Jeśli przeglądarka wyświetli monit o dostęp do sieci lokalnej, kliknij Zezwól — odblokuje to geosuite-hub dla tej witryny.","hubPromoView":"Otwórz w GeoSuite viewer","hubPromoViewTitle":"Wymaga jednorazowej rejestracji geosuite-hub:// (uruchom geosuite-hub-install.cmd)","closeAria":"Zamknij"},
+  "uk": {"none":"(Немає)","openInGoogleEarth":"Відкрити поточний вигляд у Google Earth","hubPromoExt":"Розш.","hubPromoNote":"Додатковий компонент: geosuite-hub не виявлено. Встановіть один раз, щоб прискорити векторні шари, зняти ліміт 4 МБ і розблокувати ШІ-мости.","hubPromoBtn":"Завантажити geosuite-hub-install.cmd","hubPromoWait":"Завантажено. Запустіть geosuite-hub-install.cmd — він автоматично встановить geosuite-hub і протокол geosuite-hub:// — очікування на хаб…","hubPromoOk":"geosuite-hub виявлено","hubPromoRetry":"Досі не виявлено — запустіть завантажений geosuite-hub-install.cmd.","hubPromoSteps":"Кроки: 1) Завантажте geosuite-hub-install.cmd  2) Запустіть — автоматично встановлює geosuite-hub і протокол geosuite-hub:// (права адміністратора не потрібні).","hubPromoPrompt":"Якщо браузер показує запит на доступ до локальної мережі, натисніть «Дозволити» — це розблокує geosuite-hub для цього сайту.","hubPromoView":"Відкрити в GeoSuite viewer","hubPromoViewTitle":"Потрібна одноразова реєстрація geosuite-hub:// (запустіть geosuite-hub-install.cmd)","closeAria":"Закрити"},
+  "tr": {"none":"(Yok)","openInGoogleEarth":"Geçerli görünümü Google Earth’te aç","hubPromoExt":"Eklenti","hubPromoNote":"İsteğe bağlı bileşen: geosuite-hub algılanmadı. Vektör katmanlarını hızlandırmak, 4MB sınırını kaldırmak ve AI köprü sağlayıcılarını açmak için bir kez kurun.","hubPromoBtn":"geosuite-hub-install.cmd indir","hubPromoWait":"İndirildi. geosuite-hub-install.cmd dosyasını çalıştırın — geosuite-hub ve geosuite-hub:// protokolünü otomatik kurar — hub bekleniyor…","hubPromoOk":"geosuite-hub algılandı","hubPromoRetry":"Hâlâ algılanmadı — indirilen geosuite-hub-install.cmd dosyasını çalıştırın.","hubPromoSteps":"Adımlar: 1) geosuite-hub-install.cmd indirin  2) Çalıştırın — geosuite-hub ve geosuite-hub:// protokolünü otomatik kurar (yönetici hakkı gerekmez).","hubPromoPrompt":"Tarayıcı yerel ağ erişimi istemi gösterirse İzin ver seçeneğine tıklayın — bu site için geosuite-hub etkinleşir.","hubPromoView":"GeoSuite viewer içinde aç","hubPromoViewTitle":"Bir kerelik geosuite-hub:// kaydı gerekir (geosuite-hub-install.cmd çalıştırın)","closeAria":"Kapat"},
+  "ar": {"none":"(لا شيء)","openInGoogleEarth":"فتح العرض الحالي في Google Earth","hubPromoExt":"إضافة","hubPromoNote":"مكوّن اختياري: لم يتم اكتشاف geosuite-hub. ثبّته مرة واحدة لتسريع الطبقات المتجهة وإزالة حد 4MB وفتح موفري جسر الذكاء الاصطناعي.","hubPromoBtn":"تنزيل geosuite-hub-install.cmd","hubPromoWait":"تم التنزيل. شغّل geosuite-hub-install.cmd — يثبّت تلقائيًا geosuite-hub وبروتوكول geosuite-hub:// — بانتظار المركز…","hubPromoOk":"تم اكتشاف geosuite-hub","hubPromoRetry":"لم يُكتشف بعد — شغّل ملف geosuite-hub-install.cmd الذي تم تنزيله.","hubPromoSteps":"الخطوات: 1) نزّل geosuite-hub-install.cmd  2) شغّله — يثبّت تلقائيًا geosuite-hub وبروتوكول geosuite-hub:// (بدون صلاحيات المسؤول).","hubPromoPrompt":"إذا ظهرت مطالبة الوصول إلى الشبكة المحلية في المتصفح، انقر على سماح — فهذا يفعّل geosuite-hub لهذا الموقع.","hubPromoView":"فتح في GeoSuite viewer","hubPromoViewTitle":"يتطلب تسجيل geosuite-hub:// لمرة واحدة (شغّل geosuite-hub-install.cmd)","closeAria":"إغلاق"},
+  "hi": {"none":"(कोई नहीं)","openInGoogleEarth":"Google Earth में वर्तमान दृश्य खोलें","hubPromoExt":"एक्स.","hubPromoNote":"वैकल्पिक घटक: geosuite-hub नहीं मिला। वेक्टर लेयर तेज़ करने, 4MB सीमा हटाने और AI ब्रिज प्रदाता अनलॉक करने के लिए एक बार इंस्टॉल करें।","hubPromoBtn":"geosuite-hub-install.cmd डाउनलोड करें","hubPromoWait":"डाउनलोड हो गया। geosuite-hub-install.cmd चलाएँ — यह geosuite-hub और geosuite-hub:// प्रोटोकॉल ऑटो-इंस्टॉल करेगा — हब की प्रतीक्षा में…","hubPromoOk":"geosuite-hub मिल गया","hubPromoRetry":"अभी नहीं मिला — डाउनलोड की गई geosuite-hub-install.cmd चलाएँ।","hubPromoSteps":"चरण: 1) geosuite-hub-install.cmd डाउनलोड करें  2) चलाएँ — geosuite-hub और geosuite-hub:// प्रोटोकॉल ऑटो-इंस्टॉल होता है (एडमिन अधिकार आवश्यक नहीं)।","hubPromoPrompt":"यदि ब्राउज़र लोकल नेटवर्क एक्सेस का प्रॉम्प्ट दिखाए तो \"अनुमति दें\" पर क्लिक करें — इससे इस साइट पर geosuite-hub सक्षम होगा।","hubPromoView":"GeoSuite viewer में खोलें","hubPromoViewTitle":"एक-बार geosuite-hub:// पंजीकरण आवश्यक (geosuite-hub-install.cmd चलाएँ)","closeAria":"बंद करें"},
+  "id": {"none":"(Tidak ada)","openInGoogleEarth":"Buka tampilan saat ini di Google Earth","hubPromoExt":"Eks.","hubPromoNote":"Komponen opsional: geosuite-hub tidak terdeteksi. Instal sekali untuk mempercepat layer vektor, menghapus batas 4MB, dan membuka penyedia bridge AI.","hubPromoBtn":"Unduh geosuite-hub-install.cmd","hubPromoWait":"Terunduh. Jalankan geosuite-hub-install.cmd — otomatis menginstal geosuite-hub dan protokol geosuite-hub:// — menunggu hub…","hubPromoOk":"geosuite-hub terdeteksi","hubPromoRetry":"Belum terdeteksi — jalankan geosuite-hub-install.cmd yang diunduh.","hubPromoSteps":"Langkah: 1) Unduh geosuite-hub-install.cmd  2) Jalankan — otomatis menginstal geosuite-hub dan protokol geosuite-hub:// (tanpa hak admin).","hubPromoPrompt":"Jika browser menampilkan prompt akses jaringan lokal, klik Izinkan — ini mengaktifkan geosuite-hub untuk situs ini.","hubPromoView":"Buka di GeoSuite viewer","hubPromoViewTitle":"Memerlukan pendaftaran geosuite-hub:// satu kali (jalankan geosuite-hub-install.cmd)","closeAria":"Tutup"},
+  "th": {"none":"(ไม่มี)","openInGoogleEarth":"เปิดมุมมองปัจจุบันใน Google Earth","hubPromoExt":"ขยาย","hubPromoNote":"ส่วนประกอบเสริม: ไม่พบ geosuite-hub ติดตั้งครั้งเดียวเพื่อเร่งเลเยอร์เวกเตอร์ ยกเลิกขีดจำกัด 4MB และปลดล็อกผู้ให้บริการบริดจ์ AI","hubPromoBtn":"ดาวน์โหลด geosuite-hub-install.cmd","hubPromoWait":"ดาวน์โหลดแล้ว รัน geosuite-hub-install.cmd — ติดตั้ง geosuite-hub และโปรโตคอล geosuite-hub:// อัตโนมัติ — กำลังรอฮับ…","hubPromoOk":"พบ geosuite-hub แล้ว","hubPromoRetry":"ยังไม่พบ — รัน geosuite-hub-install.cmd ที่ดาวน์โหลดมา","hubPromoSteps":"ขั้นตอน: 1) ดาวน์โหลด geosuite-hub-install.cmd  2) รัน — ติดตั้ง geosuite-hub และโปรโตคอล geosuite-hub:// อัตโนมัติ (ไม่ต้องใช้สิทธิ์ผู้ดูแล)","hubPromoPrompt":"หากเบราว์เซอร์แสดงข้อความขอเข้าถึงเครือข่ายภายใน ให้คลิก อนุญาต — จะเปิดใช้งาน geosuite-hub สำหรับไซต์นี้","hubPromoView":"เปิดใน GeoSuite viewer","hubPromoViewTitle":"ต้องลงทะเบียน geosuite-hub:// ครั้งเดียว (รัน geosuite-hub-install.cmd)","closeAria":"ปิด"},
+  "vi": {"none":"(Không có)","openInGoogleEarth":"Mở chế độ xem hiện tại trong Google Earth","hubPromoExt":"Mở rộng","hubPromoNote":"Thành phần tùy chọn: không phát hiện geosuite-hub. Cài một lần để tăng tốc lớp vector, bỏ giới hạn 4MB và mở khóa nhà cung cấp cầu nối AI.","hubPromoBtn":"Tải geosuite-hub-install.cmd","hubPromoWait":"Đã tải. Chạy geosuite-hub-install.cmd — tự động cài đặt geosuite-hub và giao thức geosuite-hub:// — đang chờ hub…","hubPromoOk":"Đã phát hiện geosuite-hub","hubPromoRetry":"Vẫn chưa phát hiện — chạy geosuite-hub-install.cmd đã tải.","hubPromoSteps":"Các bước: 1) Tải geosuite-hub-install.cmd  2) Chạy — tự động cài đặt geosuite-hub và giao thức geosuite-hub:// (không cần quyền quản trị).","hubPromoPrompt":"Nếu trình duyệt hiển thị lời nhắc truy cập mạng cục bộ, hãy nhấp Cho phép — điều này mở khóa geosuite-hub cho trang này.","hubPromoView":"Mở trong GeoSuite viewer","hubPromoViewTitle":"Yêu cầu đăng ký geosuite-hub:// một lần (chạy geosuite-hub-install.cmd)","closeAria":"Đóng"}
+};
+
 const html: string = `
   <style>
     html, body { margin: 0; padding: 0; width: 300px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     .basemap-wrap { background-color: rgba(255, 255, 255, 0.3); padding: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); backdrop-filter: blur(4px); width: 291px; margin-left: 9px; box-sizing: border-box; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .basemap-select { flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; box-sizing: border-box; }
+    .basemap-select { flex: 1; min-width: 0; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 0.9em; background: #fff; box-sizing: border-box; }
     .basemap-globe { flex: 0 0 auto; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 1.1em; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; user-select: none; }
     .basemap-globe:hover { background: #f0f4fb; }
     .basemap-attribution { font-size: 0.7em; color: #333; margin-top: 4px; min-height: 1.2em; overflow-wrap: break-word; word-break: break-word; flex-basis: 100%; }
+    .basemap-ext { flex: 0 0 auto; width: 28px; height: 28px; display: none; align-items: center; justify-content: center; font-size: 0.62em; font-weight: 700; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; user-select: none; }
+    .basemap-ext:hover { background: #f0f4fb; }
+    .basemap-ext.hub-attn { border-color: #d97706; color: #b45309; background: #fdf6e3; }
+    .hub-dl-btn { border: 1px solid #b48a3c; border-radius: 3px; background: #fff; padding: 3px 8px; font-size: 0.78em; color: #5a4a1a; cursor: pointer; }
   </style>
   <div class="basemap-wrap">
+    <div id="hub-ext-btn" class="basemap-ext" title="Extension component" data-i18n="hubPromoExt" data-i18n-title="hubPromoExt">Ext</div>
     <div id="basemap-globe" class="basemap-globe" title="Open current view in Google Earth" data-i18n-title="openInGoogleEarth" role="button" aria-label="Open current view in Google Earth" data-i18n-aria="openInGoogleEarth">🌐</div>
     <select id="basemap-select" class="basemap-select">
       <option value="" data-i18n="none">(None)</option>
     </select>
     <div id="basemap-attribution" class="basemap-attribution"></div>
+    <div id="hub-promo" style="display:none;flex-basis:100%;margin-top:2px;padding:6px 8px;border:1px solid #d9c58a;border-radius:4px;background:#fdf6e3;box-sizing:border-box;">
+      <div style="display:flex;gap:6px;align-items:flex-start;">
+        <div style="font-size:0.78em;line-height:1.35;color:#5a4a1a;flex:1;" data-i18n="hubPromoNote">Optional component: geosuite-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.</div>
+        <button id="hub-promo-dismiss" type="button" title="Dismiss" aria-label="Dismiss" data-i18n-title="closeAria" data-i18n-aria="closeAria" style="flex:0 0 auto;border:0;background:none;color:#5a4a1a;font-size:1em;line-height:1;cursor:pointer;padding:0 2px;">&minus;</button>
+      </div>
+      <div style="margin-top:5px;font-size:0.78em;line-height:1.45;color:#5a4a1a;" data-i18n="hubPromoSteps">Steps: 1) Download geosuite-hub-install.cmd  2) Run it — auto-installs geosuite-hub + the geosuite-hub:// protocol (no admin needed).</div>
+      <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+        <button id="hub-promo-dl" class="hub-dl-btn" data-i18n="hubPromoBtn">Download geosuite-hub-install.cmd</button>
+        <a id="hub-view-open" href="geosuite-hub://open" style="font-size:0.78em;color:#3367d6;white-space:nowrap;" data-i18n="hubPromoView" data-i18n-title="hubPromoViewTitle">Open in GeoSuite viewer</a>
+        <span id="hub-promo-status" style="font-size:0.78em;color:#666;">&nbsp;</span>
+      </div>
+    </div>
   </div>
   <script>
+    window._GEO_I18N = ${JSON.stringify(GEO_I18N).replace(/</g, '\\u003c')};
     (function(){
       // --- i18n: English-base dictionary (missing keys fall back to en) ---
-      var GEO_I18N = {
-        en: { none:'(None)', openInGoogleEarth:'Open current view in Google Earth' },
-        ja: { none:'(なし)', openInGoogleEarth:'Google Earth で現在の表示を開く' },
-        'zh-CN': { none:'（无）', openInGoogleEarth:'在 Google 地球中打开当前视图' },
-        'zh-TW': { none:'（無）', openInGoogleEarth:'在 Google 地球中開啟目前檢視' },
-        ko: { none:'(없음)', openInGoogleEarth:'Google 어스에서 현재 뷰 열기' },
-        es: { none:'(Ninguno)', openInGoogleEarth:'Abrir vista actual en Google Earth' },
-        fr: { none:'(Aucun)', openInGoogleEarth:'Ouvrir la vue actuelle dans Google Earth' },
-        de: { none:'(Keine)', openInGoogleEarth:'Aktuelle Ansicht in Google Earth öffnen' },
-        it: { none:'(Nessuna)', openInGoogleEarth:'Apri vista corrente in Google Earth' },
-        pt: { none:'(Nenhum)', openInGoogleEarth:'Abrir vista atual no Google Earth' },
-        ru: { none:'(Нет)', openInGoogleEarth:'Открыть текущий вид в Google Earth' },
-        nl: { none:'(Geen)', openInGoogleEarth:'Huidige weergave openen in Google Earth' },
-        pl: { none:'(Brak)', openInGoogleEarth:'Otwórz bieżący widok w Google Earth' },
-        uk: { none:'(Немає)', openInGoogleEarth:'Відкрити поточний вигляд у Google Earth' },
-        tr: { none:'(Yok)', openInGoogleEarth:'Geçerli görünümü Google Earth’te aç' },
-        ar: { none:'(لا شيء)', openInGoogleEarth:'فتح العرض الحالي في Google Earth' },
-        hi: { none:'(कोई नहीं)', openInGoogleEarth:'Google Earth में वर्तमान दृश्य खोलें' },
-        id: { none:'(Tidak ada)', openInGoogleEarth:'Buka tampilan saat ini di Google Earth' },
-        th: { none:'(ไม่มี)', openInGoogleEarth:'เปิดมุมมองปัจจุบันใน Google Earth' },
-        vi: { none:'(Không có)', openInGoogleEarth:'Mở chế độ xem hiện tại trong Google Earth' }
-      };
+      var GEO_I18N = window._GEO_I18N || {};
       var GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
       var GEO_LANG = 'en';
       function resolveLang() {
@@ -272,6 +292,129 @@ const html: string = `
         } catch (e) {}
       }
       try { applyI18n(); } catch (e) {}
+
+      // --- geosuite-hub Ext promo ---
+      // Lives here (not in the layer panel) because this iframe is long-lived —
+      // the layer panel iframe is recreated on every ui.show, so the promo was
+      // unreachable while layers were loading. Config arrives via the 'hubCfg'
+      // message (forwarded by this extension from the layer panel); unlock and
+      // dismiss posts are relayed back through postToParent -> postToLayerPanel.
+      var _hubCfg = null;
+      var _hubWired = false;
+      var _hubPoll = null;
+      var _hubUnlockPoll = null;
+      var _hubUnlockTried = false;
+      function wireHubPromo() {
+        try {
+          var cfg = _hubCfg;
+          var extBtn = document.getElementById('hub-ext-btn');
+          var row = document.getElementById('hub-promo');
+          var status = document.getElementById('hub-promo-status');
+          if (!cfg || !cfg.endpoint) { if (extBtn) extBtn.style.display = 'none'; return; }
+          if (extBtn) extBtn.style.display = 'flex';
+          var ep = String(cfg.endpoint).replace(/[/]+$/, '');
+          var scene = cfg.scene || document.referrer ||
+            (location.ancestorOrigins && location.ancestorOrigins[0]) || '';
+          var viewA = document.getElementById('hub-view-open');
+          if (viewA) viewA.href = 'geosuite-hub://open' + (scene ? '?url=' + encodeURIComponent(scene) : '');
+          var setStatus = function(key) { if (status) status.textContent = key ? t(key) : ''; };
+          var setAttn = function(on) {
+            var attn = !!on && !cfg.dismissed;
+            if (extBtn) { try { extBtn.classList.toggle('hub-attn', attn); } catch (e) {} }
+          };
+          var probe = function(ms) {
+            var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+            var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, ms || 3000);
+            var opt = { cache: 'no-store' };
+            if (ctl) opt.signal = ctl.signal;
+            return fetch(ep + '/health', opt).then(function(r) {
+              clearTimeout(timer);
+              if (!r || !r.ok) throw new Error('HTTP ' + (r && r.status));
+              return r.json();
+            }).then(function(d) { if (!d || !d.hub) throw new Error('not bridge-hub'); return true; });
+          };
+          var unlockDrop = function() { try { postToParent({ action: 'hubUnlockRemove' }); } catch (e) {} };
+          var tryUnlock = function() {
+            if (_hubUnlockTried) return;
+            _hubUnlockTried = true;
+            try { postToParent({ action: 'hubUnlockAdd' }); } catch (e) {}
+            setStatus('hubPromoPrompt');
+            var deadline = Date.now() + 120000;
+            _hubUnlockPoll = setInterval(function() {
+              probe(3000).then(function() {
+                clearInterval(_hubUnlockPoll); _hubUnlockPoll = null;
+                unlockDrop(); setAttn(false); setStatus('hubPromoOk');
+              }).catch(function() {
+                if (Date.now() > deadline) {
+                  clearInterval(_hubUnlockPoll); _hubUnlockPoll = null;
+                  unlockDrop(); setStatus('hubPromoRetry');
+                }
+              });
+            }, 2500);
+          };
+          var check = function(showOk) {
+            return probe(3000).then(function() {
+              unlockDrop(); setAttn(false);
+              if (showOk) setStatus('hubPromoOk');
+            }).catch(function() {
+              setAttn(true);
+              if (showOk) { setStatus(''); tryUnlock(); }
+            });
+          };
+          check(false);
+          if (_hubWired) return;
+          _hubWired = true;
+          if (extBtn && row) extBtn.addEventListener('click', function() {
+            var opening = (row.style.display === 'none');
+            row.style.display = opening ? '' : 'none';
+            if (opening) { setStatus(''); check(true); }
+          });
+          var dism = document.getElementById('hub-promo-dismiss');
+          if (dism) dism.addEventListener('click', function() {
+            if (_hubPoll) { try { clearInterval(_hubPoll); } catch (e) {} _hubPoll = null; }
+            if (_hubUnlockPoll) { try { clearInterval(_hubUnlockPoll); } catch (e) {} _hubUnlockPoll = null; }
+            unlockDrop();
+            if (row) row.style.display = 'none';
+            cfg.dismissed = true;
+            setAttn(false);
+            try { postToParent({ action: 'hubPromoDismiss' }); } catch (e) {}
+          });
+          var dl = document.getElementById('hub-promo-dl');
+          if (dl) dl.addEventListener('click', function() {
+            try {
+              var a = document.createElement('a');
+              var cmd = String(cfg.installer || '');
+              if (cmd) {
+                a.href = URL.createObjectURL(new Blob([cmd], { type: 'application/octet-stream' }));
+                a.download = 'geosuite-hub-install.cmd';
+              } else {
+                a.href = String(cfg.download || '');
+                a.download = 'geosuite-hub-install.cmd';
+              }
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            } catch (e) {}
+            setStatus('hubPromoWait');
+            if (_hubPoll) return;
+            _hubUnlockTried = true;
+            try { postToParent({ action: 'hubUnlockAdd' }); } catch (e) {}
+            var deadline = Date.now() + 180000;
+            _hubPoll = setInterval(function() {
+              probe(3000).then(function() {
+                clearInterval(_hubPoll); _hubPoll = null;
+                unlockDrop(); setStatus('hubPromoOk'); setAttn(false);
+                setTimeout(function() { if (row) row.style.display = 'none'; }, 4000);
+              }).catch(function() {
+                if (Date.now() > deadline) {
+                  clearInterval(_hubPoll); _hubPoll = null;
+                  unlockDrop(); setStatus('hubPromoRetry');
+                }
+              });
+            }, 2000);
+          });
+        } catch (e) {}
+      }
 
       const select = document.getElementById('basemap-select');
       const attrEl = document.getElementById('basemap-attribution');
@@ -456,6 +599,10 @@ const html: string = `
           if (!msg || !msg.action) return;
           if (msg.action === 'basemaps') {
             renderOptions(msg.items, msg.selectedUrl);
+          } else if (msg.action === 'hubCfg') {
+            // geosuite-hub promo config forwarded from the layer panel.
+            // Re-wire on each push so endpoint/scene/dismissed updates apply.
+            try { _hubCfg = msg.cfg || null; wireHubPromo(); } catch (e) {}
           } else if (msg.action === 'lang') {
             try {
               window._GEO_LANG_CONF = String(msg.lang || 'auto');
@@ -1160,6 +1307,12 @@ try {
           _uiIframeReady = true;
           while (_uiEarlyQueue.length) { try { postToUI(_uiEarlyQueue.shift()); } catch (e) {} }
         }
+        if (msg.action === 'hubUnlockAdd' || msg.action === 'hubUnlockRemove' || msg.action === 'hubPromoDismiss') {
+          // Promo actions from our iframe — relay to the layer panel, which
+          // owns the LNA probe layer and the session dismiss flag.
+          try { postToLayerPanel({ action: msg.action }); } catch (e) {}
+          return;
+        }
         if (msg.action === 'ddbWarmed') {
           try { sendLog('[ddbWarm]', msg.ok ? 'ready' : ('failed: ' + (msg.error || 'unknown'))); } catch (e) {}
           return;
@@ -1208,6 +1361,10 @@ try {
         if (!data || !data.action) return;
         if (data.action === 'baseList') {
           applyBaseList(data.items);
+        } else if (data.action === 'hubCfg') {
+          // geosuite-hub promo config pushed by the layer panel — the promo UI
+          // lives in this widget because its iframe persists across re-renders.
+          try { postToUIWhenReady({ action: 'hubCfg', cfg: data.cfg || null }); } catch (e) {}
         } else if (data.action === 'lang') {
           // Language override forwarded from the layer panel (inspector "lang:" line)
           try { postToUI({ action: 'lang', lang: data.lang || 'auto' }); } catch (e) {}

@@ -1795,24 +1795,15 @@ function getUI() {
       <div style="font-weight:600;" data-i18n="layersTitle">Layers</div>
       <div style="flex:0 0 auto; display:flex; gap:8px; align-items:center;">
         <a href="https://re-earth-geo-suite.vercel.app/#system-layer-note" target="_blank" rel="noopener noreferrer" style="font-size:0.85em;color:#000;text-decoration:none;border:1px solid #ccc;padding:2px 6px;border-radius:4px;" data-i18n="note">Note</a>
-        <button class="restore-all-btn" id="hub-ext-btn" title="Extension component" data-i18n="hubPromoExt" data-i18n-title="hubPromoExt">Ext</button>
+        <!-- Ext button moved to the basemap widget (persistent iframe): the
+             promo cannot be operated while this iframe is being recreated
+             during layer loads. The Manage > Ext pane below still shares the
+             same wiring for the settings-side entry. -->
         <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers" data-i18n="refresh" data-i18n-title="refreshTitle">Refresh</button>
       </div>
     </div>
 
-    <!-- bridge-hub promo (extension component): toggled by the Ext button -->
-    <div id="hub-promo" style="display:none;margin:0 0 8px;padding:6px 8px;border:1px solid #d9c58a;border-radius:4px;background:#fdf6e3;">
-      <div style="display:flex;gap:6px;align-items:flex-start;">
-        <div style="font-size:0.78em;line-height:1.35;color:#5a4a1a;flex:1;" data-i18n="hubPromoNote">Optional component: geosuite-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.</div>
-        <button id="hub-promo-dismiss" type="button" title="Dismiss" aria-label="Dismiss" data-i18n-title="closeAria" data-i18n-aria="closeAria" style="flex:0 0 auto;border:0;background:none;color:#5a4a1a;font-size:1em;line-height:1;cursor:pointer;padding:0 2px;">&minus;</button>
-      </div>
-      <div style="margin-top:5px;font-size:0.78em;line-height:1.45;color:#5a4a1a;" data-i18n="hubPromoSteps">Steps: 1) Download the zip  2) Extract it  3) Run geosuite-hub.exe — it auto-installs &amp; starts the hub.</div>
-      <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
-        <button id="hub-promo-dl" class="btn-primary p-6" data-i18n="hubPromoBtn">Download geosuite-hub.zip</button>
-        <a id="hub-view-open" href="geosuite-hub://open" style="font-size:0.78em;color:#3367d6;white-space:nowrap;" data-i18n="hubPromoView" data-i18n-title="hubPromoViewTitle">Open in GeoSuite viewer</a>
-        <span id="hub-promo-status" style="font-size:0.78em;color:#666;">&nbsp;</span>
-      </div>
-    </div>
+    <!-- bridge-hub promo moved to the basemap widget (persistent iframe). -->
 
     <ul class="layers-list">
       ${combinedLayerItems}${loadingLayerItems}${failedLayerItems}
@@ -11077,6 +11068,7 @@ reearth.extension.on("message", (msg) => {
           // promo row − button: keep it hidden for the rest of the session
           // (re-injected via _hubInstallCfg.dismissed on every re-render)
           _hubPromoDismissed = true;
+          try { postHubCfgToBasemapWidget(); } catch (e) {}
       }
       else if (msg.action === 'hubUnlockAdd' || msg.action === 'hubUnlockRemove') {
           // UI iframe asks the host to fetch the hub probe URL (see
@@ -11319,11 +11311,26 @@ try {
           try { handleVecResult(data); } catch (e) {}
           return;
         }
+        if (data && data.action === 'hubPromoDismiss') {
+          // Dismiss relayed from the basemap-widget iframe (the promo lives
+          // there now) — same handling as the UI-message path.
+          _hubPromoDismissed = true;
+          try { postHubCfgToBasemapWidget(); } catch (e) {}
+          return;
+        }
+        if (data && (data.action === 'hubUnlockAdd' || data.action === 'hubUnlockRemove')) {
+          // LNA unlock probe relayed from the basemap-widget iframe.
+          try { hubProbeLayer(data.action === 'hubUnlockAdd'); } catch (e) {}
+          return;
+        }
         if (data && data.action === 'requestBaseList') {
           const targetId = msg.sender || null;
           if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
             // Share the current UI language override with the basemap widget
             try { reearth.extension.postMessage(targetId, { action: 'lang', lang: _inspectorLang || 'auto' }); } catch (e) {}
+            // ...and the geosuite-hub promo config (basemap iframe hosts the
+            // Ext button + promo since it persists across panel re-renders).
+            try { postHubCfgToBasemapWidget(); } catch (e) {}
             // If _parsedBaseTiles is empty, re-parse only base: lines from the inspector text
             // before responding so the basemap selector can recover from load order races.
             let baseEntries = _parsedBaseTiles || [];
@@ -11551,6 +11558,10 @@ try {
     processInspectorText(textToProcess);
   }
 } catch(e) {}
+// Push the geosuite-hub promo config to the basemap widget (the Ext button +
+// promo live in its persistent iframe). The basemap side also pulls via
+// requestBaseList, covering the opposite load order.
+try { postHubCfgToBasemapWidget(); } catch(e) {}
 
 // Rebuild inspectorText from non-cam lines + current _cameraPresets
 function rebuildInspectorText() {
@@ -11603,6 +11614,32 @@ function postLangToBasemapWidget() {
     _basemapWidgetId = targetId;
     if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
       reearth.extension.postMessage(targetId, { action: 'lang', lang: _inspectorLang || 'auto' });
+    }
+  } catch (e) {}
+}
+
+// Push the geosuite-hub promo config to the basemap widget, whose persistent
+// iframe hosts the Ext button + promo UI (moved out of this panel because the
+// layer-panel iframe is recreated on every ui.show — unreachable during layer
+// loads). Re-sent on requestBaseList, dismiss, and inspector-driven changes.
+function postHubCfgToBasemapWidget() {
+  try {
+    const targetId = _basemapWidgetId || findBasemapWidgetId();
+    if (!targetId) return;
+    _basemapWidgetId = targetId;
+    if (reearth && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+      let ep = '';
+      try { ep = hubEndpoint() || ''; } catch (e) {}
+      reearth.extension.postMessage(targetId, {
+        action: 'hubCfg',
+        cfg: {
+          endpoint: ep,
+          download: HUB_DOWNLOAD_URL,
+          installer: GSHUB_INSTALL_CMD,
+          dismissed: !!_hubPromoDismissed,
+          scene: _inspectorSceneUrl || ''
+        }
+      });
     }
   } catch (e) {}
 }

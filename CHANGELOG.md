@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.6
+- 変更: geosuite-hub の Ext ボタン＋プロモ行をレイヤーパネルから **basemap ウィジェットへ移設** — レイヤーパネルの iframe は `ui.show` のたび破棄・再生成されるため、レイヤー読込中は Ext ボタン／プロモが操作不能だった。basemap ウィジェットは `ui.show` を初期化時に一度だけ呼ぶ永続 iframe のため常時操作可能（DuckDB ホストと同じ理由）。パネル拡張 ctx が `hubCfg`（endpoint/installer/dismissed/scene）を拡張間メッセージで basemap 拡張 ctx へ push（requestBaseList 応答・dismiss・起動時）し、basemap iframe が `/health` プローブ・attn 強調・LNA アンロック・インストーラダウンロード・viewer リンクを受け持つ。`hubUnlockAdd`/`hubUnlockRemove`/`hubPromoDismiss` は basemap 拡張 ctx → パネル拡張 ctx へ中継（プローブレイヤ追加とセッション dismiss フラグはパネル側が継続して所有）。レイヤーパネルの Manage > Ext ペインは設定側入口として残置。basemap 側 GEO_I18N も panel と同じ `window._GEO_I18N` JSON 埋め込み方式に統一し、hubPromo*・closeAria キーを全20言語へ追加
+
 ## v22.4.5
 - 新規: 「GeoSuite viewer で開く」リンクのシーン URL 自動検出 — `sceneUrl:` 未設定でも、sandboxed srcdoc iframe から読める `document.referrer`（親ページの完全 URL）→ `location.ancestorOrigins[0]`（トップオリジン）の順でフォールバックし、`geosuite-hub://open?url=<scene>` を構成する。公開シーン（`*.visualizer.reearth.io`）では referrer/ancestorOrigins がそのままシーン URL になるため、設定なしでそのままビューア起動できる（実測: workbench の plugin iframe で `referrer=http://localhost:8787/` を確認）
 - 変更: 8515 ビューアシェルに「最後に開いたシーン」の記憶と既定フォールバックを追加 — `serve-viewer.ps1` に `GET /scene`（記憶済みシーン URL を text/plain で返す）と `GET /scene?set=<enc>`（`scene.txt` へ保存）のルートを追加。`viewer.html` は `?url=` 付きで開いた際に同 URL を `/scene?set=` へ記録し、`?url` 無しアクセス時は記憶済みシーンを自動で iframe 表示するため、`geosuite-hub://open` の裸起動・`http://127.0.0.1:8515/` への直接アクセスの両方で最後のシーンが開く。従来の案内ページは `?home` で表示可能（記憶済みシーンがある場合は「前回のシーン」リンクも提示）し、シーン URL の直入力欄も追加。埋め込み base64 は `geosuite-hub-install.cmd`・`GSHUB_INSTALL_CMD`・`docs/geosuite-hub.html` の3箇所を同期更新

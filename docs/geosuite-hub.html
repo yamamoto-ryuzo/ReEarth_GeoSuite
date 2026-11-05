@@ -20,11 +20,11 @@
   <div class="content">
 <blockquote><p><strong>公開 Visualizer シーンで利用するには viewer（WebView2）経路が実質必須です。</strong> GeoSuite は専用プロトコル <code>geosuite-hub://</code> を独自実装しており、<code>workbench/geosuite-hub/install.js</code> で HKCU 登録すれば geosuite-hub.exe の <code>--view</code>（WebView2）を OS 経由で起動できます — KASUGAI Canvas は不要です。geosuite-hub は <strong>GeoSuite 専用インスタンス（127.0.0.1:8514）</strong>として動作し、KASUGAI 側の共有 bridge-hub（8511）とは独立です。<code>--view</code> が開く画面はハブの状態ページではなく、別プロセスで常駐する <strong>GeoSuite viewer シェル（127.0.0.1:8515）</strong>です（後述）。</p></blockquote>
 <p>geosuite-hub（GeoSuite 専用ハブ geosuite-hub.exe と <code>geosuite-hub://</code> プロトコルを一括導入する統一インストーラ）の手順と、導入されるハブ（127.0.0.1:8514）に対する Chrome Local Network Access (LNA) による接続制約および自動アンロックの仕組みをまとめたページです。AI プロバイダ経由の使い方は <a href="./bridge-hub.html">bridge-hub.html</a>、ベクターデータの外部化仕様は <a href="./vector-externalization.html">vector-externalization.html</a> を参照してください。</p>
-<h2>導入方法（Ext ボタン／管理パネル Ext タブ・v22.3.0〜）</h2>
+<h2>導入方法（Ext ボタン・v22.4.6〜 basemap ウィジェット／管理パネル Ext タブ）</h2>
 <p>ハブが未検出の環境ではプラグイン内に導入導線が表示されます。導入は <code>geosuite-hub-install.cmd</code> 1本に統一されています — 実行すると hub バイナリの取得・<code>geosuite-hub.exe</code> としての配置（<code>%LOCALAPPDATA%\geosuite-hub\</code>・ポート 8514・ログイン時自動起動登録）・ビューアシェル（<code>serve-viewer.ps1</code>＋<code>viewer.html</code>・ポート 8515）の配置と <code>geosuite-hub://</code> プロトコル登録を一括で行います。</p>
 <pre class="mermaid">
 flowchart TB
-  START["ハブ未検出<br>レイヤーパネルの Ext ボタンが<br>アンバー強調"] --> EXT["Ext ボタン押下<br>→ プロモ行を開く"]
+  START["ハブ未検出<br>basemap ウィジェットの Ext ボタンが<br>アンバー強調"] --> EXT["Ext ボタン押下<br>→ プロモ行を開く"]
   EXT --> DL["「geosuite-hub-install.cmd」<br>をダウンロード（blob 生成）"]
   DL --> EXE["cmd を実行"]
   EXE --> INST["一括処理:<br>① hub バイナリ取得（既存 bridge-hub 複製<br>or CDN から curl+tar）<br>→ geosuite-hub.exe 配置＋自動起動登録（8514）<br>② ビューアシェル配置（8515・serve-viewer.ps1）<br>③ geosuite-hub:// プロトコル登録（HKCU）"]
@@ -47,9 +47,9 @@ flowchart TB
   linkStyle 5,6 stroke:#ef6c00,stroke-width:2px
 </pre>
 <ul>
-<li><strong>レイヤーパネルの Ext ボタン</strong>（レイヤー見出し「Note」の右）: パネル iframe は起動ごとに、エンドポイント解決結果（<code>vectorHub:</code> &gt; <code>aiHub:</code> &gt; <code>127.0.0.1:8514</code>）へ <code>GET /health</code> を1回プローブし、<code>hub:true</code> が返らない場合ボタンをアンバー強調します（未導入の訴求）。押下で直下のプロモ行を開閉します</li>
+<li><strong>basemap ウィジェットの Ext ボタン</strong>（v22.4.6〜・セレクタ右の小ボタン）: basemap iframe は永続するため、レイヤー読込中でも常時操作できます（レイヤーパネル iframe は ui.show のたび再生成され操作不能になるため移設）。<code>hubCfg</code> メッセージでパネル拡張 ctx から設定を受け取り、エンドポイント解決結果（<code>vectorHub:</code> &gt; <code>aiHub:</code> &gt; <code>127.0.0.1:8514</code>）へ <code>GET /health</code> をプローブして、<code>hub:true</code> が返らない場合ボタンをアンバー強調します（未導入の訴求）。押下で直下のプロモ行を開閉します</li>
 <li><strong>「geosuite-hub-install.cmd をダウンロード」ボタン</strong>: iframe 内で統一インストーラ <code>.cmd</code> を生成し <code>&lt;a download&gt;</code> で保存します。実行1回で geosuite-hub.exe の配置（既存 bridge-hub.exe を複製・未導入なら CDN から curl+tar 取得）と 8514 常駐の自動起動登録、ビューアシェル（8515）の配置、<code>geosuite-hub://</code> プロトコル登録を行います。押下後は起動待ち表示へ切替り、<code>/health</code> を2秒間隔・最長3分ポーリングし、検出次第「connected」表示 → 4秒後に行を自動で閉じます（期限超過時はリトライ案内を表示）</li>
-<li><strong>プロモ行右端の − ボタン</strong>: セッション中はプロモ行とボタン/サブタブの強調を非表示にします（dismiss 状態は <code>_hubInstallCfg.dismissed</code> として注入されるため iframe 再生成を跨いでも消えたまま）</li>
+<li><strong>プロモ行右端の − ボタン</strong>: セッション中はプロモ行とボタン/サブタブの強調を非表示にします（dismiss は basemap iframe → basemap 拡張 ctx → パネル拡張 ctx の <code>hubPromoDismiss</code> で中継され、セッション中 <code>_hubPromoDismissed</code> として保持されます）</li>
 <li><strong>プロモ行の「GeoSuite viewer で開く」リンク</strong>: <code>geosuite-hub://open</code> カスタムプロトコル（GeoSuite 専用・<code>workbench/geosuite-hub/install.js</code> が HKCU へ自己登録）経由で geosuite-hub.exe の <code>--view</code>（LNA 無効化済みの専用 WebView2 ウィンドウ）を OS レベルで起動します。開く先は設定テキストの <code>sceneUrl: &lt;URL&gt;</code> 行で指定します（sandboxed iframe は親ページの URL を読めないため、公開シーン URL はホスト側が明示する必要があります）。<code>--view</code> が開くのはハブの状態ページではなく <strong>8515 のビューアシェル <code>http://127.0.0.1:8515/?url=…</code></strong> で、ページ内 iframe がシーンを再生します（v22.4.3〜・後述）。<code>sceneUrl:</code> 未設定でも <code>document.referrer</code>（sandboxed srcdoc iframe から読める親ページ URL）→ <code>location.ancestorOrigins[0]</code>（トップオリジン）の順でシーン URL を自動検出します（v22.4.5〜）。これらも空ならビューアが記憶した最後のシーンを開き、無ければランディングページ（URL 入力欄・8514 状態ページへのリンク付き）を開きます。公開シーンでは Service Worker 仲介により LNA 許可が成立しないため、この OS 経由起動がハブ利用の迂回路になります（<a href="#lna">後述の LNA 節</a>参照）</li>
 <li><strong>管理パネル（⚙️）の Ext サブタブ</strong>（v22.3.1〜）: <code>bridge-hub: ON/OFF</code> の状態行＋疎通確認ボタンと、レイヤーパネルと同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインに移動済み</strong>です。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
 <li><strong><code>vectorHub: off</code> 指定時</strong>: Ext ボタンと Ext ペイン内の bridge-hub ブロックは非表示になります（AI Bridge 設定は残ります）</li>
