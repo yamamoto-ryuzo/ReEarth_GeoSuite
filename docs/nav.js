@@ -23,22 +23,25 @@
     {
       label: '仕様',
       items: [
-        { href: 'layer-grouping-specification.html', text: '2. レイヤ階層化・排他グループ機能' },
-        { href: 'basemap-initial-selection.html', text: '3. ベースマップ初期選択' },
-        { href: 'payload-limits.html', text: '4. ペイロード制限（QuickJS OOM 対策）' }
+        { href: 'sandbox.html', text: '2. サンドボックス構成・容量目安' },
+        { href: 'layer-grouping-specification.html', text: '3. レイヤ階層化・排他グループ機能' },
+        { href: 'basemap-initial-selection.html', text: '4. ベースマップ初期選択' },
+        { href: 'payload-limits.html', text: '5. ペイロード制限（QuickJS OOM 対策）' }
       ]
     },
     {
-      label: '連携・実装',
+      label: '外部ブリッジ',
       items: [
-        { href: 'external-bridge.html', text: '5. 外部ブリッジ（実装構成）' },
-        { href: 'bridge-hub.html', text: '6. AIチャット → ブリッジハブ' }
+        { href: 'external-bridge.html', text: '6. 外部ブリッジ（実装構成）' },
+        { href: 'bridge-hub-install.html', text: '7. bridge-hub 導入（Ext〜自己インストール）' },
+        { href: 'bridge-hub.html', text: '8. AIチャット → ブリッジハブ' },
+        { href: 'vector-externalization.html', text: '9. ベクター外部化（/vector）' }
       ]
     },
     {
       label: '参考資料',
       items: [
-        { href: 'duckdb-persistence.html', text: '7. DuckDB-Wasm 永続化検証（解決済・検証記録）' }
+        { href: 'duckdb-persistence.html', text: '10. DuckDB-Wasm 永続化検証（解決済・検証記録）' }
       ]
     }
   ];

@@ -20,18 +20,7 @@
   <div class="content">
 <p>AI チャットのプロバイダのうち <strong>GitHub Copilot</strong> と <strong>External agent（外部エージェント）</strong> は、API キーで直接叩く系統とは別経路で、ローカル常駐の <strong>CANVAS ブリッジハブ（bridge-hub.exe・127.0.0.1:8511）</strong> へ HTTP POST する「ブリッジ系」です。v21.3.0 追加。</p>
 <p>本ページは「ブラウザ → エージェント」（チャットから AI を使う）方向の説明です。逆方向「エージェント → ブラウザ」（外部ハーネスから地図ツールを遠隔実行する外部ブリッジ / <code>bridge:</code> 行 / <code>__geoBridge</code>）は <a href="./external-bridge.html">external-bridge.html</a> を参照してください。</p>
-<p>bridge-hub は <strong>オプションの拡張コンポーネント</strong>です。geo_suite の地図表示・レイヤー管理・Gemini 等の API 直接プロバイダはハブなしで動作します。必要になるのは <strong>GitHub Copilot (bridge hub)</strong> プロバイダと、後述の <code>/vector</code> 自動外部化を使う場合だけです（<code>/vector</code> 外部化はハブ未到達時に従来の iframe デコードへフォールバックします）。KASUGAI Canvas アプリをインストール済みの環境ではセットアップが自動導入するため個別インストールは不要です。</p>
-
-<h2>導入方法（Ext ボタン／管理パネル Ext タブ・v22.3.0〜）</h2>
-<p>ハブが未検出の環境ではプラグイン内に導入導線が表示されます。導入手順は <strong>① ZIP をダウンロード → ② 展開 → ③ bridge-hub.exe を実行</strong> の3ステップで、exe は1回実行するだけで <code>%LOCALAPPDATA%\kasugai\bridge-hub\</code> へ自己インストールされ、ログイン時の自動起動も登録されます。</p>
-<ul>
-<li><strong>レイヤーパネルの Ext ボタン</strong>（レイヤー見出し「Note」の右）: パネル iframe は起動ごとに、エンドポイント解決結果（<code>vectorHub:</code> &gt; <code>aiHub:</code> &gt; <code>127.0.0.1:8511</code>）へ <code>GET /health</code> を1回プローブし、<code>hub:true</code> が返らない場合ボタンをアンバー強調します（未導入の訴求）。押下で直下のプロモ行を開閉します</li>
-<li><strong>「Download bridge-hub.zip」ボタン</strong>: <code>&lt;a download&gt;</code> で kasugai-canvas-web CDN（stable チャンネル）から ZIP を取得します。環境によって裸 <code>.exe</code> の直ダウンロードがブロックされるため v22.3.1 で ZIP 同梱形式へ切替済みです。押下後は起動待ち表示へ切替り、<code>/health</code> を2秒間隔・最長3分ポーリングし、検出次第「connected」表示 → 4秒後に行を自動で閉じます（期限超過時はリトライ案内を表示）</li>
-<li><strong>プロモ行右端の − ボタン</strong>: セッション中はプロモ行とボタン/サブタブの強調を非表示にします（dismiss 状態は <code>_hubInstallCfg.dismissed</code> として注入されるため iframe 再生成を跨いでも消えたまま）</li>
-<li><strong>プロモ行の「KASUGAI viewer で開く」リンク</strong>: <code>kasugai-hub://open</code> カスタムプロトコル経由で bridge-hub の <code>--view</code>（LNA 無効化済みの専用 WebView2 ウィンドウ）を OS レベルで起動します。開く先は設定テキストの <code>sceneUrl: &lt;URL&gt;</code> 行で指定します（sandboxed iframe は親ページの URL を読めないため、公開シーン URL はホスト側が明示する必要があります）。<code>sceneUrl:</code> 未設定の裸リンクはハブ状態ページ <code>http://127.0.0.1:8511/</code> を開きます（<code>?url=</code> 省略時のフォールバックに対応した bridge-hub が必要）。公開シーンでは Service Worker 仲介により LNA 許可が成立しないため、この OS 経由起動が bridge-hub 利用の迂回路になります（<a href="#lna">後述の LNA 節</a>参照）</li>
-<li><strong>管理パネル（⚙️）の Ext サブタブ</strong>（v22.3.1〜）: <code>bridge-hub: ON/OFF</code> の状態行＋疎通確認ボタンと、レイヤーパネルと同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインに移動済み</strong>です。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
-<li><strong><code>vectorHub: off</code> 指定時</strong>: Ext ボタンと Ext ペイン内の bridge-hub ブロックは非表示になります（AI Bridge 設定は残ります）</li>
-</ul>
+<p>bridge-hub は <strong>オプションの拡張コンポーネント</strong>です。geo_suite の地図表示・レイヤー管理・Gemini 等の API 直接プロバイダはハブなしで動作します。必要になるのは <strong>GitHub Copilot (bridge hub)</strong> プロバイダと、<a href="./vector-externalization.html"><code>/vector</code> 自動外部化</a>を使う場合だけです（<code>/vector</code> 外部化はハブ未到達時に従来の iframe デコードへフォールバックします）。KASUGAI Canvas アプリをインストール済みの環境ではセットアップが自動導入するため個別インストールは不要です。導入手順・LNA 制約は <a href="./bridge-hub-install.html">bridge-hub-install.html</a> を参照してください。</p>
 
 <h2>全体構成</h2>
 <pre class="mermaid">
@@ -172,55 +161,6 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 
 <h2>bridge ツール <code>canvasApi</code></h2>
 <p>外部ブリッジ（<a href="./external-bridge.html">external-bridge.html</a> の経路）越しにハブの REST を叩けるツールとして <code>canvasApi</code> があります。<code>{path, method, body, endpoint?}</code> で <code>&lt;base&gt;+path</code> へ fetch し、<code>{ok,status,json|text}</code> を返します。navigation-toolbar の永続 iframe で実行されるため、外部エージェントが <code>/setup</code> や <code>/mcp</code> 等のハブ API をブリッジ越しに利用できます（v21.3.0〜）。</p>
-
-<h2>ブリッジハブ（bridge-hub.exe）側の概要</h2>
-<ul>
-<li><strong>Rust 製の単一 exe</strong>（Node.js 不要）で <code>127.0.0.1:8511</code> のみバインド。<code>%LOCALAPPDATA%\kasugai\bridge-hub\</code> へ自己インストール＋ログイン時自動起動</li>
-<li>プロバイダは <code>copilot</code> / <code>devin</code> / <code>antigravity</code> の 3 系統。<strong>実際に使われた時点で対応 CLI を子プロセス起動</strong>（未使用時はゼロコスト）。CLI 未導入なら <code>POST /setup</code> で公式手順の自動インストールも可能</li>
-<li>認証は CLI 側（Copilot なら <code>copilot</code> CLI の対話ログイン or <code>COPILOT_GITHUB_TOKEN</code>/<code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code>）。クォータは利用者本人のものを消費</li>
-<li>API: <code>GET /health</code>・<code>GET /models?provider=</code>・<code>POST /agent</code>・<code>GET|POST /setup</code>・<code>POST|DELETE /mcp[/&lt;project&gt;]</code>・<code>GET /</code>（状態ページ）・<code>/vector/*</code>（status/sources/geojson/query + <code>probe.geojson</code> は LNA アンロック用プローブ、v6.19.0〜）</li>
-<li>GeoSuite の AI チャットが送れるのは <code>provider:"copilot"</code>（専用選択肢）と汎用 <code>provider:"agent"</code>。devin/antigravity 宛の送信は現状 GeoSuite 側 UI に無い</li>
-</ul>
-<p>ハブの詳細仕様（導入・自動セットアップ・プロバイダ別前提・環境変数）は KASUGAI Canvas 側のドキュメントが正本です: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
-
-<h2>/vector — ベクトルソースの自動外部 GeoJSON 化（v22.2.0〜）</h2>
-<p>ハブの <code>/vector</code> サービス（ネイティブ DuckDB CLI をバックエンドに parquet/gpkg/fgb/geojson/csv/shp を永続 <code>.duckdb</code> へ取り込み GeoJSON 配信）が稼働している環境では、拡張経路ベクトル構文のうち <strong>http(s) URL を持つ <code>fgb:</code>・<code>parquet:</code>・<code>gpkg:</code>・<code>duckdb:</code> のソースを自動でハブ登録</strong>し、<code>geojson: http://&lt;hub&gt;/vector/geojson/&lt;name&gt;</code> の素の URL レイヤとして追加します。</p>
-<p>これにより DuckDB-Wasm の ~15s 初期化・opaque origin のキャッシュ不可・拡張コンテキスト 4MB 制約を全て回避できます（結果は ctx を横断せずホストが直接 fetch）。同一ソースは <code>gs_&lt;hash&gt;</code> の決定的名で登録されるため、再読込・他クライアントで取込み済みテーブルが共有されます。</p>
-<table>
-<thead><tr><th>インスペクタ側オプション</th><th>ハブ側へのマップ</th></tr></thead>
-<tbody>
-<tr><td><code>where=</code>・<code>limit=</code>・<code>table=</code>（gpkg は <code>layer=</code>）・<code>lon=</code>/<code>lat=</code>・<code>geom=</code>（<code>geom_col</code>）</td><td><code>POST /vector/sources</code> の登録ボディ</td></tr>
-<tr><td><code>format=</code>（duckdb）</td><td><code>kind</code>（parquet/csv/json→geojson/gpkg/fgb。未指定は拡張子からハブが推定）</td></tr>
-<tr><td><code>columns=</code></td><td>配信 URL の <code>?columns=a,b</code>（登録ではなく配信時の列選択）</td></tr>
-<tr><td><code>style=</code>/<code>qml=</code>・<code>| off</code>・分類（terrain 等）</td><td>追加される geojson レイヤへそのまま引継ぎ</td></tr>
-</tbody>
-</table>
-<ul>
-<li><strong>対象外（従来どおり iframe 内デコード）</strong>: kasczip メンバ・eager <code>dataB64</code>・<code>.duckdb</code> ファイル・<code>geojson:</code> 行自体（元からホスト fetch）。<code>sql:</code> 行と AI ツール <code>addDuckDbLayer</code> も外部化対象で、<code>sql:</code> クエリは <code>kind:"sql"</code> の VIEW（materialize:false）として登録されます（<code>duckdb: … format=read</code> は <code>SELECT * FROM ST_Read(url)</code> の kind:sql ビューに変換）</li>
-<li><strong>フォールバック</strong>: ハブ未到達（<code>/vector/status</code> プローブ 3s タイムアウト）・登録失敗時は既存の iframe デコード経路をそのまま実行するため、ハブの有無で挙動が壊れません</li>
-<li><strong>制御行</strong>: <code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。省略時は <code>aiHub:</code> の値、それも無ければ <code>127.0.0.1:8511</code> を自動検出（AI チャットと同じエンドポイント解決）</li>
-<li><strong>bbox=auto の扱い</strong>: 外部化されたレイヤの geojson URL にはビューポート範囲が <code>?bbox=</code> パラメータとして付き、カメラ移動時は <code>data.url</code> の差替えのみでホストが再 fetch します（再登録・ctx 横断なし）。<code>sql:</code> 側の <code>:bbox</code> はビュー内で世界エンベロープへ焼き込み、実フィルタは URL 側に移譲されます</li>
-<li>デコード失敗時のトゥームストーン・⏳ ロード中行・<code>armPendingTtl</code>（300s）は既存経路と同じ枠組みで処理されます</li>
-</ul>
-<p><small>通信面の補足: ハブ呼出しはパネル iframe の <code>hubExternalize</code> ハンドラで <code>GET /vector/status</code> → <code>GET /vector/sources</code> → 必要時のみ <code>POST /vector/sources</code>（text/plain・プリフライト不要のシンプルリクエスト）を1往復で行い、結果は <code>hubResult</code> で拡張ctxへ返ります。登録ボディの <code>name</code> は kind/src/where/limit/lon/lat/geom_col の FNV-1a ハッシュから決定的に生成します。</small></p>
-
-<h3>実機検証で判明した運用上の注意（v22.2.0）</h3>
-<ul>
-<li><strong>適用ストーム中の iframe 再生成</strong> — inspector 一括適用ではレイヤ着地ごとの <code>safeShowUI</code> がパネル iframe を再生成し、in-flight の <code>POST /vector/sources</code> が abort されて無言で wasm フォールバックに落ちることがあります（既登録ソースは probe のみで潜り抜ける。静穏時・単行適用では正常）。対策候補: <code>hubExternalize</code> の永続 basemap iframe 経由化、または ext-path drain 中の <code>safeShowUI</code> coalesce</li>
-<li><strong>フォールバック側はソースの CORS が前提</strong> — wasm/iframe デコード経路は opaque origin の iframe がソース URL を直接 fetch するため、<code>Access-Control-Allow-Origin</code> を返さないサーバ上のソースは全て <code>Failed to fetch</code> で失敗します。この場合外部化が唯一の動作経路になります（検証用の <code>python -m http.server</code> 等は ACAO 無しでフォールバック不可）</li>
-<li><strong><code>format=read</code> の適用範囲</strong> — <code>SELECT * FROM ST_Read('url')</code> の kind:sql VIEW は GDAL 可読フォーマット専用です。<code>.parquet</code> では 502→フォールバック、<code>.gpkg</code> URL では拡張子判定が先に効き kind:gpkg 登録になります</li>
-<li><strong><code>vectorHub: http://host:port</code> の効力範囲</strong> — その適用パス以降の全ソース（<code>qgis:</code> インクルード分を含む）の接続先になります</li>
-<li><strong>再適用の二重追加は抑止済み</strong> — ext-path アイテムは <code>isLayerLoading(url)</code> の in-flight チェック＋着地後の title 重複判定で、適用が短時間に重なっても同一ソースを重複追加しません（v22.2.0 で全 type に適用。sql: 行がディスパッチされず外部化に到達しない問題も同版で修正）</li>
-<li><strong>ハブ側の既知課題（kasugai_canvas）</strong> — <code>duckdb_lock</code> の直列化により取込みハング時に全 /vector リクエストが無音待機になります（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/46" target="_blank">#46</a>。クライアント側は <code>hubResult</code> が来ず 300s TTL まで無応答）。また sources.json↔実テーブル不整合で manifest 比較のみの stale 判定をすり抜け、死んだ geojson URL を指すレイヤが追加され得ます（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/42" target="_blank">#42</a>）</li>
-</ul>
-<h2 id="lna">Chrome Local Network Access (LNA) と自動アンロック（v22.4.0〜）</h2>
-<ul>
-<li><strong>症状</strong>: Chrome 142+ では公開 HTTPS ページ上のプラグイン iframe（opaque origin）から <code>127.0.0.1:8511</code> への fetch がサイレントに拒否されます（コンソールには <code>Permission was denied for this request to access the loopback address space</code>）。権限状態は <code>prompt</code> のまま失敗し、<strong>iframe 起点では許可プロンプト自体を出せません</strong>。ハブ・ZIP・URL・CORS が全て正常でも接続できません</li>
-<li><strong>権限はトップレベルサイト紐づき</strong>: いったん許可すれば iframe のプローブも全て解放されます。そして <strong>トップレベル（ホスト）コンテキストの loopback fetch だけは標準の許可プロンプトを出せます</strong></li>
-<li><strong>自動アンロック（v22.4.0〜）</strong>: ハブ未検出のままユーザーが Ext を開いた時・ダウンロード後の起動待ち時に、<code>{hub}/vector/probe.geojson</code> を指す一時 geojson レイヤを追加します。<code>data.url</code> はホスト側が fetch するため Chrome の「ローカルネットワークへのアクセス」プロンプトが自動表示され、<strong>1回「許可」するだけで以後の全接続が解放</strong>されます。検出次第プローブレイヤは自動除去（最長120秒ポーリング）。bridge-hub v6.19.0 で専用エンドポイントを追加済みですが、旧ハブ（404 応答）でもプロンプトは発火します</li>
-<li><strong>公開シーン（<code>*.visualizer.reearth.io</code>）では自動アンロックが機能しません（v22.4.0 実機検証・Chrome 156）</strong>: 公開サイトでは AssetSecurity 系の Service Worker（<code>/sw.js</code>・スコープ <code>/</code>）が<strong>全リクエストを <code>respondWith(fetch(e))</code> で仲介</strong>します。プローブレイヤの <code>data.url</code> fetch はトップレベル文書発でも SW コンテキストへ移され、<strong>SW 起点の fetch は権限プロンプトをアンカーする窓（document）を持たない</strong>ため、プロンプトは出ず ~0.3s で無言の <code>ERR_FAILED</code> になります（ページ console に LNA エラーすら出ません）。対照として SW 非制御の公開ページでは同一 fetch がプロンプト表示待ちで pending になることを確認済みです。SW ターゲット内の直接 fetch も同様に失敗します</li>
-<li><strong>代替経路</strong>: Firefox（LNA 未施行）・Chrome 起動フラグ <code>--disable-features=LocalNetworkAccessChecks</code>・企業ポリシー・または <code>aiHub:</code>/<code>vectorHub:</code> へ https トンネル URL（cloudflared・Tailscale serve 等）を指定すれば宛先が公開 https になり LNA の対象外です。プロンプトで「拒否」を選んだ場合はサイト設定から手動で許可し直してください。<strong>公開 Visualizer シーンでは上記の SW 仲介により loopback（127.0.0.1）への到達自体が成立しないため、トンネル URL 指定か、Ext プロモ行の「KASUGAI viewer で開く」リンク（<code>kasugai-hub://</code> 経由で LNA 無効化済み WebView2 にシーンを開く・OS 起動のため SW の影響を受けない）のいずれかが必須の接続方式になります</strong>（<code>bridge:</code> 行の外部ブリッジも同様）</li>
-</ul>
 
 <h2>設計上の制約・注意</h2>
 <ul>

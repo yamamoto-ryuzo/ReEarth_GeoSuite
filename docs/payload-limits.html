@@ -24,27 +24,37 @@
 <p>Re:Earth のプラグイン拡張は QuickJS wasm コンテキストで実行され、<strong>全拡張が同一の wasm linear memory を共有</strong>します。コンテキスト間・iframe 間のメッセージはすべて <code>JSON.stringify → wasm メモリへの文字列コピー → ctx 内 JSON.parse</code> でマーシャルされるため、巨大なペイロードは共有ヒープを圧迫し、1拡張の OOM で拡張コンテキストが全滅します（<code>InternalError: out of memory</code> / <code>memory access out of bounds</code>、<code>Proxy.unwrapResult</code> で観測）。</p>
 <p>つまり<strong>制約がかかるのは「拡張コンテキストを横断するデータ」だけ</strong>です。<code>data.url</code> は URL 文字列だけが ctx を通り本体はホスト側で処理されるため 4MB 制限の対象外（ベクター検索インデックスだけは別途予算制約あり）。制限が掛かるのは iframe でデコード→<code>data.value</code> として注入する経路です。</p>
 <pre class="mermaid">flowchart TB
-  subgraph R[&quot;■ ネイティブ形式（サンドボックス非横断）&quot;]
+  subgraph SB[&quot;🔒 Re:Earth プラグインサンドボックス（iframe ＋ QuickJS ctx）&quot;]
     direction TB
-    A[&quot;geojson: / xyz: / 3dtiles: / base:&lt;br&gt;URL 指定レイヤー&quot;]
+    subgraph R[&quot;■ ネイティブ形式&quot;]
+      A[&quot;geojson: / xyz: / 3dtiles: / base:&lt;br&gt;URL 指定レイヤー追加&quot;]
+    end
+    subgraph V[&quot;■ 拡張形式 fgb: / parquet: / gpkg: / duckdb: / sql:&quot;]
+      direction TB
+      V0[&quot;http(s) ソース（外部サーバ）&quot;]
+      V1{&quot;bridge-hub 到達?&lt;br&gt;（vectorHub: off で無効化）&quot;}
+      V3[&quot;サンドボックス内デコード:&lt;br&gt;basemap セッション内永続 iframe&lt;br&gt;DuckDB-Wasm/sql.js（~15s 初期化）&lt;br&gt;Ack 無し → 自 iframe 再実行&lt;br&gt;※ ソース CORS 必須&quot;]
+      GUARD[&quot;結果 ≤4MB ガード&lt;br&gt;（超過は拒否 → ⚠ トゥームストーン）&quot;]
+      INJ[&quot;ctx 横断して注入&lt;br&gt;（data.value）&quot;]
+      V0 --&gt; V1
+      V1 -- &quot;いいえ / 非 http(s)&lt;br&gt;（ファイル・kasczip・dataB64）&quot; --&gt; V3
+      V3 --&gt; GUARD --&gt; INJ
+    end
+  end
+
+  subgraph OUT[&quot;サンドボックス外&quot;]
+    direction TB
+    V2[&quot;外部ブリッジ: bridge-hub :8511&lt;br&gt;POST /vector/sources&lt;br&gt;→ ネイティブ DuckDB 永続化&quot;]
     H[&quot;Visualizer ホスト&lt;br&gt;直接 fetch・パース&lt;br&gt;4MB 制約なし&quot;]
-    A -- &quot;data.url&lt;br&gt;URL 文字列のみ ctx 通過&quot; --&gt; H
   end
-  subgraph V[&quot;■ 拡張形式 fgb: / parquet: / gpkg: / duckdb: / sql:&quot;]
-    direction TB
-    V0[&quot;http(s) ソース&quot;]
-    V1{&quot;bridge-hub 到達?&lt;br&gt;（vectorHub: off で無効化）&quot;}
-    V2[&quot;POST /vector/sources&lt;br&gt;ハブ側永続 DuckDB へ取込&quot;]
-    V3[&quot;フォールバック: iframe 内デコード&lt;br&gt;（DuckDB-Wasm ~15s 初期化）&quot;]
-    INJ[&quot;ctx 横断して注入&lt;br&gt;（data.value）&quot;]
-    V0 --&gt; V1
-    V1 -- &quot;はい&quot; --&gt; V2
-    V1 -- &quot;いいえ / 非 http(s)&lt;br&gt;（ファイル・kasczip・dataB64）&quot; --&gt; V3
-    V3 -. &quot;※ ソース CORS 必須&lt;br&gt;＋ 結果 ≤4MB&quot; .-&gt; INJ
-  end
+
+  A -- &quot;data.url&lt;br&gt;URL 文字列のみ ctx 通過&quot; --&gt; H
+  V1 -- &quot;はい&quot; --&gt; V2
   V2 -- &quot;geojson: &lt;hub&gt;/vector/geojson/&lt;name&gt;&lt;br&gt;URL レイヤーとして追加&quot; --&gt; H
   INJ --&gt; H
   H --&gt; OK[&quot;地図へ描画&quot;]
+  style SB fill:#fff3cd,stroke:#f0c36d,stroke-width:2px
+  style OUT fill:#f5f5f5,stroke:#999,stroke-width:2px
   style R fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
   style V fill:#fff8e1,stroke:#f9a825,stroke-width:2px
   style A fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
@@ -53,12 +63,13 @@
   style V1 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
   style V2 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
   style V3 fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style GUARD fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
   style INJ fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
   style OK fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-  linkStyle 0,7 stroke:#1976d2,stroke-width:2px
-  linkStyle 1,2,3,5 stroke:#2e7d32,stroke-width:2px
-  linkStyle 4,6 stroke:#ef6c00,stroke-width:2px</pre>
-<p>図は<strong>制約の掛からない2経路</strong>（正規経路＋v22.2.0〜の bridge-hub 外部化）を示しています。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。本ページの上限が掛かる iframe デコード経路（<code>data.value</code> 注入）はフォールバック位置づけで、ハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます（詳細: <a href="./bridge-hub.html">bridge-hub.html</a>）。</p>
+  linkStyle 4,8 stroke:#1976d2,stroke-width:2px
+  linkStyle 0,5,6 stroke:#2e7d32,stroke-width:2px
+  linkStyle 1,2,3,7 stroke:#ef6c00,stroke-width:2px</pre>
+<p>図は<strong>3経路</strong>を示しています — 制約の掛からない青（ネイティブ URL レイヤー）と緑（v22.2.0〜の bridge-hub 外部化）、4MB 上限が掛かるオレンジ（フォールバックのサンドボックス内デコード→<code>data.value</code> 注入）。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。オレンジ経路はハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます（詳細: <a href="./vector-externalization.html">vector-externalization.html</a>）。</p>
 <h2>「結果 ≤4MB」判定の段階構成（gpkg:）</h2>
 <p>フォールバックの拡張経路（iframe デコード→<code>data.value</code> 注入）で行われる「結果 ≤4MB」判定は一段の判定ではなく、早い順に3段＋最終防衛線のパイプラインです。確実に収まらないと分かった時点で即座に打ち切り、デコード済み結果だけが後段へ進みます。</p>
 <pre class="mermaid">flowchart TB
@@ -172,7 +183,7 @@
 </ul>
 <h2>回避策（ユーザー向け）</h2>
 <ul>
-<li><strong>bridge-hub（<code>127.0.0.1:8511</code>）が稼働していれば制約自体を回避できます</strong>: <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースはハブの <code>/vector</code> サービスへ自動登録され <code>geojson:</code> URL レイヤーとして追加されるため、iframe デコードも ctx 横断も 4MB 上限も一切通りません（v22.2.0〜・<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。<a href="./bridge-hub.html">bridge-hub.html</a>）</li>
+<li><strong>bridge-hub（<code>127.0.0.1:8511</code>）が稼働していれば制約自体を回避できます</strong>: <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースはハブの <code>/vector</code> サービスへ自動登録され <code>geojson:</code> URL レイヤーとして追加されるため、iframe デコードも ctx 横断も 4MB 上限も一切通りません（v22.2.0〜・<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。<a href="./vector-externalization.html">vector-externalization.html</a>）</li>
 <li>上限を超えるデータは <strong><code>qgis: &lt;.kasc URL&gt;</code> でホスト側に置いて取り込む</strong>（DATA/ を外部ホストし、メンバは lazy fetch）。ドロップ zip ではなく URL 参照にすることでバイト列が ctx を通らなくなる</li>
 <li>クエリ結果が大きい場合は <code>where=</code>/<code>limit=</code>/<code>columns=</code>/<code>bbox=auto</code> で絞る（bbox=auto はビューポート連動の再クエリ）</li>
 <li><strong>4MB を超える GeoPackage ファイル自体は仕様上読み込みません</strong>（恒久的に拒否・ズームインしても復帰しません）。QGIS 側でレイヤを分割・軽量化（地物削減・ジオメトリ簡素化・不要カラム削除）して 4MB 未満にするか、複数テーブル/ファイルへの分割を行ってください</li>

@@ -21,26 +21,41 @@
 <p>QGIS live_driver の <code>bridge_call</code> / <code>describe_plugins</code> に相当する機能を Re:Earth プラグインへ移植したものです。Re:Earth のサンドボックス（QuickJS 拡張コンテキスト + opaque origin iframe）越しに、ローカルハーネスや AI エージェントから地図ツールを呼び出せます。</p>
 <p>v21.3.0 追加。</p>
 <h2>全体構成</h2>
-<pre><code>外部（サンドボックス外）                    geo_suite プラグイン内
-┌────────────────────┐                     ┌──────────────────────────────┐
-│ bridge_server.js   │  GET /events (SSE)  │ navigation-toolbar iframe    │
-│ 127.0.0.1:8977     │──── コマンド配信 ──►│ window.__geoBridge           │
-│                    │                     │   ├ bridgeInvoke(name,args)  │
-│  POST /call        │  POST /result       │   ├ runCode / canvasApi      │
-│   {name,args}      │◄──── 結果返送 ──────│   ↕ parent.postMessage       │
-│  GET /status       │                     ├──────────────────────────────┤
-│  GET /tools        │                     │ navigation-toolbar 拡張ctx   │
-└────────────────────┘                     │   bridgeCall → ai-chat へ中継 │
-┌────────────────────┐                     │   bridgeResult → postToUI   │
-│ bridge.js          │  CDP Runtime.eval   │   ↕ extensionMessage        │
-│ (dev ドライバ)      │────────────────────►│ ai-chat 拡張ctx              │
-│  call/list/serve   │  window.__geoBridge │   dispatchToolCall          │
-└────────────────────┘      .call()        │   ├ describe → カタログ      │
-                                           │   ├ LOCAL_TOOLS → reearth.*  │
-                                           │   └ PANEL_TOOLS → extension │
-                                           │      .postMessage → パネル   │
-                                           └──────────────────────────────┘
-</code></pre>
+<pre class="mermaid">
+flowchart TB
+  subgraph EXT["外部（サンドボックス外）"]
+    direction TB
+    SRV["bridge_server.js :8977<br>GET /status /events /tools<br>POST /call {name,args} /result"]
+    DRV["bridge.js（dev ドライバ）<br>call / list / serve<br>CDP Runtime.evaluate"]
+  end
+
+  subgraph SB["🔒 geo_suite プラグイン内"]
+    direction TB
+    IFRAME["navigation-toolbar <b>iframe</b><br>window.__geoBridge<br>bridgeInvoke(name,args)<br>├ runCode / canvasApi（iframe 実行）<br>└ 他ツール → bridgeCall 送出"]
+    NAVCTX["navigation-toolbar <b>拡張ctx</b><br>bridgeCall → ai-chat へ中継<br>bridgeResult / bridgeConfig → postToUI"]
+    AICTX["ai-chat <b>拡張ctx</b><br>dispatchToolCall<br>├ describe → カタログ<br>├ LOCAL_TOOLS → reearth.*<br>└ PANEL_TOOLS → extension.postMessage"]
+    PANEL["layers-and-tiles-list <b>拡張ctx</b><br>aiToolRequest 実行<br>bridge: 行解析 → bridgeConfig 転送"]
+    IFRAME -- "bridgeCall" --> NAVCTX
+    NAVCTX -- "extensionMessage" --> AICTX
+    AICTX -- "aiToolRequest" --> PANEL
+    PANEL -- "aiToolResult" --> AICTX
+    AICTX -- "bridgeResult<br>（msg.sender=返送先）" --> NAVCTX
+    NAVCTX -- "postToUI" --> IFRAME
+  end
+
+  SRV == "GET /events (SSE)<br>コマンド配信 {reqId,name,args}" ==> IFRAME
+  IFRAME -- "POST /result {reqId,result}<br>（text/plain・PNA 対策）" --> SRV
+  DRV == "window.__geoBridge.call(name,args)" ==> IFRAME
+
+  style EXT fill:#f5f5f5,stroke:#999,stroke-width:2px
+  style SB fill:#fff3cd,stroke:#f0c36d,stroke-width:2px
+  style SRV fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style DRV fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style IFRAME fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style NAVCTX fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+  style AICTX fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+  style PANEL fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+</pre>
 <h2>コンテキスト別の役割</h2>
 <p>Re:Earth プラグインは2種類のサンドボックスで動作し、外部 I/O は <strong>iframe 側にしか実装できません</strong>（QuickJS 拡張コンテキストには <code>fetch</code>・<code>setTimeout</code>・ソケットが存在しないため）。</p>
 <table>
@@ -251,6 +266,8 @@ curl -X POST http://127.0.0.1:8977/call -d &#39;{&quot;name&quot;:&quot;flyTo&qu
 </div>
   <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>try { mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { htmlLabels: true } }); } catch (e) {}</script>
 
 </body>
 </html>

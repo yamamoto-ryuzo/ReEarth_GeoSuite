@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サンドボックス構成と容量目安 | Re:Earth GeoSuite</title>
+<link rel="stylesheet" href="style.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📚 サンドボックス構成と容量目安</h1>
+    <nav>
+      <a href="../index.html">🏠 GeoSuite トップ</a>
+      <a href="index.html">プラグインの配布（ZIP）</a>
+      <a href="https://github.com/yamamoto-ryuzo/ReEarth_GeoSuite/tree/main/docs" target="_blank">GitHub で編集</a>
+    </nav>
+  </header>
+  <div class="content">
+<h2>サンドボックス構成と制約（セッション内永続 iframe・外部ブリッジ・QuickJS）</h2>
+<pre class="mermaid">
+flowchart TB
+  subgraph SB["🔒 サンドボックス内（iframe ＋ QuickJS ctx）"]
+    direction TB
+    BM["① basemap-widget<br>（セッション内永続 iframe）<br>ベクターデコード:<br>fgb/parquet/gpkg/duckdb/sql<br>＋ kasczip・ファイル・dataB64"]
+    NAV["① navigation-toolbar<br>（セッション内永続 iframe）<br>＝ __geoBridge"]
+    PANEL["layers-and-tiles-list<br>（iframe は頻繁に再生成）"]
+    STALL["③ QuickJS:<br>async 応答は次イベントまで滞留<br>→ 返送は同期完結が必須"]
+    PANEL -- "デコード依頼" --> BM
+    BM -- "Ack 3秒以内<br>→ 結果返送" --> PANEL
+    BM -. "Ack 無し" .-> FB["自 iframe で再実行<br>15s 隔離後にホスト再試行"]
+    FB -.-> PANEL
+  end
+
+  subgraph OUT["サンドボックス外"]
+    direction TB
+    SW["AssetSecurity SW が<br>全 fetch を仲介"]
+    BLOCK["127.0.0.1 直行 → ERR_FAILED<br>許可プロンプトすら出ない"]
+    ALT["GeoSuite viewer（WebView2）で開く<br>＝公開シーンでは実質唯一の経路<br>（https トンネルは制御APIの公開を伴い実用外）"]
+    SRV["② 外部ブリッジ<br>bridge_server.js :8977<br>ツール呼出し"]
+    HUB["② 外部ブリッジ<br>bridge-hub :8511<br>/vector → geojson<br>（.duckdb 永続化）"]
+    SW --> BLOCK --> ALT
+    ALT --> SRV
+    ALT --> HUB
+  end
+
+  NAV == "ツール呼出し<br>ダイヤルアウト" ==> SW
+  PANEL -. "ベクターデータ<br>ダイヤルアウト" .-> SW
+
+  style SB fill:#fff3cd,stroke:#f0c36d,stroke-width:2px
+  style OUT fill:#f5f5f5,stroke:#999,stroke-width:2px
+  style BM fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style NAV fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style PANEL fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style FB fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style STALL fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style SW fill:#ffebee,stroke:#c62828,stroke-width:2px
+  style BLOCK fill:#ffebee,stroke:#c62828,stroke-width:2px
+  style ALT fill:#fff8e1,stroke:#f9a825,stroke-width:2px
+  style SRV fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style HUB fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  linkStyle 0,1,2,3 stroke:#ef6c00,stroke-width:2px
+  linkStyle 4,5 stroke:#c62828,stroke-width:2px
+  linkStyle 6,7,8,9 stroke:#2e7d32,stroke-width:2px
+</pre>
+<p><small>※ 「外部ブリッジ」はサンドボックス外のローカル常駐プロセスの総称で、役割が2系統あります — bridge_server.js :8977（外部からのツール呼出し専用）と bridge-hub :8511（AI エージェント中継＋/vector 外部化）。巨大ベクターソースはサンドボックス内で永続化・デコードできず（opaque origin のため DuckDB-Wasm アセットが毎セッション再ダウンロード＋~15s 初期化、元データも毎回再取得・結果は 4MB 上限）、これが動作を遅くしていたため、bridge-hub の <code>/vector</code> サービスへ外部化しています — ハブ側のネイティブ DuckDB がローカル <code>.duckdb</code> へ永続取込みし、<code>geojson:</code> URL レイヤーとしてホストへ直接配信します（<a href="./vector-externalization.html">詳細</a>・次節の容量目安を参照）。</small></p>
+
+<h2>📏 ベクトルデータの容量目安（必読）</h2>
+<p><strong>サンドボックスを横断しない経路は容量の制約がありません。</strong> 次の2経路はデータ本体が Re:Earth のプラグインサンドボックス（QuickJS wasm メモリ）を一切通らず、Visualizer ホスト側が直接 fetch・パースするため自由度が高い経路です:</p>
+<ul>
+    <li><strong>正規経路（URL 指定レイヤー）</strong>: <code>geojson:</code> / <code>xyz:</code> / <code>3dtiles:</code> / <code>base:</code> など。<code>data.url</code> の URL 文字列だけが ctx を通り、本体はホストが直接取得します。通常のレイヤー追加はまずこの経路です。</li>
+    <li><strong>bridge-hub /vector 外部化（v22.2.0〜）</strong>: ローカルの bridge-hub（<code>127.0.0.1:8511</code>）が稼働していれば、<code>fgb:</code> / <code>parquet:</code> / <code>gpkg:</code> / <code>duckdb:</code> / <code>sql:</code> の http(s) ソースはハブの永続 DuckDB に取り込まれ、<code>geojson:</code> URL レイヤーとして正規経路に合流します。wasm 初期化・4MB 上限・再取得コストを全て回避できます（<a href="./vector-externalization.html">詳細</a>）。</li>
+</ul>
+<p>制約が掛かるのは<strong>フォールバックのプラグイン拡張経路だけ</strong> — ハブ未到達・<code>vectorHub: off</code>・非 http(s) ソース（ファイル取込・kasczip メンバ）の場合に、geo_suite がブラウザ内 iframe でデコードして <code>data.value</code> として注入する経路です。Re:Earth のプラグイン拡張は QuickJS (WebAssembly) コンテキストで実行され、<strong>全拡張が 1 つの wasm 線形メモリを共有</strong>します。iframe ↔ 拡張 ↔ ホスト間のメッセージは全て <code>JSON.stringify → 共有メモリへの文字列コピー → JSON.parse</code> で往復するため、巨大なペイロードは共有ヒープを圧迫し、OOM で<strong>拡張コンテキストごと全滅</strong>します。つまり<strong>Cesium やブラウザの性能ではなく、Re:Earth サンドボックス固有の上限</strong>です。</p>
+<p>このため拡張経路に「<strong>横断ペイロード 1回あたり 4MB（JSON サイズ）</strong>」のハード上限を設けています。超過したレイヤは追加されずレイヤ一覧に <strong>⚠ グレーアウト行（理由付き）</strong>として残ります。</p>
+<pre class="mermaid">
+flowchart TB
+  subgraph SB["🔒 Re:Earth プラグインサンドボックス（iframe ＋ QuickJS ctx）"]
+    direction TB
+    subgraph R["■ ネイティブ形式"]
+      A["geojson: / xyz: / 3dtiles: / base:<br>URL 指定レイヤー追加"]
+    end
+    subgraph V["■ 拡張形式 fgb: / parquet: / gpkg: / duckdb: / sql:"]
+      direction TB
+      V0["http(s) ソース（外部サーバ）"]
+      V1{"bridge-hub 到達?<br>（vectorHub: off で無効化）"}
+      V3["サンドボックス内デコード:<br>basemap セッション内永続 iframe<br>DuckDB-Wasm/sql.js（~15s 初期化）<br>Ack 無し → 自 iframe 再実行<br>※ ソース CORS 必須"]
+      GUARD["結果 ≤4MB ガード<br>（超過は拒否 → ⚠ トゥームストーン）"]
+      INJ["ctx 横断して注入<br>（data.value）"]
+      V0 --> V1
+      V1 -- "いいえ / 非 http(s)<br>（ファイル・kasczip・dataB64）" --> V3
+      V3 --> GUARD --> INJ
+    end
+  end
+
+  subgraph OUT["サンドボックス外"]
+    direction TB
+    V2["外部ブリッジ: bridge-hub :8511<br>POST /vector/sources<br>→ ネイティブ DuckDB 永続化"]
+    H["Visualizer ホスト<br>直接 fetch・パース<br>4MB 制約なし"]
+  end
+
+  A -- "data.url<br>URL 文字列のみ ctx 通過" --> H
+  V1 -- "はい" --> V2
+  V2 -- "geojson: &lt;hub&gt;/vector/geojson/&lt;name&gt;<br>URL レイヤーとして追加" --> H
+  INJ --> H
+  H --> OK["地図へ描画"]
+  style SB fill:#fff3cd,stroke:#f0c36d,stroke-width:2px
+  style OUT fill:#f5f5f5,stroke:#999,stroke-width:2px
+  style R fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  style V fill:#fff8e1,stroke:#f9a825,stroke-width:2px
+  style A fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style H fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
+  style V0 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style V1 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style V2 fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
+  style V3 fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style GUARD fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style INJ fill:#ffe9d0,stroke:#ef6c00,stroke-width:2px
+  style OK fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+  linkStyle 4,8 stroke:#1976d2,stroke-width:2px
+  linkStyle 0,5,6 stroke:#2e7d32,stroke-width:2px
+  linkStyle 1,2,3,7 stroke:#ef6c00,stroke-width:2px
+</pre>
+<p>図は<strong>3経路</strong>を示しています — 制約の掛からない青（ネイティブ URL レイヤー）と緑（v22.2.0〜の bridge-hub 外部化）、4MB 上限が掛かるオレンジ（フォールバックのサンドボックス内デコード→<code>data.value</code> 注入）。緑経路で ctx を横断するのは登録 spec・結果・URL 文字列などの制御メッセージのみで、データ本体は「ソース → ハブ → ホスト」の流れでサンドボックスを通りません。オレンジ経路はハブ未到達・登録失敗・<code>vectorHub: off</code>・ファイル取込・kasczip メンバなど非 http(s) の場合にのみ使われます。</p>
+
+<h3>注入方式ごとの推奨容量</h3>
+<table>
+<thead><tr><th>方式</th><th>上限</th><th>推奨の目安</th></tr></thead>
+<tbody>
+<tr><td><code>geojson:</code> &lt;URL&gt;（ホスト側が直接 fetch）</td><td><strong>4MB 制約なし</strong></td><td>Visualizer が URL を直接取得するためサンドボックスを通らない。<strong>大きな GeoJSON はまずこの方式</strong>（検索インデックスは 8MB 上限の対象）</td></tr>
+<tr><td><code>fgb:</code> / <code>parquet:</code> / <code>gpkg:</code> / <code>duckdb:</code> / <code>sql:</code> の http(s) ソース → <strong>bridge-hub 外部化</strong></td><td><strong>4MB 制約なし</strong></td><td>ハブ稼働時は <code>geojson:</code> URL レイヤー化して正規経路に合流（<code>vectorHub: off</code> で無効化・ハブ未到達時は下行のデコード経路へフォールバック）</td></tr>
+<tr><td>ファイル取込 / <code>geojson:</code> の kasczip メンバ（デコード注入）</td><td><strong>4MB</strong></td><td>iframe でデコード→ctx 注入のため制限あり。超えたら <code>qgis:</code> 外部ホスト参照へ</td></tr>
+<tr><td><code>duckdb:</code> / <code>sql:</code> / <code>gpkg:</code>（クエリ結果）</td><td><strong>4MB</strong> / クエリ</td><td><code>bbox=auto</code>（既定・表示範囲連動）＋ <code>where=</code>/<code>limit=</code>/<code>columns=</code>/<code>table=</code> で絞れば <strong>元データは数百MBでも可</strong></td></tr>
+<tr><td><code>flatgeobuf:</code> / <code>parquet:</code>（全件デコード）</td><td><strong>4MB</strong></td><td>全件読みのため小〜中規模向き。大規模は <code>duckdb:</code> に置き換え推奨</td></tr>
+<tr><td><code>qgis:</code> ZIP ドロップ取込（eager メンバ）</td><td><strong>8MB</strong> 合計</td><td>ZIP は <strong>URL 参照（ホスト配置）推奨</strong> — メンバは遅延 fetch され本体容量を問わない</td></tr>
+<tr><td>ベクター検索インデックス</td><td>1ソース <strong>4MB</strong> / 合計 <strong>8MB</strong></td><td>超過レイヤは検索対象外になるだけで<strong>表示は有効</strong></td></tr>
+</tbody>
+</table>
+
+<h3>運用の推奨</h3>
+<ul>
+    <li><strong>まず「URL 経由」を選ぶ</strong>: <code>geojson:</code>/<code>3dtiles:</code>/<code>xyz:</code> 等の URL 指定レイヤーは Visualizer ホスト側が直接 fetch するため、サンドボックス上限を受けません。ファイルはドロップではなく CMS 等に置いて URL で参照するのが基本です。</li>
+    <li><strong>bridge-hub があれば制約自体を回避できます</strong>: ローカルで bridge-hub（<code>:8511</code>）が稼働していれば、http(s) 上の <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> ソースはハブの永続 DuckDB に取り込まれ <code>geojson:</code> URL レイヤーになるため、iframe デコードも 4MB 上限も通りません（v22.2.0〜・<a href="./bridge-hub.html">詳細</a>）。</li>
+    <li><strong>総量の目安</strong>: ハード制約は「ctx を横断する結果 ≤4MB/回」のみ。レイヤ数自体に上限はありませんが、属性検索・一覧を快適に使うなら<strong>検索対象のベクトルデータ合計で数10MB 程度</strong>を目安にしてください。</li>
+    <li><strong>大規模データは絞り込み前提で</strong>: 巨大ファイルは <code>duckdb:</code>（GeoParquet/CSV/JSON）か <code>gpkg:</code> で、<code>bbox=auto</code> の部分読み込み＋属性フィルタを使い、「クエリ結果だけが 4MB 以下」になるよう設計してください。元データのサイズは問いません。</li>
+    <li><strong>配布は URL 参照で</strong>: プロジェクト一式は CMS 等に置いた <code>qgis: &lt;.kasc または .zip の URL&gt;</code> を推奨。ZIP の中身はブラウザが直接 fetch するため容量制限を受けません（ただし ZIP 内 geojson 等は kasczip デコード注入のため 4MB/件）。</li>
+    <li><strong>失敗は可視化されます</strong>: 上限超過レイヤは消えず、レイヤ一覧に理由付きのグレーアウト行として残ります（× で削除、条件を直して再読み込みで自動置換）。</li>
+</ul>
+<p><small>技術詳細: <a href="./payload-limits.html">docs/payload-limits.html</a></small></p>
+</div>
+  <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>try { mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { htmlLabels: true } }); } catch (e) {}</script>
+</body>
+</html>
