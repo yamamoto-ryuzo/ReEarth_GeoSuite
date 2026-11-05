@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.3
+- 新規: geosuite-hub にビューアページサーバーを追加（127.0.0.1:8515）— `geosuite-hub://open` は 8514 の状態ページではなく **8515 の GeoSuite viewer シェル**を WebView2 で開くように変更。`?url=<scene>` はビューアページへ透過され、ページ内 iframe でシーンを再生。サーバーは Windows 標準の PowerShell TcpListener（`serve-viewer.ps1`・インストーラへ base64 埋め込み）で、`run-hidden.vbs` がハブ(8514)とビューア(8515)を同時に非表示起動。インストーラの起動チェックは両ポートの応答を確認
+
 ## v22.4.2
 - 変更: geosuite-hub を GeoSuite 専用インスタンス化 — KASUGAI の共有 bridge-hub（127.0.0.1:8511）から分離し、専用ポート **127.0.0.1:8514** へ移行。8512/8513 は KASUGAI 側（bridge-hub.exe・kasugai_canvas.exe）が「旧ブリッジ」として起動時に PID 単位で強制終了する掃除対象ポートのため選択不可と判明し、隣接する未使用の 8514 を採用。`geosuite-hub-install.cmd` は bridge-hub バイナリを `%LOCALAPPDATA%\geosuite-hub\geosuite-hub.exe` として**リネーム配置**（イメージ名一致 kill を回避）し、`BRIDGE_HUB_PORT=8514` を与えた `run-hidden.vbs` + HKCU Run キーでログイン時に非表示自動起動（env 指定時はバイナリの自己インストール・掃除パスをスキップ）。既に bridge-hub.exe が導入済みなら複製を使い回してダウンロードを省略。`geosuite-hub://` プロトコル shim・プロモ行ポーリング・`hubEndpoint()` 既定値・AI チャット/ナビゲーションの自動プローブはすべて 8514 を指すよう更新。従来 `aiHub:`/`vectorHub:` で 8511 を明示指定していた設定はそのまま KASUGAI 側ハブを指し続けるため後方互換を維持
 

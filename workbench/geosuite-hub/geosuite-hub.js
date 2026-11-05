@@ -20,7 +20,7 @@ const target = m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
 const lad = process.env.LOCALAPPDATA || '';
 const gsExe = path.join(lad, 'geosuite-hub', 'geosuite-hub.exe');
 const ksExe = path.join(lad, 'kasugai', 'bridge-hub', 'bridge-hub.exe');
-const STATUS_URL = 'http://127.0.0.1:8514/';
+const VIEW_BASE = 'http://127.0.0.1:8515/';
 
 function launchDetached(cmd, args, env) {
     try {
@@ -35,7 +35,7 @@ function launchDetached(cmd, args, env) {
 
 // Bare `open` (no url) opens the hub status page in the viewer — same
 // fallback contract as kasugai-hub://open.
-const view = target || STATUS_URL;
+const view = target ? VIEW_BASE + '?url=' + encodeURIComponent(target) : VIEW_BASE;
 if (fs.existsSync(gsExe)) {
     launchDetached(gsExe, ['--view', view], { BRIDGE_HUB_PORT: '8514' });
 } else if (fs.existsSync(ksExe)) {
