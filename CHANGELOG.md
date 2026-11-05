@@ -1,5 +1,17 @@
 # Changelog
 
+## v22.4.10
+- 変更: geosuite-hub を **自己インストール型 exe 配布**に移行 — `geosuite-hub.exe`（bridge-hub バイナリのリネーム品・kasugai_canvas 側で exe 名検出の GeoSuite 専用モードを実装）を実行するだけで `%LOCALAPPDATA%\geosuite-hub` への自己コピー・8514 常駐の自動起動登録・`geosuite-hub://` プロトコル登録・**8515 ビューアシェル（exe 内蔵）**まで一括で行う。これに伴い統一インストーラ `.cmd`・`serve-viewer.ps1`・`run-hidden.vbs`・プロトコル shim は全て廃止（旧インストーラが配置したファイルは新版インストール時に掃除）。ダウンロードは CDN ホストの `geosuite-hub.zip`（exe 同梱）へ直リンクに変更し、`GSHUB_INSTALL_CMD`・blob 生成・`hubZipBlob`・`installer` 配管を撤去。手順は「① zip ダウンロード → ② 展開 → ③ geosuite-hub.exe 実行」のみ。`docs/geosuite-hub.html` も新構成へ全面更新
+
+## v22.4.9
+- 変更: geosuite-hub インストーラの配布形式を `.cmd` から **`.zip` 同梱**へ変更 — 裸の `.cmd`/`.exe` ダウンロードはサイトや環境によって拒否されるため、統一インストーラ `geosuite-hub-install.cmd` を同梱した `geosuite-hub-install.zip` を iframe 内で生成して保存する（非圧縮 stored ZIP を自前生成・依存ライブラリなし）。手順は「① ZIP ダウンロード → ② 展開 → ③ cmd 実行」に更新し、`hubPromoBtn`/`hubPromoWait`/`hubPromoRetry`/`hubPromoSteps` を全20言語で改訂。`docs/geosuite-hub.html` のダウンロードボタンも同様に ZIP 生成へ更新
+
+## v22.4.8
+- 変更: `geosuite-hub://` プロトコル shim を廃止し exe 直登録に簡素化 — HKCU `shell\open\command` に `"geosuite-hub.exe" --view "http://127.0.0.1:8515/"` を直接登録（`%1` を使わない固定コマンド）。`geosuite-hub.cmd`・`geosuite-hub.js` の URL 書き換え shim は削除し、`install.js` は exe を直接登録する registrar に変更。プロトコル起動 URI のパラメータは参照されず常に 8515 ビューアシェル（記憶済みシーン or ランディング）が開く。あわせて `?url=<scene>` 引き継ぎ用の scene 配管を撤去 — `sceneUrl:` インスペクタ行・`hubCfg.scene`・`document.referrer`/`ancestorOrigins` 自動検出を削除し、プロモリンクは裸の `geosuite-hub://open` を発行（`?url=<scene>` はブラウザ直接アクセスでは従来通り有効）。`workbench/geosuite-hub/install.js`・`geosuite-hub-install.cmd`・`GSHUB_INSTALL_CMD`・`docs/geosuite-hub.html` を同期更新
+
+## v22.4.7
+- 変更: `geosuite-hub://` shim の起動フォールバックを撤去し `geosuite-hub.exe`（8514）一本化 — KASUGAI 共有 bridge-hub（8511）へのフォールバックと、exe 未配置時の既定ブラウザ `start` フォールバックを削除。shim（`geosuite-hub.cmd`）は `geosuite-hub:` → `http://127.0.0.1:8515` 書き換えと `BRIDGE_HUB_PORT=8514` 注入のみを担い、exe が無ければ何も起動しない。`workbench/geosuite-hub/geosuite-hub.js`・`geosuite-hub-install.cmd`・`GSHUB_INSTALL_CMD`・`docs/geosuite-hub.html` を同期更新
+
 ## v22.4.6
 - 変更: geosuite-hub の Ext ボタン＋プロモ行をレイヤーパネルから **basemap ウィジェットへ移設** — レイヤーパネルの iframe は `ui.show` のたび破棄・再生成されるため、レイヤー読込中は Ext ボタン／プロモが操作不能だった。basemap ウィジェットは `ui.show` を初期化時に一度だけ呼ぶ永続 iframe のため常時操作可能（DuckDB ホストと同じ理由）。パネル拡張 ctx が `hubCfg`（endpoint/installer/dismissed/scene）を拡張間メッセージで basemap 拡張 ctx へ push（requestBaseList 応答・dismiss・起動時）し、basemap iframe が `/health` プローブ・attn 強調・LNA アンロック・インストーラダウンロード・viewer リンクを受け持つ。`hubUnlockAdd`/`hubUnlockRemove`/`hubPromoDismiss` は basemap 拡張 ctx → パネル拡張 ctx へ中継（プローブレイヤ追加とセッション dismiss フラグはパネル側が継続して所有）。レイヤーパネルの Manage > Ext ペインは設定側入口として残置。basemap 側 GEO_I18N も panel と同じ `window._GEO_I18N` JSON 埋め込み方式に統一し、hubPromo*・closeAria キーを全20言語へ追加
 

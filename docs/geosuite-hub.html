@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>geosuite-hub 導入（統一インストーラ） | Re:Earth GeoSuite</title>
+<title>geosuite-hub 導入 | Re:Earth GeoSuite</title>
 <link rel="stylesheet" href="style.css">
 <script src="nav.js" defer></script>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>📚 geosuite-hub 導入（統一インストーラ）</h1>
+    <h1>📚 geosuite-hub 導入</h1>
     <nav>
       <a href="../index.html">🏠 GeoSuite トップ</a>
       <a href="index.html">プラグインの配布（ZIP）</a>
@@ -18,16 +18,16 @@
     </nav>
   </header>
   <div class="content">
-<blockquote><p><strong>公開 Visualizer シーンで利用するには viewer（WebView2）経路が実質必須です。</strong> GeoSuite は専用プロトコル <code>geosuite-hub://</code> を独自実装しており、<code>workbench/geosuite-hub/install.js</code> で HKCU 登録すれば geosuite-hub.exe の <code>--view</code>（WebView2）を OS 経由で起動できます — KASUGAI Canvas は不要です。geosuite-hub は <strong>GeoSuite 専用インスタンス（127.0.0.1:8514）</strong>として動作し、KASUGAI 側の共有 bridge-hub（8511）とは独立です。<code>--view</code> が開く画面はハブの状態ページではなく、別プロセスで常駐する <strong>GeoSuite viewer シェル（127.0.0.1:8515）</strong>です（後述）。</p></blockquote>
-<p>geosuite-hub（GeoSuite 専用ハブ geosuite-hub.exe と <code>geosuite-hub://</code> プロトコルを一括導入する統一インストーラ）の手順と、導入されるハブ（127.0.0.1:8514）に対する Chrome Local Network Access (LNA) による接続制約および自動アンロックの仕組みをまとめたページです。AI プロバイダ経由の使い方は <a href="./bridge-hub.html">bridge-hub.html</a>、ベクターデータの外部化仕様は <a href="./vector-externalization.html">vector-externalization.html</a> を参照してください。</p>
-<h2>導入方法（Ext ボタン・v22.4.6〜 basemap ウィジェット／管理パネル Ext タブ）</h2>
-<p>ハブが未検出の環境ではプラグイン内に導入導線が表示されます。導入は <code>geosuite-hub-install.cmd</code> 1本に統一されています — 実行すると hub バイナリの取得・<code>geosuite-hub.exe</code> としての配置（<code>%LOCALAPPDATA%\geosuite-hub\</code>・ポート 8514・ログイン時自動起動登録）・ビューアシェル（<code>serve-viewer.ps1</code>＋<code>viewer.html</code>・ポート 8515）の配置と <code>geosuite-hub://</code> プロトコル登録を一括で行います。</p>
+<blockquote><p><strong>公開 Visualizer シーンで利用するには viewer（WebView2）経路が実質必須です。</strong> GeoSuite は専用プロトコル <code>geosuite-hub://</code> を独自実装しており、<code>geosuite-hub.exe</code> の自己インストールで HKCU 登録され、<code>--view</code>（WebView2）を OS 経由で起動できます — KASUGAI Canvas は不要です。geosuite-hub は <strong>GeoSuite 専用インスタンス（127.0.0.1:8514）</strong>として動作し、KASUGAI 側の共有 bridge-hub（8511）とは独立です。<code>--view</code> が開く画面はハブの状態ページではなく、同じ exe が提供する <strong>GeoSuite viewer シェル（127.0.0.1:8515）</strong>です（後述）。</p></blockquote>
+<p>geosuite-hub（GeoSuite 専用ハブ geosuite-hub.exe と <code>geosuite-hub://</code> プロトコル）の導入手順と、導入されるハブ（127.0.0.1:8514）に対する Chrome Local Network Access (LNA) による接続制約および自動アンロックの仕組みをまとめたページです。AI プロバイダ経由の使い方は <a href="./bridge-hub.html">bridge-hub.html</a>、ベクターデータの外部化仕様は <a href="./vector-externalization.html">vector-externalization.html</a> を参照してください。</p>
+<h2>導入方法（Ext ボタン・basemap ウィジェット／管理パネル Ext タブ）</h2>
+<p>ハブが未検出の環境ではプラグイン内に導入導線が表示されます。導入は <code>geosuite-hub.zip</code>（自己インストール型 <code>geosuite-hub.exe</code> 同梱）に統一されています — 展開して exe を1回実行するだけで、<code>%LOCALAPPDATA%\geosuite-hub\</code> への自己コピー・8514 常駐のログイン時自動起動登録・8515 ビューアシェル・<code>geosuite-hub://</code> プロトコル登録を一括で行います（管理者権限不要）。</p>
 <pre class="mermaid">
 flowchart TB
   START["ハブ未検出<br>basemap ウィジェットの Ext ボタンが<br>アンバー強調"] --> EXT["Ext ボタン押下<br>→ プロモ行を開く"]
-  EXT --> DL["「geosuite-hub-install.cmd」<br>をダウンロード（blob 生成）"]
-  DL --> EXE["cmd を実行"]
-  EXE --> INST["一括処理:<br>① hub バイナリ取得（既存 bridge-hub 複製<br>or CDN から curl+tar）<br>→ geosuite-hub.exe 配置＋自動起動登録（8514）<br>② ビューアシェル配置（8515・serve-viewer.ps1）<br>③ geosuite-hub:// プロトコル登録（HKCU）"]
+  EXT --> DL["「geosuite-hub.zip」<br>をダウンロード"]
+  DL --> EXE["展開して geosuite-hub.exe<br>を実行"]
+  EXE --> INST["自己インストール:<br>① %LOCALAPPDATA%\geosuite-hub へ<br>　 geosuite-hub.exe 自己コピー＋自動起動登録（8514）<br>② 8515 ビューアシェル（exe 内蔵）<br>③ geosuite-hub:// プロトコル登録（HKCU）"]
   INST --> POLL{"GET /health<br>2秒間隔・最長3分ポーリング"}
   POLL -- "hub:true 検出" --> OK["「connected」表示<br>→ 4秒後に行を自動クローズ"]
   POLL -- "期限超過" --> RETRY["リトライ案内を表示"]
@@ -48,19 +48,19 @@ flowchart TB
 </pre>
 <ul>
 <li><strong>basemap ウィジェットの Ext ボタン</strong>（v22.4.6〜・セレクタ右の小ボタン）: basemap iframe は永続するため、レイヤー読込中でも常時操作できます（レイヤーパネル iframe は ui.show のたび再生成され操作不能になるため移設）。<code>hubCfg</code> メッセージでパネル拡張 ctx から設定を受け取り、エンドポイント解決結果（<code>vectorHub:</code> &gt; <code>aiHub:</code> &gt; <code>127.0.0.1:8514</code>）へ <code>GET /health</code> をプローブして、<code>hub:true</code> が返らない場合ボタンをアンバー強調します（未導入の訴求）。押下で直下のプロモ行を開閉します</li>
-<li><strong>「geosuite-hub-install.cmd をダウンロード」ボタン</strong>: iframe 内で統一インストーラ <code>.cmd</code> を生成し <code>&lt;a download&gt;</code> で保存します。実行1回で geosuite-hub.exe の配置（既存 bridge-hub.exe を複製・未導入なら CDN から curl+tar 取得）と 8514 常駐の自動起動登録、ビューアシェル（8515）の配置、<code>geosuite-hub://</code> プロトコル登録を行います。押下後は起動待ち表示へ切替り、<code>/health</code> を2秒間隔・最長3分ポーリングし、検出次第「connected」表示 → 4秒後に行を自動で閉じます（期限超過時はリトライ案内を表示）</li>
+<li><strong>「geosuite-hub.zip をダウンロード」ボタン</strong>: kasugai-canvas-web CDN（stable チャンネル）の <code>geosuite-hub.zip</code> へリンクします（裸の .exe はサイトによってダウンロード拒否されるため ZIP 同梱）。展開して exe を実行1回で geosuite-hub.exe の自己コピー・8514 常駐の自動起動登録・8515 ビューアシェル・<code>geosuite-hub://</code> プロトコル登録を行います。押下後は起動待ち表示へ切替り、<code>/health</code> を2秒間隔・最長3分ポーリングし、検出次第「connected」表示 → 4秒後に行を自動で閉じます（期限超過時はリトライ案内を表示）</li>
 <li><strong>プロモ行右端の − ボタン</strong>: セッション中はプロモ行とボタン/サブタブの強調を非表示にします（dismiss は basemap iframe → basemap 拡張 ctx → パネル拡張 ctx の <code>hubPromoDismiss</code> で中継され、セッション中 <code>_hubPromoDismissed</code> として保持されます）</li>
-<li><strong>プロモ行の「GeoSuite viewer で開く」リンク</strong>: <code>geosuite-hub://open</code> カスタムプロトコル（GeoSuite 専用・<code>workbench/geosuite-hub/install.js</code> が HKCU へ自己登録）経由で geosuite-hub.exe の <code>--view</code>（LNA 無効化済みの専用 WebView2 ウィンドウ）を OS レベルで起動します。開く先は設定テキストの <code>sceneUrl: &lt;URL&gt;</code> 行で指定します（sandboxed iframe は親ページの URL を読めないため、公開シーン URL はホスト側が明示する必要があります）。<code>--view</code> が開くのはハブの状態ページではなく <strong>8515 のビューアシェル <code>http://127.0.0.1:8515/?url=…</code></strong> で、ページ内 iframe がシーンを再生します（v22.4.3〜・後述）。<code>sceneUrl:</code> 未設定でも <code>document.referrer</code>（sandboxed srcdoc iframe から読める親ページ URL）→ <code>location.ancestorOrigins[0]</code>（トップオリジン）の順でシーン URL を自動検出します（v22.4.5〜）。これらも空ならビューアが記憶した最後のシーンを開き、無ければランディングページ（URL 入力欄・8514 状態ページへのリンク付き）を開きます。公開シーンでは Service Worker 仲介により LNA 許可が成立しないため、この OS 経由起動がハブ利用の迂回路になります（<a href="#lna">後述の LNA 節</a>参照）</li>
-<li><strong>管理パネル（⚙️）の Ext サブタブ</strong>（v22.3.1〜）: <code>bridge-hub: ON/OFF</code> の状態行＋疎通確認ボタンと、レイヤーパネルと同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインに移動済み</strong>です。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
+<li><strong>プロモ行の「GeoSuite viewer で開く」リンク</strong>: <code>geosuite-hub://open</code> カスタムプロトコル（GeoSuite 専用・HKCU 登録）経由で geosuite-hub.exe の <code>--view</code>（LNA 無効化済みの専用 WebView2 ウィンドウ）を OS レベルで起動します。<code>--view</code> が開くのはハブの状態ページではなく <strong>8515 のビューアシェル <code>http://127.0.0.1:8515/</code></strong> で、シェルが記憶した最後のシーンを再生し、無ければランディングページ（シーン URL 入力欄・8514 状態ページへのリンク付き）を表示します（v22.4.3〜・後述）。公開シーンでは Service Worker 仲介により LNA 許可が成立しないため、この OS 経由起動がハブ利用の迂回路になります（<a href="#lna">後述の LNA 節</a>参照）</li>
+<li><strong>管理パネル（⚙️）の Ext サブタブ</strong>: <code>bridge-hub: ON/OFF</code> の状態行＋疎通確認ボタンと、レイヤーパネルと同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインに移動済み</strong>です。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
 <li><strong><code>vectorHub: off</code> 指定時</strong>: Ext ボタンと Ext ペイン内の bridge-hub ブロックは非表示になります（AI Bridge 設定は残ります）</li>
 </ul>
 
-<h2>geosuite-hub 統一インストーラ（推奨）</h2>
-<p>導入は <code>geosuite-hub-install.cmd</code> 1本に統一されています — 実行すると <strong>hub バイナリの取得〜<code>geosuite-hub.exe</code> としての配置〜8514 常駐の自動起動登録</strong>・<strong>ビューアシェル（8515）の配置</strong>・<strong><code>geosuite-hub://</code> プロトコル登録</strong>（GeoSuite viewer リンク用・HKCU・管理者権限不要）を一括で行います。プラグインの Ext ボタン／Ext タブのダウンロードボタンからもこの .cmd が保存されます。個別の「ZIP ダウンロード → 展開 → exe 実行」手順は不要です。開発用の Node 版登録スクリプトは <code>workbench/geosuite-hub/install.js</code> です。</p>
-<p><button id="gshub-dl" style="padding:8px 16px;background:#1976d2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;">geosuite-hub-install.cmd をダウンロード</button></p>
+<h2>geosuite-hub.zip（自己インストール型）</h2>
+<p>導入は <code>geosuite-hub.zip</code> に統一されています — <code>geosuite-hub.exe</code> を実行すると <strong><code>%LOCALAPPDATA%\geosuite-hub\</code> への自己コピー〜8514 常駐のログイン時自動起動登録（schtasks / HKCU Run キー）</strong>・<strong>8515 ビューアシェル（exe 内蔵）</strong>・<strong><code>geosuite-hub://</code> プロトコル登録</strong>（HKCU・管理者権限不要）を一括で行います。プラグインの Ext ボタン／Ext タブのダウンロードボタンはこの zip へ直リンクします。解除は <code>geosuite-hub.exe --uninstall</code> です。</p>
+<p><a href="https://yamamoto-ryuzo.github.io/kasugai-canvas-web/stable/download/geosuite-hub.zip" style="display:inline-block;padding:8px 16px;background:#1976d2;color:#fff;border-radius:6px;text-decoration:none;font-size:0.95em;">geosuite-hub.zip をダウンロード</a></p>
 <h2>geosuite-hub.exe（専用ハブ）側の概要</h2>
 <ul>
-<li><strong>bridge-hub バイナリを <code>geosuite-hub.exe</code> にリネームして配置する GeoSuite 専用インスタンス</strong>（Rust 製単一 exe・Node.js 不要）。<code>BRIDGE_HUB_PORT=8514</code> 指定で <code>127.0.0.1:8514</code> にバインドし、<code>%LOCALAPPDATA%\geosuite-hub\</code> 配下で動作。<code>run-hidden.vbs</code>＋HKCU Run キーでログイン時に非表示自動起動。<strong>KASUGAI の共有 bridge-hub（8511）・kasugai-hub:// とは独立</strong>で、KASUGAI 側の旧ポート掃除（8512/8513）の対象外となるポートを選択</li>
+<li><strong>bridge-hub バイナリを <code>geosuite-hub.exe</code> にリネーム配置する GeoSuite 専用インスタンス</strong>（Rust 製単一 exe・Node.js 不要）。exe 名が <code>geosuite-hub</code> の場合、バイナリ自体が専用モードに切替わり、<code>127.0.0.1:8514</code> にバインドして <code>%LOCALAPPDATA%\geosuite-hub\</code> 配下で動作。ログイン時自動起動登録。<strong>KASUGAI の共有 bridge-hub（8511）・kasugai-hub:// とは独立</strong>で、KASUGAI 側の旧ポート掃除（8512/8513）の対象外となるポートを選択</li>
 <li>プロバイダは <code>copilot</code> / <code>devin</code> / <code>antigravity</code> の 3 系統。<strong>実際に使われた時点で対応 CLI を子プロセス起動</strong>（未使用時はゼロコスト）。CLI 未導入なら <code>POST /setup</code> で公式手順の自動インストールも可能</li>
 <li>認証は CLI 側（Copilot なら <code>copilot</code> CLI の対話ログイン or <code>COPILOT_GITHUB_TOKEN</code>/<code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code>）。クォータは利用者本人のものを消費</li>
 <li>API: <code>GET /health</code>・<code>GET /models?provider=</code>・<code>POST /agent</code>・<code>GET|POST /setup</code>・<code>POST|DELETE /mcp[/&lt;project&gt;]</code>・<code>GET /</code>（状態ページ）・<code>/vector/*</code>（status/sources/geojson/query + <code>probe.geojson</code> は LNA アンロック用プローブ、v6.19.0〜）</li>
@@ -68,26 +68,23 @@ flowchart TB
 </ul>
 <p>ハブの詳細仕様（導入・自動セットアップ・プロバイダ別前提・環境変数）は KASUGAI Canvas 側のドキュメントが正本です: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
 
-<h2>GeoSuite viewer シェル（127.0.0.1:8515・v22.4.3〜）</h2>
-<p><code>geosuite-hub://</code> から開く画面専用の、もう1つの常駐プロセスです。<code>%LOCALAPPDATA%\geosuite-hub\serve-viewer.ps1</code>（Windows 標準 PowerShell の TcpListener・外部依存なし）が <code>127.0.0.1:8515</code> で <code>viewer.html</code> を配信します。ハブ本体（8514・API/状態ページ）とは別ポート・別プロセスで、<code>run-hidden.vbs</code> がハブ(8514)とビューア(8515)を同時に非表示起動します。インストーラの起動チェックも両ポートの応答を確認します。</p>
+<h2>GeoSuite viewer シェル（127.0.0.1:8515・exe 内蔵）</h2>
+<p><code>geosuite-hub://</code> から開く画面専用の、ハブと同じプロセスが提供する第2の待受です。geosuite モードの <code>geosuite-hub.exe</code> が <code>127.0.0.1:8515</code> でビューアページを配信します（v22.4.10〜・旧 <code>serve-viewer.ps1</code>＋<code>run-hidden.vbs</code> の別プロセス構成は exe 内蔵に統合）。</p>
 <pre class="mermaid">
 flowchart LR
-  LINK["geosuite-hub://open?url=&lt;scene&gt;<br>（Ext プロモ行のリンク）"] --> SHIM["geosuite-hub.cmd（HKCU shim）<br>geosuite-hub: → http://127.0.0.1:8515 へ書換え"]
-  SHIM --> WV["geosuite-hub.exe --view<br>LNA 無効化済み WebView2<br>※ exe 未配置時は既定ブラウザで開く"]
-  WV --> SHELL["127.0.0.1:8515<br>serve-viewer.ps1 → viewer.html"]
-  SHELL --> IFR["?url= をページ内 iframe で<br>シーン全画面再生"]
+  LINK["geosuite-hub://open<br>（Ext プロモ行のリンク）"] --> WV["geosuite-hub.exe --view http://127.0.0.1:8515/<br>LNA 無効化済み WebView2<br>起動URIは参照しない・常に8515"]
+  WV --> SHELL["127.0.0.1:8515<br>geosuite-hub.exe 内蔵<br>ビューアシェル"]
+  SHELL --> IFR["記憶済みシーン or ランディング<br>（ページ内 iframe で全画面再生）"]
 
   style LINK fill:#e7f0ff,stroke:#1976d2,stroke-width:2px
-  style SHIM fill:#fff8e1,stroke:#f9a825,stroke-width:2px
   style WV fill:#fff8e1,stroke:#f9a825,stroke-width:2px
   style SHELL fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
   style IFR fill:#d5ecd8,stroke:#2e7d32,stroke-width:2px
 </pre>
 <ul>
-<li><strong>ビューアシェルの役割</strong>: <code>viewer.html</code> は <code>?url=&lt;scene&gt;</code> を読んでそのシーンを全画面 iframe で再生するだけの薄いシェルです。<code>?url=</code> 無し（裸の <code>geosuite-hub://open</code> や <code>8515/</code> 直アクセス）では記憶済みシーンを自動で開き、無ければ使い方とハブ状態ページ（<code>127.0.0.1:8514</code>）へのリンクを示すランディングを表示します（v22.4.5〜・後述）</li>
-<li><strong>起動経路</strong>: HKCU 登録される shim <code>geosuite-hub.cmd</code> は <code>geosuite-hub:</code> を <code>http://127.0.0.1:8515</code> に書き換えて <code>geosuite-hub.exe --view &lt;URL&gt;</code>（WebView2）で開きます。exe が無い場合は <code>start http://127.0.0.1:8515/</code> で既定ブラウザへフォールバック — serve-viewer.ps1 は exe から独立して動くためビューア単体でも開けます</li>
-<li><strong>最後に開いたシーンの記憶（v22.4.5〜）</strong>: serve-viewer.ps1 は <code>GET /scene</code>（記憶済みシーン URL を text/plain で返す）と <code>GET /scene?set=&lt;enc&gt;</code>（<code>scene.txt</code> へ保存）のルートを持ちます。<code>viewer.html</code> は <code>?url=</code> 付きで開いた際に同 URL を <code>/scene?set=</code> へ記録し、<code>?url</code> 無しでは <code>/scene</code> を読んで自動フォールバックします。ランディングを見たい場合は <code>?home</code> を付けます（記憶済みシーンがある場合は「前回のシーン」リンクを提示し、手入力用のシーン URL 入力欄も常備）</li>
-<li><strong>実装</strong>: serve-viewer.ps1 は Windows 標準 TcpListener の最小 HTTP サーバで、<code>/scene</code> 以外のリクエストには viewer.html を UTF-8 で返します。インストーラでは serve-viewer.ps1・viewer.html ともに base64 埋め込みで生成され、起動確認は 8514/8515 両ポートの応答をチェックします</li>
+<li><strong>ビューアシェルの役割</strong>: <code>viewer.html</code>（exe に埋め込み）は <code>?url=&lt;scene&gt;</code> を読んでそのシーンを全画面 iframe で再生するだけの薄いシェルです。<code>?url=</code> 無し（裸の <code>geosuite-hub://open</code> や <code>8515/</code> 直アクセス）では記憶済みシーンを自動で開き、無ければ使い方とハブ状態ページ（<code>127.0.0.1:8514</code>）へのリンクを示すランディングを表示します（v22.4.5〜・後述）</li>
+<li><strong>起動経路</strong>: HKCU の <code>shell\open\command</code> には <code>"geosuite-hub.exe" --view "http://127.0.0.1:8515/"</code> を直接登録します（<code>%1</code> を使わない固定コマンドのため URL 書き換えシムは不要・v22.4.8〜）。プロトコル起動 URI のパラメータは参照されず、常に 8515 シェルが開きます。<code>?url=&lt;scene&gt;</code> はブラウザでの直接アクセス時のみ有効です。ビューアシェルはハブと同じプロセスなので、ブラウザで <code>http://127.0.0.1:8515/</code> を直接開くこともできます</li>
+<li><strong>最後に開いたシーンの記憶</strong>: 内蔵ビューアサーバは <code>GET /scene</code>（記憶済みシーン URL を text/plain で返す）と <code>GET /scene?set=&lt;enc&gt;</code>（<code>%LOCALAPPDATA%\geosuite-hub\scene.txt</code> へ保存）のルートを持ちます。<code>viewer.html</code> は <code>?url=</code> 付きで開いた際に同 URL を <code>/scene?set=</code> へ記録し、<code>?url</code> 無しでは <code>/scene</code> を読んで自動フォールバックします。ランディングを見たい場合は <code>?home</code> を付けます（記憶済みシーンがある場合は「前回のシーン」リンクを提示し、手入力用のシーン URL 入力欄も常備）</li>
 </ul>
 
 <h2 id="lna">Chrome Local Network Access (LNA) と自動アンロック（v22.4.0〜）</h2>
@@ -119,102 +116,5 @@ flowchart TB
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>try { mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { htmlLabels: true } }); } catch (e) {}</script>
-<script>
-(function(){
-  var lines = [
-    '@echo off',
-    'rem geosuite-hub unified installer for Re:Earth GeoSuite.',
-    'rem One run installs the GeoSuite-dedicated hub: geosuite-hub.exe (renamed',
-    'rem bridge-hub binary) on port 8514 + logon autostart + the geosuite-hub://',
-    'rem URL protocol (HKCU, no admin required). KASUGAI\'s shared bridge-hub on',
-    'rem 8511 is NOT used and NOT touched.',
-    'setlocal EnableDelayedExpansion',
-    '',
-    'rem --- 0. layout -------------------------------------------------------',
-    'set "DIR=%LOCALAPPDATA%\\geosuite-hub"',
-    'set "HUBEXE=%DIR%\\geosuite-hub.exe"',
-    'set "HUBURL=http://127.0.0.1:8514"',
-    'if not exist "%DIR%" mkdir "%DIR%"',
-    '',
-    'rem --- 1. hub binary: prefer an installed bridge-hub.exe, else CDN -----',
-    'if not exist "%HUBEXE%" (',
-    '  if exist "%LOCALAPPDATA%\\kasugai\\bridge-hub\\bridge-hub.exe" (',
-    '    echo copying installed bridge-hub.exe -^> geosuite-hub.exe',
-    '    copy /y "%LOCALAPPDATA%\\kasugai\\bridge-hub\\bridge-hub.exe" "%HUBEXE%" >nul',
-    '  ) else (',
-    '    set "DL=%TEMP%\\geosuite-hub-dl"',
-    '    if not exist "!DL!" mkdir "!DL!"',
-    '    echo downloading bridge-hub.zip ...',
-    '    curl -fsSL -o "!DL!\\bridge-hub.zip" "https://yamamoto-ryuzo.github.io/kasugai-canvas-web/stable/download/bridge-hub.zip"',
-    '    if exist "!DL!\\bridge-hub.zip" tar -xf "!DL!\\bridge-hub.zip" -C "!DL!"',
-    '    for /f "delims=" %%f in (\'dir /b /s "!DL!\\bridge-hub.exe" 2^>nul\') do (',
-    '      if not exist "%HUBEXE%" copy /y "%%f" "%HUBEXE%" >nul',
-    '    )',
-    '  )',
-    ')',
-    '',
-    'rem --- 2. hidden autostart (Run key + wscript launcher, no console) ----',
-    'rem The vbs sets BRIDGE_HUB_PORT=8514 for the child process — with the env',
-    'rem set, the binary skips its self-install/legacy-cleanup path entirely.',
-    'rem It also launches the viewer shell server on 8515 (PowerShell, hidden).',
-    '>  "%DIR%\\run-hidden.vbs" echo Set fso = CreateObject^("Scripting.FileSystemObject"^)',
-    '>> "%DIR%\\run-hidden.vbs" echo dir = fso.GetParentFolderName^(WScript.ScriptFullName^)',
-    '>> "%DIR%\\run-hidden.vbs" echo Set sh = CreateObject^("Wscript.Shell"^)',
-    '>> "%DIR%\\run-hidden.vbs" echo sh.Environment^("PROCESS"^)^("BRIDGE_HUB_PORT"^) = "8514"',
-    '>> "%DIR%\\run-hidden.vbs" echo sh.Run """" ^& dir ^& "\\geosuite-hub.exe"" --serve", 0, False',
-    '>> "%DIR%\\run-hidden.vbs" echo sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """" ^& dir ^& "\\serve-viewer.ps1""", 0, False',
-    '',
-    'rem --- 2.5 viewer shell server (:8515) — embedded as base64 -------------',
-    'set "PS1B64=IyBnZW9zdWl0ZS1odWIgdmlld2VyIHNlcnZlciDigJQgc2VydmVzIHZpZXdlci5odG1sIG9uIDEyNy4wLjAuMTo4NTE1CiMgQVNDSUktb25seSBzb3VyY2Ugc28gUG93ZXJTaGVsbCBuZXZlciBtaXNyZWFkcyB0aGUgZW5jb2RpbmcuCiMgdmlld2VyLmh0bWwgaXMgcmVhZCBleHBsaWNpdGx5IGFzIFVURi04IChpdCBjb250YWlucyBub24tQVNDSUkgdGV4dCkuCiMgUm91dGVzOgojICAgR0VUIC9zY2VuZSAgICAgICAgICAgIC0+IHRleHQvcGxhaW46IGxhc3Qgb3BlbmVkIHNjZW5lIFVSTCAoZW1wdHkgaWYgbm9uZSkKIyAgIEdFVCAvc2NlbmU/c2V0PTxlbmM+ICAtPiBzdG9yZXMgdGhlIFVSTC1kZWNvZGVkIHZhbHVlIGluIHNjZW5lLnR4dAojICAgYW55dGhpbmcgZWxzZSAgICAgICAgIC0+IHZpZXdlci5odG1sCiRwb3J0ID0gODUxNQokZGlyID0gU3BsaXQtUGF0aCAtUGFyZW50ICRNeUludm9jYXRpb24uTXlDb21tYW5kLlBhdGgKJGh0bWwgPSBbSU8uRmlsZV06OlJlYWRBbGxUZXh0KChKb2luLVBhdGggJGRpciAndmlld2VyLmh0bWwnKSwgW1RleHQuRW5jb2RpbmddOjpVVEY4KQokc2NlbmVGaWxlID0gSm9pbi1QYXRoICRkaXIgJ3NjZW5lLnR4dCcKJHV0ZjggPSBOZXctT2JqZWN0IFRleHQuVVRGOEVuY29kaW5nKCRmYWxzZSkKJGwgPSBOZXctT2JqZWN0IFN5c3RlbS5OZXQuU29ja2V0cy5UY3BMaXN0ZW5lcihbU3lzdGVtLk5ldC5JUEFkZHJlc3NdOjpMb29wYmFjaywgJHBvcnQpCiRsLlN0YXJ0KCkKd2hpbGUgKCR0cnVlKSB7CiAgJGMgPSAkbC5BY2NlcHRUY3BDbGllbnQoKQogIHRyeSB7CiAgICAkcyA9ICRjLkdldFN0cmVhbSgpCiAgICAkYnVmID0gTmV3LU9iamVjdCBieXRlW10gODE5MgogICAgJG4gPSAkcy5SZWFkKCRidWYsIDAsIDgxOTIpCiAgICBpZiAoJG4gLWd0IDApIHsKICAgICAgJHJlcSA9IFtUZXh0LkVuY29kaW5nXTo6QVNDSUkuR2V0U3RyaW5nKCRidWYsIDAsICRuKQogICAgICAkcGF0aCA9ICcnCiAgICAgIGlmICgkcmVxIC1tYXRjaCAnXlx3KyAoW14gXSspJykgeyAkcGF0aCA9ICRNYXRjaGVzWzFdIH0KICAgICAgJGN0eXBlID0gJ3RleHQvaHRtbDsgY2hhcnNldD11dGYtOCcKICAgICAgJGJvZHkgPSAkaHRtbAogICAgICBpZiAoJHBhdGguU3RhcnRzV2l0aCgnL3NjZW5lJykpIHsKICAgICAgICBpZiAoJHBhdGggLW1hdGNoICdbPyZdc2V0PShbXiZdKyknKSB7CiAgICAgICAgICBbSU8uRmlsZV06OldyaXRlQWxsVGV4dCgkc2NlbmVGaWxlLCBbVXJpXTo6VW5lc2NhcGVEYXRhU3RyaW5nKCRNYXRjaGVzWzFdKSwgJHV0ZjgpCiAgICAgICAgfQogICAgICAgICRib2R5ID0gJycKICAgICAgICBpZiAoW0lPLkZpbGVdOjpFeGlzdHMoJHNjZW5lRmlsZSkpIHsgJGJvZHkgPSBbSU8uRmlsZV06OlJlYWRBbGxUZXh0KCRzY2VuZUZpbGUsIFtUZXh0LkVuY29kaW5nXTo6VVRGOCkgfQogICAgICAgICRjdHlwZSA9ICd0ZXh0L3BsYWluOyBjaGFyc2V0PXV0Zi04JwogICAgICB9CiAgICAgICRieXRlcyA9IFtUZXh0LkVuY29kaW5nXTo6VVRGOC5HZXRCeXRlcygkYm9keSkKICAgICAgJGhkciA9ICJIVFRQLzEuMSAyMDAgT0tgcmBuQ29udGVudC1UeXBlOiAkY3R5cGVgcmBuQ29udGVudC1MZW5ndGg6ICQoJGJ5dGVzLkxlbmd0aClgcmBuQ29ubmVjdGlvbjogY2xvc2VgcmBuYHJgbiIKICAgICAgJGhiID0gW1RleHQuRW5jb2RpbmddOjpBU0NJSS5HZXRCeXRlcygkaGRyKQogICAgICAkcy5Xcml0ZSgkaGIsIDAsICRoYi5MZW5ndGgpOyAkcy5Xcml0ZSgkYnl0ZXMsIDAsICRieXRlcy5MZW5ndGgpOyAkcy5GbHVzaCgpCiAgICB9CiAgfSBjYXRjaCB7fQogIHRyeSB7ICRjLkNsb3NlKCkgfSBjYXRjaCB7fQp9Cg=="',
-    'set "HTMLB64=PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImphIj48aGVhZD48bWV0YSBjaGFyc2V0PSJ1dGYtOCI+PHRpdGxlPkdlb1N1aXRlIFZpZXdlcjwvdGl0bGU+CjxzdHlsZT5odG1sLGJvZHl7bWFyZ2luOjA7aGVpZ2h0OjEwMCU7Zm9udC1mYW1pbHk6c2Fucy1zZXJpZn1pZnJhbWV7Ym9yZGVyOjA7d2lkdGg6MTAwJTtoZWlnaHQ6MTAwdmg7ZGlzcGxheTpibG9ja30jZW1wdHl7cGFkZGluZzozZW0gMmVtO2NvbG9yOiM0NDQ7bWF4LXdpZHRoOjY0MHB4fSN1e3dpZHRoOjIyZW07cGFkZGluZzo0cHh9PC9zdHlsZT4KPC9oZWFkPjxib2R5PjxkaXYgaWQ9ImFwcCI+PC9kaXY+CjxzY3JpcHQ+CnZhciBwPW5ldyBVUkxTZWFyY2hQYXJhbXMobG9jYXRpb24uc2VhcmNoKSx1PXAuZ2V0KCd1cmwnKSxhPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdhcHAnKTsKZnVuY3Rpb24gZXNjKHMpe3JldHVybiBzLnJlcGxhY2UoLyYvZywnJmFtcDsnKS5yZXBsYWNlKC88L2csJyZsdDsnKTt9CmZ1bmN0aW9uIHNob3codil7dmFyIGY9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnaWZyYW1lJyk7Zi5zcmM9djtmLmFsbG93PSdjbGlwYm9hcmQtd3JpdGU7IGZ1bGxzY3JlZW47IGdlb2xvY2F0aW9uJztkb2N1bWVudC5ib2R5LmFwcGVuZENoaWxkKGYpO30KZnVuY3Rpb24gaG9tZShsYXN0KXthLmlubmVySFRNTD0nPGRpdiBpZD0iZW1wdHkiPjxoMj5HZW9TdWl0ZSBWaWV3ZXI8L2gyPjxwPjxjb2RlPmdlb3N1aXRlLWh1YjovL29wZW4/dXJsPSZsdDtzY2VuZSBVUkwmZ3Q7PC9jb2RlPiDjgafjgrfjg7zjg7PjgpLplovjgYTjgabjgY/jgaDjgZXjgYTjgII8L3A+PHA+PGlucHV0IGlkPSJ1IiBwbGFjZWhvbGRlcj0iaHR0cHM6Ly/igKYiPjxidXR0b24gb25jbGljaz0idmFyIHY9ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoXCd1XCcpLnZhbHVlLnRyaW0oKTtpZih2KWxvY2F0aW9uPVwnP3VybD1cJytlbmNvZGVVUklDb21wb25lbnQodikiPumWi+OBjzwvYnV0dG9uPjwvcD4nKyhsYXN0Pyc8cD7liY3lm57jga7jgrfjg7zjg7M6IDxhIGhyZWY9Ij91cmw9JytlbmNvZGVVUklDb21wb25lbnQobGFzdCkrJyI+Jytlc2MobGFzdCkrJzwvYT48L3A+JzonJykrJzxwPmh1YjogPGEgaHJlZj0iaHR0cDovLzEyNy4wLjAuMTo4NTE0LyI+MTI3LjAuMC4xOjg1MTQgKHN0YXR1cyk8L2E+PC9wPjwvZGl2Pic7fQpmdW5jdGlvbiBsYXN0KGNiKXtmZXRjaCgnL3NjZW5lJykudGhlbihmdW5jdGlvbihyKXtyZXR1cm4gci50ZXh0KCl9KS50aGVuKGZ1bmN0aW9uKHQpe2NiKHQudHJpbSgpKX0pLmNhdGNoKGZ1bmN0aW9uKCl7Y2IoJycpfSk7fQppZih1KXt0cnl7ZmV0Y2goJy9zY2VuZT9zZXQ9JytlbmNvZGVVUklDb21wb25lbnQodSkpLmNhdGNoKGZ1bmN0aW9uKCl7fSk7fWNhdGNoKGUpe31zaG93KHUpO30KZWxzZSBpZihwLmhhcygnaG9tZScpKXtsYXN0KGhvbWUpO30KZWxzZXtsYXN0KGZ1bmN0aW9uKHYpe3Y/c2hvdyh2KTpob21lKCcnKX0pO30KPC9zY3JpcHQ+PC9ib2R5PjwvaHRtbD4K"',
-    'powershell -NoProfile -Command "[IO.File]::WriteAllBytes(\'%DIR%\\serve-viewer.ps1\',[Convert]::FromBase64String($env:PS1B64)); [IO.File]::WriteAllBytes(\'%DIR%\\viewer.html\',[Convert]::FromBase64String($env:HTMLB64))"',
-    '',
-    'rem --- 3. geosuite-hub:// handler shim ---------------------------------',
-    'rem All invocations resolve to the viewer shell on :8515 (served by',
-    'rem serve-viewer.ps1). ?url= is passed through — the page iframes the scene.',
-    '>  "%DIR%\\geosuite-hub.cmd" echo @echo off',
-    '>> "%DIR%\\geosuite-hub.cmd" echo setlocal',
-    '>> "%DIR%\\geosuite-hub.cmd" echo set "ARG=%%~1"',
-    '>> "%DIR%\\geosuite-hub.cmd" echo set "BRIDGE_HUB_PORT=8514"',
-    '>> "%DIR%\\geosuite-hub.cmd" echo set "EXE=%%~dp0geosuite-hub.exe"',
-    '>> "%DIR%\\geosuite-hub.cmd" echo if not "%%ARG:url=%%"=="%%ARG%%" (set "VIEW=%%ARG:geosuite-hub:=http://127.0.0.1:8515%%") else (set "VIEW=http://127.0.0.1:8515/")',
-    '>> "%DIR%\\geosuite-hub.cmd" echo if exist "%%EXE%%" (start "" "%%EXE%%" --view "%%VIEW%%") else (start "" "http://127.0.0.1:8515/")',
-    '',
-    'rem --- 4. registration: geosuite-hub:// + logon Run key (.reg import) --',
-    'set "DIR_ESC=%DIR:\\=\\\\%"',
-    'set "REG=%TEMP%\\geosuite-hub-register.reg"',
-    '(',
-    'echo Windows Registry Editor Version 5.00',
-    'echo.',
-    'echo [HKEY_CURRENT_USER\\Software\\Classes\\geosuite-hub]',
-    'echo @="URL:GeoSuite Hub Protocol"',
-    'echo "URL Protocol"=""',
-    'echo.',
-    'echo [HKEY_CURRENT_USER\\Software\\Classes\\geosuite-hub\\shell\\open\\command]',
-    'echo @="\\"%DIR_ESC%\\\\geosuite-hub.cmd\\" \\"%%1\\""',
-    'echo.',
-    'echo [HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run]',
-    'echo "geosuite-hub"="wscript.exe \\"%DIR_ESC%\\\\run-hidden.vbs\\""',
-    ') > "%REG%"',
-    'reg import "%REG%" >nul && del "%REG%"',
-    '',
-    'rem --- 5. start hub+viewer now (skip if both already answering) ---------',
-    'set "UP="',
-    'curl -fs -m 2 "%HUBURL%/health" >nul 2>&1 && curl -fs -m 2 "http://127.0.0.1:8515/" >nul 2>&1 && set "UP=1"',
-    'if not defined UP if exist "%HUBEXE%" start "" wscript.exe "%DIR%\\run-hidden.vbs"',
-    '',
-    'echo geosuite-hub installed: geosuite-hub.exe on 8514 + viewer on 8515 + autostart + geosuite-hub:// protocol',
-    'pause'
-  ];
-  document.getElementById('gshub-dl').addEventListener('click', function(){
-    var blob = new Blob([lines.join('\r\n')], {type:'application/octet-stream'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'geosuite-hub-install.cmd';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
-  });
-})();
-</script>
 </body>
 </html>
