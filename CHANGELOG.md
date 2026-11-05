@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.4.5
+- 新規: 「GeoSuite viewer で開く」リンクのシーン URL 自動検出 — `sceneUrl:` 未設定でも、sandboxed srcdoc iframe から読める `document.referrer`（親ページの完全 URL）→ `location.ancestorOrigins[0]`（トップオリジン）の順でフォールバックし、`geosuite-hub://open?url=<scene>` を構成する。公開シーン（`*.visualizer.reearth.io`）では referrer/ancestorOrigins がそのままシーン URL になるため、設定なしでそのままビューア起動できる（実測: workbench の plugin iframe で `referrer=http://localhost:8787/` を確認）
+- 変更: 8515 ビューアシェルに「最後に開いたシーン」の記憶と既定フォールバックを追加 — `serve-viewer.ps1` に `GET /scene`（記憶済みシーン URL を text/plain で返す）と `GET /scene?set=<enc>`（`scene.txt` へ保存）のルートを追加。`viewer.html` は `?url=` 付きで開いた際に同 URL を `/scene?set=` へ記録し、`?url` 無しアクセス時は記憶済みシーンを自動で iframe 表示するため、`geosuite-hub://open` の裸起動・`http://127.0.0.1:8515/` への直接アクセスの両方で最後のシーンが開く。従来の案内ページは `?home` で表示可能（記憶済みシーンがある場合は「前回のシーン」リンクも提示）し、シーン URL の直入力欄も追加。埋め込み base64 は `geosuite-hub-install.cmd`・`GSHUB_INSTALL_CMD`・`docs/geosuite-hub.html` の3箇所を同期更新
+
+## v22.4.4
+- 修正: 8515 ビューアシェルの日本語文字化け — serve-viewer.ps1 が BOM 無し UTF-8 のため PowerShell が ANSI(CP932) として読み、配信 HTML が mojibake 化していた。ps1 を ASCII のみにし、viewer.html を別ファイルとして UTF-8 明示で読む構成に分離。インストーラは両ファイルを base64 埋め込み＋WriteAllBytes で展開
+
 ## v22.4.3
 - 新規: geosuite-hub にビューアページサーバーを追加（127.0.0.1:8515）— `geosuite-hub://open` は 8514 の状態ページではなく **8515 の GeoSuite viewer シェル**を WebView2 で開くように変更。`?url=<scene>` はビューアページへ透過され、ページ内 iframe でシーンを再生。サーバーは Windows 標準の PowerShell TcpListener（`serve-viewer.ps1`・インストーラへ base64 埋め込み）で、`run-hidden.vbs` がハブ(8514)とビューア(8515)を同時に非表示起動。インストーラの起動チェックは両ポートの応答を確認
 

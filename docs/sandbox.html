@@ -37,7 +37,7 @@ flowchart TB
     direction TB
     SW["AssetSecurity SW が<br>全 fetch を仲介"]
     BLOCK["127.0.0.1 直行 → ERR_FAILED<br>許可プロンプトすら出ない"]
-    ALT["GeoSuite viewer（WebView2）で開く<br>＝公開シーンでは実質唯一の経路<br>（https トンネルは制御APIの公開を伴い実用外）"]
+    ALT["GeoSuite viewer（WebView2・:8515）で開く<br>＝公開シーンでは実質唯一の経路<br>（https トンネルは制御APIの公開を伴い実用外）"]
     SRV["② 外部ブリッジ<br>bridge_server.js :8977<br>ツール呼出し"]
     HUB["② 外部ブリッジ<br>geosuite-hub :8514<br>/vector → geojson<br>（.duckdb 永続化）"]
     SW --> BLOCK --> ALT
