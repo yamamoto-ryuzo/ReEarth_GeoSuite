@@ -18,7 +18,7 @@
     </nav>
   </header>
   <div class="content">
-<p>bridge-hub の <code>/vector</code> サービスによるベクトルソースの自動外部 GeoJSON 化の仕様です。概念図・容量目安は <a href="./sandbox.html">sandbox.html</a>、導入手順は <a href="./bridge-hub-install.html">bridge-hub-install.html</a>、AI プロバイダ経由の利用は <a href="./bridge-hub.html">bridge-hub.html</a> を参照してください。</p>
+<p>bridge-hub の <code>/vector</code> サービスによるベクトルソースの自動外部 GeoJSON 化の仕様です。概念図・容量目安は <a href="./sandbox.html">sandbox.html</a>、導入手順は <a href="./geosuite-hub.html">geosuite-hub.html</a>、AI プロバイダ経由の利用は <a href="./bridge-hub.html">bridge-hub.html</a> を参照してください。</p>
 <h2>/vector — ベクトルソースの自動外部 GeoJSON 化（v22.2.0〜）</h2>
 <p>ハブの <code>/vector</code> サービス（ネイティブ DuckDB CLI をバックエンドに parquet/gpkg/fgb/geojson/csv/shp を永続 <code>.duckdb</code> へ取り込み GeoJSON 配信）が稼働している環境では、拡張経路ベクトル構文のうち <strong>http(s) URL を持つ <code>fgb:</code>・<code>parquet:</code>・<code>gpkg:</code>・<code>duckdb:</code> のソースを自動でハブ登録</strong>し、<code>geojson: http://&lt;hub&gt;/vector/geojson/&lt;name&gt;</code> の素の URL レイヤとして追加します。</p>
 <p>これにより DuckDB-Wasm の ~15s 初期化・opaque origin のキャッシュ不可・拡張コンテキスト 4MB 制約を全て回避できます（結果は ctx を横断せずホストが直接 fetch）。同一ソースは <code>gs_&lt;hash&gt;</code> の決定的名で登録されるため、再読込・他クライアントで取込み済みテーブルが共有されます。</p>

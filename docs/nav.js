@@ -33,7 +33,7 @@
       label: '外部ブリッジ',
       items: [
         { href: 'external-bridge.html', text: '6. 外部ブリッジ（実装構成）' },
-        { href: 'bridge-hub-install.html', text: '7. bridge-hub 導入（Ext〜自己インストール）' },
+        { href: 'geosuite-hub.html', text: '7. geosuite-hub 導入（統一インストーラ）' },
         { href: 'bridge-hub.html', text: '8. AIチャット → ブリッジハブ' },
         { href: 'vector-externalization.html', text: '9. ベクター外部化（/vector）' }
       ]

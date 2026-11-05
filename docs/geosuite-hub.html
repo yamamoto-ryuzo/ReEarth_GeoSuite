@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>bridge-hub 導入（Ext ボタン〜自己インストール） | Re:Earth GeoSuite</title>
+<title>geosuite-hub 導入（統一インストーラ） | Re:Earth GeoSuite</title>
 <link rel="stylesheet" href="style.css">
 <script src="nav.js" defer></script>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>📚 bridge-hub 導入（Ext ボタン〜自己インストール）</h1>
+    <h1>📚 geosuite-hub 導入（統一インストーラ）</h1>
     <nav>
       <a href="../index.html">🏠 GeoSuite トップ</a>
       <a href="index.html">プラグインの配布（ZIP）</a>
@@ -19,7 +19,7 @@
   </header>
   <div class="content">
 <blockquote><p><strong>公開 Visualizer シーンで利用するには viewer（WebView2）経路が実質必須です。</strong> GeoSuite は専用プロトコル <code>geosuite-hub://</code> を独自実装しており、<code>workbench/geosuite-hub/install.js</code> で HKCU 登録すれば bridge-hub.exe の <code>--view</code>（WebView2）を OS 経由で起動できます — KASUGAI Canvas は不要です（KASUGAI 導入環境ではセットアップが bridge-hub を自動導入します）。単体の bridge-hub.exe 導入は <strong>Workbench（localhost:8787）やイントラ内ホストなど loopback 制約の無い環境向け</strong>です — 公開 Visualizer シーンでは LNA/SW 仲介により接続経路が成立しないため、hub＋viewer の一式導入が事実上の必要条件になります。</p></blockquote>
-<p>bridge-hub（CANVAS ブリッジハブ・127.0.0.1:8511）の導入手順と、Chrome Local Network Access (LNA) による接続制約および自動アンロックの仕組みをまとめたページです。AI プロバイダ経由の使い方は <a href="./bridge-hub.html">bridge-hub.html</a>、ベクターデータの外部化仕様は <a href="./vector-externalization.html">vector-externalization.html</a> を参照してください。</p>
+<p>geosuite-hub（bridge-hub.exe と <code>geosuite-hub://</code> プロトコルを一括導入する統一インストーラ）の手順と、導入される bridge-hub（CANVAS ブリッジハブ・127.0.0.1:8511）に対する Chrome Local Network Access (LNA) による接続制約および自動アンロックの仕組みをまとめたページです。AI プロバイダ経由の使い方は <a href="./bridge-hub.html">bridge-hub.html</a>、ベクターデータの外部化仕様は <a href="./vector-externalization.html">vector-externalization.html</a> を参照してください。</p>
 <h2>導入方法（Ext ボタン／管理パネル Ext タブ・v22.3.0〜）</h2>
 <p>ハブが未検出の環境ではプラグイン内に導入導線が表示されます。導入は <code>geosuite-hub-install.cmd</code> 1本に統一されています — 実行すると bridge-hub の取得・自己インストール（<code>%LOCALAPPDATA%\kasugairidge-hub\</code>・ログイン時自動起動登録）と <code>geosuite-hub://</code> プロトコル登録を一括で行います。</p>
 <pre class="mermaid">
