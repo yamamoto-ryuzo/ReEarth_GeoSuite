@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.4.11
+- 修正: 「GeoSuite viewer で開く」が呼び出し元シーンではなく前回のシーン（scene.txt）を開く重大な欠陥を修正 — `hub-view-open` リンクが裸の `geosuite-hub://open` を発行しており、かつハブ側のプロトコル登録も起動 URI を破棄する固定コマンドだったため、呼び出したサイトの URL が一切渡らず開発時の残存シーンが開いていた。リンク側は `document.referrer`（sandboxed iframe からも取れる親ページの完全 URL）→ `location.ancestorOrigins[0]` のフォールバックで `geosuite-hub://open?url=<scene>` を構成し、ハブ側（kasugai_canvas 6.19.1）はプロトコル登録を `--view "%1"` に変更して `url=` を 8515 ビューアシェルへ転送（v22.4.8 で撤去した URL 引き継ぎを exe 直処理として復活）
+
 ## v22.4.10
 - 変更: geosuite-hub を **自己インストール型 exe 配布**に移行 — `geosuite-hub.exe`（bridge-hub バイナリのリネーム品・kasugai_canvas 側で exe 名検出の GeoSuite 専用モードを実装）を実行するだけで `%LOCALAPPDATA%\geosuite-hub` への自己コピー・8514 常駐の自動起動登録・`geosuite-hub://` プロトコル登録・**8515 ビューアシェル（exe 内蔵）**まで一括で行う。これに伴い統一インストーラ `.cmd`・`serve-viewer.ps1`・`run-hidden.vbs`・プロトコル shim は全て廃止（旧インストーラが配置したファイルは新版インストール時に掃除）。ダウンロードは CDN ホストの `geosuite-hub.zip`（exe 同梱）へ直リンクに変更し、`GSHUB_INSTALL_CMD`・blob 生成・`hubZipBlob`・`installer` 配管を撤去。手順は「① zip ダウンロード → ② 展開 → ③ geosuite-hub.exe 実行」のみ。`docs/geosuite-hub.html` も新構成へ全面更新
 

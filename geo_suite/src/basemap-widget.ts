@@ -304,6 +304,21 @@ const html: string = `
       var _hubPoll = null;
       var _hubUnlockPoll = null;
       var _hubUnlockTried = false;
+      // "Open in GeoSuite viewer" must carry the invoking page URL — the hub's
+      // --view forwards it to the 8515 viewer shell (which also persists it to
+      // scene.txt). Without ?url= the shell just reopens the last saved scene.
+      // document.referrer gives the embedding Visualizer page URL even from
+      // this sandboxed (opaque-origin) iframe; ancestorOrigins[0] is the
+      // fallback (top origin — for published scenes the origin is the scene).
+      try {
+        var _hubViewOpen = document.getElementById('hub-view-open');
+        if (_hubViewOpen) {
+          var _hubSceneUrl = '';
+          try { _hubSceneUrl = String(document.referrer || ''); } catch (e) {}
+          if (!_hubSceneUrl) { try { _hubSceneUrl = String((location.ancestorOrigins && location.ancestorOrigins[0]) || ''); } catch (e) {} }
+          _hubViewOpen.href = 'geosuite-hub://open' + (_hubSceneUrl ? '?url=' + encodeURIComponent(_hubSceneUrl) : '');
+        }
+      } catch (e) {}
       function wireHubPromo() {
         try {
           var cfg = _hubCfg;
