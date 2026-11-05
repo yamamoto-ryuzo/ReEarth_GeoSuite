@@ -39,13 +39,15 @@ rem set, the binary skips its self-install/legacy-cleanup path entirely.
 >> "%DIR%\run-hidden.vbs" echo sh.Run """" ^& dir ^& "\geosuite-hub.exe"" --serve", 0, False
 
 rem --- 3. geosuite-hub:// handler shim ---------------------------------
+rem bare `open` (no ?url=) -> geosuite-hub's own status page (:8514).
+rem The binary's built-in bare-open fallback is hardcoded to 8511.
 >  "%DIR%\geosuite-hub.cmd" echo @echo off
 >> "%DIR%\geosuite-hub.cmd" echo setlocal
 >> "%DIR%\geosuite-hub.cmd" echo set "ARG=%%~1"
->> "%DIR%\geosuite-hub.cmd" echo set "ARG=%%ARG:geosuite-hub:=kasugai-hub:%%"
 >> "%DIR%\geosuite-hub.cmd" echo set "BRIDGE_HUB_PORT=8514"
 >> "%DIR%\geosuite-hub.cmd" echo set "EXE=%%~dp0geosuite-hub.exe"
->> "%DIR%\geosuite-hub.cmd" echo if exist "%%EXE%%" (start "" "%%EXE%%" --view "%%ARG%%") else (start "" "%HUBURL%/")
+>> "%DIR%\geosuite-hub.cmd" echo if not "%%ARG:url=%%"=="%%ARG%%" (set "VIEW=%%ARG:geosuite-hub:=kasugai-hub:%%") else (set "VIEW=%HUBURL%/")
+>> "%DIR%\geosuite-hub.cmd" echo if exist "%%EXE%%" (start "" "%%EXE%%" --view "%%VIEW%%") else (start "" "%HUBURL%/")
 
 rem --- 4. registration: geosuite-hub:// + logon Run key (.reg import) --
 set "DIR_ESC=%DIR:\=\\%"
