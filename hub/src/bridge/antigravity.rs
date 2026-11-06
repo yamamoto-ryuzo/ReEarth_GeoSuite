@@ -4,7 +4,7 @@
 //
 // 地図操作ツールは MCP (streamable HTTP) で agy に注入する:
 // ハブ側が /mcp で MCP サーバーを兼ね、起動時に
-// `agy mcp add kasugai http://127.0.0.1:<port>/mcp` で登録する。
+// `agy mcp add geosuite http://127.0.0.1:<port>/mcp` で登録する。
 // agy がツールを呼ぶと呼び出しを actions として収集してスタブ結果を返す
 // （実実行はブラウザ側）。listLayers / getCamera はリクエストに同梱された
 // 現在状態から実値を返す。
@@ -14,9 +14,9 @@
 // 会話の継続は --conversation <id> で agy 側の会話ストアを再利用する。
 //
 // 権限: headless モードは確認プロンプトを出せないため、許可ルールが無い
-// ツール呼び出しは自動拒否される。kasugai MCP ツールのみを許可するよう、
+// ツール呼び出しは自動拒否される。geosuite MCP ツールのみを許可するよう、
 // 起動時に ~/.gemini/antigravity-cli/settings.json の permissions.allow へ
-// `mcp(kasugai/*)` を追加する（ANTIGRAVITY_BRIDGE_NO_SETTINGS_PATCH で無効化）。
+// `mcp(geosuite/*)` を追加する（ANTIGRAVITY_BRIDGE_NO_SETTINGS_PATCH で無効化）。
 // ファイル・シェル等の内蔵ツールは許可ルールを足さない限り自動拒否され、
 // 作業ディレクトリも空の専用ディレクトリに限定する。
 use super::common::{
@@ -54,7 +54,7 @@ fn no_settings_patch() -> bool {
 }
 // agy に登録する MCP サーバー名（permissions ルール mcp(<name>/*) と対になる）
 fn mcp_server_name() -> String {
-    std::env::var("ANTIGRAVITY_BRIDGE_MCP_NAME").unwrap_or_else(|_| "kasugai".to_string())
+    std::env::var("ANTIGRAVITY_BRIDGE_MCP_NAME").unwrap_or_else(|_| "geosuite".to_string())
 }
 
 fn home_dir() -> PathBuf {
@@ -221,7 +221,7 @@ impl AntiBridge {
     }
 
     // ~/.gemini/antigravity-cli/settings.json の permissions.allow に
-    // `mcp(<name>/*)` を追加する（headless で kasugai MCP 呼び出しが自動拒否
+    // `mcp(<name>/*)` を追加する（headless で geosuite MCP 呼び出しが自動拒否
     // されないよう事前許可する。他ツールの権限は変更しない）
     fn ensure_permission_rule(&self) {
         if no_settings_patch() {
@@ -266,7 +266,7 @@ impl AntiBridge {
         }
     }
 
-    // agy のグローバル MCP 設定に登録されている kasugai の URL を読む。
+    // agy のグローバル MCP 設定に登録されている geosuite の URL を読む。
     // 未登録は ""、ファイルが読めない環境では None を返す
     fn registered_mcp_url(&self) -> Option<String> {
         let data = std::fs::read_to_string(mcp_config_file()).ok()?;
@@ -284,7 +284,7 @@ impl AntiBridge {
     }
 
     // ブリッジの /mcp エンドポイントを agy の MCP サーバーとして登録する
-    // （add は add-or-update のため冪等。既存の kasugai エントリは上書きされる）
+    // （add は add-or-update のため冪等。既存の geosuite エントリは上書きされる）
     async fn ensure_mcp_registration(&self) {
         if no_mcp_register() {
             return;
@@ -626,16 +626,16 @@ impl AntiBridge {
         let reg_now = self.registered_mcp_url().unwrap_or_else(|| self.mcp_url());
         let mcp_before = shared.hits.load(std::sync::atomic::Ordering::SeqCst);
         // agy 側が別（古い）MCP URL を見ている兆候: ターン中にこのブリッジの
-        // /mcp へ一度も届かず、kasugai ツール呼出・ツール失敗・接続エラー系の
+        // /mcp へ一度も届かず、geosuite ツール呼出・ツール失敗・接続エラー系の
         // 応答が見える（古いポートが死んでいるか、別インスタンスへ誤配送）
-        let is_kasugai_step = |t: &(String, String)| {
+        let is_hub_step = |t: &(String, String)| {
             t.0.contains(&mcp_server_name()) || decls.iter().any(|d| d.name == t.0)
         };
         let stale_mcp = |r: &AgyTurn| {
             if shared.hits.load(std::sync::atomic::Ordering::SeqCst) != mcp_before {
                 return false;
             }
-            if r.tool_steps.iter().any(|t| is_kasugai_step(t)) {
+            if r.tool_steps.iter().any(|t| is_hub_step(t)) {
                 return true;
             }
             if r.tool_steps
@@ -790,7 +790,7 @@ impl AntiBridge {
                 .to_string();
             last_result = r;
         }
-        // 権限拒否で応答が空のケース（mcp(kasugai/*) ルール未適用等）を明示する
+        // 権限拒否で応答が空のケース（mcp(geosuite/*) ルール未適用等）を明示する
         let denied = last_result
             .get("denied_actions")
             .and_then(|v| v.as_array())

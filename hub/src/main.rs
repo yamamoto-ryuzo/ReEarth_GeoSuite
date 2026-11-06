@@ -696,10 +696,7 @@ async fn main() -> std::process::ExitCode {
     // LNA 無効化済み WebView2 で公開シーンを開き、127.0.0.1 のハブに
     // そのまま到達できるようにする
     #[cfg(windows)]
-    if let Some(pos) = argv
-        .iter()
-        .position(|a| a == "--view" || a == "--open-scene")
-    {
+    if let Some(pos) = argv.iter().position(|a| a == "--view") {
         let target = argv.get(pos + 1).map(String::as_str).unwrap_or("");
         return match bridge::viewer::open(target) {
             Ok(()) => std::process::ExitCode::SUCCESS,
