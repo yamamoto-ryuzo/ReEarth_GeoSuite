@@ -47,7 +47,7 @@
 <li><strong><code>format=read</code> の適用範囲</strong> — <code>SELECT * FROM ST_Read('url')</code> の kind:sql VIEW は GDAL 可読フォーマット専用です。<code>.parquet</code> では 502→フォールバック、<code>.gpkg</code> URL では拡張子判定が先に効き kind:gpkg 登録になります</li>
 <li><strong><code>vectorHub: http://host:port</code> の効力範囲</strong> — その適用パス以降の全ソース（<code>qgis:</code> インクルード分を含む）の接続先になります</li>
 <li><strong>再適用の二重追加は抑止済み</strong> — ext-path アイテムは <code>isLayerLoading(url)</code> の in-flight チェック＋着地後の title 重複判定で、適用が短時間に重なっても同一ソースを重複追加しません（v22.2.0 で全 type に適用。sql: 行がディスパッチされず外部化に到達しない問題も同版で修正）</li>
-<li><strong>ハブ側の既知課題（kasugai_canvas）</strong> — <code>duckdb_lock</code> の直列化により取込みハング時に全 /vector リクエストが無音待機になります（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/46" target="_blank">#46</a>。クライアント側は <code>hubResult</code> が来ず 300s TTL まで無応答）。また sources.json↔実テーブル不整合で manifest 比較のみの stale 判定をすり抜け、死んだ geojson URL を指すレイヤが追加され得ます（<a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/42" target="_blank">#42</a>）</li>
+<li><strong>ハブ側の既知課題</strong> — geosuite-hub（本リポジトリ <code>hub/</code> クレート。実装は KASUGAI Canvas 由来）では <code>duckdb_lock</code> の直列化により取込みハング時に全 /vector リクエストが無音待機になります（kasugai_canvas <a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/46" target="_blank">#46</a>。クライアント側は <code>hubResult</code> が来ず 300s TTL まで無応答）。また sources.json↔実テーブル不整合で manifest 比較のみの stale 判定をすり抜け、死んだ geojson URL を指すレイヤが追加され得ます（kasugai_canvas <a href="https://github.com/yamamoto-ryuzo/kasugai_canvas/issues/42" target="_blank">#42</a>）</li>
 </ul>
 </div>
   <footer><p><strong>Re:Earth GeoSuite</strong> by <a href="https://github.com/yamamoto-ryuzo" target="_blank">yamamoto-ryuzo</a> — MIT License</p></footer>

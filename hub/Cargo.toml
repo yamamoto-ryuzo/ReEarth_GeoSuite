@@ -1,6 +1,6 @@
 [package]
 name = "geosuite-hub"
-version = "22.4.12"
+version = "22.4.13"
 edition = "2021"
 build = "build.rs"
 description = "GeoSuite dedicated local bridge hub (127.0.0.1:8514) — self-installing companion to the Re:Earth geo_suite plugin"

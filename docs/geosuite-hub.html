@@ -29,7 +29,7 @@ flowchart TB
   DL --> EXE["展開して geosuite-hub.exe<br>を実行"]
   EXE --> INST["自己インストール:<br>① %LOCALAPPDATA%\geosuite-hub へ<br>　 geosuite-hub.exe 自己コピー＋自動起動登録（8514）<br>② 8515 ビューアシェル（exe 内蔵）<br>③ geosuite-hub:// プロトコル登録（HKCU）"]
   INST --> POLL{"GET /health<br>2秒間隔・最長3分ポーリング"}
-  POLL -- "hub:true 検出" --> OK["「connected」表示<br>→ 4秒後に行を自動クローズ"]
+  POLL -- "hub:true 検出" --> OK["「geosuite-hub detected」表示<br>→ 4秒後に行を自動クローズ"]
   POLL -- "期限超過" --> RETRY["リトライ案内を表示"]
   OK --> USE["利用可能:<br>GitHub Copilot / External agent<br>＋ /vector 自動外部化"]
 
@@ -51,9 +51,13 @@ flowchart TB
 <li><strong>「geosuite-hub.zip をダウンロード」ボタン</strong>: 本リポジトリ <code>releases/geosuite-hub.zip</code>（hub/ クレートから <code>tools/build_hub.py</code> でローカルビルド・コミット済み）へリンクします（裸の .exe はサイトによってダウンロード拒否されるため ZIP 同梱）。展開して exe を実行1回で geosuite-hub.exe の自己コピー・8514 常駐の自動起動登録・8515 ビューアシェル・<code>geosuite-hub://</code> プロトコル登録を行います。押下後は起動待ち表示へ切替り、<code>/health</code> を2秒間隔・最長3分ポーリングし、検出次第「connected」表示 → 4秒後に行を自動で閉じます（期限超過時はリトライ案内を表示）</li>
 <li><strong>プロモ行右端の − ボタン</strong>: セッション中はプロモ行とボタン/サブタブの強調を非表示にします（dismiss は basemap iframe → basemap 拡張 ctx → パネル拡張 ctx の <code>hubPromoDismiss</code> で中継され、セッション中 <code>_hubPromoDismissed</code> として保持されます）</li>
 <li><strong>プロモ行の「GeoSuite viewer で開く」リンク</strong>: <code>geosuite-hub://open?url=&lt;scene&gt;</code> カスタムプロトコル（GeoSuite 専用・HKCU 登録）経由で geosuite-hub.exe の <code>--view</code>（LNA 無効化済みの専用 WebView2 ウィンドウ）を OS レベルで起動します。<code>?url=</code> には呼び出し元ページの URL を <code>document.referrer</code>（sandboxed iframe からも取れる）→ <code>location.ancestorOrigins[0]</code> のフォールバックで自動設定します（v22.4.11〜）。<code>--view</code> はその URL を <strong>8515 のビューアシェル</strong>へ転送し、シェルがそのシーンを全画面 iframe で再生し scene.txt にも記録します（<code>?url=</code> 無しの裸起動は従来通り記憶済みシーン or ランディングを表示）。公開シーンでは Service Worker 仲介により LNA 許可が成立しないため、この OS 経由起動がハブ利用の迂回路になります（<a href="#lna">後述の LNA 節</a>参照）</li>
-<li><strong>管理パネル（⚙️）の Ext サブタブ</strong>: <code>bridge-hub: ON/OFF</code> の状態行＋疎通確認ボタンと、レイヤーパネルと同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインに移動済み</strong>です。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
-<li><strong><code>vectorHub: off</code> 指定時</strong>: Ext ボタンと Ext ペイン内の bridge-hub ブロックは非表示になります（AI Bridge 設定は残ります）</li>
+<li><strong>管理パネル（⚙️）の Ext サブタブ</strong>: <code>geosuite-hub: ON/OFF</code> の状態行＋疎通確認（Test）ボタンと、basemap ウィジェットのプロモ行と同一の導入ブロックを常設しています。<strong>「AI Bridge (CANVAS)」のエンドポイント入力（<code>aiHub:</code> 行と双方向同期）もこのペインにあります</strong>。ハブ未検出時は Ext サブタブもアンバー強調（dismiss 後は抑制）、検出済みなら導入ブロックは自動で非表示になります</li>
+<li><strong><code>vectorHub: off</code> 指定時</strong>: Ext ボタンと Ext ペイン内の geosuite-hub ブロックは非表示になります（AI Bridge 設定は残ります）</li>
 </ul>
+<p><strong>実画面</strong> — basemap ウィジェット左端の「Ext」ボタン（ハブ検出済みのため通常色。未検出時はアンバー強調）と、押下で開くプロモ行（ダウンロード → <code>geosuite-hub://</code> で開くリンク → 検出結果）:</p>
+<p><img src="../image/geosuite-hub-ext-promo.png" alt="basemap ウィジェットの Ext ボタンと geosuite-hub プロモ行" style="border:1px solid #ccc;border-radius:6px;"></p>
+<p>管理パネル（⚙️）→「Ext」サブタブの実画面 — <code>geosuite-hub: ON</code> 状態行・疎通確認ボタンと「AI Bridge (CANVAS)」エンドポイント入力:</p>
+<p><img src="../image/geosuite-hub-ext-pane.png" alt="管理パネル Ext タブ（geosuite-hub: ON と AI Bridge 設定）" style="border:1px solid #ccc;border-radius:6px;"></p>
 
 <h2>geosuite-hub.zip（自己インストール型）</h2>
 <p>導入は <code>geosuite-hub.zip</code> に統一されています — <code>geosuite-hub.exe</code> を実行すると <strong><code>%LOCALAPPDATA%\geosuite-hub\</code> への自己コピー〜8514 常駐のログイン時自動起動登録（schtasks / HKCU Run キー）</strong>・<strong>8515 ビューアシェル（exe 内蔵）</strong>・<strong><code>geosuite-hub://</code> プロトコル登録</strong>（HKCU・管理者権限不要）を一括で行います。プラグインの Ext ボタン／Ext タブのダウンロードボタンはこの zip へ直リンクします。解除は <code>geosuite-hub.exe --uninstall</code> です。</p>
@@ -66,7 +70,10 @@ flowchart TB
 <li>API: <code>GET /health</code>・<code>GET /models?provider=</code>・<code>POST /agent</code>・<code>GET|POST /setup</code>・<code>POST|DELETE /mcp[/&lt;project&gt;]</code>・<code>GET /</code>（状態ページ）・<code>/vector/*</code>（status/sources/geojson/query + <code>probe.geojson</code> は LNA アンロック用プローブ、v6.19.0〜）</li>
 <li>GeoSuite の AI チャットが送れるのは <code>provider:"copilot"</code>（専用選択肢）と汎用 <code>provider:"agent"</code>。devin/antigravity 宛の送信は現状 GeoSuite 側 UI に無い</li>
 </ul>
-<p>ハブの詳細仕様（導入・自動セットアップ・プロバイダ別前提・環境変数）は KASUGAI Canvas 側のドキュメントが正本です: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
+<p>状態ページ（<code>GET /</code>）の実画面 — プロバイダ/CLI の導入状態・/vector 稼働状況・各エンドポイントが一目で確認できます:</p>
+<p><img src="../image/geosuite-hub-status.png" alt="geosuite-hub 状態ページ（プロバイダ・/vector・エンドポイント一覧）" style="border:1px solid #ccc;border-radius:6px;"></p>
+<p><small>※ 撮影はテスト用ポート（8524）での実行例です。実際の待受は <code>127.0.0.1:8514</code> です。</small></p>
+<p>geosuite-hub の正本は本リポジトリの <code>hub/</code> クレートです（v22.4.12 で完全分離。ソース: <code>hub/src/main.rs</code>＋<code>hub/src/bridge/</code>）。出自となった KASUGAI 側の共有 bridge-hub（8511）のドキュメントは参考として残ります: <a href="https://yamamoto-ryuzo.github.io/kasugai_canvas/bridge-hub.html" target="_blank">ブリッジハブ（bridge-hub.exe）— KASUGAI Canvas ドキュメント</a></p>
 
 <h2>GeoSuite viewer シェル（127.0.0.1:8515・exe 内蔵）</h2>
 <p><code>geosuite-hub://</code> から開く画面専用の、ハブと同じプロセスが提供する第2の待受です。geosuite モードの <code>geosuite-hub.exe</code> が <code>127.0.0.1:8515</code> でビューアページを配信します（v22.4.10〜・旧 <code>serve-viewer.ps1</code>＋<code>run-hidden.vbs</code> の別プロセス構成は exe 内蔵に統合）。</p>
@@ -86,6 +93,8 @@ flowchart LR
 <li><strong>起動経路</strong>: HKCU の <code>shell\open\command</code> には <code>"geosuite-hub.exe" --view "%1"</code> を直接登録します（<code>%1</code> で起動 URI をそのまま <code>--view</code> へ渡すため URL 書き換えシムは不要）。<code>--view</code> は <code>geosuite-hub://open?url=&lt;pct&gt;</code> の <code>url=</code> を読み、<code>http://127.0.0.1:8515/?url=&lt;pct&gt;</code> へ転送してそのシーンを開きます（シェル側で scene.txt にも記録）。<code>url=</code> 無しの裸起動では従来通り記憶済みシーン or ランディングが開きます（v22.4.11〜・v22.4.8〜10 は起動 URI を破棄する固定コマンドで <code>?url=</code> はブラウザ直接アクセス時のみ有効でした）。ビューアシェルはハブと同じプロセスなので、ブラウザで <code>http://127.0.0.1:8515/</code> を直接開くこともできます</li>
 <li><strong>最後に開いたシーンの記憶</strong>: 内蔵ビューアサーバは <code>GET /scene</code>（記憶済みシーン URL を text/plain で返す）と <code>GET /scene?set=&lt;enc&gt;</code>（<code>%LOCALAPPDATA%\geosuite-hub\scene.txt</code> へ保存）のルートを持ちます。<code>viewer.html</code> は <code>?url=</code> 付きで開いた際に同 URL を <code>/scene?set=</code> へ記録し、<code>?url</code> 無しでは <code>/scene</code> を読んで自動フォールバックします。ランディングを見たい場合は <code>?home</code> を付けます（記憶済みシーンがある場合は「前回のシーン」リンクを提示し、手入力用のシーン URL 入力欄も常備）</li>
 </ul>
+<p>ランディング（<code>?home</code>）の実画面 — シーン URL の手入力欄・「前回のシーン」リンク・ハブ状態ページへの導線:</p>
+<p><img src="../image/geosuite-viewer-shell.png" alt="GeoSuite viewer シェルのランディング画面" style="border:1px solid #ccc;border-radius:6px;"></p>
 
 <h2 id="lna">Chrome Local Network Access (LNA) と自動アンロック（v22.4.0〜）</h2>
 <pre class="mermaid">

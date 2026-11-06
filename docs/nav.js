@@ -6,7 +6,7 @@
 // - docs/ 配下のページを追加したら GROUPS を更新すること（ここがページ一覧の正本）
 (function () {
   const scriptUrl = document.currentScript.src;
-  const VERSION = 'v22.4.10';
+  const VERSION = 'v22.4.13';
 
   // サイトルートのページ（nav.js は docs/ に置くため ../ で指す）
   const SITE = [
@@ -34,7 +34,7 @@
       items: [
         { href: 'external-bridge.html', text: '6. 外部ブリッジ（実装構成）' },
         { href: 'geosuite-hub.html', text: '7. geosuite-hub 導入（統一インストーラ）' },
-        { href: 'bridge-hub.html', text: '8. AIチャット → ブリッジハブ' },
+        { href: 'bridge-hub.html', text: '8. AIチャット → geosuite-hub' },
         { href: 'vector-externalization.html', text: '9. ベクター外部化（/vector）' }
       ]
     },

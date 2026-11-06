@@ -73,8 +73,11 @@ npm test       # E2E 動作テスト（ロード・タブ操作・自動リロ�
 
 ```
 ReEarth_GeoSuite/
-├─ geo_suite/src/        # プラグイン本体のソース（layers-and-tiles-list / navigation-toolbar / basemap-widget）
+├─ geo_suite/src/        # プラグイン本体のソース（layers-and-tiles-list / navigation-toolbar / basemap-widget / ai-chat）
 ├─ plugin/               # 配布用マニフェスト（`reearth.yml`）
+├─ hub/                  # geosuite-hub（GeoSuite 専用ローカルハブ :8514＋8515 ビューアシェル）の Rust クレート
+├─ tools/                # tools/build_hub.py（hub ビルド → releases/geosuite-hub.zip）
+├─ api/                  # Vercel Functions（/api/gemini プロキシ等）
 ├─ workbench/            # ローカル動作検証環境（Workbench・server・shot・test のスクリプトのみ管理）
 │  ├─ dist-workbench/    #   └─ 公式 Workbench 成果物（自動 DL・gitignore）
 │  └─ plugin-build/      #   └─ 検証用コンパイル出力（gitignore）
@@ -82,7 +85,7 @@ ReEarth_GeoSuite/
 ├─ docs/                 # サイト用ドキュメント（HTML直書き・dist/docs へデプロイ）
 ├─ image/                # サイト用画像
 ├─ .github/              # GitHub Actions ワークフロー
-├─ index.html, ryu.html, duckdb-persistence.html  # サイト用 HTML
+├─ index.html, ryu.html  # サイト用 HTML
 ├─ AGENTS.md             # AI エージェント向け運用ルール
 ├─ package.json          # dev / shot / workbench:setup スクリプト
 └─ vercel.json

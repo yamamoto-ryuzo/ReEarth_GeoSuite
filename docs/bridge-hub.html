@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AIチャット → ブリッジハブ連携 | Re:Earth GeoSuite</title>
+<title>AIチャット → geosuite-hub 連携 | Re:Earth GeoSuite</title>
 <link rel="stylesheet" href="style.css">
 <script src="nav.js" defer></script>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>📚 AIチャット → ブリッジハブ連携</h1>
+    <h1>📚 AIチャット → geosuite-hub 連携</h1>
     <nav>
       <a href="../index.html">🏠 GeoSuite トップ</a>
       <a href="index.html">プラグインの配布（ZIP）</a>
@@ -18,7 +18,7 @@
     </nav>
   </header>
   <div class="content">
-<p>AI チャットのプロバイダのうち <strong>GitHub Copilot</strong> と <strong>External agent（外部エージェント）</strong> は、API キーで直接叩く系統とは別経路で、ローカル常駐の <strong>geosuite-hub（geosuite-hub.exe・127.0.0.1:8514。bridge-hub バイナリの GeoSuite 専用インスタンス）</strong> へ HTTP POST する「ブリッジ系」です。v21.3.0 追加。</p>
+<p>AI チャットのプロバイダのうち <strong>GitHub Copilot</strong> と <strong>External agent（外部エージェント）</strong> は、API キーで直接叩く系統とは別経路で、ローカル常駐の <strong>geosuite-hub（geosuite-hub.exe・127.0.0.1:8514）</strong> へ HTTP POST する「ブリッジ系」です。v21.3.0 追加（当時は KASUGAI の共有 bridge-hub.exe を利用。v22.4.12 で本リポジトリ <code>hub/</code> クレート製の GeoSuite 専用ハブへ完全分離）。</p>
 <p>本ページは「ブラウザ → エージェント」（チャットから AI を使う）方向の説明です。逆方向「エージェント → ブラウザ」（外部ハーネスから地図ツールを遠隔実行する外部ブリッジ / <code>bridge:</code> 行 / <code>__geoBridge</code>）は <a href="./external-bridge.html">external-bridge.html</a> を参照してください。</p>
 <p>geosuite-hub は <strong>オプションの拡張コンポーネント</strong>です。geo_suite の地図表示・レイヤー管理・Gemini 等の API 直接プロバイダはハブなしで動作します。必要になるのは <strong>GitHub Copilot (bridge hub)</strong> プロバイダと、<a href="./vector-externalization.html"><code>/vector</code> 自動外部化</a>を使う場合だけです（<code>/vector</code> 外部化はハブ未到達時に従来の iframe デコードへフォールバックします）。KASUGAI 側の共有 bridge-hub（8511）とは独立した GeoSuite 専用インスタンスです。導入手順・LNA 制約は <a href="./geosuite-hub.html">geosuite-hub.html</a> を参照してください。</p>
 
@@ -108,11 +108,11 @@ sequenceDiagram
 <tbody>
 <tr><td>Gemini</td><td><code>gemini</code></td><td><code>generativelanguage.googleapis.com</code>（またはサイト側 <code>/api/gemini</code> プロキシ）に直接 fetch</td><td>API キー</td></tr>
 <tr><td>OpenAI-compatible / Anthropic / Azure OpenAI / Sakura AI Engine</td><td><code>openai</code> <code>anthropic</code> <code>azure</code> <code>sakura</code></td><td>設定したエンドポイント（Sakura は固定 <code>api.ai.sakura.ad.jp</code>）に直接 fetch</td><td>API キー</td></tr>
-<tr><td>GitHub Copilot (bridge hub)</td><td><code>copilot</code></td><td>ブリッジハブへ <code>POST /agent</code>（<code>provider:"copilot"</code>）。既定 <code>http://127.0.0.1:8514/agent</code></td><td>不要（ハブ側 CLI の本人ログイン）</td></tr>
+<tr><td>GitHub Copilot (bridge hub)</td><td><code>copilot</code></td><td>geosuite-hub へ <code>POST /agent</code>（<code>provider:"copilot"</code>）。既定 <code>http://127.0.0.1:8514/agent</code></td><td>不要（ハブ側 CLI の本人ログイン）</td></tr>
 <tr><td>External agent (bridge)</td><td><code>agent</code></td><td>設定したエンドポイントへ <code>POST /agent</code>（<code>provider:"agent"</code>）。<code>/agent</code> 互換コントラクトを実装する任意のエージェントサーバ向け</td><td>エンドポイント次第</td></tr>
 </tbody>
 </table>
-<p><small>※ <code>provider:"agent"</code> は汎用パススルー値で、bridge-hub の振り分け対象（<code>copilot</code>/<code>devin</code>/<code>antigravity</code>）ではありません。ハブへ Devin/Antigravity を使わせたい場合は現状 GeoSuite 側に専用選択肢はなく、External agent ではなく Canvas 側プロバイダ経由を使います。</small></p>
+<p><small>※ <code>provider:"agent"</code> は汎用パススルー値で、geosuite-hub の振り分け対象（<code>copilot</code>/<code>devin</code>/<code>antigravity</code>）ではありません。ハブへ Devin/Antigravity を使わせたい場合は現状 GeoSuite 側に専用選択肢はなく、External agent ではなく Canvas 側プロバイダ経由を使います。</small></p>
 
 <h2>エンドポイント解決（detectHub）</h2>
 <p>ハブの接続先は次の優先順で決まります:</p>
@@ -123,7 +123,7 @@ sequenceDiagram
 </ol>
 <p>管理パネル「AI Bridge (CANVAS)」の <strong>Test</strong> ボタンは <code>/health</code> + <code>/models?provider=copilot</code> を叩いて疎通・モデル数・プロバイダ一覧を表示します。</p>
 
-<h2>プロトコル（CANVAS ブリッジハブ コントラクト）</h2>
+<h2>プロトコル（geosuite-hub <code>/agent</code> コントラクト）</h2>
 <h3>リクエスト: <code>POST {base}/agent</code>（application/json・120s タイムアウト）</h3>
 <table>
 <thead><tr><th>フィールド</th><th>内容</th></tr></thead>
@@ -178,7 +178,7 @@ POST /agent {message, ..., toolResults:[{name,args,result}]}   ← 実行結果�
 <tr><td><code>geo_suite/src/ai-chat.ts</code></td><td>プロバイダ選択 UI・<code>callAgent()</code>（detectHub・POST /agent・toolResults 往復）・<code>/models</code> 取得・<code>report</code> → showReport</td></tr>
 <tr><td><code>geo_suite/src/layers-and-tiles-list.ts</code></td><td><code>aiHub:</code>/<code>vectorHub:</code> インスペクタ行解析・管理パネル「AI Bridge (CANVAS)」ブロック（入力・疎通テスト・設定テキスト双方向同期）・<code>aiConfig</code> での伝搬・<code>hubExternalize</code>/<code>hubResult</code> による /vector 自動外部化</td></tr>
 <tr><td><code>geo_suite/src/navigation-toolbar.ts</code></td><td>ブリッジツール <code>canvasApi</code>（外部ブリッジ越しのハブ REST アクセス。永続 iframe 内で実行）</td></tr>
-<tr><td><code>kasugai_canvas/server/src/bridge/</code>（別リポジトリ）</td><td>bridge-hub 本体。<code>mod.rs</code> が /agent・/models・/setup・/mcp を振り分け、<code>copilot.rs</code>/<code>devin.rs</code>/<code>antigravity.rs</code> が各 CLI を子プロセス起動して JSON-RPC/ACP 中継</td></tr>
+<tr><td><code>hub/src/bridge/</code>（本リポジトリ・hub/ クレート）</td><td>geosuite-hub 本体。<code>mod.rs</code> が /agent・/models・/setup・/mcp・/vector を振り分け、<code>copilot.rs</code>/<code>devin.rs</code>/<code>antigravity.rs</code> が各 CLI を子プロセス起動して JSON-RPC/ACP 中継。<code>vector.rs</code> が /vector ベクター外部化、<code>viewer.rs</code> が 8515 ビューアシェル（出自は KASUGAI Canvas の <code>server/src/bridge/</code>）</td></tr>
 </tbody>
 </table>
 </div>

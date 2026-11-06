@@ -1,10 +1,12 @@
 # リポジトリ運用ルール
 
 ## ソースファイル
-- このリポジトリには Re:Earth プラグイン（拡張 3 つ）が含まれています。
+- このリポジトリには Re:Earth プラグイン（拡張 4 つ）が含まれています。
   - `geo_suite/src/layers-and-tiles-list.ts` — レイヤー / タイル管理・属性パネル・位置情報共有（メイン）
-  - `geo_suite/src/navigation-toolbar.ts` — ナビゲーションツールバー
-  - `geo_suite/src/basemap-widget.ts` — ベースマップ選択
+  - `geo_suite/src/navigation-toolbar.ts` — ナビゲーションツールバー（外部ブリッジ `__geoBridge` のホスト）
+  - `geo_suite/src/basemap-widget.ts` — ベースマップ選択（DuckDB-Wasm/ベクターデコードの永続ホスト＋geosuite-hub Ext ボタン）
+  - `geo_suite/src/ai-chat.ts` — AI チャット（Gemini/OpenAI互換/Anthropic/Azure/Sakura/Copilot/agent・ツールディスパッチャ）
+- `hub/` は GeoSuite 専用ローカルハブ `geosuite-hub.exe`（127.0.0.1:8514＋8515 ビューアシェル）の Rust クレート。`tools/build_hub.py` でビルドし `releases/geosuite-hub.zip` をコミット済み
 - マニフェストは `plugin/reearth.yml`。拡張の `entry` は `workbench/plugin-build/` 内のコンパイル済み JS を参照します。
 
 ## ビルド

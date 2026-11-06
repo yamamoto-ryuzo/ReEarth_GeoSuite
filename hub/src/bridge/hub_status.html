@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KASUGAI Bridge Hub</title>
+<title>geosuite-hub</title>
 <style>
 body { font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; color: #1f2328; }
 h1 { font-size: 1.3rem; }
@@ -16,7 +16,7 @@ a { color: #0969da; }
 </style>
 </head>
 <body>
-<h1>KASUGAI Canvas — ブリッジハブ状態</h1>
+<h1>GeoSuite — geosuite-hub 状態</h1>
 <div id="body">読み込み中…</div>
 <script>
 (async () => {
@@ -41,11 +41,16 @@ a { color: #0969da; }
       " / active: " + esc(h.active) + " / sessions: " + esc(h.sessions) + "</p>" +
       "<h2>プロバイダ / CLI</h2><table><tr><th>provider</th><th>bridge</th><th>CLI</th></tr>" +
       rows.join("") + "</table>" +
+      "<h2>/vector ベクター外部化</h2>" +
+      "<p>" + (h.vector && h.vector.duckdb
+        ? "<span class='ok'>● 利用可</span> — DuckDB バックエンド稼働中。<a class='ep' href='/vector/status'>/vector/status</a> <a class='ep' href='/vector/sources'>/vector/sources</a>"
+        : "<span class='ng'>● 不可</span> — DuckDB が見つかりません") + "</p>" +
       "<h2>エンドポイント</h2>" +
       "<p>Agent: <code>POST " + location.origin + "/agent</code>（ブラウザで開いても表示されません）<br>" +
       "Health: <a class='ep' href='/health'>" + location.origin + "/health</a><br>" +
       "Models: <a class='ep' href='/models?provider=copilot'>" + location.origin + "/models?provider=copilot</a><br>" +
-      "Setup: <a class='ep' href='/setup'>" + location.origin + "/setup</a></p>" +
+      "Setup: <a class='ep' href='/setup'>" + location.origin + "/setup</a><br>" +
+      "Viewer: <a class='ep' href='http://127.0.0.1:8515/'>http://127.0.0.1:8515/</a>（GeoSuite viewer シェル）</p>" +
       "<p class='dim'>モデル一覧が既定一覧（fallback）になる場合は各 CLI のログイン状態を確認してください。</p>";
   } catch (e) {
     el.innerHTML = "<p id='body-error'>状態を取得できません: " + esc(e.message || e) + "</p>";

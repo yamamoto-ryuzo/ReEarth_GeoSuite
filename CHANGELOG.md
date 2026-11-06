@@ -1,5 +1,10 @@
 # Changelog
 
+## v22.4.13
+- 修正: geosuite-hub 状態ページ（`GET /`）の残存ブランディング — 完全分離後も「KASUGAI Canvas — ブリッジハブ状態」表示のままだったため「GeoSuite — geosuite-hub 状態」へ改題し、`/vector` 外部化の稼働状況と 8515 ビューアシェルへのリンクを状態ページへ追加
+- 修正: `reearth.yml` インスペクタ説明の外部ブリッジ記述が実装と不整合 — 「未設定時は一度だけ自動プローブ」となっていたが、実装（navigation-toolbar `bridgeConfigure`）は未設定=完全不活性（プローブも接続もしない）。実装どおり「未設定時は完全に不活性・`bridge: on` で1回プローブ・`bridge: <url>` で直接接続・`bridge: off` で完全無効」の記述へ修正
+- 変更: docs 整合見直し＋スクリーンショット追加 — `nav.js` バージョンバッジ更新、「AIチャット → geosuite-hub」へ改称、`bridge-hub`/`kasugai_canvas/server/src/bridge` など完全分離前の記述を `hub/` クレート基準へ修正、KASUGAI 側ドキュメントを「正本」から「出自の参考」へ格下げ。`docs/geosuite-hub.html` に Ext ボタン/プロモ行・管理パネル Ext タブ・ハブ状態ページ・8515 ビューアシェルの実画面スクリーンショット（`image/geosuite-*.png`）を追加。`workbench/docs_shots.js`（OOPIF 内クリック＋撮影の docs 用補助スクリプト）を追加
+
 ## v22.4.12
 - 変更: geosuite-hub を **ReEarth_GeoSuite リポジトリへ完全移行（完全分離）** — `hub/` に独立 Rust クレート `geosuite-hub`（kasugai_canvas の bridge-hub から GeoSuite 専用部分を切り出し。8514 ブリッジ + providers・/vector・8515 ビューアシェル・`geosuite-hub://`・自己インストールを全て自前化）を新設。配布物は `tools/build_hub.py` でローカル `cargo build --release` → `releases/geosuite-hub.zip`（exe ルート配置）をコミットし、`HUB_DOWNLOAD_URL` を `raw.githubusercontent.com/.../releases/geosuite-hub.zip` へ変更（kasugai-canvas-web CDN への依存を解消）。ハブのバージョンはプラグインと同一採番（Cargo.toml `22.x.y`）で、今後のハブ変更はプラグインとアトミックにリリースできる
 
