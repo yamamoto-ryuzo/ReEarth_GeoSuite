@@ -11325,6 +11325,26 @@ try {
               reearth.extension.postMessage(targetId, { action: 'baseList', items: baseEntries });
             }
           }
+        } else if (data && data.action === 'canvasExport') {
+          // Scene .kasc build request from the basemap widget's CV panel.
+          // Replies canvasScene {kasc|error} — capped at 4MB so the payload
+          // always fits the extension ctx marshal.
+          const targetId = msg.sender || null;
+          if (targetId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
+            try {
+              const res = buildSceneKasc({ name: data.name, base: data.base, noneSelected: !!data.noneSelected });
+              reearth.extension.postMessage(targetId, {
+                action: 'canvasScene',
+                name: res.name || 'reearth-scene',
+                kasc: res.kasc || null,
+                error: res.error || null,
+                skipped: res.skipped || []
+              });
+            } catch (e) {
+              sendError('[canvasExport] error:', e);
+              try { reearth.extension.postMessage(targetId, { action: 'canvasScene', error: String(e) }); } catch (e2) {}
+            }
+          }
         } else if (data && data.action === 'requestAiConfig') {
           // The ai-chat widget asks for inspector-provided config (API key, model, lang).
           const targetId = msg.sender || null;
@@ -12315,6 +12335,124 @@ function getInspectorTextForBaseParse() {
     const text = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
     return (typeof text === 'string') ? text : _defaultInspectorText;
   } catch (e) { return _defaultInspectorText; }
+}
+
+// ---- KASUGAI Canvas export (.kasc) -------------------------------------
+// The inspector text is already a .kasc grammar superset, so a scene export is
+// mostly a filtered copy: geo_suite-only config/secret lines are dropped,
+// qgis: includes are inlined from their loaded texts, and the basemap the
+// user actually selected is moved to the first base: line (Canvas treats the
+// first base: as the default).
+// Config & secret lines never cross into the export (API keys, local bridge
+// endpoints, geo_suite UI switches). qgis: is expanded separately.
+const KASC_EXPORT_DROP_RE = /^(yahooappid|googlemapsapikey|geminiapikey|geminimodel|aihub|vectorhub|attrurlopen|openurlinnewtab|lang|bridge)\s*:/i;
+const KASC_EXPORT_MAX_BYTES = 4 * 1024 * 1024; // extension ctx marshal cap
+
+function kascFieldClean(s) {
+  return String(s == null ? '' : s).replace(/[|\r\n]+/g, ' ').trim();
+}
+
+// Expand one qgis:/kasc:/kasczip: directive into exportable lines. Returns
+// null when the include has not loaded yet (caller reports it as skipped).
+function expandQgisInclude(line) {
+  try {
+    const qContent = line.substring(line.indexOf(':') + 1).trim();
+    const qp = qContent.split('|').map(function(p) { return p.trim(); });
+    const qurl = qp.find(function(p) { return /^https?:\/\//i.test(p); }) || qContent;
+    const zt = _qgisZipTexts[qgisZipId(qurl)];
+    if (typeof zt !== 'string' || !zt.trim()) return null;
+    const kept = [];
+    let zipDropped = 0;
+    zt.split(/\r\n|\r|\n/).forEach(function(zl) {
+      zl = (zl || '').trim();
+      if (!zl || zl.charAt(0) === '#') return;
+      if (/kasczip:\/\//i.test(zl)) { zipDropped++; return; }
+      if (KASC_EXPORT_DROP_RE.test(zl)) return;
+      kept.push(zl);
+    });
+    return { lines: kept, zipDropped: zipDropped };
+  } catch (e) { return null; }
+}
+
+// Build a .kasc scene text for KASUGAI Canvas.
+// opts: { name, base: {url, encodedUrl, title, attribution} | ''(none) }
+function buildSceneKasc(opts) {
+  opts = opts || {};
+  const text = getInspectorTextForBaseParse();
+  const sel = (opts.base && typeof opts.base === 'object') ? opts.base : null;
+  const selUrls = sel ? [sel.url, sel.encodedUrl].filter(function(u) { return typeof u === 'string' && u; }) : [];
+  const sameBase = function(u) {
+    if (!u || !selUrls.length) return false;
+    if (selUrls.indexOf(u) >= 0) return true;
+    try { return selUrls.indexOf(decodeURIComponent(u)) >= 0; } catch (e) { return false; }
+  };
+
+  const baseLines = [];   // {line, url}
+  const otherLines = [];
+  const skipped = [];
+  const emit = function(line) {
+    const lower = line.toLowerCase();
+    if (line.charAt(0) === '#') { otherLines.push(line); return; }
+    if (KASC_EXPORT_DROP_RE.test(line)) return;
+    if (/^(qgis|kasc|kasczip)\s*:/i.test(lower)) {
+      const ex = expandQgisInclude(line);
+      if (!ex) { skipped.push('qgis include not loaded: ' + line.substring(0, 80)); return; }
+      if (ex.zipDropped) skipped.push('qgis zip members not exportable (' + ex.zipDropped + '): ' + line.substring(0, 60));
+      ex.lines.forEach(emit);
+      return;
+    }
+    if (lower.indexOf('base:') === 0) {
+      const parsed = extractBaseTilesFromText(line);
+      baseLines.push({ line: line, url: parsed[0] ? parsed[0].url : '' });
+      return;
+    }
+    otherLines.push(line);
+  };
+  String(text || '').split(/\r\n|\r|\n/).forEach(function(raw) {
+    const line = (raw || '').trim();
+    if (line) emit(line);
+  });
+
+  const name = kascFieldClean(opts.name) || 'reearth-scene';
+  const out = ['# exported from Re:Earth geo_suite', 'title:' + name];
+
+  // Current view as the first cam: preset — Canvas opens at cams[0].
+  try {
+    const pos = (reearth && reearth.camera && reearth.camera.position) ? reearth.camera.position : null;
+    if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
+      const deg = function(r) { return typeof r === 'number' ? Math.round(r * 180 / Math.PI * 100) / 100 : null; };
+      let camLine = 'cam:' + 'Re:Earth' + '|' + pos.lat.toFixed(6) + '|' + pos.lng.toFixed(6);
+      if (typeof pos.height === 'number' && isFinite(pos.height)) camLine += '|h=' + Math.round(pos.height * 10) / 10;
+      const p = deg(pos.pitch); if (p !== null) camLine += '|p=' + p;
+      const d = deg(pos.heading); if (d !== null) camLine += '|d=' + d;
+      out.push(camLine);
+    }
+  } catch (e) {}
+
+  // Basemaps: the selected one first (Canvas default = first base: line).
+  // Selection '' means "(none)" — emit a `none` mode line so Canvas also
+  // starts basemap-less.
+  if (sel === null && opts.noneSelected) {
+    out.push('base:(none)|none');
+  }
+  let selWritten = false;
+  baseLines.forEach(function(b) { if (!selWritten && sameBase(b.url)) { out.push(b.line); selWritten = true; } });
+  if (sel && !selWritten) {
+    // Selected basemap was not among the inspector base: lines — append it.
+    const parts = [kascFieldClean(sel.title) || 'basemap', sel.url || sel.encodedUrl];
+    if (sel.attribution) parts.push(kascFieldClean(sel.attribution));
+    out.push('base:' + parts.join(' | '));
+  }
+  baseLines.forEach(function(b) { if (!sameBase(b.url)) out.push(b.line); });
+
+  otherLines.forEach(function(l) { out.push(l); });
+  skipped.forEach(function(s) { out.push('# skipped: ' + s); });
+
+  const kasc = out.join('\n') + '\n';
+  if (kasc.length > KASC_EXPORT_MAX_BYTES) {
+    return { error: 'scene too large (' + Math.round(kasc.length / 1048576) + 'MB, >4MB) — remove data:-embedded layers or host DATA/ first' };
+  }
+  return { kasc: kasc, name: name, skipped: skipped };
 }
 
 // Parse and apply settings from text

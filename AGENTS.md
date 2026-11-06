@@ -4,7 +4,7 @@
 - このリポジトリには Re:Earth プラグイン（拡張 4 つ）が含まれています。
   - `geo_suite/src/layers-and-tiles-list.ts` — レイヤー / タイル管理・属性パネル・位置情報共有（メイン）
   - `geo_suite/src/navigation-toolbar.ts` — ナビゲーションツールバー（外部ブリッジ `__geoBridge` のホスト）
-  - `geo_suite/src/basemap-widget.ts` — ベースマップ選択（DuckDB-Wasm/ベクターデコードの永続ホスト＋geosuite-hub Ext ボタン）
+  - `geo_suite/src/basemap-widget.ts` — ベースマップ選択（DuckDB-Wasm/ベクターデコードの永続ホスト＋geosuite-hub Ext ボタン＋KASUGAI Canvas 連携「CV」ボタン）
   - `geo_suite/src/ai-chat.ts` — AI チャット（Gemini/OpenAI互換/Anthropic/Azure/Sakura/Copilot/agent・ツールディスパッチャ）
 - `hub/` は GeoSuite 専用ローカルハブ `geosuite-hub.exe`（127.0.0.1:8514＋8515 ビューアシェル）の Rust クレート。`tools/build_hub.py` でビルドし `releases/geosuite-hub.zip` をコミット済み
 - マニフェストは `plugin/reearth.yml`。拡張の `entry` は `workbench/plugin-build/` 内のコンパイル済み JS を参照します。
@@ -112,6 +112,11 @@
 - 有効化: インスペクタ `bridge: off | on | http://host:port`。**未設定時はプローブすら行わない完全 opt-in**（コストゼロ・マップ/UI への影響なし）。CDP ドライバ `bridge.js` は接続時に `__geoBridge.configure('http://127.0.0.1:8977')` を評価して明示有効化するので dev はゼロ設定のまま。
 - **ハーネス（本番 dial-out 先）**: `node workbench/bridge_server.js`（`npm run bridge:server`、既定 127.0.0.1:8977・無依存）。プラグイン iframe とは SSE `GET /events`＋`POST /result` で接続。外部向けは `POST /call {name,args}`（結果まで保持）・`GET /status`・`GET /tools`。`BRIDGE_TOKEN` 環境変数で共有秘密対応（`bridge: http://127.0.0.1:8977/?token=<t>`）。**127.0.0.1 到達者は接続中の地図を操作できる**点に注意。
 - **CDP ドライバ（dev/検証）**: `node workbench/bridge.js`（`npm run bridge`）。`serve` は stdin/stdout JSONL（`{reqId,name,args}`→`{reqId,result}`）、`call <name> '<args>'` はワンショット、`list` は describe。`BRIDGE_ATTACH=<port>` で既存デバッグ Chrome に接続。`__geoBridge` 不在の旧ビルドでは AI Chat iframe 経由のレガシー経路にフォールバック。
+
+## KASUGAI Canvas 連携（v22.5.0〜・CV ボタン）
+- basemap iframe の「CV」ボタン → `openCanvas` → 拡張 ctx が `postToLayerPanel({action:'canvasExport', base, noneSelected})` → パネル ctx の `buildSceneKasc` が inspectorText から .kasc を生成（設定・秘密行除外、選択 base: 先頭化、現視点 `cam:` 先頭、qgis: インクルードは `_qgisZipTexts` から展開・kasczip:// メンバは除外、4MB 上限）→ `canvasScene` で返送 → basemap iframe が hub `POST /canvas/open` or `.kasc` ダウンロードへ分岐
+- hub `bridge/canvas.rs`: `GET /canvas/status`（8510 `/health` + InstallLocation/`.kasc` 関連付け/`C:\kasugai\kasugai_canvas` の順で検出）、`POST /canvas/open`（`%LOCALAPPDATA%\kasugai\canvas-export\<slug>\` へ書き出し → 起動中は `/api/projects/register`+`/api/command switchProject`、未起動は `kasugai_canvas.exe --open-browser <kasc>`、未導入は `not_installed`+インストーラ URL）
+- 「Hosted Canvas (view only)」は `kasugai-canvas-web/stable/cesium/` を `#latitude=…` ハッシュ付きで `reearth.viewer.open` — シーンデータは渡さない
 
 ## QuickJS のイベントディスパッチとマイクロタスク（重要・実測）
 - `extensionMessage` ハンドラ内で `promise.then(cb)` に応答処理を委ねると、**その継続は次のイベントが来るまで実行されない**（実測: `extensionMessage` 起点の非同期応答だけが滞留し、後続イベントでまとめて消化された）。`message`（UI iframe 起点）イベントは後続が頻繁にあるため顕在化しにくい。

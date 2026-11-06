@@ -15,6 +15,7 @@
 //   POST /agent               → body.provider でプロバイダを選択
 //   POST /mcp[/<project>]     → 地図ツールの MCP 公開（devin/agy から呼ばれる）
 pub mod antigravity;
+pub mod canvas;
 pub mod common;
 pub mod copilot;
 pub mod devin;
@@ -23,7 +24,7 @@ pub mod vector;
 #[cfg(windows)]
 pub mod viewer;
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
@@ -476,6 +477,13 @@ fn router(state: Arc<BridgeState>) -> Router {
         .route("/setup/job/{id}", get(setup_job))
         .route("/mcp", post(mcp_root).delete(mcp_root_delete))
         .route("/mcp/{project}", post(mcp_project).delete(mcp_project_delete))
+        // KASUGAI Canvas 連携: シーン .kasc の書き出し + アプリ起動/登録。
+        // data: 埋め込みを含む .kasc は 2MB 既定を超え得るため上限を引き上げる
+        .route("/canvas/status", get(canvas::status))
+        .route(
+            "/canvas/open",
+            post(canvas::open).layer(DefaultBodyLimit::max(20 * 1024 * 1024)),
+        )
         .merge(vector_routes)
         .layer(cors)
         .with_state(state)

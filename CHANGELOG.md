@@ -1,5 +1,10 @@
 # Changelog
 
+## v22.5.0
+- 新規: ベースマップパネルに **「CV」ボタン（KASUGAI Canvas 連携）** を追加 — 現在のシーンを `.kasc` プロジェクトとして出力し、ローカルの KASUGAI Canvas アプリで開く。インスペクタテキストは .kasc 文法の上位互換のため、設定・秘密行（`yahooAppId:`/`googleMapsApiKey:`/`geminiApiKey:`/`geminiModel:`/`aiHub:`/`vectorHub:`/`attrUrlOpen:`/`openUrlInNewTab:`/`lang:`/`bridge:`）を除外してそのまま書き出す。`qgis:`/`kasc:`/`kasczip:` インクルードは読込済みテキストから展開（kasczip:// メンバ参照はエクスポート不可として `# skipped:` コメント化）。選択中ベースマップは `base:` 先頭（Canvas 既定）へ並べ替え、「(なし)」選択時は `base:(none)|none`、現在視点は `cam:` 先頭（初期カメラ）として出力。4MB 超は拡張ctx 制約のためエラー返却
+- 新規: geosuite-hub に **`/canvas/*` エンドポイント** を追加（`hub/src/bridge/canvas.rs`）— `GET /canvas/status` は起動中 Canvas（127.0.0.1:8510 `/health`）・インストール検出（HKCU Uninstall `InstallLocation` → `.kasc` 関連付けコマンド → `C:\kasugai\kasugai_canvas` の順）を返す。`POST /canvas/open {name, kasc}` は `%LOCALAPPDATA%\kasugai\canvas-export\<slug>\<slug>.kasc` へ書き出し、起動中なら `POST /api/projects/register` + `/api/command switchProject` で切替、未起動なら `kasugai_canvas.exe --open-browser <kasc>` を起動（.kasc 関連付けと同じ入口・既起動時は exe 側が register へ振替）、未導入なら `not_installed` + インストーラ URL を返す
+- CV パネル動作: ハブ検出時はワンクリックで Canvas 起動/切替、未検出時は `.kasc` ブラウザダウンロードへフォールバック（関連付けで Canvas が起動）、Canvas 未導入時はインストーラリンクを表示。「Hosted Canvas (view only)」ボタンはホスト版（kasugai-canvas-web stable/cesium）を現視点 `#latitude=…&heading=…` 付きで開く（シーンデータは渡さない）。canvas* i18n キーを全20言語へ追加
+
 ## v22.4.13
 - 修正: geosuite-hub 状態ページ（`GET /`）の残存ブランディング — 完全分離後も「KASUGAI Canvas — ブリッジハブ状態」表示のままだったため「GeoSuite — geosuite-hub 状態」へ改題し、`/vector` 外部化の稼働状況と 8515 ビューアシェルへのリンクを状態ページへ追加
 - 修正: `reearth.yml` インスペクタ説明の外部ブリッジ記述が実装と不整合 — 「未設定時は一度だけ自動プローブ」となっていたが、実装（navigation-toolbar `bridgeConfigure`）は未設定=完全不活性（プローブも接続もしない）。実装どおり「未設定時は完全に不活性・`bridge: on` で1回プローブ・`bridge: <url>` で直接接続・`bridge: off` で完全無効」の記述へ修正
