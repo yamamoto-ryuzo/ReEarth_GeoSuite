@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.6.0
+- 新規: `theme:` 行のマップテーマを解釈・適用（geo_webview 4.6.0 と対）— `theme:` 行をパースして `_kascThemes` に収集し、タブバーのテーマ select で可視性プリセットを切替可能に。タイトルの `;style=DATA/<slug>__<theme>.qml` 指定は `requestQmlAppearance` 経由でテーマ別スタイルへ差し替え（ZIP 内では kasczip:// メンバ参照に書き換え済み）
+- 新規: `qgis:` 行でフォルダURL（末尾 `/` または拡張子なし）を受理 — `<url>/kasugai_canvas.kasc` → `<url>/<dir名>.kasc` の順に probe して生フォルダ参照を可能に
+- 新規: AI ツール `applyKascTheme` / `listThemes` — AI チャットからテーマ一覧・切替が可能（PANEL_TOOLS + TOOL_DECLS 登録、パネルの aiChatCmd ディスパッチャへ `applyKascThemeByName`/`_kascThemes` 返却を追加）
+- 新規: docs に「QGIS連携（qgis:/theme:）」ページ追加（2形態の指定方法・theme 対応・出力物対応表）
+- i18n: `themeSelect` キー追加（en/ja、他言語は英語フォールバック）
+
 ## v22.5.0
 - 新規: ベースマップパネルに **「CV」ボタン（KASUGAI Canvas 連携）** を追加 — 現在のシーンを `.kasc` プロジェクトとして出力し、ローカルの KASUGAI Canvas アプリで開く。インスペクタテキストは .kasc 文法の上位互換のため、設定・秘密行（`yahooAppId:`/`googleMapsApiKey:`/`geminiApiKey:`/`geminiModel:`/`aiHub:`/`vectorHub:`/`attrUrlOpen:`/`openUrlInNewTab:`/`lang:`/`bridge:`）を除外してそのまま書き出す。`qgis:`/`kasc:`/`kasczip:` インクルードは読込済みテキストから展開（kasczip:// メンバ参照はエクスポート不可として `# skipped:` コメント化）。選択中ベースマップは `base:` 先頭（Canvas 既定）へ並べ替え、「(なし)」選択時は `base:(none)|none`、現在視点は `cam:` 先頭（初期カメラ）として出力。4MB 超は拡張ctx 制約のためエラー返却
 - 新規: geosuite-hub に **`/canvas/*` エンドポイント** を追加（`hub/src/bridge/canvas.rs`）— `GET /canvas/status` は起動中 Canvas（127.0.0.1:8510 `/health`）・インストール検出（HKCU Uninstall `InstallLocation` → `.kasc` 関連付けコマンド → `C:\kasugai\kasugai_canvas` の順）を返す。`POST /canvas/open {name, kasc}` は `%LOCALAPPDATA%\kasugai\canvas-export\<slug>\<slug>.kasc` へ書き出し、起動中なら `POST /api/projects/register` + `/api/command switchProject` で切替、未起動なら `kasugai_canvas.exe --open-browser <kasc>` を起動（.kasc 関連付けと同じ入口・既起動時は exe 側が register へ振替）、未導入なら `not_installed` + インストーラ URL を返す

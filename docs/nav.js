@@ -26,22 +26,23 @@
         { href: 'sandbox.html', text: '2. サンドボックス構成・容量目安' },
         { href: 'layer-grouping-specification.html', text: '3. レイヤ階層化・排他グループ機能' },
         { href: 'basemap-initial-selection.html', text: '4. ベースマップ初期選択' },
-        { href: 'payload-limits.html', text: '5. ペイロード制限（QuickJS OOM 対策）' }
+        { href: 'payload-limits.html', text: '5. ペイロード制限（QuickJS OOM 対策）' },
+        { href: 'qgis-import.html', text: '6. QGIS連携（qgis:/theme:）' }
       ]
     },
     {
       label: '外部ブリッジ',
       items: [
-        { href: 'external-bridge.html', text: '6. 外部ブリッジ（実装構成）' },
-        { href: 'geosuite-hub.html', text: '7. geosuite-hub 導入（統一インストーラ）' },
-        { href: 'bridge-hub.html', text: '8. AIチャット → geosuite-hub' },
-        { href: 'vector-externalization.html', text: '9. ベクター外部化（/vector）' }
+        { href: 'external-bridge.html', text: '7. 外部ブリッジ（実装構成）' },
+        { href: 'geosuite-hub.html', text: '8. geosuite-hub 導入（統一インストーラ）' },
+        { href: 'bridge-hub.html', text: '9. AIチャット → geosuite-hub' },
+        { href: 'vector-externalization.html', text: '10. ベクター外部化（/vector）' }
       ]
     },
     {
       label: '参考資料',
       items: [
-        { href: 'duckdb-persistence.html', text: '10. DuckDB-Wasm 永続化検証（解決済・検証記録）' }
+        { href: 'duckdb-persistence.html', text: '11. DuckDB-Wasm 永続化検証（解決済・検証記録）' }
       ]
     }
   ];

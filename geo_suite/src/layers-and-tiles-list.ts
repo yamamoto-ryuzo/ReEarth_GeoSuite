@@ -19,6 +19,53 @@ let _lastInfoUrl = null;
 let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
+let _kascThemes = [];            // theme: 行の可視性プリセット({name,layers,styles})
+
+// theme: 行の可視性プリセットを適用する(QGIS マップテーマ相当)。
+// layers[]=表示するタイトル(フルパス/葉名一致、`*`=全表示)、
+// styles{タイトル→.qml URL} はテーマ記録の名前付きスタイル差し替え(geo_webview v4.6.0〜)
+function applyKascThemeByName(name) {
+  const theme = (_kascThemes || []).find(t => t && t.name === name);
+  if (!theme) return false;
+  const norm = (t) => String(t || '').split('/').map(s => s.trim()).join('/');
+  const all = (theme.layers || []).indexOf('*') >= 0;
+  const show = new Set();
+  for (const k of (theme.layers || [])) {
+    const n = norm(k);
+    if (!n) continue;
+    show.add(n);
+    show.add(n.split('/').pop());
+  }
+  const styles = theme.styles || {};
+  const layers = (reearth.layers && reearth.layers.layers) || [];
+  for (const l of layers) {
+    if (!l || !l.id) continue;
+    const title = norm(l.title || l.name || '');
+    const leaf = title.split('/').pop();
+    try { setLayerVisibility(l.id, all || show.has(title) || show.has(leaf), false); } catch (_) {}
+    const rel = styles[title] || styles[leaf];
+    if (rel) { try { applyKascThemeStyle(l, rel); } catch (_) {} }
+  }
+  try { scheduleShowUI('kascTheme'); } catch (_) {}
+  return true;
+}
+
+// テーマ別 .qml(DATA/<slug>__<theme>.qml、kasczip:// も可)をコンパイルし、
+// 既存レイヤーの marker/polyline/polygon appearance を差し替える
+function applyKascThemeStyle(layer, styleUrl) {
+  requestQmlAppearance(styleUrl, null, null, function(ap) {
+    if (!ap) return;
+    const props = {};
+    if (ap.marker) props.marker = ap.marker;
+    if (ap.polyline) props.polyline = ap.polyline;
+    if (ap.polygon) props.polygon = ap.polygon;
+    if (!Object.keys(props).length) return;
+    try { reearth.layers.override(layer.id, props); } catch (e) {
+      try { sendError('[theme] style override failed:', e); } catch (_) {}
+    }
+    try { scheduleShowUI('kascThemeStyle'); } catch (_) {}
+  });
+}
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 
 // --- qgis: project include (.kasc / .kasc+DATA zip) ------------------------
@@ -160,7 +207,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = ride on the route looking ahead; center (=chase) = aerial tracking of the point from behind/above.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
     svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save',
     hubPromoNote: 'Optional component: geosuite-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download geosuite-hub.zip', hubPromoWait: 'Downloaded. Extract the zip and run geosuite-hub.exe — waiting for the hub…', hubPromoOk: 'geosuite-hub detected', hubPromoRetry: 'Still not detected — extract the downloaded zip and run geosuite-hub.exe.', hubPromoSteps: 'Steps: 1) Download geosuite-hub.zip  2) Extract it  3) Run geosuite-hub.exe — auto-installs geosuite-hub + the geosuite-hub:// protocol (no admin needed).', hubPromoPrompt: 'If the browser shows a local network access prompt, click Allow — it unblocks geosuite-hub for this site.', hubPromoView: 'Open in GeoSuite viewer', hubPromoViewTitle: 'Requires one-time geosuite-hub:// registration (run geosuite-hub.exe)'
-, hubPromoExt: 'Ext'
+, hubPromoExt: 'Ext', themeSelect: 'QGIS theme'
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
@@ -191,7 +238,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=ルート上を進み前方を見る搭乗視点 / center(=chase)=後方上空から移動点を追う空撮視点。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
     svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存',
     hubPromoNote: '拡張コンポーネント: geosuite-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: 'geosuite-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: 'ブラウザにローカルネットワーク接続の許可プロンプトが表示されたら「許可」を押してください — このサイトで geosuite-hub が使えるようになります。', hubPromoView: 'GeoSuite viewer で開く', hubPromoViewTitle: 'geosuite-hub:// の登録が必要です（geosuite-hub.exe を実行）'
-, hubPromoExt: '拡張'
+, hubPromoExt: '拡張', themeSelect: 'QGISテーマ'
   },
   'zh-CN': {
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
@@ -1643,6 +1690,7 @@ function getUI() {
     <button class="action-btn" data-target="share-panel" aria-pressed="false" title="Share" aria-label="Share" data-i18n-title="tabShare" data-i18n-aria="tabShare">🔗</button>
     <button class="action-btn" id="manage-open-btn" data-target="manage-panel" aria-pressed="false" title="Manage" aria-label="Manage" data-i18n-title="manageTitle" data-i18n-aria="manageTitle">⚙️</button>
     </span>
+    <select id="kasc-theme-select" hidden title="QGIS theme" data-i18n-title="themeSelect" data-i18n-aria="themeSelect" onchange="parent.postMessage({action:'applyKascTheme',name:this.value},'*')" style="margin-left:6px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:0.85em;background:#fff;max-width:140px;"></select>
   </div>
 
     <div id="share-panel" style="display:none;">
@@ -5106,6 +5154,18 @@ function qmlStyleToReearth(xmlText, opts){
                 var isVec = KASC_VEC_RE.test(scan.kind);
                 var isUrl = KASC_URL_RE.test(scan.kind);
                 if (opts.zipId) {
+                  // theme: 行の ;style= 参照も zip メンバへ書き換える(v4.6.0 テーマ別 .qml)
+                  if (/^theme:/i.test(line)) {
+                    var tn = line.replace(/;style=([^|\s]+)/g, function(m, p) {
+                      if (/^(https?|kasczip):/i.test(p)) return m;
+                      var ent = decodeURIComponent(p);
+                      var enc = encodeURIComponent(ent).replace(/%2F/gi, '/');
+                      needed[ent] = true;
+                      return ';style=kasczip://' + opts.zipId + '/' + enc;
+                    });
+                    outLines.push(tn);
+                    continue;
+                  }
                   if (isUrl && scan.hits.length) { pushSkip(line, 'archive member cannot be served'); continue; }
                   if (!isVec && !isUrl) { outLines.push(line); continue; }
                   if (!scan.hits.length) { outLines.push(line); continue; }
@@ -5291,7 +5351,19 @@ function qmlStyleToReearth(xmlText, opts){
               try {
                 const msg = e && e.data ? e.data : null;
                 if (!msg || !msg.action) return;
-                
+
+                // theme: 行の一覧を受け取り #kasc-theme-select を構築する
+                if (msg.action === 'kascThemes') {
+                  try {
+                    const sel = document.getElementById('kasc-theme-select');
+                    if (sel) {
+                      const esc = function(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); };
+                      sel.innerHTML = '<option value="">' + esc(typeof t === 'function' ? t('themeSelect') : 'QGIS theme') + '</option>' + (msg.themes || []).map(function(t2){ return '<option value="' + esc(t2.name) + '">' + esc(t2.name) + '</option>'; }).join('');
+                      sel.hidden = !(msg.themes && msg.themes.length);
+                    }
+                  } catch (e) {}
+                  return;
+                }
                 // handle info URL - load HTML into iframe
                 if (msg.action === 'loadInfoUrl') {
                   try {
@@ -6186,6 +6258,13 @@ function qmlStyleToReearth(xmlText, opts){
                         var dirName = msg.url.replace(/\\/+$/, '').split('/').pop();
                         cands = [msg.url + 'kasugai_canvas.kasc'];
                         if (dirName && dirName !== 'kasugai_canvas') cands.push(msg.url + dirName + '.kasc');
+                        cands.push(msg.url);
+                      } else if (!/\\.(zip|kasc|txt)([?#].*)?$/i.test(msg.url)) {
+                        // 拡張子なし = フォルダとみなし <url>/kasugai_canvas.kasc を先に probe
+                        var dirUrl = msg.url.replace(/[?#].*$/, '') + '/';
+                        var dirName2 = dirUrl.replace(/\\/+$/, '').split('/').pop();
+                        cands = [dirUrl + 'kasugai_canvas.kasc'];
+                        if (dirName2 && dirName2 !== 'kasugai_canvas') cands.push(dirUrl + dirName2 + '.kasc');
                         cands.push(msg.url);
                       }
                       var tryFetch = function(i) {
@@ -10478,6 +10557,12 @@ reearth.extension.on("message", (msg) => {
       }
       return;
     }
+    if (msg.action === "applyKascTheme" && msg.name) {
+      try { applyKascThemeByName(msg.name); } catch (e) {
+        try { sendError('[applyKascTheme]', e); } catch (_) {}
+      }
+      return;
+    }
     if (msg.action === "activateTerrain") {
       const bg = _lastInspectorBackground || "#ffffff";
       // Re:Earth Visualizer最新版では terrain.type を明示的に指定する必要がある
@@ -11913,6 +11998,15 @@ function handleAiToolRequest(senderId, data) {
         aiToolReply(senderId, reqId, ok, { id: l.id, title: l.title, visible: vis });
         return;
       }
+      case 'applyKascTheme': {
+        const ok = applyKascThemeByName(String(args.name || ''));
+        aiToolReply(senderId, reqId, ok, { name: args.name });
+        return;
+      }
+      case 'listThemes': {
+        aiToolReply(senderId, reqId, true, { themes: (_kascThemes || []).map(t => ({ name: t.name, layers: (t.layers || []).slice() })) });
+        return;
+      }
       case 'addGeoJsonLayer':
       case 'addTileLayer':
       case 'add3dTilesLayer': {
@@ -12525,6 +12619,7 @@ function processInspectorText(text) {
   const camsFound = [];
   const legends = [];
   const nonCamLines = [];  // preserve non-cam lines for rebuild
+  const themes = [];       // theme: 行 → {name, layers[], styles{}}
   const _qgisZipUrls = []; // qgis: include urls found in this pass
 
   // keep=false marks transient lines injected from qgis: includes — they go
@@ -12723,6 +12818,32 @@ function processInspectorText(text) {
         const qurl = qp.find(p => /^https?:\/\//i.test(p)) || null;
         if (qurl) _qgisZipUrls.push(qurl);
       }
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // theme:名前 | 表示タイトル[|タイトル…]（`*` で全表示）。QGIS マップテーマ
+    // 相当の可視性プリセット。タイトルの `;style=DATA/x.qml` はテーマ適用時に
+    // そのレイヤーの .qml を差し替える指定(geo_webview v4.6.0〜 が出力)。
+    // themes へ収集し、テキスト自体は rebuild 用に保持する。
+    if (lowerLine.startsWith('theme:')) {
+      const normT = (t) => String(t || '').split('/').map(s => s.trim()).join('/');
+      const parts = line.substring(6).split('|').map(p => p.trim());
+      const layers = [];
+      const styles = {};
+      for (const tok of parts.slice(1)) {
+        if (!tok) continue;
+        const semi = tok.indexOf(';style=');
+        if (semi >= 0) {
+          const title = tok.slice(0, semi);
+          const rel = tok.slice(semi + 7).trim();
+          layers.push(title);
+          if (title && rel) styles[normT(title)] = rel;
+        } else {
+          layers.push(tok);
+        }
+      }
+      themes.push({ name: (parts[0] || '').trim(), layers: layers, styles: styles, line: line });
       if (keep !== false) nonCamLines.push(line);
       return;
     }
@@ -13157,6 +13278,8 @@ function processInspectorText(text) {
   // Defer sending legend/info messages until after UI is (re)rendered below
 
   _inspectorNonCamLines = nonCamLines;
+  _kascThemes = themes;
+  try { postToUI({ action: 'kascThemes', themes: _kascThemes.map(t => ({ name: t.name })) }); } catch (_) {}
   _cameraPresets = camsFound;
   try { _inspectorLegendItems = (legends && legends.length) ? legends : []; } catch(e) {}
 
