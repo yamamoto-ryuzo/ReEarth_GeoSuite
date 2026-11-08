@@ -6336,31 +6336,46 @@ function qmlStyleToReearth(xmlText, opts){
                         return res.json();
                       });
                     };
-                    hubGet(ep + '/vector/status', 3000)
-                      .then(function() { return hubGet(ep + '/vector/sources', 15000); })
-                      .then(function(list) {
-                        var cur = (list && list.sources && list.sources[reg.name]) || null;
-                        // kind:sql identity lives in the name hash — the
-                        // manifest stores no sql text, so an existing entry
-                        // for this name is definitionally fresh.
-                        var stale = !cur || (reg.kind !== 'sql' && (
-                                    String(cur.src || '') !== String(reg.src || '') ||
-                                    String(cur.where || '') !== String(reg.where || '') ||
-                                    (reg.kind && String(cur.kind || '') !== String(reg.kind))));
-                        if (!stale) return null;
-                        var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
-                        var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, 280000);
-                        var opt = { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(reg) };
-                        if (ctl) opt.signal = ctl.signal;
-                        return fetch(ep + '/vector/sources', opt).then(function(res) {
-                          clearTimeout(timer);
-                          return res.json();
-                        }).then(function(j) {
-                          if (!j || !j.ok) throw new Error((j && j.error) || 'register failed');
+                    // Bounded retry (#16): transient chain failures (probe/GET
+                    // timeout, hub-side 502 while a materialization lock is
+                    // held, POST killed mid-flight) must not drop straight into
+                    // the iframe decode fallback — that path tombstones sources
+                    // it cannot serve (CORS-less hosts, >4MB), turning a
+                    // temporary hub failure into a permanent [layer-failed].
+                    // Only an explicit server refusal (ok:false) skips retry.
+                    var hubTry = 0, HUB_TRIES = 3, HUB_RETRY_MS = 5000;
+                    var hubAttempt = function() {
+                      hubTry++;
+                      hubGet(ep + '/vector/status', 3000)
+                        .then(function() { return hubGet(ep + '/vector/sources', 15000); })
+                        .then(function(list) {
+                          var cur = (list && list.sources && list.sources[reg.name]) || null;
+                          // kind:sql identity lives in the name hash — the
+                          // manifest stores no sql text, so an existing entry
+                          // for this name is definitionally fresh.
+                          var stale = !cur || (reg.kind !== 'sql' && (
+                                      String(cur.src || '') !== String(reg.src || '') ||
+                                      String(cur.where || '') !== String(reg.where || '') ||
+                                      (reg.kind && String(cur.kind || '') !== String(reg.kind))));
+                          if (!stale) return null;
+                          var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+                          var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, 280000);
+                          var opt = { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(reg) };
+                          if (ctl) opt.signal = ctl.signal;
+                          return fetch(ep + '/vector/sources', opt).then(function(res) {
+                            clearTimeout(timer);
+                            return res.json();
+                          }).then(function(j) {
+                            if (!j || !j.ok) { var er = new Error((j && j.error) || 'register failed'); er.permanent = true; throw er; }
+                          });
+                        })
+                        .then(function() { done(true, null); })
+                        .catch(function(e) {
+                          if (!(e && e.permanent === true) && hubTry < HUB_TRIES) { setTimeout(hubAttempt, HUB_RETRY_MS); return; }
+                          done(false, String(e && e.message || e));
                         });
-                      })
-                      .then(function() { done(true, null); })
-                      .catch(function(e) { done(false, String(e && e.message || e)); });
+                    };
+                    hubAttempt();
                   })();
                 }
               } catch (e) {}
