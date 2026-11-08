@@ -1139,12 +1139,8 @@ function getUI() {
       }
       
       // Multiple groups: Render sub-tabs
-      // Ensure 'Default' comes first if exists
-      const sortedGroups = groups.sort((a,b) => {
-          if (a === 'Default') return -1;
-          if (b === 'Default') return 1;
-          return a.localeCompare(b);
-      });
+      // 'Default' comes first; other groups keep registration order (legend: line order)
+      const sortedGroups = groups.filter(g => g === 'Default').concat(groups.filter(g => g !== 'Default'));
       
       let tabs = '<div class="legend-sub-tab-bar">';
       let panels = '';
@@ -5433,12 +5429,9 @@ function qmlStyleToReearth(xmlText, opts){
                     } else if (groups.length === 1 && groups[0] === 'Default') {
                         container.innerHTML = grouped['Default'].map(function(u){ return '<img src="'+u+'" style="display:block;max-width:100%;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;">'; }).join('');
                     } else {
-                        // Sort groups
-                        const sortedGroups = groups.sort(function(a,b) {
-                            if (a === 'Default') return -1;
-                            if (b === 'Default') return 1;
-                            return a.localeCompare(b);
-                        });
+                        // 'Default' comes first; other groups keep registration order
+                        const sortedGroups = groups.filter(function(g){ return g === 'Default'; })
+                            .concat(groups.filter(function(g){ return g !== 'Default'; }));
                         
                         let tabs = '<div class="legend-sub-tab-bar">';
                         let panels = '';
