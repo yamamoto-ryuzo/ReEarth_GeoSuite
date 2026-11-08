@@ -10096,7 +10096,17 @@ function handleHubResult(msg) {
     if (msg.ok) {
         try { sendLog('[vectorHub] externalized:', p.url, '->', p.geoUrl); } catch (e) {}
         let newId = null;
-        try { newId = addXyzLayer(p.geoUrl, p.title, 'geojson', false, p.visible, p.zoom, p.attribution, p.classification, p.style); }
+        // Styled (QML) adds resolve the layer id asynchronously inside
+        // addXyzLayer — onStyledAdded receives it and performs the
+        // bbox=auto registration + tool reply for that path only.
+        const onStyledAdded = (id) => {
+            if (id && p.bboxAuto) {
+                _ddbLayers[id] = { engine: 'hubvec', geoBase: p.geoBase, cols: p.cols, bboxAuto: true, lastGeoUrl: p.geoUrl };
+                ensureDuckDbMoveSubscription();
+            }
+            if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!id, { id: id, title: p.title, externalized: true });
+        };
+        try { newId = addXyzLayer(p.geoUrl, p.title, 'geojson', false, p.visible, p.zoom, p.attribution, p.classification, p.style, onStyledAdded); }
         catch (e) { try { sendError('[vectorHub] geojson add failed:', e); } catch (_) {} }
         // bbox=auto re-query: the viewport envelope is a URL param, so a
         // camera move only overrides data.url — the host re-fetches it.
@@ -10104,7 +10114,9 @@ function handleHubResult(msg) {
             _ddbLayers[newId] = { engine: 'hubvec', geoBase: p.geoBase, cols: p.cols, bboxAuto: true, lastGeoUrl: p.geoUrl };
             ensureDuckDbMoveSubscription();
         }
-        if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: p.title, externalized: true });
+        // Unstyled adds reply synchronously here; styled adds reply from
+        // onStyledAdded once the real layer id exists (no double reply).
+        if (p.pending && p.pending.senderId && !p.style) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: p.title, externalized: true });
         return;
     }
     try { sendLog('[vectorHub] hub unavailable or register failed — decoding in-iframe:', msg.error || 'unreachable'); } catch (e) {}
@@ -11749,7 +11761,7 @@ function normalizeClassification(value) {
   return null;
 }
 
-function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null, attribution = null, classification = null, style = null) {
+function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom = null, attribution = null, classification = null, style = null, onLayerId = null) {
   if (!url || typeof url !== "string") return;
   const type = layerType || "tiles";
   let titleToUse = title;
@@ -11816,9 +11828,13 @@ function addXyzLayer(url, title, layerType, isBase = false, visible = true, zoom
       // QGIS .qml style: compile in the UI iframe, then add with the
       // generated per-feature conditional appearance.
       requestQmlAppearance(style, null, encodedUrl, (appearance, err) => {
+        // The QML path resolves the layer id asynchronously; report the final
+        // id (null on failure) so callers can register bbox=auto specs etc.
+        let fid = null;
         if (!appearance) { try { sendError('[qml] fallback to default style:', url, err); } catch (e) {}
-          finishStyledLayerAdd(layer, null, visible, isBase, type); return; }
-        finishStyledLayerAdd(layer, appearance, visible, isBase, type);
+          fid = finishStyledLayerAdd(layer, null, visible, isBase, type); }
+        else fid = finishStyledLayerAdd(layer, appearance, visible, isBase, type);
+        if (onLayerId) { try { onLayerId(fid); } catch (e2) {} }
       });
       return;
     }
