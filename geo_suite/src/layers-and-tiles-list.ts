@@ -1123,14 +1123,16 @@ function getUI() {
   // Prepare legend HTML (Sub-tabs structure)
   const legendInnerHtml = (() => {
       const grouped = {};
+      const groups = [];
       const items = _inspectorLegendItems || [];
       items.forEach(item => {
           const g = item.group || 'Default';
-          if (!grouped[g]) grouped[g] = [];
+          // Track first-seen order explicitly — Object.keys enumerates
+          // integer-like keys ('1', '2') numerically, losing registration order.
+          if (!grouped[g]) { grouped[g] = []; groups.push(g); }
           grouped[g].push(item.url);
       });
       
-      const groups = Object.keys(grouped);
       if (groups.length === 0) return '';
       
       // If only Default group, just show images without tabs
@@ -5417,13 +5419,15 @@ function qmlStyleToReearth(xmlText, opts){
                   const container = document.getElementById('legend-content');
                   if(container && msg.items) {
                     const grouped = {};
+                    const groups = [];
                     msg.items.forEach(function(item) {
                         const g = item.group || 'Default';
-                        if (!grouped[g]) grouped[g] = [];
+                        // Track first-seen order — Object.keys would sort
+                        // integer-like keys numerically, losing registration order.
+                        if (!grouped[g]) { grouped[g] = []; groups.push(g); }
                         grouped[g].push(item.url);
                     });
                     
-                    const groups = Object.keys(grouped);
                     if (groups.length === 0) {
                         container.innerHTML = '';
                     } else if (groups.length === 1 && groups[0] === 'Default') {
