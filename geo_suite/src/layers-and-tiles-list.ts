@@ -19,9 +19,10 @@ let _lastInfoUrl = null;
 let _lastInspectorBackground = null;
 let _cameraPresets = [];
 let _inspectorNonCamLines = [];  // non-cam lines from inspector text, preserved for rebuild
-let _kascThemes = [];            // theme: 行の可視性プリセット({name,layers,styles})
+let _kascThemes = [];            // theme:/page: 行の可視性プリセット({name,layers,styles,persistent})
+let _lastAppliedThemeName = null; // 最後に適用したページ/テーマ名(select 表示用)
 
-// theme: 行の可視性プリセットを適用する(QGIS マップテーマ相当)。
+// theme:/page: 行の可視性プリセットを適用する(QGIS マップテーマ相当)。
 // layers[]=表示するタイトル(フルパス/葉名一致、`*`=全表示)、
 // styles{タイトル→.qml URL} はテーマ記録の名前付きスタイル差し替え(geo_webview v4.6.0〜)
 function applyKascThemeByName(name) {
@@ -46,6 +47,7 @@ function applyKascThemeByName(name) {
     const rel = styles[title] || styles[leaf];
     if (rel) { try { applyKascThemeStyle(l, rel); } catch (_) {} }
   }
+  _lastAppliedThemeName = name;
   try { scheduleShowUI('kascTheme'); } catch (_) {}
   return true;
 }
@@ -66,6 +68,98 @@ function applyKascThemeStyle(layer, styleUrl) {
     try { scheduleShowUI('kascThemeStyle'); } catch (_) {}
   });
 }
+
+// ---- Pages (page:/theme: 可視性プリセットの UI 保存・削除) -------------------
+// Pages are inspector `page:`/`theme:` lines — the QGIS map-theme preset
+// format — so they persist in the project and publish with the scene.
+// The save button writes `theme:` (the geo_webview/.kasc compatible form);
+// `page:` is accepted on parse as an equivalent directive.
+function postKascThemes(selectName) {
+  try {
+    postToUI({
+      action: 'kascThemes',
+      themes: (_kascThemes || []).map(t => ({ name: t.name, deletable: t.persistent !== false })),
+      select: (typeof selectName === 'string') ? selectName : (_lastAppliedThemeName || '')
+    });
+  } catch (_) {}
+}
+
+function getInspectorTextRaw() {
+  try {
+    const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
+    const t = (prop.settings && prop.settings.inspectorText) || prop.inspectorText;
+    return (typeof t === 'string') ? t : '';
+  } catch (e) { return ''; }
+}
+
+// Write inspectorText + re-process locally (same flow as the Manage > Set apply).
+function writeInspectorText(newText) {
+  try {
+    if (reearth.extension && reearth.extension.widget && typeof reearth.extension.widget.setPropertyValue === 'function') {
+      reearth.extension.widget.setPropertyValue('settings', 'inspectorText', newText);
+    }
+  } catch (e) { try { sendError('[pages] setPropertyValue failed:', e); } catch (_) {} }
+  // Skip re-processing the text we just wrote via the inspector poll
+  _lastInspectorLayersJson = newText;
+  processInspectorText(newText);
+}
+
+function isPagePresetLine(line, name) {
+  const m = /^\s*(?:page|theme)\s*:\s*([^|]*)/i.exec(String(line || ''));
+  return !!m && (m[1] || '').trim() === name;
+}
+
+// Save the current layer-visibility set as a `theme:` page line. Existing
+// same-name page:/theme: lines are replaced. Returns true when written.
+function savePagePreset(name) {
+  name = kascFieldClean(name);
+  if (!name) return false;
+  const layers = (reearth.layers && reearth.layers.layers) || [];
+  const seen = {};
+  const visibleTitles = [];
+  let managed = 0;
+  let visCount = 0;
+  (Array.isArray(layers) ? layers : []).forEach(function (l) {
+    if (!l || !l.id) return;
+    try { if (l.data && l.data.isBasemap) return; } catch (_) {}
+    if (l.id === _flyRouteLayerId || l.title === FLY_ROUTE_LAYER_TITLE) return;
+    managed++;
+    let vis = l.visible !== false;
+    if (_layersPendingHide.has(l.id)) vis = false;
+    try {
+      const s = (_systemLayerSettings || []).find(x => x && (x.name === l.title || (l.title && l.title.trim() === x.name)));
+      if (s) vis = !!s.visible;
+    } catch (_) {}
+    if (!vis) return;
+    visCount++;
+    const t = kascFieldClean(l.title);
+    if (t && !seen[t]) { seen[t] = 1; visibleTitles.push(t); }
+  });
+  // All managed layers visible → `*` (also matches layers added later).
+  const body = (managed > 0 && visCount === managed) ? ' | *'
+    : (visibleTitles.length ? ' | ' + visibleTitles.join(' | ') : '');
+  const lines = getInspectorTextRaw().split(/\r\n|\r|\n/);
+  const kept = lines.filter(l => !isPagePresetLine(l, name));
+  kept.push('theme:' + name + body);
+  writeInspectorText(kept.join('\n'));
+  _lastAppliedThemeName = name;
+  postKascThemes(name);
+  return true;
+}
+
+// Remove a page:/theme: line from the inspector text. Themes that came from a
+// qgis: include are not in the text and cannot be deleted here.
+function deletePagePreset(name) {
+  name = String(name == null ? '' : name).trim();
+  if (!name) return false;
+  const lines = getInspectorTextRaw().split(/\r\n|\r|\n/);
+  const kept = lines.filter(l => !isPagePresetLine(l, name));
+  if (kept.length === lines.length) return false;
+  if (_lastAppliedThemeName === name) _lastAppliedThemeName = null;
+  writeInspectorText(kept.join('\n'));
+  return true;
+}
+
 let _parsedBaseTiles = []; // parsed base: entries for UI dropdown
 
 // --- qgis: project include (.kasc / .kasc+DATA zip) ------------------------
@@ -207,7 +301,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = ride on the route looking ahead; center (=chase) = aerial tracking of the point from behind/above.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
     svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save',
     hubPromoNote: 'Optional component: geosuite-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download geosuite-hub.zip', hubPromoWait: 'Downloaded. Extract the zip and run geosuite-hub.exe — waiting for the hub…', hubPromoOk: 'geosuite-hub detected', hubPromoRetry: 'Still not detected — extract the downloaded zip and run geosuite-hub.exe.', hubPromoSteps: 'Steps: 1) Download geosuite-hub.zip  2) Extract it  3) Run geosuite-hub.exe — auto-installs geosuite-hub + the geosuite-hub:// protocol (no admin needed).', hubPromoPrompt: 'If the browser shows a local network access prompt, click Allow — it unblocks geosuite-hub for this site.', hubPromoView: 'Open in GeoSuite viewer', hubPromoViewTitle: 'Requires one-time geosuite-hub:// registration (run geosuite-hub.exe)'
-, hubPromoExt: 'Ext', themeSelect: 'QGIS theme'
+, hubPromoExt: 'Ext', themeSelect: 'QGIS theme', pagesLabel:'Pages', pageSelect:'Apply a saved page (layer visibility)', pageNamePh:'New page name', pageSave:'Save page', pageDelete:'Delete page'
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
@@ -238,7 +332,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=ルート上を進み前方を見る搭乗視点 / center(=chase)=後方上空から移動点を追う空撮視点。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
     svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存',
     hubPromoNote: '拡張コンポーネント: geosuite-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: 'geosuite-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: 'ブラウザにローカルネットワーク接続の許可プロンプトが表示されたら「許可」を押してください — このサイトで geosuite-hub が使えるようになります。', hubPromoView: 'GeoSuite viewer で開く', hubPromoViewTitle: 'geosuite-hub:// の登録が必要です（geosuite-hub.exe を実行）'
-, hubPromoExt: '拡張', themeSelect: 'QGISテーマ'
+, hubPromoExt: '拡張', themeSelect: 'QGISテーマ', pagesLabel:'ページ', pageSelect:'保存したページを適用（レイヤ表示状態）', pageNamePh:'新しいページ名', pageSave:'ページを保存', pageDelete:'ページを削除'
   },
   'zh-CN': {
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
@@ -269,7 +363,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路线前进、朝向前方的搭乘视角 / center(=chase)=从后方上空追踪移动点的航拍视角。<br>参数修改即时生效，飞行中也可调整。<br>或点击"绘制"在地图上画出折线。',
     svOpen: '街景', captureBtn: '截图', capturedHint: '右键点击图片保存',
     hubPromoNote: '可选组件：未检测到 geosuite-hub。安装一次即可加速矢量图层、解除 4MB 限制，并启用 AI 桥接提供程序。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: '已检测到 geosuite-hub', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: '如果浏览器显示本地网络访问提示，请点击"允许"— 即可在此站点启用 geosuite-hub。', hubPromoView: '在 GeoSuite viewer 中打开', hubPromoViewTitle: '需要一次性注册 geosuite-hub://（运行 geosuite-hub.exe）'
-, hubPromoExt: '扩展'
+, hubPromoExt: '扩展', pagesLabel:'页面', pageSelect:'应用已保存的页面（图层可见性）', pageNamePh:'新页面名称', pageSave:'保存页面', pageDelete:'删除页面'
   },
   'zh-TW': {
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
@@ -300,7 +394,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路線前進、朝向前方的搭乘視角 / center(=chase)=從後方上空追蹤移動點的空拍視角。<br>參數修改即時生效，飛行中也可調整。<br>或按「繪製」在地圖上畫出折線。',
     svOpen: '街景', captureBtn: '截圖', capturedHint: '在圖片上按右鍵儲存',
     hubPromoNote: '可選元件：未偵測到 geosuite-hub。安裝一次即可加速向量圖層、解除 4MB 限制，並啟用 AI 橋接提供者。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: '已偵測到 geosuite-hub', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: '如果瀏覽器顯示本機網路存取提示，請點擊「允許」— 即可在此網站啟用 geosuite-hub。', hubPromoView: '在 GeoSuite viewer 中開啟', hubPromoViewTitle: '需要一次性註冊 geosuite-hub://（執行 geosuite-hub.exe）'
-, hubPromoExt: '擴充'
+, hubPromoExt: '擴充', pagesLabel:'頁面', pageSelect:'套用已儲存的頁面（圖層可見性）', pageNamePh:'新頁面名稱', pageSave:'儲存頁面', pageDelete:'刪除頁面'
   },
   ko: {
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
@@ -331,7 +425,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=경로 위를 전진하며 전방을 보는 탑승 시점 / center(=chase)=후방 상공에서 이동 지점을 추적하는 항공 시점.<br>입력값은 재생 중에도 즉시 반영됩니다.<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
     svOpen: '스트리트 뷰', captureBtn: '캡처', capturedHint: '이미지를 우클릭해 저장',
     hubPromoNote: '선택 구성 요소: geosuite-hub가 감지되지 않습니다. 한 번 설치하면 벡터 레이어가 빨라지고 4MB 제한이 해제되며 AI 브리지 프로바이더를 사용할 수 있습니다.', hubPromoBtn: 'geosuite-hub.zip 다운로드', hubPromoWait: '다운로드했습니다. ZIP 압축을 해제하고 geosuite-hub.exe를 실행하세요 — 허브를 기다리는 중…', hubPromoOk: 'geosuite-hub가 감지되었습니다', hubPromoRetry: '아직 감지되지 않았습니다 — 다운로드한 ZIP 압축을 해제하고 geosuite-hub.exe를 실행하세요.', hubPromoSteps: '순서: 1) geosuite-hub.zip 다운로드 → 2) 압축 해제 → 3) geosuite-hub.exe 실행(geosuite-hub＋프로토콜 자동 설치·관리자 권한 불필요)', hubPromoPrompt: '브라우저에 로컬 네트워크 액세스 프롬프트가 표시되면 "허용"을 클릭하세요 — 이 사이트에서 geosuite-hub를 사용할 수 있습니다.', hubPromoView: 'GeoSuite viewer에서 열기', hubPromoViewTitle: 'geosuite-hub:// 등록이 필요합니다(geosuite-hub.exe 실행)'
-, hubPromoExt: '확장'
+, hubPromoExt: '확장', pagesLabel:'페이지', pageSelect:'저장된 페이지 적용(레이어 표시 상태)', pageNamePh:'새 페이지 이름', pageSave:'페이지 저장', pageDelete:'페이지 삭제'
   },
   es: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
@@ -362,7 +456,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo que recorre la ruta; center (=chase) = vista aérea que sigue el punto desde atrás.<br>Los cambios se aplican de inmediato, incluso en vuelo.<br>O pulse Dibujar y trace una polilínea en el mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clic derecho en la imagen para guardar',
     hubPromoNote: 'Componente opcional: geosuite-hub no está en ejecución. Instálelo una vez para acelerar las capas vectoriales, eliminar el límite de 4MB y desbloquear los proveedores de puente de IA.', hubPromoBtn: 'Descargar geosuite-hub.zip', hubPromoWait: 'Descargado. Extraiga el ZIP y ejecute geosuite-hub.exe — esperando al hub…', hubPromoOk: 'geosuite-hub detectado', hubPromoRetry: 'Aún no detectado — extraiga el ZIP descargado y ejecute geosuite-hub.exe.', hubPromoSteps: 'Pasos: 1) Descargue geosuite-hub.zip  2) Extráigalo  3) Ejecute geosuite-hub.exe — instala automáticamente geosuite-hub y el protocolo geosuite-hub:// (sin derechos de administrador).', hubPromoPrompt: 'Si el navegador muestra el aviso de acceso a la red local, haga clic en Permitir — habilita geosuite-hub en este sitio.', hubPromoView: 'Abrir en GeoSuite viewer', hubPromoViewTitle: 'Requiere el registro único de geosuite-hub:// (ejecute geosuite-hub.exe)'
-, hubPromoExt: 'Ext.'
+, hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar una página guardada (visibilidad de capas)', pageNamePh:'Nombre de página nueva', pageSave:'Guardar página', pageDelete:'Eliminar página'
   },
   fr: {
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
@@ -393,7 +487,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vue embarquée qui parcourt la route ; center (=chase) = vue aérienne qui suit le point par l’arrière.<br>Les réglages s’appliquent immédiatement, même en vol.<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
     svOpen: 'Street View', captureBtn: 'Capturer', capturedHint: 'Clic droit sur l\u2019image pour enregistrer',
     hubPromoNote: 'Composant optionnel : geosuite-hub n\'est pas détecté. Installez-le une fois pour accélérer les couches vectorielles, lever la limite de 4 Mo et débloquer les fournisseurs de pont IA.', hubPromoBtn: 'Télécharger geosuite-hub.zip', hubPromoWait: 'Téléchargé. Extrayez le ZIP et exécutez geosuite-hub.exe — en attente du hub…', hubPromoOk: 'geosuite-hub détecté', hubPromoRetry: 'Toujours non détecté — extrayez le ZIP téléchargé et exécutez geosuite-hub.exe.', hubPromoSteps: 'Étapes : 1) Téléchargez geosuite-hub.zip  2) Extrayez-le  3) Exécutez geosuite-hub.exe — installe automatiquement geosuite-hub et le protocole geosuite-hub:// (sans droits administrateur).', hubPromoPrompt: 'Si le navigateur affiche une invite d\'accès au réseau local, cliquez sur Autoriser — cela débloque geosuite-hub pour ce site.', hubPromoView: 'Ouvrir dans GeoSuite viewer', hubPromoViewTitle: 'Nécessite l\'enregistrement unique de geosuite-hub:// (exécutez geosuite-hub.exe)'
-, hubPromoExt: 'Ext.'
+, hubPromoExt: 'Ext.', pagesLabel:'Pages', pageSelect:'Appliquer une page enregistrée (visibilité des couches)', pageNamePh:'Nom de la nouvelle page', pageSave:'Enregistrer la page', pageDelete:'Supprimer la page'
   },
   de: {
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
@@ -424,7 +518,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = Bordansicht auf der Route nach vorn; center (=chase) = Luftansicht, die den Punkt von hinten verfolgt.<br>Änderungen wirken sofort, auch während des Flugs.<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
     svOpen: 'Street View', captureBtn: 'Aufnehmen', capturedHint: 'Bild per Rechtsklick speichern',
     hubPromoNote: 'Optionale Komponente: geosuite-hub wurde nicht erkannt. Einmalig installieren, um Vektorebenen zu beschleunigen, das 4MB-Limit aufzuheben und KI-Bridge-Anbieter freizuschalten.', hubPromoBtn: 'geosuite-hub.zip herunterladen', hubPromoWait: 'Heruntergeladen. Entpacken Sie die ZIP und führen Sie geosuite-hub.exe aus — warte auf den Hub…', hubPromoOk: 'geosuite-hub erkannt', hubPromoRetry: 'Noch nicht erkannt — entpacken Sie die heruntergeladene ZIP und führen Sie geosuite-hub.exe aus.', hubPromoSteps: 'Schritte: 1) geosuite-hub.zip herunterladen  2) Entpacken  3) geosuite-hub.exe ausführen — installiert automatisch geosuite-hub und das geosuite-hub://-Protokoll (keine Adminrechte nötig).', hubPromoPrompt: 'Wenn der Browser eine Abfrage zum lokalen Netzwerkzugriff zeigt, klicken Sie auf Zulassen — dadurch wird geosuite-hub für diese Seite freigeschaltet.', hubPromoView: 'In GeoSuite viewer öffnen', hubPromoViewTitle: 'Erfordert einmalige Registrierung von geosuite-hub:// (geosuite-hub.exe ausführen)'
-, hubPromoExt: 'Ext.'
+, hubPromoExt: 'Ext.', pagesLabel:'Seiten', pageSelect:'Gespeicherte Seite anwenden (Ebenensichtbarkeit)', pageNamePh:'Neuer Seitenname', pageSave:'Seite speichern', pageDelete:'Seite löschen'
   },
   it: {
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
@@ -455,7 +549,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo che percorre la rotta; center (=chase) = vista aerea che segue il punto da dietro.<br>Le modifiche si applicano subito, anche in volo.<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
     svOpen: 'Street View', captureBtn: 'Cattura', capturedHint: 'Tasto destro sull\u2019immagine per salvare',
     hubPromoNote: 'Componente opzionale: geosuite-hub non rilevato. Installalo una volta per velocizzare i layer vettoriali, rimuovere il limite di 4MB e sbloccare i provider bridge AI.', hubPromoBtn: 'Scarica geosuite-hub.zip', hubPromoWait: 'Scaricato. Estrai lo ZIP ed esegui geosuite-hub.exe — in attesa dell\'hub…', hubPromoOk: 'geosuite-hub rilevato', hubPromoRetry: 'Ancora non rilevato — estrai lo ZIP scaricato ed esegui geosuite-hub.exe.', hubPromoSteps: 'Passi: 1) Scarica geosuite-hub.zip  2) Estrailo  3) Esegui geosuite-hub.exe — installa automaticamente geosuite-hub e il protocollo geosuite-hub:// (nessun diritto di amministratore).', hubPromoPrompt: 'Se il browser mostra la richiesta di accesso alla rete locale, fai clic su Consenti — abilita geosuite-hub per questo sito.', hubPromoView: 'Apri in GeoSuite viewer', hubPromoViewTitle: 'Richiede la registrazione una tantum di geosuite-hub:// (esegui geosuite-hub.exe)'
-, hubPromoExt: 'Ext.'
+, hubPromoExt: 'Ext.', pagesLabel:'Pagine', pageSelect:'Applica una pagina salvata (visibilità dei layer)', pageNamePh:'Nome nuova pagina', pageSave:'Salva pagina', pageDelete:'Elimina pagina'
   },
   pt: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
@@ -486,7 +580,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo percorrendo a rota; center (=chase) = vista aérea que segue o ponto por trás.<br>As alterações aplicam-se de imediato, mesmo em voo.<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clique com o botão direito na imagem para salvar',
     hubPromoNote: 'Componente opcional: geosuite-hub não detectado. Instale-o uma vez para acelerar as camadas vetoriais, remover o limite de 4MB e desbloquear os provedores de ponte de IA.', hubPromoBtn: 'Baixar geosuite-hub.zip', hubPromoWait: 'Baixado. Extraia o ZIP e execute geosuite-hub.exe — aguardando o hub…', hubPromoOk: 'geosuite-hub detectado', hubPromoRetry: 'Ainda não detectado — extraia o ZIP baixado e execute geosuite-hub.exe.', hubPromoSteps: 'Passos: 1) Baixe geosuite-hub.zip  2) Extraia-o  3) Execute geosuite-hub.exe — instala automaticamente o geosuite-hub e o protocolo geosuite-hub:// (sem direitos de administrador).', hubPromoPrompt: 'Se o navegador mostrar o aviso de acesso à rede local, clique em Permitir — isso desbloqueia o geosuite-hub neste site.', hubPromoView: 'Abrir no GeoSuite viewer', hubPromoViewTitle: 'Requer registro único de geosuite-hub:// (execute geosuite-hub.exe)'
-, hubPromoExt: 'Ext.'
+, hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar uma página guardada (visibilidade das camadas)', pageNamePh:'Nome da nova página', pageSave:'Guardar página', pageDelete:'Eliminar página'
   },
   ru: {
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
@@ -517,7 +611,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид с борта, движение по маршруту вперёд; center (=chase) = аэровид, слежение за точкой сзади.<br>Изменения применяются сразу, даже во время полёта.<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
     svOpen: 'Просмотр улиц', captureBtn: 'Снимок', capturedHint: 'Щёлкните изображение правой кнопкой, чтобы сохранить',
     hubPromoNote: 'Дополнительный компонент: geosuite-hub не обнаружен. Установите один раз, чтобы ускорить векторные слои, снять лимит 4 МБ и разблокировать ИИ-мосты.', hubPromoBtn: 'Скачать geosuite-hub.zip', hubPromoWait: 'Загружено. Распакуйте ZIP и запустите geosuite-hub.exe — ожидание хаба…', hubPromoOk: 'geosuite-hub обнаружен', hubPromoRetry: 'Пока не обнаружено — распакуйте скачанный ZIP и запустите geosuite-hub.exe.', hubPromoSteps: 'Шаги: 1) Скачайте geosuite-hub.zip  2) Распакуйте его  3) Запустите geosuite-hub.exe — автоматически установит geosuite-hub и протокол geosuite-hub:// (права администратора не нужны).', hubPromoPrompt: 'Если браузер показывает запрос доступа к локальной сети, нажмите «Разрешить» — это разблокирует geosuite-hub для сайта.', hubPromoView: 'Открыть в GeoSuite viewer', hubPromoViewTitle: 'Требуется однократная регистрация geosuite-hub:// (запустите geosuite-hub.exe)'
-, hubPromoExt: 'Расш.'
+, hubPromoExt: 'Расш.', pagesLabel:'Страницы', pageSelect:'Применить сохранённую страницу (видимость слоёв)', pageNamePh:'Имя новой страницы', pageSave:'Сохранить страницу', pageDelete:'Удалить страницу'
   },
   nl: {
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
@@ -548,7 +642,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = boordbeeld dat de route aflegt; center (=chase) = luchtbeeld dat het punt van achteren volgt.<br>Wijzigingen gelden direct, ook tijdens de vlucht.<br>Of druk op Tekenen en schets een polylijn op de kaart.',
     svOpen: 'Street View', captureBtn: 'Vastleggen', capturedHint: 'Rechtermuisknop op afbeelding om op te slaan',
     hubPromoNote: 'Optionele component: geosuite-hub is niet gedetecteerd. Eenmalig installeren versnelt vectorlagen, heft de 4MB-limiet op en ontgrendelt AI-bridgeproviders.', hubPromoBtn: 'geosuite-hub.zip downloaden', hubPromoWait: 'Gedownload. Pak de ZIP uit en voer geosuite-hub.exe uit — wachten op de hub…', hubPromoOk: 'geosuite-hub gedetecteerd', hubPromoRetry: 'Nog niet gedetecteerd — pak de gedownloade ZIP uit en voer geosuite-hub.exe uit.', hubPromoSteps: 'Stappen: 1) Download geosuite-hub.zip  2) Pak het uit  3) Voer geosuite-hub.exe uit — installeert automatisch geosuite-hub en het geosuite-hub://-protocol (geen beheerdersrechten nodig).', hubPromoPrompt: 'Als de browser om lokale netwerktoegang vraagt, klik op Toestaan — hiermee wordt geosuite-hub voor deze site ontgrendeld.', hubPromoView: 'Openen in GeoSuite viewer', hubPromoViewTitle: 'Vereist eenmalige registratie van geosuite-hub:// (voer geosuite-hub.exe uit)'
-, hubPromoExt: 'Ext.'
+, hubPromoExt: 'Ext.', pagesLabel:'Pagina\'s', pageSelect:'Opgeslagen pagina toepassen (laagzichtbaarheid)', pageNamePh:'Nieuwe paginanaam', pageSave:'Pagina opslaan', pageDelete:'Pagina verwijderen'
   },
   pl: {
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
@@ -579,7 +673,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = widok z pokładu jadący po trasie; center (=chase) = widok lotniczy śledzący punkt z tyłu.<br>Zmiany działają od razu, także w locie.<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
     svOpen: 'Street View', captureBtn: 'Zrzut', capturedHint: 'Kliknij obraz prawym przyciskiem, aby zapisać',
     hubPromoNote: 'Opcjonalny komponent: nie wykryto geosuite-hub. Zainstaluj raz, aby przyspieszyć warstwy wektorowe, znieść limit 4MB i odblokować dostawców mostu AI.', hubPromoBtn: 'Pobierz geosuite-hub.zip', hubPromoWait: 'Pobrano. Wypakuj ZIP i uruchom geosuite-hub.exe — oczekiwanie na hub…', hubPromoOk: 'Wykryto geosuite-hub', hubPromoRetry: 'Nadal nie wykryto — wypakuj pobrany ZIP i uruchom geosuite-hub.exe.', hubPromoSteps: 'Kroki: 1) Pobierz geosuite-hub.zip  2) Wypakuj go  3) Uruchom geosuite-hub.exe — automatycznie instaluje geosuite-hub i protokół geosuite-hub:// (bez uprawnień administratora).', hubPromoPrompt: 'Jeśli przeglądarka wyświetli monit o dostęp do sieci lokalnej, kliknij Zezwól — odblokuje to geosuite-hub dla tej witryny.', hubPromoView: 'Otwórz w GeoSuite viewer', hubPromoViewTitle: 'Wymaga jednorazowej rejestracji geosuite-hub:// (uruchom geosuite-hub.exe)'
-, hubPromoExt: 'Rozsz.'
+, hubPromoExt: 'Rozsz.', pagesLabel:'Strony', pageSelect:'Zastosuj zapisaną stronę (widoczność warstw)', pageNamePh:'Nazwa nowej strony', pageSave:'Zapisz stronę', pageDelete:'Usuń stronę'
   },
   uk: {
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
@@ -610,7 +704,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид з борту, рух маршрутом уперед; center (=chase) = аеровигляд, стеження за точкою ззаду.<br>Зміни застосовуються одразу, навіть у польоті.<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
     svOpen: 'Перегляд вулиць', captureBtn: 'Знімок', capturedHint: 'Клацніть зображення правою кнопкою, щоб зберегти',
     hubPromoNote: 'Додатковий компонент: geosuite-hub не виявлено. Встановіть один раз, щоб прискорити векторні шари, зняти ліміт 4 МБ і розблокувати ШІ-мости.', hubPromoBtn: 'Завантажити geosuite-hub.zip', hubPromoWait: 'Завантажено. Розпакуйте ZIP і запустіть geosuite-hub.exe — очікування хаба…', hubPromoOk: 'geosuite-hub виявлено', hubPromoRetry: 'Досі не виявлено — розпакуйте завантажений ZIP і запустіть geosuite-hub.exe.', hubPromoSteps: 'Кроки: 1) Завантажте geosuite-hub.zip  2) Розпакуйте його  3) Запустіть geosuite-hub.exe — автоматично встановить geosuite-hub і протокол geosuite-hub:// (права адміністратора не потрібні).', hubPromoPrompt: 'Якщо браузер показує запит на доступ до локальної мережі, натисніть «Дозволити» — це розблокує geosuite-hub для цього сайту.', hubPromoView: 'Відкрити в GeoSuite viewer', hubPromoViewTitle: 'Потрібна одноразова реєстрація geosuite-hub:// (запустіть geosuite-hub.exe)'
-, hubPromoExt: 'Розш.'
+, hubPromoExt: 'Розш.', pagesLabel:'Сторінки', pageSelect:'Застосувати збережену сторінку (видимість шарів)', pageNamePh:'Назва нової сторінки', pageSave:'Зберегти сторінку', pageDelete:'Видалити сторінку'
   },
   tr: {
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
@@ -641,7 +735,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = rotada ilerleyen araç içi görünüm; center (=chase) = noktayı arkadan izleyen hava görünümü.<br>Değişiklikler uçuş sırasında da anında uygulanır.<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
     svOpen: 'Sokak Görünümü', captureBtn: 'Yakala', capturedHint: 'Kaydetmek için görüntüye sağ tıklayın',
     hubPromoNote: 'İsteğe bağlı bileşen: geosuite-hub algılanmadı. Vektör katmanlarını hızlandırmak, 4MB sınırını kaldırmak ve AI köprü sağlayıcılarını açmak için bir kez kurun.', hubPromoBtn: 'geosuite-hub.zip indir', hubPromoWait: 'İndirildi. ZIP\'i çıkarıp geosuite-hub.exe çalıştırın — hub bekleniyor…', hubPromoOk: 'geosuite-hub algılandı', hubPromoRetry: 'Hâlâ algılanmadı — indirilen ZIP\'i çıkarıp geosuite-hub.exe çalıştırın.', hubPromoSteps: 'Adımlar: 1) geosuite-hub.zip indirin  2) Çıkarın  3) geosuite-hub.exe çalıştırın — geosuite-hub ve geosuite-hub:// protokolünü otomatik kurar (yönetici hakkı gerekmez).', hubPromoPrompt: 'Tarayıcı yerel ağ erişimi istemi gösterirse İzin ver seçeneğine tıklayın — bu site için geosuite-hub etkinleşir.', hubPromoView: 'GeoSuite viewer içinde aç', hubPromoViewTitle: 'Bir kerelik geosuite-hub:// kaydı gerekir (geosuite-hub.exe çalıştırın)'
-, hubPromoExt: 'Eklenti'
+, hubPromoExt: 'Eklenti', pagesLabel:'Sayfalar', pageSelect:'Kayıtlı sayfayı uygula (katman görünürlüğü)', pageNamePh:'Yeni sayfa adı', pageSave:'Sayfayı kaydet', pageDelete:'Sayfayı sil'
   },
   ar: {
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
@@ -672,7 +766,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = منظر على متن المسار يتقدم للأمام؛ center (=chase) = منظر جوّي يتعقب النقطة من الخلف.<br>تُطبَّق التغييرات فورًا حتى أثناء التحليق.<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
     svOpen: 'التجوّل الافتراضي', captureBtn: 'لقطة', capturedHint: 'انقر بزر الفأرة الأيمن على الصورة للحفظ',
     hubPromoNote: 'مكوّن اختياري: لم يتم اكتشاف geosuite-hub. ثبّته مرة واحدة لتسريع الطبقات المتجهة وإزالة حد 4MB وفتح موفري جسر الذكاء الاصطناعي.', hubPromoBtn: 'تنزيل geosuite-hub.zip', hubPromoWait: 'تم التنزيل. فك ضغط ZIP وشغّل geosuite-hub.exe — بانتظار المركز…', hubPromoOk: 'تم اكتشاف geosuite-hub', hubPromoRetry: 'لم يُكتشف بعد — فك ضغط ZIP الذي تم تنزيله وشغّل geosuite-hub.exe.', hubPromoSteps: 'الخطوات: 1) نزّل geosuite-hub.zip  2) فك ضغطه  3) شغّل geosuite-hub.exe — يثبّت تلقائيًا geosuite-hub وبروتوكول geosuite-hub:// (لا يحتاج صلاحيات مسؤول).', hubPromoPrompt: 'إذا ظهرت مطالبة الوصول إلى الشبكة المحلية في المتصفح، انقر على سماح — فهذا يفعّل geosuite-hub لهذا الموقع.', hubPromoView: 'فتح في GeoSuite viewer', hubPromoViewTitle: 'يتطلب تسجيل geosuite-hub:// لمرة واحدة (شغّل geosuite-hub.exe)'
-, hubPromoExt: 'إضافة'
+, hubPromoExt: 'إضافة', pagesLabel:'صفحات', pageSelect:'تطبيق صفحة محفوظة (رؤية الطبقات)', pageNamePh:'اسم الصفحة الجديدة', pageSave:'حفظ الصفحة', pageDelete:'حذف الصفحة'
   },
   hi: {
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
@@ -703,7 +797,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = मार्ग पर चलने वाला सवारी दृश्य; center (=chase) = बिंदु को पीछे से ट्रैक करने वाला हवाई दृश्य।<br>बदलाव उड़ान के दौरान भी तुरंत लागू होते हैं।<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
     svOpen: 'स्ट्रीट व्यू', captureBtn: 'कैप्चर', capturedHint: 'सहेजने के लिए छवि पर राइट-क्लिक करें',
     hubPromoNote: 'वैकल्पिक घटक: geosuite-hub नहीं मिला। वेक्टर लेयर तेज़ करने, 4MB सीमा हटाने और AI ब्रिज प्रदाता अनलॉक करने के लिए एक बार इंस्टॉल करें।', hubPromoBtn: 'geosuite-hub.zip डाउनलोड करें', hubPromoWait: 'डाउनलोड हो गया। ZIP निकालकर geosuite-hub.exe चलाएँ — हब की प्रतीक्षा में…', hubPromoOk: 'geosuite-hub मिल गया', hubPromoRetry: 'अभी नहीं मिला — डाउनलोड की गई ZIP निकालकर geosuite-hub.exe चलाएँ।', hubPromoSteps: 'चरण: 1) geosuite-hub.zip डाउनलोड करें  2) निकालें  3) geosuite-hub.exe चलाएँ — geosuite-hub और geosuite-hub:// प्रोटोकॉल ऑटो-इंस्टॉल होता है (एडमिन अधिकार आवश्यक नहीं)', hubPromoPrompt: 'यदि ब्राउज़र लोकल नेटवर्क एक्सेस का प्रॉम्प्ट दिखाए तो "अनुमति दें" पर क्लिक करें — इससे इस साइट पर geosuite-hub सक्षम होगा।', hubPromoView: 'GeoSuite viewer में खोलें', hubPromoViewTitle: 'एक-बार geosuite-hub:// पंजीकरण आवश्यक (geosuite-hub.exe चलाएँ)'
-, hubPromoExt: 'एक्स.'
+, hubPromoExt: 'एक्स.', pagesLabel:'पेज', pageSelect:'सहेजा गया पेज लागू करें (लेयर दृश्यता)', pageNamePh:'नए पेज का नाम', pageSave:'पेज सहेजें', pageDelete:'पेज हटाएँ'
   },
   id: {
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
@@ -734,7 +828,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = tampilan menumpang yang bergerak di rute; center (=chase) = tampilan udara yang melacak titik dari belakang.<br>Perubahan langsung berlaku, bahkan saat terbang.<br>Atau tekan Gambar lalu sketsa polyline di peta.',
     svOpen: 'Street View', captureBtn: 'Tangkap', capturedHint: 'Klik kanan gambar untuk menyimpan',
     hubPromoNote: 'Komponen opsional: geosuite-hub tidak terdeteksi. Instal sekali untuk mempercepat layer vektor, menghapus batas 4MB, dan membuka penyedia bridge AI.', hubPromoBtn: 'Unduh geosuite-hub.zip', hubPromoWait: 'Terunduh. Ekstrak ZIP dan jalankan geosuite-hub.exe — menunggu hub…', hubPromoOk: 'geosuite-hub terdeteksi', hubPromoRetry: 'Belum terdeteksi — ekstrak ZIP yang diunduh dan jalankan geosuite-hub.exe.', hubPromoSteps: 'Langkah: 1) Unduh geosuite-hub.zip  2) Ekstrak  3) Jalankan geosuite-hub.exe — otomatis menginstal geosuite-hub dan protokol geosuite-hub:// (tanpa hak admin).', hubPromoPrompt: 'Jika browser menampilkan prompt akses jaringan lokal, klik Izinkan — ini mengaktifkan geosuite-hub untuk situs ini.', hubPromoView: 'Buka di GeoSuite viewer', hubPromoViewTitle: 'Memerlukan pendaftaran geosuite-hub:// satu kali (jalankan geosuite-hub.exe)'
-, hubPromoExt: 'Eks.'
+, hubPromoExt: 'Eks.', pagesLabel:'Halaman', pageSelect:'Terapkan halaman tersimpan (visibilitas layer)', pageNamePh:'Nama halaman baru', pageSave:'Simpan halaman', pageDelete:'Hapus halaman'
   },
   th: {
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
@@ -765,7 +859,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = มุมมองนั่งร่วมเคลื่อนตามเส้นทาง; center (=chase) = มุมมองทางอากาศที่ติดตามจุดจากด้านหลัง<br>ค่าที่แก้ไขมีผลทันที แม้ขณะบิน<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
     svOpen: 'Street View', captureBtn: 'จับภาพ', capturedHint: 'คลิกขวาที่ภาพเพื่อบันทึก',
     hubPromoNote: 'ส่วนประกอบเสริม: ไม่พบ geosuite-hub ติดตั้งครั้งเดียวเพื่อเร่งเลเยอร์เวกเตอร์ ยกเลิกขีดจำกัด 4MB และปลดล็อกผู้ให้บริการบริดจ์ AI', hubPromoBtn: 'ดาวน์โหลด geosuite-hub.zip', hubPromoWait: 'ดาวน์โหลดแล้ว แตกไฟล์ ZIP แล้วรัน geosuite-hub.exe — กำลังรอฮับ…', hubPromoOk: 'พบ geosuite-hub แล้ว', hubPromoRetry: 'ยังไม่พบ — แตกไฟล์ ZIP ที่ดาวน์โหลดแล้วรัน geosuite-hub.exe', hubPromoSteps: 'ขั้นตอน: 1) ดาวน์โหลด geosuite-hub.zip → 2) แตกไฟล์ → 3) รัน geosuite-hub.exe — ติดตั้ง geosuite-hub และโปรโตคอล geosuite-hub:// อัตโนมัติ (ไม่ต้องใช้สิทธิ์ผู้ดูแล)', hubPromoPrompt: 'หากเบราว์เซอร์แสดงข้อความขอเข้าถึงเครือข่ายภายใน ให้คลิก อนุญาต — จะเปิดใช้งาน geosuite-hub สำหรับไซต์นี้', hubPromoView: 'เปิดใน GeoSuite viewer', hubPromoViewTitle: 'ต้องลงทะเบียน geosuite-hub:// ครั้งเดียว (รัน geosuite-hub.exe)'
-, hubPromoExt: 'ขยาย'
+, hubPromoExt: 'ขยาย', pagesLabel:'หน้า', pageSelect:'ใช้หน้าที่บันทึกไว้ (การมองเห็นเลเยอร์)', pageNamePh:'ชื่อหน้าใหม่', pageSave:'บันทึกหน้า', pageDelete:'ลบหน้า'
   },
   vi: {
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
@@ -796,7 +890,7 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = góc nhìn đi cùng di chuyển trên tuyến; center (=chase) = góc nhìn trên không theo dõi điểm từ phía sau.<br>Thay đổi áp dụng ngay, kể cả khi đang bay.<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
     svOpen: 'Street View', captureBtn: 'Chụp', capturedHint: 'Nhấp chuột phải vào ảnh để lưu',
     hubPromoNote: 'Thành phần tùy chọn: không phát hiện geosuite-hub. Cài một lần để tăng tốc lớp vector, bỏ giới hạn 4MB và mở khóa nhà cung cấp cầu nối AI.', hubPromoBtn: 'Tải geosuite-hub.zip', hubPromoWait: 'Đã tải xuống. Giải nén ZIP và chạy geosuite-hub.exe — đang chờ hub…', hubPromoOk: 'Đã phát hiện geosuite-hub', hubPromoRetry: 'Vẫn chưa phát hiện — giải nén ZIP đã tải và chạy geosuite-hub.exe.', hubPromoSteps: 'Các bước: 1) Tải geosuite-hub.zip  2) Giải nén  3) Chạy geosuite-hub.exe — tự động cài đặt geosuite-hub và giao thức geosuite-hub:// (không cần quyền quản trị).', hubPromoPrompt: 'Nếu trình duyệt hiển thị lời nhắc truy cập mạng cục bộ, hãy nhấp Cho phép — điều này mở khóa geosuite-hub cho trang này.', hubPromoView: 'Mở trong GeoSuite viewer', hubPromoViewTitle: 'Yêu cầu đăng ký geosuite-hub:// một lần (chạy geosuite-hub.exe)'
-, hubPromoExt: 'Mở rộng'
+, hubPromoExt: 'Mở rộng', pagesLabel:'Trang', pageSelect:'Áp dụng trang đã lưu (hiển thị lớp)', pageNamePh:'Tên trang mới', pageSave:'Lưu trang', pageDelete:'Xóa trang'
   }
 };
 
@@ -1688,7 +1782,6 @@ function getUI() {
     <button class="action-btn" data-target="share-panel" aria-pressed="false" title="Share" aria-label="Share" data-i18n-title="tabShare" data-i18n-aria="tabShare">🔗</button>
     <button class="action-btn" id="manage-open-btn" data-target="manage-panel" aria-pressed="false" title="Manage" aria-label="Manage" data-i18n-title="manageTitle" data-i18n-aria="manageTitle">⚙️</button>
     </span>
-    <select id="kasc-theme-select" hidden title="QGIS theme" data-i18n-title="themeSelect" data-i18n-aria="themeSelect" onchange="parent.postMessage({action:'applyKascTheme',name:this.value},'*')" style="margin-left:6px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:0.85em;background:#fff;max-width:140px;"></select>
   </div>
 
     <div id="share-panel" style="display:none;">
@@ -1842,6 +1935,14 @@ function getUI() {
              same wiring for the settings-side entry. -->
         <button class="restore-all-btn" id="restore-user-layers" title="Force Refresh User Layers" data-i18n="refresh" data-i18n-title="refreshTitle">Refresh</button>
       </div>
+    </div>
+
+    <!-- Pages: layer-visibility presets stored as page:/theme: inspector lines -->
+    <div id="pages-row" style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
+      <select id="page-select" title="Pages" data-i18n-title="pageSelect" data-i18n-aria="pageSelect" style="flex:1 1 auto;min-width:0;border:1px solid #ccc;border-radius:4px;padding:3px 4px;font-size:0.85em;background:#fff;"></select>
+      <input type="text" id="page-name-input" data-i18n-ph="pageNamePh" placeholder="New page" style="width:80px;min-width:0;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:0.85em;" />
+      <button id="page-save-btn" class="btn-primary p-6" title="Save page" data-i18n-title="pageSave" data-i18n-aria="pageSave" style="padding:4px 8px;">+</button>
+      <button id="page-del-btn" class="btn-primary p-6" title="Delete page" data-i18n-title="pageDelete" data-i18n-aria="pageDelete" style="padding:4px 8px;" disabled>&minus;</button>
     </div>
 
     <!-- bridge-hub promo moved to the basemap widget (persistent iframe). -->
@@ -5350,14 +5451,19 @@ function qmlStyleToReearth(xmlText, opts){
                 const msg = e && e.data ? e.data : null;
                 if (!msg || !msg.action) return;
 
-                // theme: 行の一覧を受け取り #kasc-theme-select を構築する
+                // theme:/page: 行の一覧を受け取り #page-select を構築する
                 if (msg.action === 'kascThemes') {
                   try {
-                    const sel = document.getElementById('kasc-theme-select');
+                    const sel = document.getElementById('page-select');
                     if (sel) {
                       const esc = function(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); };
-                      sel.innerHTML = '<option value="">' + esc(typeof t === 'function' ? t('themeSelect') : 'QGIS theme') + '</option>' + (msg.themes || []).map(function(t2){ return '<option value="' + esc(t2.name) + '">' + esc(t2.name) + '</option>'; }).join('');
-                      sel.hidden = !(msg.themes && msg.themes.length);
+                      sel.innerHTML = '<option value="">' + esc(typeof t === 'function' ? t('pagesLabel') : 'Pages') + '</option>' + (msg.themes || []).map(function(t2){ return '<option value="' + esc(t2.name) + '"' + (t2 && t2.deletable ? ' data-del="1"' : '') + '>' + esc(t2.name) + '</option>'; }).join('');
+                      if (msg.select) sel.value = msg.select;
+                      const delBtn = document.getElementById('page-del-btn');
+                      if (delBtn) {
+                        const opt = sel.options[sel.selectedIndex];
+                        delBtn.disabled = !(sel.value && opt && opt.getAttribute('data-del') === '1');
+                      }
                     }
                   } catch (e) {}
                   return;
@@ -7118,6 +7224,37 @@ function qmlStyleToReearth(xmlText, opts){
            refreshUserLayers();
         });
       }
+
+      // Pages: apply/save/delete layer-visibility presets (page:/theme: lines)
+      const pageSel = document.getElementById('page-select');
+      const pageNameInput = document.getElementById('page-name-input');
+      const pageSaveBtn = document.getElementById('page-save-btn');
+      const pageDelBtn = document.getElementById('page-del-btn');
+      const pageDelSync = function() {
+        try {
+          if (!pageSel || !pageDelBtn) return;
+          const opt = pageSel.options[pageSel.selectedIndex];
+          pageDelBtn.disabled = !(pageSel.value && opt && opt.getAttribute('data-del') === '1');
+        } catch (e) {}
+      };
+      if (pageSel) pageSel.addEventListener('change', function() {
+        pageDelSync();
+        try { if (pageSel.value) parent.postMessage({ action: 'applyKascTheme', name: pageSel.value }, '*'); } catch (e) {}
+      });
+      const pageSave = function() {
+        try {
+          const name = pageNameInput ? String(pageNameInput.value || '').trim() : '';
+          if (name) parent.postMessage({ action: 'savePage', name: name }, '*');
+        } catch (e) {}
+      };
+      if (pageSaveBtn) pageSaveBtn.addEventListener('click', pageSave);
+      if (pageNameInput) pageNameInput.addEventListener('keydown', function(e) {
+        if (e && e.key === 'Enter') { e.preventDefault(); pageSave(); }
+      });
+      if (pageDelBtn) pageDelBtn.addEventListener('click', function() {
+        try { if (pageSel && pageSel.value) parent.postMessage({ action: 'deletePage', name: pageSel.value }, '*'); } catch (e) {}
+      });
+      pageDelSync();
 
       // Add event listener for 'Show/Hide' for all layers (preset + plugin-added)
       Array.from(document.querySelectorAll('input[data-layer-id]')).forEach(checkbox => {
@@ -10616,6 +10753,22 @@ reearth.extension.on("message", (msg) => {
       }
       return;
     }
+    if (msg.action === "savePage") {
+      try {
+        if (!savePagePreset(msg.name)) {
+          try { sendLog('[savePage] not saved (empty name?)', msg.name); } catch (_) {}
+        }
+      } catch (e) {
+        try { sendError('[savePage]', e); } catch (_) {}
+      }
+      return;
+    }
+    if (msg.action === "deletePage" && msg.name) {
+      try { deletePagePreset(msg.name); } catch (e) {
+        try { sendError('[deletePage]', e); } catch (_) {}
+      }
+      return;
+    }
     if (msg.action === "activateTerrain") {
       const bg = _lastInspectorBackground || "#ffffff";
       // Re:Earth Visualizer最新版では terrain.type を明示的に指定する必要がある
@@ -10959,6 +11112,10 @@ reearth.extension.on("message", (msg) => {
               const r = _qgisZipRefs[id];
               if (r && r.status === 'loading') { try { postToUI({ action: 'kascZipLoad', url: r.url, zipId: id }); } catch (e) {} }
             });
+            // The page/theme select is populated by message — repost so the
+            // recreated iframe does not lose its options (same rule as the
+            // pending-request re-sends above).
+            postKascThemes();
           } catch (e) {}
         } catch (e) { try { sendError('[requestRestoreState] error:', e); } catch(_) {} }
       } else if (msg.action === 'flyInitRequest') {
@@ -12887,12 +13044,13 @@ function processInspectorText(text) {
     }
 
     // theme:名前 | 表示タイトル[|タイトル…]（`*` で全表示）。QGIS マップテーマ
-    // 相当の可視性プリセット。タイトルの `;style=DATA/x.qml` はテーマ適用時に
+    // 相当の可視性プリセット。`page:` は同一形式のエイリアス(ページ機能)。
+    // タイトルの `;style=DATA/x.qml` はテーマ適用時に
     // そのレイヤーの .qml を差し替える指定(geo_webview v4.6.0〜 が出力)。
     // themes へ収集し、テキスト自体は rebuild 用に保持する。
-    if (lowerLine.startsWith('theme:')) {
+    if (lowerLine.startsWith('theme:') || lowerLine.startsWith('page:')) {
       const normT = (t) => String(t || '').split('/').map(s => s.trim()).join('/');
-      const parts = line.substring(6).split('|').map(p => p.trim());
+      const parts = line.substring(line.indexOf(':') + 1).split('|').map(p => p.trim());
       const layers = [];
       const styles = {};
       for (const tok of parts.slice(1)) {
@@ -12907,7 +13065,7 @@ function processInspectorText(text) {
           layers.push(tok);
         }
       }
-      themes.push({ name: (parts[0] || '').trim(), layers: layers, styles: styles, line: line });
+      themes.push({ name: (parts[0] || '').trim(), layers: layers, styles: styles, line: line, persistent: keep !== false });
       if (keep !== false) nonCamLines.push(line);
       return;
     }
@@ -12915,7 +13073,7 @@ function processInspectorText(text) {
     // KASUGAI-only directives without a Re:Earth counterpart. Never let them
     // reach the XYZ catch-all — "wms: name | http…" would otherwise create a
     // bogus XYZ layer with the endpoint as the tile template.
-    if (/^(wms|theme|bookmark)\s*:/i.test(lowerLine)) {
+    if (/^(wms|theme|page|bookmark)\s*:/i.test(lowerLine)) {
       if (keep !== false) nonCamLines.push(line);
       return;
     }
@@ -13343,7 +13501,7 @@ function processInspectorText(text) {
 
   _inspectorNonCamLines = nonCamLines;
   _kascThemes = themes;
-  try { postToUI({ action: 'kascThemes', themes: _kascThemes.map(t => ({ name: t.name })) }); } catch (_) {}
+  postKascThemes();
   _cameraPresets = camsFound;
   try { _inspectorLegendItems = (legends && legends.length) ? legends : []; } catch(e) {}
 
