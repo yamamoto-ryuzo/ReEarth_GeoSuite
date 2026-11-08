@@ -9903,8 +9903,13 @@ function refreshHubVecLayer(layerId, spec) {
     // with an identical URL makes the host re-fetch it for nothing (and each
     // override churns the UI). Skip when the URL is unchanged.
     if (spec.lastGeoUrl === url) return;
-    spec.lastGeoUrl = url;
-    try { reearth.layers.override(layerId, { data: { type: 'geojson', url: url } }); markVectorIndexDirty(); }
+    try {
+        reearth.layers.override(layerId, { data: { type: 'geojson', url: url } });
+        // record only on success — a failed override must stay retryable
+        // (otherwise the same viewport never re-attempts and stale data persists)
+        spec.lastGeoUrl = url;
+        markVectorIndexDirty();
+    }
     catch (e) { try { sendError('[vectorHub] data override failed', e); } catch (e2) {} }
 }
 
