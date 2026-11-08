@@ -6336,31 +6336,67 @@ function qmlStyleToReearth(xmlText, opts){
                         return res.json();
                       });
                     };
-                    hubGet(ep + '/vector/status', 3000)
-                      .then(function() { return hubGet(ep + '/vector/sources', 15000); })
-                      .then(function(list) {
-                        var cur = (list && list.sources && list.sources[reg.name]) || null;
-                        // kind:sql identity lives in the name hash — the
-                        // manifest stores no sql text, so an existing entry
-                        // for this name is definitionally fresh.
-                        var stale = !cur || (reg.kind !== 'sql' && (
-                                    String(cur.src || '') !== String(reg.src || '') ||
-                                    String(cur.where || '') !== String(reg.where || '') ||
-                                    (reg.kind && String(cur.kind || '') !== String(reg.kind))));
-                        if (!stale) return null;
-                        var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
-                        var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, 280000);
-                        var opt = { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(reg) };
-                        if (ctl) opt.signal = ctl.signal;
-                        return fetch(ep + '/vector/sources', opt).then(function(res) {
-                          clearTimeout(timer);
-                          return res.json();
-                        }).then(function(j) {
-                          if (!j || !j.ok) throw new Error((j && j.error) || 'register failed');
+                    // Bounded retry (#16): transient chain failures (probe/GET
+                    // timeout, hub-side 502 while a materialization lock is
+                    // held, POST killed mid-flight) must not drop straight into
+                    // the iframe decode fallback — that path tombstones sources
+                    // it cannot serve (CORS-less hosts, >4MB), turning a
+                    // temporary hub failure into a permanent [layer-failed].
+                    // Only an explicit server refusal (ok:false) skips retry.
+                    var hubTry = 0, HUB_TRIES = 3, HUB_RETRY_MS = 5000;
+                    var hubAttempt = function() {
+                      hubTry++;
+                      hubGet(ep + '/vector/status', 3000)
+                        .then(function() { return hubGet(ep + '/vector/sources', 15000); })
+                        .then(function(list) {
+                          var cur = (list && list.sources && list.sources[reg.name]) || null;
+                          // kind:sql identity lives in the name hash — the
+                          // manifest stores no sql text, so an existing entry
+                          // for this name is definitionally fresh.
+                          var stale = !cur || (reg.kind !== 'sql' && (
+                                      String(cur.src || '') !== String(reg.src || '') ||
+                                      String(cur.where || '') !== String(reg.where || '') ||
+                                      (reg.kind && String(cur.kind || '') !== String(reg.kind))));
+                          if (!stale) return null;
+                          var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+                          var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, 280000);
+                          var opt = { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(reg) };
+                          if (ctl) opt.signal = ctl.signal;
+                          return fetch(ep + '/vector/sources', opt).then(function(res) {
+                            clearTimeout(timer);
+                            var st = res.status;
+                            return res.json().catch(function() { return null; }).then(function(j) {
+                              return { status: st, j: j };
+                            });
+                          }).then(function(r) {
+                            var j = r && r.j;
+                            // Permanent refusal = 4xx, or a 2xx body the server
+                            // parsed and explicitly refused ({ok:false}). 5xx
+                            // (transient ingest failure / materialization lock)
+                            // is retryable.
+                            if (r && r.status >= 400 && r.status < 500) {
+                              var e4 = new Error((j && j.error) || 'register failed (HTTP ' + r.status + ')');
+                              e4.permanent = true; throw e4;
+                            }
+                            if (r && r.status >= 500) {
+                              throw new Error((j && j.error) || 'register failed (HTTP ' + r.status + ')');
+                            }
+                            if (!j || !j.ok) { var er = new Error((j && j.error) || 'register failed'); er.permanent = true; throw er; }
+                          });
+                        })
+                        .then(function() { done(true, null); })
+                        .catch(function(e) {
+                          if (!(e && e.permanent === true) && hubTry < HUB_TRIES) {
+                            // Notify the extension to rearm the 300s pending
+                            // TTL — a retried POST (up to 280s) can outlive the
+                            // original deadline and must not hit a tombstone.
+                            try { parent.postMessage({ action: 'hubRetry', reqId: msg.reqId, vecId: msg.vecId || msg.reqId }, '*'); } catch (e2) {}
+                            setTimeout(hubAttempt, HUB_RETRY_MS); return;
+                          }
+                          done(false, String(e && e.message || e));
                         });
-                      })
-                      .then(function() { done(true, null); })
-                      .catch(function(e) { done(false, String(e && e.message || e)); });
+                    };
+                    hubAttempt();
                   })();
                 }
               } catch (e) {}
@@ -11182,6 +11218,11 @@ reearth.extension.on("message", (msg) => {
           // the stored fallback runs the in-iframe decode path.
           try { handleHubResult(msg); } catch (e) {}
       }
+      else if (msg.action === 'hubRetry') {
+          // Own-iframe retry heartbeat — rearm the pending TTL (same rule as
+          // the host-routed path above).
+          try { rearmPendingTtl(_hubPending, msg.reqId || msg.vecId); } catch (e) {}
+      }
       else if (msg.action === 'hubPromoDismiss') {
           // promo row − button: keep it hidden for the rest of the session
           // (re-injected via _hubInstallCfg.dismissed on every re-render)
@@ -11429,13 +11470,16 @@ try {
           try { handleVecResult(data); } catch (e) {}
           return;
         }
-        if (data && (data.action === 'hubAck' || data.action === 'hubResult')) {
+        if (data && (data.action === 'hubAck' || data.action === 'hubResult' || data.action === 'hubRetry')) {
           // Host-routed geosuite-hub register — same ack contract as the vec
           // decodes: the ack suppresses the own-iframe fallback, the result
           // finishes (or falls back to in-iframe decode on hub failure).
           try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
           try { const p = _hubPending[data.reqId || data.vecId]; if (p) p.hostAck = true; } catch (e) {}
           if (data.action === 'hubResult') { try { handleHubResult(data); } catch (e) {} }
+          // Retry heartbeat: a retried POST can outlive the original 300s
+          // deadline — rearm so a late success does not hit a tombstone.
+          if (data.action === 'hubRetry') { try { rearmPendingTtl(_hubPending, data.reqId || data.vecId); } catch (e) {} }
           return;
         }
         if (data && data.action === 'hubPromoDismiss') {
