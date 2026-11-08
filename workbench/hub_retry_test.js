@@ -9,9 +9,10 @@ if (!m) { console.error('handler block not found'); process.exit(1); }
 const handler = m[0];
 
 const calls = [];
+const retryMsgs = [];
 const msg = { reqId: 'r1', vecId: 'r1', endpoint: 'http://hub:8514/', register: { name: 'gs_x', src: 'http://x/test.fgb', kind: 'fgb' } };
 let doneRes = null;
-const postToParent = (o) => { if (o.action === 'hubResult') doneRes = o; };
+const postToParent = (o) => { if (o.action === 'hubResult') doneRes = o; if (o.action === 'hubRetry') retryMsgs.push(o); };
 
 // fire only the 5s retry gap synchronously; abort timers never fire
 const realSetTimeout = setTimeout;
@@ -20,7 +21,7 @@ global.clearTimeout = () => {};
 
 const ok = (j) => ({ ok: true, status: 200, json: () => Promise.resolve(j) });
 async function run(name, fetchImpl, expect) {
-  calls.length = 0; doneRes = null;
+  calls.length = 0; retryMsgs.length = 0; doneRes = null;
   global.fetch = fetchImpl;
   eval('(function(){' + 'var msg=' + JSON.stringify(msg) + ';var postToParent=' + postToParent.toString() + ';' + handler + '})()');
   for (let i = 0; i < 50; i++) await new Promise((r) => setImmediate(r));
@@ -57,6 +58,19 @@ const U = 'http://hub:8514';
     if (u.endsWith('/status')) return Promise.resolve(ok({}));
     return Promise.resolve(ok({ sources: { gs_x: { src: 'http://x/test.fgb', kind: 'fgb' } } }));
   }), (d) => d && d.ok === true && calls.length === 2);
+  // E: POST 502 (transient ingest failure) is retried -> done(true), hubRetry posted
+  n = 0;
+  all &= await run('E: POST 502 then ok', (u, o) => rec(u + (o && o.method === 'POST' ? ' POST' : ''), () => {
+    if (o && o.method === 'POST') { n++; return Promise.resolve(n === 1 ? { ok: false, status: 502, json: () => Promise.resolve({ error: 'locked' }) } : ok({ ok: true })); }
+    if (u.endsWith('/status')) return Promise.resolve(ok({}));
+    return Promise.resolve(ok({ sources: {} }));
+  }), (d) => d && d.ok === true && retryMsgs.length === 1);
+  // F: POST 404 (permanent) -> done(false) immediately, no retry
+  all &= await run('F: POST 404 permanent', (u, o) => rec(u, () => {
+    if (o && o.method === 'POST') return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: 'unknown source' }) });
+    if (u.endsWith('/status')) return Promise.resolve(ok({}));
+    return Promise.resolve(ok({ sources: {} }));
+  }), (d) => d && d.ok === false && /unknown source/.test(d.error || '') && calls.length === 3 && retryMsgs.length === 0);
   global.setTimeout = realSetTimeout;
   process.exit(all ? 0 : 1);
 })();

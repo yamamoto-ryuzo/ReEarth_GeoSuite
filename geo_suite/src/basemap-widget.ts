@@ -1409,14 +1409,34 @@ const html: string = `
                     if (ctl) opt.signal = ctl.signal;
                     return fetch(ep + '/vector/sources', opt).then(function(res) {
                       clearTimeout(timer);
-                      return res.json();
-                    }).then(function(j) {
+                      var st = res.status;
+                      return res.json().catch(function() { return null; }).then(function(j) {
+                        return { status: st, j: j };
+                      });
+                    }).then(function(r) {
+                      var j = r && r.j;
+                      // Permanent refusal = 4xx, or a 2xx body the server parsed
+                      // and explicitly refused ({ok:false}). 5xx (transient
+                      // ingest failure / materialization lock) is retryable.
+                      if (r && r.status >= 400 && r.status < 500) {
+                        var e4 = new Error((j && j.error) || 'register failed (HTTP ' + r.status + ')');
+                        e4.permanent = true; throw e4;
+                      }
+                      if (r && r.status >= 500) {
+                        throw new Error((j && j.error) || 'register failed (HTTP ' + r.status + ')');
+                      }
                       if (!j || !j.ok) { var er = new Error((j && j.error) || 'register failed'); er.permanent = true; throw er; }
                     });
                   })
                   .then(function() { done(true, null); })
                   .catch(function(e) {
-                    if (!(e && e.permanent === true) && hubTry < HUB_TRIES) { setTimeout(hubAttempt, HUB_RETRY_MS); return; }
+                    if (!(e && e.permanent === true) && hubTry < HUB_TRIES) {
+                      // Notify the parent to rearm the 300s pending TTL — a
+                      // retried POST (up to 280s) can outlive the original
+                      // deadline, and a late success must not hit a tombstone.
+                      try { postToParent({ action: 'hubRetry', vecId: msg.vecId, reqId: msg.reqId }); } catch (e2) {}
+                      setTimeout(hubAttempt, HUB_RETRY_MS); return;
+                    }
                     done(false, String(e && e.message || e));
                   });
               };
@@ -1581,6 +1601,12 @@ try {
           // Host-routed geosuite-hub /vector register — forward ack + result
           // to the requesting extension (usually the layer panel).
           try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, reqId: msg.reqId || msg.vecId, ok: !!msg.ok, error: msg.error || null }, msg.action === 'hubResult'); } catch (e) {}
+          return;
+        }
+        if (msg.action === 'hubRetry') {
+          // Retry heartbeat — extend the requester's pending TTL while the
+          // chain keeps working (not terminal: sender mapping stays).
+          try { ddbReplyToSender(String(msg.vecId || ''), { action: 'hubRetry', vecId: msg.vecId, reqId: msg.reqId || msg.vecId }, false); } catch (e) {}
           return;
         }
         if (msg.action === 'requestBasemaps') {
