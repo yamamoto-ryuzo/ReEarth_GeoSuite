@@ -40,12 +40,24 @@
 <code>theme:</code> 行としてエクスポートされます（geo_webview 4.6.0〜）。</p>
 <ul>
 <li><code>theme: &lt;テーマ名&gt; | &lt;タイトル&gt; | &lt;タイトル&gt;;style=DATA/&lt;slug&gt;__&lt;theme&gt;.qml</code></li>
-<li>取り込み時に <code>theme:</code> 行がパースされ、タブバーのテーマセレクトで
+<li>取り込み時に <code>theme:</code> 行がパースされ、Layers タブのページ select で
 可視レイヤー集合を切替可能（<code>*</code> は全表示）</li>
 <li><code>;style=</code> 指定のあるレイヤーはテーマ別 <code>.qml</code> へ外観を差替
 （ZIP 内では <code>kasczip://</code> メンバ参照に書き換え済み）</li>
 <li>AI ツール <code>listThemes</code> / <code>applyKascTheme</code> で AI チャットからも
 テーマ一覧・切替が可能</li>
+</ul>
+
+<h2>ページ機能（v22.7.0〜）</h2>
+<p>Layers タブのページ行で、現在のレイヤー表示状態の組み合わせを名前付き
+「ページ」として保存・切替・削除できます。ページは inspectorText の
+<code>theme:</code> 行（QGIS マップテーマと同形式）として保存されるため、
+プロジェクトに永続化され公開サイトにも反映されます。<code>page:</code> 行も
+同等のディレクティブとして受理されます（読み込み時は同じページ一覧に統合）。</p>
+<ul>
+<li><code>page: &lt;ページ名&gt; | &lt;表示タイトル&gt; | &lt;表示タイトル&gt;…</code>（<code>*</code> で全表示）</li>
+<li>「＋」で現在の表示状態をページとして保存（同名ページは上書き）。全レイヤー表示時は <code>*</code> で保存</li>
+<li>「−」で選択中のページ行を inspectorText から削除（qgis: インクルード由来のテーマは削除不可）</li>
 </ul>
 
 <h2>認識される出力物</h2>

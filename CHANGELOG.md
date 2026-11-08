@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.7.0
+- 新規: **ページ機能**（issue #7）— レイヤー表示状態の組み合わせを名前付き「ページ」として保存・切替・削除できる UI を Layers タブに追加。ページは inspectorText の `theme:` 行（QGIS マップテーマと同形式・`;style=` 対応・`*` で全表示）として保存されるため、プロジェクトに永続化され公開サイトにも反映される。`page:` 行も同等のディレクティブとしてパースされる（同一プリセット一覧に統合）
+- 変更: タブバーの QGIS テーマ select（`theme:` 行がある時だけ表示）を廃止し、Layers タブの常時表示ページ行へ統合 — select で適用、名前入力＋「＋」で現在の表示状態を保存（同名ページは上書き・全レイヤー表示時は `*` で保存）、「−」で選択ページ行を inspectorText から削除。qgis: インクルード由来のテーマは inspectorText に実体がないため削除不可（削除ボタンは保存済み行でのみ有効）
+- 修正: iframe 再生成（safeShowUI）でページ select の選択肢が失われる問題 — `requestRestoreState` で `kascThemes` を再ポストし、最後に適用したページ名を select に復元
+- i18n: `pagesLabel`/`pageSelect`/`pageNamePh`/`pageSave`/`pageDelete` を全20言語へ追加
+- AI 連携: 既存ツール `listThemes`/`applyKascTheme` がそのままページの一覧・適用に利用可能
+
 ## v22.6.0
 - 新規: `theme:` 行のマップテーマを解釈・適用（geo_webview 4.6.0 と対）— `theme:` 行をパースして `_kascThemes` に収集し、タブバーのテーマ select で可視性プリセットを切替可能に。タイトルの `;style=DATA/<slug>__<theme>.qml` 指定は `requestQmlAppearance` 経由でテーマ別スタイルへ差し替え（ZIP 内では kasczip:// メンバ参照に書き換え済み）
 - 新規: `qgis:` 行でフォルダURL（末尾 `/` または拡張子なし）を受理 — `<url>/kasugai_canvas.kasc` → `<url>/<dir名>.kasc` の順に probe して生フォルダ参照を可能に
