@@ -9082,11 +9082,16 @@ async function getCurrentLocation() {
 // leave every pending wait (ack fallbacks, TTL watchdogs, debounces) hanging.
 let _waitSeq = 0;
 const _pendingWaits = Object.create(null);
-function waitViaUiTimer(ms) {
+// fixedId/ownMap/ownId are used by armPendingTtl: a fixed (unique-per-arm) id
+// lets a re-arm cancel the superseded wait explicitly, and ownMap/ownId let
+// rearmUiTimers drop waits whose pending entry already resolved.
+function waitViaUiTimer(ms, fixedId, ownMap, ownId) {
   return new Promise((resolve) => {
     if (typeof setTimeout === 'function') { setTimeout(resolve, ms); return; }
-    const id = 'wait-' + (++_waitSeq) + '-' + Date.now();
-    _pendingWaits[id] = { resolve: resolve, ms: ms, t0: Date.now() };
+    const id = fixedId || ('wait-' + (++_waitSeq) + '-' + Date.now());
+    const w = { resolve: resolve, ms: ms, t0: Date.now() };
+    if (ownMap) { w.map = ownMap; w.pid = ownId; }
+    _pendingWaits[id] = w;
     try {
       postToUI({ action: 'startTimer', id: id, ms: ms });
     } catch (e) {
@@ -9103,6 +9108,16 @@ function rearmUiTimers() {
     const now = Date.now();
     for (const id of Object.keys(_pendingWaits)) {
       const w = _pendingWaits[id];
+      // Waits owned by a pending entry die with it — drop instead of
+      // re-posting. Also drop waits superseded by a newer arm of the same
+      // pending entry (safety net for the eager cancel in armPendingTtl).
+      if (w.map) {
+        const pe = w.map[w.pid];
+        if (pe === undefined || (pe && typeof pe === 'object' && pe._ttlWaitId && pe._ttlWaitId !== id)) {
+          delete _pendingWaits[id];
+          continue;
+        }
+      }
       const rem = Math.max(0, w.ms - (now - w.t0));
       try { postToUI({ action: 'startTimer', id: id, ms: rem }); } catch (e) {}
     }
@@ -9610,9 +9625,18 @@ function armPendingTtl(map, id, label, noTombstone) {
         e0._ttlLabel = label;
         e0._ttlNoTomb = !!noTombstone;
         e0._ttlGen = (e0._ttlGen || 0) + 1;
+        // Cancel the previous arm's watchdog wait — otherwise every re-arm
+        // adds another _pendingWaits entry that rearmUiTimers keeps
+        // re-posting on each further iframe recreate, so the timers pile
+        // up during sustained churn (#22 review).
+        if (e0._ttlWaitId && _pendingWaits[e0._ttlWaitId]) delete _pendingWaits[e0._ttlWaitId];
     }
     const gen = (e0 && typeof e0 === 'object') ? e0._ttlGen : 0;
-    waitViaUiTimer(300000).then(function () {
+    // Unique per arm: must NOT reuse the previous id, or a timerDone from the
+    // old arm's re-posted timer would resolve the new wait early.
+    const waitId = 'ttl-' + label + '-' + id + '-' + gen;
+    if (e0 && typeof e0 === 'object') e0._ttlWaitId = waitId;
+    waitViaUiTimer(300000, waitId, map, id).then(function () {
         const p = map[id];
         if (p === undefined) return;
         if (p && typeof p === 'object' && (p._ttlGen || 0) !== gen) return;
