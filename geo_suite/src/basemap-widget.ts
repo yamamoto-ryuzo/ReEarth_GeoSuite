@@ -1357,6 +1357,56 @@ const html: string = `
                 }).catch(function(e) { reply(null, String(e && e.message || e)); });
               } catch (e) { reply(null, String(e)); }
             })();
+          } else if (msg.action === 'hubExternalize') {
+            // geosuite-hub /vector register — mirror of the panel iframe's
+            // handler. This iframe persists across panel re-renders, so the
+            // status/sources/POST chain is not killed by ui.show churn (#17).
+            (function() {
+              var done = function(ok, err) {
+                try { postToParent({ action: 'hubResult', vecId: msg.vecId, reqId: msg.reqId, ok: ok, error: err || null }); } catch (e) {}
+              };
+              try { postToParent({ action: 'hubAck', vecId: msg.vecId }); } catch (e) {}
+              var ep = String(msg.endpoint || '');
+              while (ep.length && ep.charAt(ep.length - 1) === '/') ep = ep.slice(0, -1);
+              var reg = msg.register || null;
+              if (!ep || !reg || !reg.name) { done(false, 'bad request'); return; }
+              var hubGet = function(url, ms) {
+                var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+                var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, ms || 5000);
+                var opt = { mode: 'cors' };
+                if (ctl) opt.signal = ctl.signal;
+                return fetch(url, opt).then(function(res) {
+                  clearTimeout(timer);
+                  if (!res.ok) throw new Error('HTTP ' + res.status);
+                  return res.json();
+                });
+              };
+              hubGet(ep + '/vector/status', 3000)
+                .then(function() { return hubGet(ep + '/vector/sources', 15000); })
+                .then(function(list) {
+                  var cur = (list && list.sources && list.sources[reg.name]) || null;
+                  // kind:sql identity lives in the name hash — the manifest
+                  // stores no sql text, so an existing entry for this name is
+                  // definitionally fresh.
+                  var stale = !cur || (reg.kind !== 'sql' && (
+                              String(cur.src || '') !== String(reg.src || '') ||
+                              String(cur.where || '') !== String(reg.where || '') ||
+                              (reg.kind && String(cur.kind || '') !== String(reg.kind))));
+                  if (!stale) return null;
+                  var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+                  var timer = setTimeout(function() { try { if (ctl) ctl.abort(); } catch (e) {} }, 280000);
+                  var opt = { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(reg) };
+                  if (ctl) opt.signal = ctl.signal;
+                  return fetch(ep + '/vector/sources', opt).then(function(res) {
+                    clearTimeout(timer);
+                    return res.json();
+                  }).then(function(j) {
+                    if (!j || !j.ok) throw new Error((j && j.error) || 'register failed');
+                  });
+                })
+                .then(function() { done(true, null); })
+                .catch(function(e) { done(false, String(e && e.message || e)); });
+            })();
           }
         } catch(e) {}
       });
@@ -1512,6 +1562,12 @@ try {
           try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, geojson: msg.geojson || null, error: msg.error || null }, /Result$/.test(msg.action)); } catch (e) {}
           return;
         }
+        if (msg.action === 'hubAck' || msg.action === 'hubResult') {
+          // Host-routed geosuite-hub /vector register — forward ack + result
+          // to the requesting extension (usually the layer panel).
+          try { ddbReplyToSender(String(msg.vecId || ''), { action: msg.action, vecId: msg.vecId, reqId: msg.reqId || msg.vecId, ok: !!msg.ok, error: msg.error || null }, msg.action === 'hubResult'); } catch (e) {}
+          return;
+        }
         if (msg.action === 'requestBasemaps') {
           sendBasemapsToUI();
         } else if (msg.action === 'selectBasemap') {
@@ -1628,6 +1684,19 @@ try {
               url: data.url, limit: data.limit || null,
               dataB64: data.dataB64 || null, zipName: data.zipName || null,
               zipId: data.zipId || null, zipUrl: data.zipUrl || null, zipPath: data.zipPath || null
+            });
+          } catch (e) {}
+        } else if (data.action === 'hubExec') {
+          // geosuite-hub /vector register request from the layer panel — same
+          // host pattern as the decodes: this iframe persists across panel
+          // re-renders, so the status/sources/POST chain is not killed by the
+          // safeShowUI churn that accompanies bulk applies (#17).
+          try {
+            if (data.vecId && msg.sender) _ddbSenders[String(data.vecId)] = String(msg.sender);
+            postToUIWhenReady({
+              action: 'hubExternalize', vecId: data.vecId,
+              reqId: data.reqId || data.vecId,
+              endpoint: data.endpoint || null, register: data.register || null
             });
           } catch (e) {}
         } else if (data.action === 'requestBaseList') {

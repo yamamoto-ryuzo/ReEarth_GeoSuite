@@ -9602,9 +9602,20 @@ function markLayerFailed(key, title, reason) {
 // noTombstone: non-layer pendings (Street View verify, Places search) get the
 // timeout + error reply but no greyed-out layer-list entry.
 function armPendingTtl(map, id, label, noTombstone) {
+    // Re-armable: each arming bumps the entry's generation, so a resend
+    // (requestRestoreState) resets the 300s window instead of inheriting the
+    // countdown that started before the iframe died (#17).
+    const e0 = map[id];
+    if (e0 && typeof e0 === 'object') {
+        e0._ttlLabel = label;
+        e0._ttlNoTomb = !!noTombstone;
+        e0._ttlGen = (e0._ttlGen || 0) + 1;
+    }
+    const gen = (e0 && typeof e0 === 'object') ? e0._ttlGen : 0;
     waitViaUiTimer(300000).then(function () {
         const p = map[id];
         if (p === undefined) return;
+        if (p && typeof p === 'object' && (p._ttlGen || 0) !== gen) return;
         delete map[id];
         // build-style pendings (qml) recover by falling back to the default
         // style — the layer still gets added, so no tombstone for those.
@@ -9623,6 +9634,12 @@ function armPendingTtl(map, id, label, noTombstone) {
         if (rep && rep.senderId) aiToolReply(rep.senderId, rep.reqId, false, { error: label + ' timed out' });
         if (p && typeof p.build === 'function') { try { p.build(null, label + ' timed out'); } catch (e) {} }
     });
+}
+// Re-arm a pending TTL after a resend — restores the full window using the
+// label/noTombstone recorded by the original armPendingTtl call.
+function rearmPendingTtl(map, id) {
+    const p = map[id];
+    if (p && typeof p === 'object' && p._ttlLabel) armPendingTtl(map, id, p._ttlLabel, p._ttlNoTomb);
 }
 
 // Ask the iframe to compile styleUrl into a Re:Earth appearance, then add
@@ -9841,7 +9858,12 @@ function hubExternalize(reg, add, fallback) {
     _hubPending[reqId].geoUrl = hubGeoUrl(_hubPending[reqId].geoBase, cols, add.bboxAuto ? getViewportRanges() : null);
     armPendingTtl(_hubPending, reqId, 'vectorHub');
     try { markLayerLoading(add.url, add.title); } catch (e) {}
-    try { postToOwnIframeTracked(_hubPending, reqId, { action: 'hubExternalize', reqId: reqId, endpoint: ep, register: reg }); }
+    // Route through the persistent basemap-widget iframe (same host pattern as
+    // the vector decodes): the panel iframe is recreated on every safeShowUI
+    // churn, which killed the status/sources/POST chain mid-flight (#17).
+    // vecId carries reqId so the host can route hubAck/hubResult back; on
+    // no-ack the request falls back to our own iframe like other vecHostPosts.
+    try { vecHostPost('hubExec', 'hubExternalize', _hubPending, reqId, { reqId: reqId, vecId: reqId, endpoint: ep, register: reg }); }
     catch (e) {
         delete _hubPending[reqId];
         try { clearLayerLoading(add.url); } catch (e2) {}
@@ -10902,7 +10924,9 @@ reearth.extension.on("message", (msg) => {
             [_ddbPending, _gpkgPending, _fgPending, _pqPending, _geoPending, _qmlPending, _hubPending].forEach(function(map) {
               Object.keys(map).forEach(function(id) {
                 const req = map[id] && map[id].ownReq;
-                if (req) { try { postToUI(req); } catch (e) {} }
+                // Reset the pending TTL too — the first arming predates the
+                // iframe death, so a long churn could tombstone mid-resend.
+                if (req) { try { rearmPendingTtl(map, id); postToUI(req); } catch (e) {} }
               });
             });
             // kascZipLoad in 'loading' state is likewise re-requested (same
@@ -11379,6 +11403,15 @@ try {
             const p = map[data.vecId]; if (p) p.hostAck = true;
           } catch (e) {}
           try { handleVecResult(data); } catch (e) {}
+          return;
+        }
+        if (data && (data.action === 'hubAck' || data.action === 'hubResult')) {
+          // Host-routed geosuite-hub register — same ack contract as the vec
+          // decodes: the ack suppresses the own-iframe fallback, the result
+          // finishes (or falls back to in-iframe decode on hub failure).
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
+          try { const p = _hubPending[data.reqId || data.vecId]; if (p) p.hostAck = true; } catch (e) {}
+          if (data.action === 'hubResult') { try { handleHubResult(data); } catch (e) {} }
           return;
         }
         if (data && data.action === 'hubPromoDismiss') {
