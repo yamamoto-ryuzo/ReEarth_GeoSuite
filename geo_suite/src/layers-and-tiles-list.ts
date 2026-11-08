@@ -9082,11 +9082,16 @@ async function getCurrentLocation() {
 // leave every pending wait (ack fallbacks, TTL watchdogs, debounces) hanging.
 let _waitSeq = 0;
 const _pendingWaits = Object.create(null);
-function waitViaUiTimer(ms) {
+// fixedId/ownMap/ownId are used by armPendingTtl: a fixed (unique-per-arm) id
+// lets a re-arm cancel the superseded wait explicitly, and ownMap/ownId let
+// rearmUiTimers drop waits whose pending entry already resolved.
+function waitViaUiTimer(ms, fixedId, ownMap, ownId) {
   return new Promise((resolve) => {
     if (typeof setTimeout === 'function') { setTimeout(resolve, ms); return; }
-    const id = 'wait-' + (++_waitSeq) + '-' + Date.now();
-    _pendingWaits[id] = { resolve: resolve, ms: ms, t0: Date.now() };
+    const id = fixedId || ('wait-' + (++_waitSeq) + '-' + Date.now());
+    const w = { resolve: resolve, ms: ms, t0: Date.now() };
+    if (ownMap) { w.map = ownMap; w.pid = ownId; }
+    _pendingWaits[id] = w;
     try {
       postToUI({ action: 'startTimer', id: id, ms: ms });
     } catch (e) {
@@ -9103,6 +9108,16 @@ function rearmUiTimers() {
     const now = Date.now();
     for (const id of Object.keys(_pendingWaits)) {
       const w = _pendingWaits[id];
+      // Waits owned by a pending entry die with it — drop instead of
+      // re-posting. Also drop waits superseded by a newer arm of the same
+      // pending entry (safety net for the eager cancel in armPendingTtl).
+      if (w.map) {
+        const pe = w.map[w.pid];
+        if (pe === undefined || (pe && typeof pe === 'object' && pe._ttlWaitId && pe._ttlWaitId !== id)) {
+          delete _pendingWaits[id];
+          continue;
+        }
+      }
       const rem = Math.max(0, w.ms - (now - w.t0));
       try { postToUI({ action: 'startTimer', id: id, ms: rem }); } catch (e) {}
     }
@@ -9602,9 +9617,29 @@ function markLayerFailed(key, title, reason) {
 // noTombstone: non-layer pendings (Street View verify, Places search) get the
 // timeout + error reply but no greyed-out layer-list entry.
 function armPendingTtl(map, id, label, noTombstone) {
-    waitViaUiTimer(300000).then(function () {
+    // Re-armable: each arming bumps the entry's generation, so a resend
+    // (requestRestoreState) resets the 300s window instead of inheriting the
+    // countdown that started before the iframe died (#17).
+    const e0 = map[id];
+    if (e0 && typeof e0 === 'object') {
+        e0._ttlLabel = label;
+        e0._ttlNoTomb = !!noTombstone;
+        e0._ttlGen = (e0._ttlGen || 0) + 1;
+        // Cancel the previous arm's watchdog wait — otherwise every re-arm
+        // adds another _pendingWaits entry that rearmUiTimers keeps
+        // re-posting on each further iframe recreate, so the timers pile
+        // up during sustained churn (#22 review).
+        if (e0._ttlWaitId && _pendingWaits[e0._ttlWaitId]) delete _pendingWaits[e0._ttlWaitId];
+    }
+    const gen = (e0 && typeof e0 === 'object') ? e0._ttlGen : 0;
+    // Unique per arm: must NOT reuse the previous id, or a timerDone from the
+    // old arm's re-posted timer would resolve the new wait early.
+    const waitId = 'ttl-' + label + '-' + id + '-' + gen;
+    if (e0 && typeof e0 === 'object') e0._ttlWaitId = waitId;
+    waitViaUiTimer(300000, waitId, map, id).then(function () {
         const p = map[id];
         if (p === undefined) return;
+        if (p && typeof p === 'object' && (p._ttlGen || 0) !== gen) return;
         delete map[id];
         // build-style pendings (qml) recover by falling back to the default
         // style — the layer still gets added, so no tombstone for those.
@@ -9623,6 +9658,12 @@ function armPendingTtl(map, id, label, noTombstone) {
         if (rep && rep.senderId) aiToolReply(rep.senderId, rep.reqId, false, { error: label + ' timed out' });
         if (p && typeof p.build === 'function') { try { p.build(null, label + ' timed out'); } catch (e) {} }
     });
+}
+// Re-arm a pending TTL after a resend — restores the full window using the
+// label/noTombstone recorded by the original armPendingTtl call.
+function rearmPendingTtl(map, id) {
+    const p = map[id];
+    if (p && typeof p === 'object' && p._ttlLabel) armPendingTtl(map, id, p._ttlLabel, p._ttlNoTomb);
 }
 
 // Ask the iframe to compile styleUrl into a Re:Earth appearance, then add
@@ -9841,7 +9882,12 @@ function hubExternalize(reg, add, fallback) {
     _hubPending[reqId].geoUrl = hubGeoUrl(_hubPending[reqId].geoBase, cols, add.bboxAuto ? getViewportRanges() : null);
     armPendingTtl(_hubPending, reqId, 'vectorHub');
     try { markLayerLoading(add.url, add.title); } catch (e) {}
-    try { postToOwnIframeTracked(_hubPending, reqId, { action: 'hubExternalize', reqId: reqId, endpoint: ep, register: reg }); }
+    // Route through the persistent basemap-widget iframe (same host pattern as
+    // the vector decodes): the panel iframe is recreated on every safeShowUI
+    // churn, which killed the status/sources/POST chain mid-flight (#17).
+    // vecId carries reqId so the host can route hubAck/hubResult back; on
+    // no-ack the request falls back to our own iframe like other vecHostPosts.
+    try { vecHostPost('hubExec', 'hubExternalize', _hubPending, reqId, { reqId: reqId, vecId: reqId, endpoint: ep, register: reg }); }
     catch (e) {
         delete _hubPending[reqId];
         try { clearLayerLoading(add.url); } catch (e2) {}
@@ -10902,7 +10948,9 @@ reearth.extension.on("message", (msg) => {
             [_ddbPending, _gpkgPending, _fgPending, _pqPending, _geoPending, _qmlPending, _hubPending].forEach(function(map) {
               Object.keys(map).forEach(function(id) {
                 const req = map[id] && map[id].ownReq;
-                if (req) { try { postToUI(req); } catch (e) {} }
+                // Reset the pending TTL too — the first arming predates the
+                // iframe death, so a long churn could tombstone mid-resend.
+                if (req) { try { rearmPendingTtl(map, id); postToUI(req); } catch (e) {} }
               });
             });
             // kascZipLoad in 'loading' state is likewise re-requested (same
@@ -11379,6 +11427,15 @@ try {
             const p = map[data.vecId]; if (p) p.hostAck = true;
           } catch (e) {}
           try { handleVecResult(data); } catch (e) {}
+          return;
+        }
+        if (data && (data.action === 'hubAck' || data.action === 'hubResult')) {
+          // Host-routed geosuite-hub register — same ack contract as the vec
+          // decodes: the ack suppresses the own-iframe fallback, the result
+          // finishes (or falls back to in-iframe decode on hub failure).
+          try { ddbNoteHostAlive(msg && msg.sender); } catch (e) {}
+          try { const p = _hubPending[data.reqId || data.vecId]; if (p) p.hostAck = true; } catch (e) {}
+          if (data.action === 'hubResult') { try { handleHubResult(data); } catch (e) {} }
           return;
         }
         if (data && data.action === 'hubPromoDismiss') {
