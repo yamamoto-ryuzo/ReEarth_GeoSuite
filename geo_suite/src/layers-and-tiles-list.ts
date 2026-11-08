@@ -9885,7 +9885,7 @@ function handleHubResult(msg) {
         // bbox=auto re-query: the viewport envelope is a URL param, so a
         // camera move only overrides data.url — the host re-fetches it.
         if (newId && p.bboxAuto) {
-            _ddbLayers[newId] = { engine: 'hubvec', geoBase: p.geoBase, cols: p.cols, bboxAuto: true };
+            _ddbLayers[newId] = { engine: 'hubvec', geoBase: p.geoBase, cols: p.cols, bboxAuto: true, lastGeoUrl: p.geoUrl };
             ensureDuckDbMoveSubscription();
         }
         if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: p.title, externalized: true });
@@ -9899,7 +9899,17 @@ function handleHubResult(msg) {
 // with the fresh viewport envelope and let the host re-fetch it directly.
 function refreshHubVecLayer(layerId, spec) {
     const url = hubGeoUrl(spec.geoBase, spec.cols, getViewportRanges());
-    try { reearth.layers.override(layerId, { data: { type: 'geojson', url: url } }); markVectorIndexDirty(); }
+    // A camera `move` can fire repeatedly for an unchanged viewport; overriding
+    // with an identical URL makes the host re-fetch it for nothing (and each
+    // override churns the UI). Skip when the URL is unchanged.
+    if (spec.lastGeoUrl === url) return;
+    try {
+        reearth.layers.override(layerId, { data: { type: 'geojson', url: url } });
+        // record only on success — a failed override must stay retryable
+        // (otherwise the same viewport never re-attempts and stale data persists)
+        spec.lastGeoUrl = url;
+        markVectorIndexDirty();
+    }
     catch (e) { try { sendError('[vectorHub] data override failed', e); } catch (e2) {} }
 }
 
