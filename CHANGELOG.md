@@ -1,5 +1,11 @@
 # Changelog
 
+## v22.8.1
+- 修正: ツール往復上限の継続確認を `window.confirm` から **チャット内ボタン（Continue / Cancel）** へ変更 — サンドボックス iframe では confirm がブロックされ常に却下され、上限到達時に継続不能だった（60秒無操作で自動中断）。i18n `continueBtn` を全言語へ追加
+- 変更: AI チャットの設定パネルを応答エリアの**上**へ移動 — 下部で見切れる問題の対策。開放中はメッセージ領域を 140px に縮めて総高を維持し、パネルは max-height 内でスクロール
+- 新規: キー欄にプロバイダ別の**キー/トークン取得ページリンク**を追加（Gemini→AI Studio / OpenAI→platform / Anthropic→console / Azure→portal / Sakura→コントロールパネル / Copilot API→github.com/settings/copilot）。i18n `keyPage` を全言語へ追加
+- 修正: Copilot サインイン失敗表示を `capiErrText` で堅牢化（`[object Object]` 表示対策）
+
 ## v22.8.0
 - 新規: AI チャットに **GitHub Copilot (API)** プロバイダを追加（KASUGAI Canvas `copilotapi` の移植）— ブリッジ・CLI 不要で GitHub の OAuth トークンを `copilot_internal` で短期トークンへ交換し、`api.githubcopilot.com` を OpenAI 互換 API として直接利用（要 Copilot 契約）。PAT は拒否されるため ⚙ 設定の「GitHubでサインイン」ボタン（OAuth デバイスフロー）でトークンを取得・保存
 - 新規: **`api/copilot.js`**（Vercel Function）を追加 — github.com の OAuth エンドポイント（CORS 非対応）と `*.githubcopilot.com/responses`（プリフライト非対応）を中継する薄いリレー。転送先は GitHub/Copilot ホスト限定・BYO トークンの Authorization をそのままフォワードする設計（キー保管ではない）。`vercel.json` で `maxDuration: 60` を設定。`api.github.com`・`/chat/completions`・`/models` はブラウザ直叩き（CORS 対応済み）で、失敗時のみリレーへフォールバック

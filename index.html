@@ -521,9 +521,9 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                     <ul>
                         <li><strong>プロバイダ</strong>: Gemini / OpenAI互換 / Anthropic / Azure OpenAI / Sakura AI Engine（さくらAI）/ GitHub Copilot (API) / GitHub Copilot・外部エージェント（ブリッジ）から選べます。APIキー・モデルはプロバイダごとに独立して保存されます。</li>
                         <li><strong>GitHub Copilot (API)</strong>: ブリッジ・CLI なしで GitHub Copilot を直接利用します（要 Copilot 契約）。⚙ 設定の「GitHubでサインイン」ボタン（OAuth デバイスフロー）で OAuth トークンを取得すると、<code>copilot_internal</code> で短期トークンへ交換され api.githubcopilot.com を OpenAI 互換で呼びます。PAT は拒否されるためサインインが必須です。モデル一覧はトークン設定後に自動取得されます（/chat/completions 非対応モデルは /responses へ自動切替）。</li>
-                        <li><strong>API キー（BYO）の指定経路</strong>: 各プロバイダ共通でウィジェットの ⚙ 設定から入力できます。Gemini はさらに AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄 / Inspector 設定テキストの <code>geminiApiKey:</code> 行も使えます（優先順: AI Chat Inspector 欄 &gt; 設定テキスト &gt; セッション入力 &gt; ブラウザ保存）。</li>
+                        <li><strong>API キー（BYO）の指定経路</strong>: 各プロバイダ共通でウィジェットの ⚙ 設定から入力できます（キー欄のリンクから各社のキー取得ページへ直接行けます）。Gemini はさらに AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄 / Inspector 設定テキストの <code>geminiApiKey:</code> 行も使えます（優先順: AI Chat Inspector 欄 &gt; 設定テキスト &gt; セッション入力 &gt; ブラウザ保存）。</li>
                         <li><strong>サーバーサイドプロキシ（推奨・Geminiのみ）</strong>: ホスティング側で Vercel 環境変数 <code>GEMINI_API_KEY</code> を設定すると <code>/api/gemini</code> プロキシ経由になり、ブラウザにキーを配らずに利用できます。</li>
-                        <li><strong>ツール往復上限</strong>: ⚙ 設定の「Max tool round trips」（1–20・既定10）で function calling の往復回数を制限できます。上限到達時は継続確認が出て、承認すれば加算して続行します。</li>
+                        <li><strong>ツール往復上限</strong>: ⚙ 設定の「Max tool round trips」（1–20・既定10）で function calling の往復回数を制限できます。上限到達時はチャット内に継続/中断ボタンが出て、継続を選べば加算して続行します（60秒無操作で中断）。</li>
                         <li><strong>セキュリティ</strong>: Inspector に書いたキーは公開サイトの全訪問者に平文配信されます。公開範囲の比較表は <a href="#gemini-security">APIキーのセキュリティ状況</a> を参照してください。</li>
                     </ul>
                 </div>
