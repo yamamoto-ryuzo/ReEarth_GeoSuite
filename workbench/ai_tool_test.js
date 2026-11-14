@@ -349,7 +349,7 @@ async function main() {
   await test("vectorSearch", async () => {
     const r = await callTool("vectorSearch", { query: "千代田区", limit: 5 }, 20000);
     if (r && r.error) return JSON.stringify(r);
-    return `count=${r && r.count} first=${JSON.stringify(r && r.results && r.results[0]).slice(0, 80)}`;
+    return `count=${r && r.count} first=${(JSON.stringify(r && r.results && r.results[0]) || "").slice(0, 80)}`;
   });
   await test("setFlySettings", async () => {
     const r0 = await callTool("createFlyPath", { name: "ai-route-s", coordinates: [[139.7, 35.68], [139.75, 35.65], [139.8, 35.66]] });
@@ -377,13 +377,14 @@ async function main() {
     return r && r.error && /googleMapsApiKey/i.test(r.error) ? "err-as-expected: " + String(r.error).slice(0, 60) : JSON.stringify(r).slice(0, 120);
   });
   await test("addFlatGeobufLayer+removeLayer", async () => {
-    const r1 = await callTool("addFlatGeobufLayer", { title: "AI-fgb", url: "https://flatgeobuf.org/test/data/countries.fgb", limit: 500 }, 30000);
+    // Cold runs pay the fgb decoder CDN download — allow extra time.
+    const r1 = await callTool("addFlatGeobufLayer", { title: "AI-fgb", url: "https://flatgeobuf.org/test/data/countries.fgb", limit: 500 }, 90000);
     if (!r1 || r1.error || !r1.id) return "add: " + JSON.stringify(r1).slice(0, 200);
     const r2 = await callTool("removeLayer", { layer: "AI-fgb" });
     return (r2 && !r2.error) ? `added ${r1.id} features=${r1.features} + removed` : "remove: " + JSON.stringify(r2);
   });
   await test("addParquetLayer+removeLayer", async () => {
-    const r1 = await callTool("addParquetLayer", { title: "AI-pq", url: "https://raw.githubusercontent.com/opengeospatial/geoparquet/main/examples/example.parquet" }, 30000);
+    const r1 = await callTool("addParquetLayer", { title: "AI-pq", url: "https://raw.githubusercontent.com/opengeospatial/geoparquet/main/examples/example.parquet" }, 90000);
     if (!r1 || r1.error || !r1.id) return "add: " + JSON.stringify(r1).slice(0, 200);
     const r2 = await callTool("removeLayer", { layer: "AI-pq" });
     return (r2 && !r2.error) ? `added ${r1.id} features=${r1.features} + removed` : "remove: " + JSON.stringify(r2);
