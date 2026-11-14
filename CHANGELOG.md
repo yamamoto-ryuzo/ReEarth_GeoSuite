@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.8.0
+- 新規: AI チャットに **GitHub Copilot (API)** プロバイダを追加（KASUGAI Canvas `copilotapi` の移植）— ブリッジ・CLI 不要で GitHub の OAuth トークンを `copilot_internal` で短期トークンへ交換し、`api.githubcopilot.com` を OpenAI 互換 API として直接利用（要 Copilot 契約）。PAT は拒否されるため ⚙ 設定の「GitHubでサインイン」ボタン（OAuth デバイスフロー）でトークンを取得・保存
+- 新規: **`api/copilot.js`**（Vercel Function）を追加 — github.com の OAuth エンドポイント（CORS 非対応）と `*.githubcopilot.com/responses`（プリフライト非対応）を中継する薄いリレー。転送先は GitHub/Copilot ホスト限定・BYO トークンの Authorization をそのままフォワードする設計（キー保管ではない）。`vercel.json` で `maxDuration: 60` を設定。`api.github.com`・`/chat/completions`・`/models` はブラウザ直叩き（CORS 対応済み）で、失敗時のみリレーへフォールバック
+- 新規: `/responses` 専用モデル（`/chat/completions` を受け付けない系統）に対応 — `GET /models` の `supported_endpoints` と `model_not_supported` 系エラーの両方から学習し、OpenAI Responses API 形式へ変換して送る
+- 変更: 共有の OpenAI 互換呼び出しループを `callOpenAICompat(req)` へ一般化 — リクエスト override（url/headers/model/system/responses）を受け付け、Copilot API が独自に解決したエンドポイント・認証を使えるようにした。応答は Copilot がプレーンテキストのエラーを返し得るため text 受け取り→JSON パース方式に変更
+- i18n: `capiHint`/`capiSignin`/`capiSigninPrompt`/`capiSigninOk`/`capiSigninFailed`/`capiSigninExpired`/`capiNoToken`/`capiTokenFailed`/`cancel` を全20言語へ追加
+
 ## v22.7.0
 - 新規: **ページ機能**（issue #7）— レイヤー表示状態の組み合わせを名前付き「ページ」として保存・切替・削除できる UI を Layers タブに追加。ページは inspectorText の `theme:` 行（QGIS マップテーマと同形式・`;style=` 対応・`*` で全表示）として保存されるため、プロジェクトに永続化され公開サイトにも反映される。`page:` 行も同等のディレクティブとしてパースされる（同一プリセット一覧に統合）
 - 変更: タブバーの QGIS テーマ select（`theme:` 行がある時だけ表示）を廃止し、Layers タブの常時表示ページ行へ統合 — select で適用、名前入力＋「＋」で現在の表示状態を保存（同名ページは上書き・全レイヤー表示時は `*` で保存）、「−」で選択ページ行を inspectorText から削除。qgis: インクルード由来のテーマは inspectorText に実体がないため削除不可（削除ボタンは保存済み行でのみ有効）

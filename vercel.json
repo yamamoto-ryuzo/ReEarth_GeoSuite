@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "functions": {
+    "api/copilot.js": { "maxDuration": 60 }
+  },
   "routes": [
     {
       "src": "/(.*)",

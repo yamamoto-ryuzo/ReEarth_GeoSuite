@@ -370,7 +370,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>🤖 AI チャット</h3>
-                        <p>LLM の function calling で地図を自然言語操作できるチャットウィジェットです（Gemini / OpenAI互換 / Anthropic / Azure / Sakura AI / Copilot・外部エージェント対応）。<a href="#ai-chat-detail" class="github-link" style="font-size:0.9em;">詳細・APIキー設定方法 &rarr;</a></p>
+                        <p>LLM の function calling で地図を自然言語操作できるチャットウィジェットです（Gemini / OpenAI互換 / Anthropic / Azure / Sakura AI / GitHub Copilot API・Copilotブリッジ・外部エージェント対応）。<a href="#ai-chat-detail" class="github-link" style="font-size:0.9em;">詳細・APIキー設定方法 &rarr;</a></p>
                     </div>
                 </div>
             </section>
@@ -434,7 +434,7 @@ legend: 凡例|https://re-earth-geo-suite.vercel.app/image/legend_sample.png</co
                         <li><strong>aiHub:</strong> 外部エージェント・/vector サービスを提供する geosuite-hub（geosuite-hub.exe）の接続先を指定します（例: <code>aiHub: http://127.0.0.1:8514</code>。省略時は 127.0.0.1:8514 を自動検出）。</li>
                         <li><strong>vectorHub:</strong> <code>fgb:</code>/<code>parquet:</code>/<code>gpkg:</code>/<code>duckdb:</code>/<code>sql:</code> の http(s) ソースを geosuite-hub の /vector サービスへ自動登録し、<code>geojson:</code> URL レイヤーとして追加する機能の接続先を指定します。<code>vectorHub: off</code> で無効化、<code>vectorHub: http://host:port</code> で接続先指定。省略時は <code>aiHub:</code> の値を引き継ぎます。ハブ稼働時はブラウザ内デコード（wasm 初期化・4MB 制約）を回避し、再読込も高速です。ハブ未到達時は従来どおりブラウザ内デコードで読み込みます（<a href="docs/vector-externalization.html" class="github-link">詳細</a>）。</li>
                         <li><strong>行プレフィックスの別名:</strong> <code>tile:</code> = <code>xyz:</code>、<code>3d-tiles:</code> = <code>3dtiles:</code>、<code>preset:</code> = <code>layer:</code>、<code>bg:</code> = <code>background:</code>、<code>fgb:</code> = <code>flatgeobuf:</code>、<code>geoparquet:</code> = <code>parquet:</code> として解釈されます。</li>
-                        <li><strong>geminiApiKey:</strong> / <strong>geminiModel:</strong> AI チャットウィジェットで使う Gemini API キーとモデル名（省略可）を指定します。キーは AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄または ⚙ 設定からも入力できます（優先順: AI Chat Inspector 欄 &gt; 設定テキストの <code>geminiApiKey:</code> 行 &gt; セッション入力 &gt; ブラウザ保存）。Gemini 以外のプロバイダ（OpenAI互換・Anthropic・Azure・Sakura AI Engine 等）のキーは ⚙ 設定からのみ入力でき、プロバイダごとに独立してブラウザへ保存されます。注意: Inspector に書いたキーは公開サイトでは全訪問者に配信されます。公開サイトではサーバーサイドプロキシ（環境変数 <code>GEMINI_API_KEY</code> → <code>/api/gemini</code>）の利用を推奨します。</li>
+                        <li><strong>geminiApiKey:</strong> / <strong>geminiModel:</strong> AI チャットウィジェットで使う Gemini API キーとモデル名（省略可）を指定します。キーは AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄または ⚙ 設定からも入力できます（優先順: AI Chat Inspector 欄 &gt; 設定テキストの <code>geminiApiKey:</code> 行 &gt; セッション入力 &gt; ブラウザ保存）。Gemini 以外のプロバイダ（OpenAI互換・Anthropic・Azure・Sakura AI Engine・GitHub Copilot API 等）のキーは ⚙ 設定からのみ入力でき、プロバイダごとに独立してブラウザへ保存されます。注意: Inspector に書いたキーは公開サイトでは全訪問者に配信されます。公開サイトではサーバーサイドプロキシ（環境変数 <code>GEMINI_API_KEY</code> → <code>/api/gemini</code>）の利用を推奨します。</li>
                     </ul>
                 </div>
 
@@ -519,7 +519,8 @@ geojson: 東京都/行政区域 | https://example.com/行政区域.geojson | on 
                     <h3>🤖 AI チャットの詳細</h3>
                     <p>LLM の function calling で地図を自然言語操作できるチャットウィジェットです。「東京駅に飛んで」「○○レイヤーを隠して」などの指示で、カメラ移動・地名検索・レイヤー操作・カメラプリセット・ベースマップ切替・Fly ルート再生・Terrain/Shadow・Street View・スクリーンショットなどを実行します。<code>runCode</code> ツールで複数ステップの処理も可能です。</p>
                     <ul>
-                        <li><strong>プロバイダ</strong>: Gemini / OpenAI互換 / Anthropic / Azure OpenAI / Sakura AI Engine（さくらAI）/ GitHub Copilot・外部エージェント（ブリッジ）から選べます。APIキー・モデルはプロバイダごとに独立して保存されます。</li>
+                        <li><strong>プロバイダ</strong>: Gemini / OpenAI互換 / Anthropic / Azure OpenAI / Sakura AI Engine（さくらAI）/ GitHub Copilot (API) / GitHub Copilot・外部エージェント（ブリッジ）から選べます。APIキー・モデルはプロバイダごとに独立して保存されます。</li>
+                        <li><strong>GitHub Copilot (API)</strong>: ブリッジ・CLI なしで GitHub Copilot を直接利用します（要 Copilot 契約）。⚙ 設定の「GitHubでサインイン」ボタン（OAuth デバイスフロー）で OAuth トークンを取得すると、<code>copilot_internal</code> で短期トークンへ交換され api.githubcopilot.com を OpenAI 互換で呼びます。PAT は拒否されるためサインインが必須です。モデル一覧はトークン設定後に自動取得されます（/chat/completions 非対応モデルは /responses へ自動切替）。</li>
                         <li><strong>API キー（BYO）の指定経路</strong>: 各プロバイダ共通でウィジェットの ⚙ 設定から入力できます。Gemini はさらに AI Chat ウィジェット側 Inspector の「Gemini APIキー」欄 / Inspector 設定テキストの <code>geminiApiKey:</code> 行も使えます（優先順: AI Chat Inspector 欄 &gt; 設定テキスト &gt; セッション入力 &gt; ブラウザ保存）。</li>
                         <li><strong>サーバーサイドプロキシ（推奨・Geminiのみ）</strong>: ホスティング側で Vercel 環境変数 <code>GEMINI_API_KEY</code> を設定すると <code>/api/gemini</code> プロキシ経由になり、ブラウザにキーを配らずに利用できます。</li>
                         <li><strong>ツール往復上限</strong>: ⚙ 設定の「Max tool round trips」（1–20・既定10）で function calling の往復回数を制限できます。上限到達時は継続確認が出て、承認すれば加算して続行します。</li>

@@ -6,7 +6,7 @@
 // - docs/ 配下のページを追加したら GROUPS を更新すること（ここがページ一覧の正本）
 (function () {
   const scriptUrl = document.currentScript.src;
-  const VERSION = 'v22.7.0';
+  const VERSION = 'v22.8.0';
 
   // サイトルートのページ（nav.js は docs/ に置くため ../ で指す）
   const SITE = [

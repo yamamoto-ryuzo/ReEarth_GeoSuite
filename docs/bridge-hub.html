@@ -108,6 +108,7 @@ sequenceDiagram
 <tbody>
 <tr><td>Gemini</td><td><code>gemini</code></td><td><code>generativelanguage.googleapis.com</code>（またはサイト側 <code>/api/gemini</code> プロキシ）に直接 fetch</td><td>API キー</td></tr>
 <tr><td>OpenAI-compatible / Anthropic / Azure OpenAI / Sakura AI Engine</td><td><code>openai</code> <code>anthropic</code> <code>azure</code> <code>sakura</code></td><td>設定したエンドポイント（Sakura は固定 <code>api.ai.sakura.ad.jp</code>）に直接 fetch</td><td>API キー</td></tr>
+<tr><td>GitHub Copilot (API)</td><td><code>copilotapi</code></td><td>GitHub OAuth トークンを <code>api.github.com/copilot_internal</code> で短期トークンへ交換し <code>api.githubcopilot.com</code>（OpenAI互換）へ直接 fetch。<code>/responses</code>・OAuth デバイスフローはサイト側 <code>/api/copilot</code> リレー経由（v22.8.0 追加・ハブ不要）</td><td>GitHub OAuth トークン（⚙「GitHubでサインイン」デバイスフロー。PAT 不可・要 Copilot 契約）</td></tr>
 <tr><td>GitHub Copilot (bridge hub)</td><td><code>copilot</code></td><td>geosuite-hub へ <code>POST /agent</code>（<code>provider:"copilot"</code>）。既定 <code>http://127.0.0.1:8514/agent</code></td><td>不要（ハブ側 CLI の本人ログイン）</td></tr>
 <tr><td>External agent (bridge)</td><td><code>agent</code></td><td>設定したエンドポイントへ <code>POST /agent</code>（<code>provider:"agent"</code>）。<code>/agent</code> 互換コントラクトを実装する任意のエージェントサーバ向け</td><td>エンドポイント次第</td></tr>
 </tbody>

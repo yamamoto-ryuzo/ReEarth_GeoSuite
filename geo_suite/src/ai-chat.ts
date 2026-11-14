@@ -724,26 +724,26 @@ try { postToLayerPanel({ action: 'requestAiConfig' }); } catch (e) {}
 // iframe i18n dictionary — delivered via aiConfig.i18n (kept out of the
 // html template because the widget html transport truncates at ~54.3KB).
 const AI_I18N: any = {
-  en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:'Minimize', restore:'Restore', toolStepsLabel:"Max tool round trips", toolLimitContinue:"Tool step limit reached — continue for {n} more steps?" },
-  ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存', keySrc:'キーの出所' , minimize:'最小化', restore:'元に戻す', toolStepsLabel:"ツール実行の上限往復数", toolLimitContinue:"ツール実行の上限に達しました。あと{n}往復続けますか？" },
-  'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥', keySrc:'密钥来源' , minimize:'最小化', restore:'还原', toolStepsLabel:"工具调用往返上限", toolLimitContinue:"已达工具调用上限 — 再继续 {n} 步吗？" },
-  'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰', keySrc:'金鑰來源' , minimize:'最小化', restore:'還原', toolStepsLabel:"工具呼叫往返上限", toolLimitContinue:"已達工具呼叫上限 — 要再繼續 {n} 步嗎？" },
-  ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장', keySrc:'키 출처' , minimize:'최소화', restore:'복원', toolStepsLabel:"도구 호출 왕복 한도", toolLimitContinue:"도구 호출 한도에 도달했습니다 — {n}회 더 진행할까요?" },
-  es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador', keySrc:'Origen de la clave' , minimize:'Minimizar', restore:'Restaurar', toolStepsLabel:"Máx. rondas de herramientas", toolLimitContinue:"Límite de pasos de herramienta alcanzado — ¿continuar {n} pasos más?" },
-  fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur', keySrc:'Source de la clé' , minimize:'Réduire', restore:'Restaurer', toolStepsLabel:"Max. allers-retours d’outils", toolLimitContinue:"Limite d’étapes atteinte — continuer {n} étapes de plus ?" },
-  de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern', keySrc:'Schlüsselquelle' , minimize:'Minimieren', restore:'Wiederherstellen', toolStepsLabel:"Max. Tool-Rundgänge", toolLimitContinue:"Tool-Schrittlimit erreicht — {n} weitere Schritte ausführen?" },
-  it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser', keySrc:'Origine della chiave' , minimize:'Riduci', restore:'Ripristina', toolStepsLabel:"Max. round trip degli strumenti", toolLimitContinue:"Limite di passaggi raggiunto — continuare per altri {n} passaggi?" },
-  pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador', keySrc:'Origem da chave' , minimize:'Minimizar', restore:'Restaurar', toolStepsLabel:"Máx. de rodadas de ferramentas", toolLimitContinue:"Limite de etapas atingido — continuar mais {n} etapas?" },
-  ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере', keySrc:'Источник ключа' , minimize:'Свернуть', restore:'Восстановить', toolStepsLabel:"Макс. итераций инструментов", toolLimitContinue:"Достигнут лимит шагов — продолжить ещё {n} шагов?" },
-  nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser', keySrc:'Sleutelbron' , minimize:'Minimaliseren', restore:'Herstellen', toolStepsLabel:"Max. tool-rondes", toolLimitContinue:"Tool-staplimiet bereikt — nog {n} stappen doorgaan?" },
-  pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce', keySrc:'Źródło klucza' , minimize:'Minimalizuj', restore:'Przywróć', toolStepsLabel:"Maks. rund narzędzi", toolLimitContinue:"Osiągnięto limit kroków — kontynuować {n} kroków?" },
-  uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері', keySrc:'Джерело ключа' , minimize:'Згорнути', restore:'Відновити', toolStepsLabel:"Макс. ітерацій інструментів", toolLimitContinue:"Досягнуто ліміту кроків — продовжити ще {n} кроків?" },
-  tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet', keySrc:'Anahtar kaynağı' , minimize:'Küçült', restore:'Geri yükle', toolStepsLabel:"Maks. araç turu", toolLimitContinue:"Araç adım sınırına ulaşıldı — {n} adım daha devam edilsin mi?" },
-  ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح', keySrc:'مصدر المفتاح' , minimize:'تصغير', restore:'استعادة', toolStepsLabel:"الحد الأقصى لجولات الأدوات", toolLimitContinue:"تم بلوغ حد خطوات الأداة — المتابعة لـ {n} خطوات أخرى؟" },
-  hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें', keySrc:'कुंजी स्रोत' , minimize:'छोटा करें', restore:'पुनर्स्थापित', toolStepsLabel:"अधिकतम टूल राउंड", toolLimitContinue:"टूल चरण सीमा पहुँची — और {n} चरण जारी रखें?" },
-  id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini', keySrc:'Sumber kunci' , minimize:'Minimalkan', restore:'Pulihkan', toolStepsLabel:"Maks. putaran alat", toolLimitContinue:"Batas langkah alat tercapai — lanjutkan {n} langkah lagi?" },
-  th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้', keySrc:'แหล่งที่มาของคีย์' , minimize:'ย่อ', restore:'คืนค่า', toolStepsLabel:"จำนวนรอบเครื่องมือสูงสุด", toolLimitContinue:"ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว — ดำเนินการต่ออีก {n} ขั้นตอนหรือไม่?" },
-  vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này', keySrc:'Nguồn khóa' , minimize:'Thu nhỏ', restore:'Khôi phục', toolStepsLabel:"Số vòng gọi công cụ tối đa", toolLimitContinue:"Đã đạt giới hạn bước công cụ — tiếp tục thêm {n} bước nữa?" },
+  en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:'Minimize', restore:'Restore', toolStepsLabel:"Max tool round trips", toolLimitContinue:"Tool step limit reached — continue for {n} more steps?" ,cancel:'Cancel',capiHint:'Use GitHub Copilot directly — no bridge or CLI needed. A Copilot subscription is required. PATs are rejected by GitHub, so sign in via the button above (OAuth device flow).',capiSignin:'Sign in with GitHub',capiSigninPrompt:'Open {url} and enter code {code} — waiting for approval...',capiSigninOk:'Signed in — GitHub token saved.',capiSigninFailed:'GitHub sign-in failed: {e}',capiSigninExpired:'The code expired — sign in again.',capiNoToken:'No GitHub token — open settings (gear) and sign in with GitHub.',capiTokenFailed:'Could not get a Copilot token (invalid token or no Copilot plan): {e}' },
+  ja: { title:'AIチャット', settings:'設定', clear:'チャットをクリア', apiKey:'Gemini APIキー', apiKeyPh:'AIza...（プラグインストレージに保存）', model:'モデル', save:'保存', saved:'保存しました', send:'送信', inputPh:'地図について聞く...', welcome:'場所への移動・地名検索・レイヤー操作などを頼んでください。', noKey:'APIキー未設定 — 歯車から設定してください。', noKeySet:'キー未設定', keySet:'キー設定済み', tool:'ツール', err:'エラー', cleared:'チャットをクリアしました。', timeout:'ツールがタイムアウトしました', noResponse:'（応答なし）', stepLimit:'（ツール実行の上限に達しました）', keyWarn:'注意：キーはこのブラウザに保存され、ページのリクエストでGoogleに送信されます — DevToolsで閲覧可能です。Google Cloudでキーを制限してください。公開サイトではインスペクターに geminiApiKey: を書かないでください。', remember:'このブラウザにキーを保存', keySrc:'キーの出所' , minimize:'最小化', restore:'元に戻す', toolStepsLabel:"ツール実行の上限往復数", toolLimitContinue:"ツール実行の上限に達しました。あと{n}往復続けますか？" ,cancel:'キャンセル',capiHint:'GitHub Copilot をブリッジ・CLI なしで直接利用します。Copilot 契約が必要です。PAT は拒否されるため、上のボタンで GitHub にサインインしてください（OAuth デバイスフロー）。',capiSignin:'GitHubでサインイン',capiSigninPrompt:'{url} を開いてコード {code} を入力してください（承認待ち…）',capiSigninOk:'サインインしました — GitHub トークンを保存しました。',capiSigninFailed:'GitHub サインインに失敗しました: {e}',capiSigninExpired:'コードの有効期限が切れました。もう一度サインインしてください。',capiNoToken:'GitHub トークンがありません — 設定（歯車）から GitHub でサインインしてください。',capiTokenFailed:'Copilot トークンを取得できませんでした（トークン無効または Copilot 契約なし）: {e}' },
+  'zh-CN': { title:'AI 聊天', settings:'设置', clear:'清空聊天', apiKey:'Gemini API 密钥', apiKeyPh:'AIza...（保存于插件存储）', model:'模型', save:'保存', saved:'已保存', send:'发送', inputPh:'询问地图相关...', welcome:'可以让我飞到某地、搜索地点或切换图层。', noKey:'未设置 API 密钥 — 请在齿轮设置中添加。', noKeySet:'未设密钥', keySet:'密钥已设', tool:'工具', err:'错误', cleared:'已清空聊天。', timeout:'工具超时', noResponse:'（无响应）', stepLimit:'（已达工具调用次数上限）', keyWarn:'注意：密钥保存在此浏览器中，并随页面请求发送给 Google — 可在开发者工具中看到。请在 Google Cloud 中限制该密钥。请勿在公开网站的检查器中设置 geminiApiKey:。', remember:'在此浏览器中保存密钥', keySrc:'密钥来源' , minimize:'最小化', restore:'还原', toolStepsLabel:"工具调用往返上限", toolLimitContinue:"已达工具调用上限 — 再继续 {n} 步吗？" ,cancel:'取消',capiHint:'直接使用 GitHub Copilot — 无需桥接或 CLI。需要 Copilot 订阅。GitHub 会拒绝 PAT，请通过上方按钮登录（OAuth 设备流程）。',capiSignin:'使用 GitHub 登录',capiSigninPrompt:'打开 {url} 并输入代码 {code} — 等待授权…',capiSigninOk:'已登录 — GitHub 令牌已保存。',capiSigninFailed:'GitHub 登录失败：{e}',capiSigninExpired:'代码已过期 — 请重新登录。',capiNoToken:'未设置 GitHub 令牌 — 请在设置（齿轮）中通过 GitHub 登录。',capiTokenFailed:'无法获取 Copilot 令牌（令牌无效或无 Copilot 订阅）：{e}' },
+  'zh-TW': { title:'AI 聊天', settings:'設定', clear:'清除聊天', apiKey:'Gemini API 金鑰', apiKeyPh:'AIza...（儲存於外掛儲存空間）', model:'模型', save:'儲存', saved:'已儲存', send:'傳送', inputPh:'詢問地圖相關...', welcome:'可以請我飛到某地、搜尋地點或切換圖層。', noKey:'未設定 API 金鑰 — 請在齒輪設定中新增。', noKeySet:'未設金鑰', keySet:'金鑰已設', tool:'工具', err:'錯誤', cleared:'已清除聊天。', timeout:'工具逾時', noResponse:'（無回應）', stepLimit:'（已達工具呼叫次數上限）', keyWarn:'注意：金鑰儲存在此瀏覽器中，並隨頁面請求傳送給 Google — 可在開發者工具中看到。請在 Google Cloud 限制該金鑰。請勿在公開網站的檢查器中設定 geminiApiKey:。', remember:'在此瀏覽器中儲存金鑰', keySrc:'金鑰來源' , minimize:'最小化', restore:'還原', toolStepsLabel:"工具呼叫往返上限", toolLimitContinue:"已達工具呼叫上限 — 要再繼續 {n} 步嗎？" ,cancel:'取消',capiHint:'直接使用 GitHub Copilot — 無需橋接或 CLI。需要 Copilot 訂閱。GitHub 會拒絕 PAT，請透過上方按鈕登入（OAuth 裝置流程）。',capiSignin:'使用 GitHub 登入',capiSigninPrompt:'開啟 {url} 並輸入代碼 {code} — 等待授權…',capiSigninOk:'已登入 — GitHub 權杖已儲存。',capiSigninFailed:'GitHub 登入失敗：{e}',capiSigninExpired:'代碼已過期 — 請重新登入。',capiNoToken:'未設定 GitHub 權杖 — 請在設定（齒輪）中透過 GitHub 登入。',capiTokenFailed:'無法取得 Copilot 權杖（權杖無效或無 Copilot 訂閱）：{e}' },
+  ko: { title:'AI 채팅', settings:'설정', clear:'채팅 지우기', apiKey:'Gemini API 키', apiKeyPh:'AIza...（플러그인 저장소에 저장）', model:'모델', save:'저장', saved:'저장됨', send:'전송', inputPh:'지도에 대해 물어보기...', welcome:'장소로 이동, 장소 검색, 레이어 전환 등을 요청하세요.', noKey:'API 키 없음 — 톱니바퀴 설정에서 추가하세요.', noKeySet:'키 없음', keySet:'키 설정됨', tool:'도구', err:'오류', cleared:'채팅을 지웠습니다.', timeout:'도구 시간 초과', noResponse:'(응답 없음)', stepLimit:'(도구 호출 한도에 도달했습니다)', keyWarn:'참고: 키는 이 브라우저에 저장되고 페이지 요청으로 Google에 전송됩니다 — 개발자 도구에서 볼 수 있습니다. Google Cloud에서 키를 제한하세요. 공개 사이트에서는 인스펙터에 geminiApiKey: 를 설정하지 마세요.', remember:'이 브라우저에 키 저장', keySrc:'키 출처' , minimize:'최소화', restore:'복원', toolStepsLabel:"도구 호출 왕복 한도", toolLimitContinue:"도구 호출 한도에 도달했습니다 — {n}회 더 진행할까요?" ,cancel:'취소',capiHint:'GitHub Copilot을 브리지/CLI 없이 직접 사용합니다. Copilot 구독이 필요합니다. PAT는 거부되므로 위 버튼으로 GitHub에 로그인하세요(OAuth 디바이스 플로).',capiSignin:'GitHub로 로그인',capiSigninPrompt:'{url}을(를) 열고 코드 {code}를 입력하세요 — 승인 대기 중…',capiSigninOk:'로그인됨 — GitHub 토큰이 저장되었습니다.',capiSigninFailed:'GitHub 로그인 실패: {e}',capiSigninExpired:'코드가 만료되었습니다 — 다시 로그인하세요.',capiNoToken:'GitHub 토큰 없음 — 설정(톱니바퀴)에서 GitHub로 로그인하세요.',capiTokenFailed:'Copilot 토큰을 가져올 수 없습니다(토큰 무효 또는 Copilot 플랜 없음): {e}' },
+  es: { title:'Chat IA', settings:'Ajustes', clear:'Limpiar chat', apiKey:'Clave API de Gemini', apiKeyPh:'AIza... (guardada en el plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pregunta sobre el mapa...', welcome:'Pídeme volar a un lugar, buscar sitios o cambiar capas.', noKey:'Sin clave API — añádela en ajustes (engranaje).', noKeySet:'sin clave', keySet:'clave lista', tool:'herramienta', err:'Error', cleared:'Chat limpiado.', timeout:'Herramienta agotó el tiempo', noResponse:'(sin respuesta)', stepLimit:'(límite de pasos de herramientas alcanzado)', keyWarn:'Nota: la clave se guarda en este navegador y se envía a Google en las solicitudes de la página — puede verse en devtools. Restríngela en Google Cloud. No definas geminiApiKey: en el inspector en sitios públicos.', remember:'Guardar clave en este navegador', keySrc:'Origen de la clave' , minimize:'Minimizar', restore:'Restaurar', toolStepsLabel:"Máx. rondas de herramientas", toolLimitContinue:"Límite de pasos de herramienta alcanzado — ¿continuar {n} pasos más?" ,cancel:'Cancelar',capiHint:'Usa GitHub Copilot directamente — sin bridge ni CLI. Requiere suscripción a Copilot. Los PAT son rechazados por GitHub: inicia sesión con el botón de arriba (flujo de dispositivo OAuth).',capiSignin:'Iniciar sesión con GitHub',capiSigninPrompt:'Abre {url} e introduce el código {code} — esperando aprobación…',capiSigninOk:'Sesión iniciada — token de GitHub guardado.',capiSigninFailed:'Error al iniciar sesión en GitHub: {e}',capiSigninExpired:'El código expiró — inicia sesión de nuevo.',capiNoToken:'Sin token de GitHub — abre ajustes (engranaje) e inicia sesión con GitHub.',capiTokenFailed:'No se pudo obtener el token de Copilot (token inválido o sin plan Copilot): {e}' },
+  fr: { title:'Chat IA', settings:'Paramètres', clear:'Effacer le chat', apiKey:'Clé API Gemini', apiKeyPh:'AIza... (stockée dans le plugin)', model:'Modèle', save:'Enregistrer', saved:'Enregistré', send:'Envoyer', inputPh:'Posez une question sur la carte...', welcome:'Demandez-moi de voler quelque part, chercher un lieu ou gérer les couches.', noKey:'Pas de clé API — ajoutez-la dans les paramètres (engrenage).', noKeySet:'clé absente', keySet:'clé définie', tool:'outil', err:'Erreur', cleared:'Chat effacé.', timeout:'Outil expiré', noResponse:'(pas de réponse)', stepLimit:'(limite d’étapes d’outils atteinte)', keyWarn:'Note : la clé est stockée dans ce navigateur et envoyée à Google avec les requêtes de la page — visible dans les devtools. Restreignez-la dans Google Cloud. Ne définissez pas geminiApiKey: dans l’inspecteur sur les sites publics.', remember:'Enregistrer la clé dans ce navigateur', keySrc:'Source de la clé' , minimize:'Réduire', restore:'Restaurer', toolStepsLabel:"Max. allers-retours d’outils", toolLimitContinue:"Limite d’étapes atteinte — continuer {n} étapes de plus ?" ,cancel:'Annuler',capiHint:'Utilise GitHub Copilot directement — sans bridge ni CLI. Un abonnement Copilot est requis. Les PAT sont rejetés par GitHub : connectez-vous via le bouton ci-dessus (flux appareil OAuth).',capiSignin:'Se connecter avec GitHub',capiSigninPrompt:'Ouvrez {url} et saisissez le code {code} — en attente d\'approbation…',capiSigninOk:'Connecté — jeton GitHub enregistré.',capiSigninFailed:'Échec de la connexion GitHub : {e}',capiSigninExpired:'Le code a expiré — reconnectez-vous.',capiNoToken:'Aucun jeton GitHub — ouvrez les paramètres (engrenage) et connectez-vous avec GitHub.',capiTokenFailed:'Impossible d\'obtenir le jeton Copilot (jeton invalide ou sans abonnement Copilot) : {e}' },
+  de: { title:'KI-Chat', settings:'Einstellungen', clear:'Chat löschen', apiKey:'Gemini API-Schlüssel', apiKeyPh:'AIza... (im Plugin gespeichert)', model:'Modell', save:'Speichern', saved:'Gespeichert', send:'Senden', inputPh:'Frage zur Karte stellen...', welcome:'Lass mich irgendwo hinfliegen, Orte suchen oder Layer umschalten.', noKey:'Kein API-Schlüssel — in den Einstellungen (Zahnrad) hinzufügen.', noKeySet:'kein Schlüssel', keySet:'Schlüssel gesetzt', tool:'Werkzeug', err:'Fehler', cleared:'Chat gelöscht.', timeout:'Werkzeug-Timeout', noResponse:'(keine Antwort)', stepLimit:'(Tool-Schrittlimit erreicht)', keyWarn:'Hinweis: Der Schlüssel wird in diesem Browser gespeichert und mit Seitenanfragen an Google gesendet — in den DevTools sichtbar. Schränken Sie ihn in Google Cloud ein. Setzen Sie geminiApiKey: auf öffentlichen Seiten nicht im Inspector.', remember:'Schlüssel in diesem Browser speichern', keySrc:'Schlüsselquelle' , minimize:'Minimieren', restore:'Wiederherstellen', toolStepsLabel:"Max. Tool-Rundgänge", toolLimitContinue:"Tool-Schrittlimit erreicht — {n} weitere Schritte ausführen?" ,cancel:'Abbrechen',capiHint:'Nutzt GitHub Copilot direkt — ohne Bridge oder CLI. Ein Copilot-Abonnement ist erforderlich. PATs werden von GitHub abgelehnt, daher oben per Button anmelden (OAuth-Geräteablauf).',capiSignin:'Mit GitHub anmelden',capiSigninPrompt:'Öffnen Sie {url} und geben Sie den Code {code} ein — warte auf Freigabe…',capiSigninOk:'Angemeldet — GitHub-Token gespeichert.',capiSigninFailed:'GitHub-Anmeldung fehlgeschlagen: {e}',capiSigninExpired:'Der Code ist abgelaufen — bitte erneut anmelden.',capiNoToken:'Kein GitHub-Token — in den Einstellungen (Zahnrad) mit GitHub anmelden.',capiTokenFailed:'Copilot-Token konnte nicht abgerufen werden (Token ungültig oder kein Copilot-Abo): {e}' },
+  it: { title:'Chat IA', settings:'Impostazioni', clear:'Cancella chat', apiKey:'Chiave API Gemini', apiKeyPh:'AIza... (salvata nel plugin)', model:'Modello', save:'Salva', saved:'Salvato', send:'Invia', inputPh:'Chiedi sulla mappa...', welcome:'Chiedimi di volare da qualche parte, cercare luoghi o cambiare layer.', noKey:'Nessuna chiave API — aggiungila nelle impostazioni (ingranaggio).', noKeySet:'chiave assente', keySet:'chiave impostata', tool:'strumento', err:'Errore', cleared:'Chat cancellata.', timeout:'Strumento scaduto', noResponse:'(nessuna risposta)', stepLimit:'(limite di passaggi degli strumenti raggiunto)', keyWarn:'Nota: la chiave è salvata in questo browser e inviata a Google con le richieste della pagina — visibile nei devtools. Limita la chiave in Google Cloud. Non impostare geminiApiKey: nell’inspector su siti pubblici.', remember:'Salva chiave in questo browser', keySrc:'Origine della chiave' , minimize:'Riduci', restore:'Ripristina', toolStepsLabel:"Max. round trip degli strumenti", toolLimitContinue:"Limite di passaggi raggiunto — continuare per altri {n} passaggi?" ,cancel:'Annulla',capiHint:'Usa GitHub Copilot direttamente — senza bridge né CLI. È richiesto un abbonamento Copilot. I PAT sono rifiutati da GitHub: accedi con il pulsante sopra (flusso dispositivo OAuth).',capiSignin:'Accedi con GitHub',capiSigninPrompt:'Apri {url} e inserisci il codice {code} — in attesa di approvazione…',capiSigninOk:'Accesso effettuato — token GitHub salvato.',capiSigninFailed:'Accesso GitHub non riuscito: {e}',capiSigninExpired:'Codice scaduto — accedi di nuovo.',capiNoToken:'Nessun token GitHub — apri le impostazioni (ingranaggio) e accedi con GitHub.',capiTokenFailed:'Impossibile ottenere il token Copilot (token non valido o piano Copilot assente): {e}' },
+  pt: { title:'Chat IA', settings:'Configurações', clear:'Limpar chat', apiKey:'Chave API Gemini', apiKeyPh:'AIza... (guardada no plugin)', model:'Modelo', save:'Guardar', saved:'Guardado', send:'Enviar', inputPh:'Pergunte sobre o mapa...', welcome:'Peça-me para voar a um lugar, pesquisar locais ou alternar camadas.', noKey:'Sem chave API — adicione nas configurações (engrenagem).', noKeySet:'sem chave', keySet:'chave definida', tool:'ferramenta', err:'Erro', cleared:'Chat limpo.', timeout:'Ferramenta expirou', noResponse:'(sem resposta)', stepLimit:'(limite de etapas de ferramentas atingido)', keyWarn:'Nota: a chave é guardada neste navegador e enviada ao Google nos pedidos da página — visível nas devtools. Restrinja-a no Google Cloud. Não defina geminiApiKey: no inspetor em sites públicos.', remember:'Guardar chave neste navegador', keySrc:'Origem da chave' , minimize:'Minimizar', restore:'Restaurar', toolStepsLabel:"Máx. de rodadas de ferramentas", toolLimitContinue:"Limite de etapas atingido — continuar mais {n} etapas?" ,cancel:'Cancelar',capiHint:'Usa o GitHub Copilot diretamente — sem bridge nem CLI. Requer assinatura do Copilot. PATs são rejeitados pelo GitHub: entre pelo botão acima (fluxo de dispositivo OAuth).',capiSignin:'Entrar com GitHub',capiSigninPrompt:'Abra {url} e digite o código {code} — aguardando aprovação…',capiSigninOk:'Conectado — token do GitHub salvo.',capiSigninFailed:'Falha no login do GitHub: {e}',capiSigninExpired:'O código expirou — entre novamente.',capiNoToken:'Sem token do GitHub — abra as configurações (engrenagem) e entre com GitHub.',capiTokenFailed:'Não foi possível obter o token do Copilot (token inválido ou sem plano Copilot): {e}' },
+  ru: { title:'ИИ-чат', settings:'Настройки', clear:'Очистить чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (хранится в плагине)', model:'Модель', save:'Сохранить', saved:'Сохранено', send:'Отправить', inputPh:'Спросите о карте...', welcome:'Попросите меня долететь до места, найти объект или переключить слои.', noKey:'Нет API-ключа — добавьте в настройках (шестерёнка).', noKeySet:'ключа нет', keySet:'ключ задан', tool:'инструмент', err:'Ошибка', cleared:'Чат очищен.', timeout:'Инструмент: таймаут', noResponse:'(нет ответа)', stepLimit:'(достигнут лимит шагов инструментов)', keyWarn:'Примечание: ключ хранится в этом браузере и отправляется в Google с запросами страницы — виден в devtools. Ограничьте ключ в Google Cloud. Не задавайте geminiApiKey: в инспекторе на публичных сайтах.', remember:'Сохранить ключ в этом браузере', keySrc:'Источник ключа' , minimize:'Свернуть', restore:'Восстановить', toolStepsLabel:"Макс. итераций инструментов", toolLimitContinue:"Достигнут лимит шагов — продолжить ещё {n} шагов?" ,cancel:'Отмена',capiHint:'Использует GitHub Copilot напрямую — без bridge и CLI. Требуется подписка Copilot. PAT отклоняются GitHub, поэтому войдите кнопкой выше (OAuth device flow).',capiSignin:'Войти через GitHub',capiSigninPrompt:'Откройте {url} и введите код {code} — ожидание подтверждения…',capiSigninOk:'Вход выполнен — токен GitHub сохранён.',capiSigninFailed:'Ошибка входа GitHub: {e}',capiSigninExpired:'Код истёк — войдите снова.',capiNoToken:'Нет токена GitHub — откройте настройки (шестерёнка) и войдите через GitHub.',capiTokenFailed:'Не удалось получить токен Copilot (недействительный токен или нет подписки): {e}' },
+  nl: { title:'AI-chat', settings:'Instellingen', clear:'Chat wissen', apiKey:'Gemini API-sleutel', apiKeyPh:'AIza... (opgeslagen in plugin)', model:'Model', save:'Opslaan', saved:'Opgeslagen', send:'Verzenden', inputPh:'Vraag over de kaart...', welcome:'Vraag me ergens heen te vliegen, plaatsen te zoeken of lagen te wisselen.', noKey:'Geen API-sleutel — voeg toe via instellingen (tandwiel).', noKeySet:'geen sleutel', keySet:'sleutel gezet', tool:'hulpmiddel', err:'Fout', cleared:'Chat gewist.', timeout:'Hulpmiddel time-out', noResponse:'(geen antwoord)', stepLimit:'(limiet voor toolstappen bereikt)', keyWarn:'Let op: de sleutel wordt in deze browser opgeslagen en met paginaverzoeken naar Google gestuurd — zichtbaar in devtools. Beperk de sleutel in Google Cloud. Stel geminiApiKey: niet in de inspector in op openbare sites.', remember:'Sleutel opslaan in deze browser', keySrc:'Sleutelbron' , minimize:'Minimaliseren', restore:'Herstellen', toolStepsLabel:"Max. tool-rondes", toolLimitContinue:"Tool-staplimiet bereikt — nog {n} stappen doorgaan?" ,cancel:'Annuleren',capiHint:'Gebruikt GitHub Copilot rechtstreeks — geen bridge of CLI nodig. Een Copilot-abonnement is vereist. PATs worden geweigerd door GitHub, dus meld je aan via de knop hierboven (OAuth device flow).',capiSignin:'Aanmelden met GitHub',capiSigninPrompt:'Open {url} en voer code {code} in — wachten op goedkeuring…',capiSigninOk:'Aangemeld — GitHub-token opgeslagen.',capiSigninFailed:'GitHub-aanmelding mislukt: {e}',capiSigninExpired:'De code is verlopen — meld opnieuw aan.',capiNoToken:'Geen GitHub-token — open instellingen (tandwiel) en meld aan met GitHub.',capiTokenFailed:'Kon geen Copilot-token ophalen (ongeldig token of geen Copilot-abonnement): {e}' },
+  pl: { title:'Czat AI', settings:'Ustawienia', clear:'Wyczyść czat', apiKey:'Klucz API Gemini', apiKeyPh:'AIza... (zapisany we wtyczce)', model:'Model', save:'Zapisz', saved:'Zapisano', send:'Wyślij', inputPh:'Zapytaj o mapę...', welcome:'Poproś o przelot w miejsce, wyszukanie lokalizacji lub przełączenie warstw.', noKey:'Brak klucza API — dodaj w ustawieniach (zębatka).', noKeySet:'brak klucza', keySet:'klucz ustawiony', tool:'narzędzie', err:'Błąd', cleared:'Czat wyczyszczony.', timeout:'Przekroczono czas narzędzia', noResponse:'(brak odpowiedzi)', stepLimit:'(osiągnięto limit kroków narzędzi)', keyWarn:'Uwaga: klucz jest zapisywany w tej przeglądarce i wysyłany do Google z żądaniami strony — widać go w devtools. Ogranicz klucz w Google Cloud. Nie ustawiaj geminiApiKey: w inspektorze na stronach publicznych.', remember:'Zapisz klucz w tej przeglądarce', keySrc:'Źródło klucza' , minimize:'Minimalizuj', restore:'Przywróć', toolStepsLabel:"Maks. rund narzędzi", toolLimitContinue:"Osiągnięto limit kroków — kontynuować {n} kroków?" ,cancel:'Anuluj',capiHint:'Używa GitHub Copilot bezpośrednio — bez bridge i CLI. Wymagana subskrypcja Copilot. PAT są odrzucane przez GitHub, więc zaloguj się przyciskiem powyżej (przepływ urządzenia OAuth).',capiSignin:'Zaloguj przez GitHub',capiSigninPrompt:'Otwórz {url} i wpisz kod {code} — oczekiwanie na zatwierdzenie…',capiSigninOk:'Zalogowano — token GitHub zapisany.',capiSigninFailed:'Logowanie GitHub nie powiodło się: {e}',capiSigninExpired:'Kod wygasł — zaloguj ponownie.',capiNoToken:'Brak tokena GitHub — otwórz ustawienia (zębatka) i zaloguj przez GitHub.',capiTokenFailed:'Nie udało się pobrać tokena Copilot (nieprawidłowy token lub brak planu Copilot): {e}' },
+  uk: { title:'AI-чат', settings:'Налаштування', clear:'Очистити чат', apiKey:'API-ключ Gemini', apiKeyPh:'AIza... (зберігається у плагіні)', model:'Модель', save:'Зберегти', saved:'Збережено', send:'Надіслати', inputPh:'Запитайте про карту...', welcome:'Попросіть мене полетіти кудись, знайти місце або перемкнути шари.', noKey:'Немає API-ключа — додайте в налаштуваннях (шестерня).', noKeySet:'ключа немає', keySet:'ключ задано', tool:'інструмент', err:'Помилка', cleared:'Чат очищено.', timeout:'Інструмент: тайм-аут', noResponse:'(немає відповіді)', stepLimit:'(досягнуто ліміту кроків інструментів)', keyWarn:'Примітка: ключ зберігається в цьому браузері й надсилається до Google із запитами сторінки — видно в devtools. Обмежте ключ у Google Cloud. Не задавайте geminiApiKey: в інспекторі на публічних сайтах.', remember:'Зберегти ключ у цьому браузері', keySrc:'Джерело ключа' , minimize:'Згорнути', restore:'Відновити', toolStepsLabel:"Макс. ітерацій інструментів", toolLimitContinue:"Досягнуто ліміту кроків — продовжити ще {n} кроків?" ,cancel:'Скасувати',capiHint:'Використовує GitHub Copilot напряму — без bridge і CLI. Потрібна підписка Copilot. PAT відхиляються GitHub, тому увійдіть кнопкою вище (OAuth device flow).',capiSignin:'Увійти через GitHub',capiSigninPrompt:'Відкрийте {url} і введіть код {code} — очікування підтверждення…',capiSigninOk:'Вхід виконано — токен GitHub збережено.',capiSigninFailed:'Помилка входу GitHub: {e}',capiSigninExpired:'Код сплив — увійдіть знову.',capiNoToken:'Немає токена GitHub — відкрийте налаштування (шестерня) й увійдіть через GitHub.',capiTokenFailed:'Не вдалося отримати токен Copilot (недійсний токен або немає підписки): {e}' },
+  tr: { title:'AI Sohbet', settings:'Ayarlar', clear:'Sohbeti temizle', apiKey:'Gemini API anahtarı', apiKeyPh:'AIza... (eklenti deposunda saklanır)', model:'Model', save:'Kaydet', saved:'Kaydedildi', send:'Gönder', inputPh:'Harita hakkında sor...', welcome:'Bir yere uçmamı, yer aramamı veya katmanları değiştirmemi isteyin.', noKey:'API anahtarı yok — ayarlardan (dişli) ekleyin.', noKeySet:'anahtar yok', keySet:'anahtar var', tool:'araç', err:'Hata', cleared:'Sohbet temizlendi.', timeout:'Araç zaman aşımı', noResponse:'(yanıt yok)', stepLimit:'(araç adım sınırına ulaşıldı)', keyWarn:'Not: anahtar bu tarayıcıda saklanır ve sayfa istekleriyle Google’a gönderilir — geliştirici araçlarında görülebilir. Google Cloud içinde anahtarı kısıtlayın. Herkese açık sitelerde denetçide geminiApiKey: ayarlamayın.', remember:'Anahtarı bu tarayıcıya kaydet', keySrc:'Anahtar kaynağı' , minimize:'Küçült', restore:'Geri yükle', toolStepsLabel:"Maks. araç turu", toolLimitContinue:"Araç adım sınırına ulaşıldı — {n} adım daha devam edilsin mi?" ,cancel:'İptal',capiHint:'GitHub Copilot\'u doğrudan kullanır — bridge veya CLI gerekmez. Copilot aboneliği gereklidir. PAT\'ler GitHub tarafından reddedilir; yukarıdaki düğmeyle giriş yapın (OAuth cihaz akışı).',capiSignin:'GitHub ile giriş yap',capiSigninPrompt:'{url} adresini açıp {code} kodunu girin — onay bekleniyor…',capiSigninOk:'Giriş yapıldı — GitHub token kaydedildi.',capiSigninFailed:'GitHub girişi başarısız: {e}',capiSigninExpired:'Kodun süresi doldu — yeniden giriş yapın.',capiNoToken:'GitHub token yok — ayarlardan (dişli) GitHub ile giriş yapın.',capiTokenFailed:'Copilot token alınamadı (geçersiz token veya Copilot planı yok): {e}' },
+  ar: { title:'دردشة الذكاء الاصطناعي', settings:'الإعدادات', clear:'مسح الدردشة', apiKey:'مفتاح Gemini API', apiKeyPh:'AIza... (يُحفظ في الإضافة)', model:'النموذج', save:'حفظ', saved:'تم الحفظ', send:'إرسال', inputPh:'اسأل عن الخريطة...', welcome:'اطلب مني الطيران إلى مكان أو البحث عن مواقع أو تبديل الطبقات.', noKey:'لا يوجد مفتاح API — أضفه من الإعدادات (الترس).', noKeySet:'لا مفتاح', keySet:'المفتاح مضبوط', tool:'أداة', err:'خطأ', cleared:'تم مسح الدردشة.', timeout:'انتهت مهلة الأداة', noResponse:'(لا رد)', stepLimit:'(تم بلوغ حد خطوات الأداة)', keyWarn:'ملاحظة: يُحفظ المفتاح في هذا المتصفح ويُرسل إلى Google مع طلبات الصفحة — يظهر في أدوات المطوّر. قيّد المفتاح في Google Cloud. لا تضبط geminiApiKey: في المفتش على المواقع العامة.', remember:'حفظ المفتاح في هذا المتصفح', keySrc:'مصدر المفتاح' , minimize:'تصغير', restore:'استعادة', toolStepsLabel:"الحد الأقصى لجولات الأدوات", toolLimitContinue:"تم بلوغ حد خطوات الأداة — المتابعة لـ {n} خطوات أخرى؟" ,cancel:'إلغاء',capiHint:'يستخدم GitHub Copilot مباشرة — دون bridge أو CLI. يلزم اشتراك Copilot. تُرفض رموز PAT من GitHub، لذا سجّل الدخول بالزر أعلاه (تدفق جهاز OAuth).',capiSignin:'تسجيل الدخول عبر GitHub',capiSigninPrompt:'افتح {url} وأدخل الرمز {code} — بانتظار الموافقة…',capiSigninOk:'تم تسجيل الدخول — حُفظ رمز GitHub.',capiSigninFailed:'فشل تسجيل الدخول إلى GitHub: {e}',capiSigninExpired:'انتهت صلاحية الرمز — سجّل الدخول مجددًا.',capiNoToken:'لا يوجد رمز GitHub — افتح الإعدادات (الترس) وسجّل الدخول عبر GitHub.',capiTokenFailed:'تعذر الحصول على رمز Copilot (رمز غير صالح أو بلا خطة Copilot): {e}' },
+  hi: { title:'AI चैट', settings:'सेटिंग्स', clear:'चैट साफ़ करें', apiKey:'Gemini API कुंजी', apiKeyPh:'AIza... (प्लगइन स्टोरेज में सहेजी जाती है)', model:'मॉडल', save:'सहेजें', saved:'सहेजा गया', send:'भेजें', inputPh:'नक्शे के बारे में पूछें...', welcome:'कहीं उड़ने, स्थान खोजने या लेयर बदलने के लिए कहें।', noKey:'API कुंजी नहीं — सेटिंग्स (गियर) में जोड़ें।', noKeySet:'कुंजी नहीं', keySet:'कुंजी सेट', tool:'उपकरण', err:'त्रुटि', cleared:'चैट साफ़ की गई।', timeout:'उपकरण समय समाप्त', noResponse:'(कोई प्रतिक्रिया नहीं)', stepLimit:'(उपकरण चरण सीमा पहुंची)', keyWarn:'नोट: कुंजी इस ब्राउज़र में सहेजी जाती है और पेज अनुरोधों के साथ Google को भेजी जाती है — devtools में दिख सकती है। Google Cloud में कुंजी को प्रतिबंधित करें। सार्वजनिक साइटों पर इंस्पेक्टर में geminiApiKey: सेट न करें।', remember:'इस ब्राउज़र में कुंजी सहेजें', keySrc:'कुंजी स्रोत' , minimize:'छोटा करें', restore:'पुनर्स्थापित', toolStepsLabel:"अधिकतम टूल राउंड", toolLimitContinue:"टूल चरण सीमा पहुँची — और {n} चरण जारी रखें?" ,cancel:'रद्द करें',capiHint:'GitHub Copilot को सीधे उपयोग करता है — bridge या CLI की आवश्यकता नहीं। Copilot सदस्यता आवश्यक है। PAT को GitHub अस्वीकार करता है, इसलिए ऊपर के बटन से साइन इन करें (OAuth डिवाइस फ़्लो)।',capiSignin:'GitHub से साइन इन करें',capiSigninPrompt:'{url} खोलें और कोड {code} दर्ज करें — स्वीकृति की प्रतीक्षा…',capiSigninOk:'साइन इन हो गया — GitHub टोकन सहेजा गया।',capiSigninFailed:'GitHub साइन-इन विफल: {e}',capiSigninExpired:'कोड समाप्त हो गया — फिर से साइन इन करें।',capiNoToken:'GitHub टोकन नहीं — सेटिंग्स (गियर) में GitHub से साइन इन करें।',capiTokenFailed:'Copilot टोकन प्राप्त नहीं हो सका (अमान्य टोकन या Copilot प्लान नहीं): {e}' },
+  id: { title:'Obrolan AI', settings:'Pengaturan', clear:'Bersihkan chat', apiKey:'Kunci API Gemini', apiKeyPh:'AIza... (disimpan di plugin)', model:'Model', save:'Simpan', saved:'Tersimpan', send:'Kirim', inputPh:'Tanya tentang peta...', welcome:'Minta saya terbang ke suatu tempat, mencari lokasi, atau mengganti layer.', noKey:'Belum ada kunci API — tambahkan di pengaturan (roda gigi).', noKeySet:'tanpa kunci', keySet:'kunci terpasang', tool:'alat', err:'Kesalahan', cleared:'Chat dibersihkan.', timeout:'Alat kedaluwarsa', noResponse:'(tidak ada respons)', stepLimit:'(batas langkah alat tercapai)', keyWarn:'Catatan: kunci disimpan di browser ini dan dikirim ke Google melalui permintaan halaman — terlihat di devtools. Batasi kunci di Google Cloud. Jangan setel geminiApiKey: di inspector pada situs publik.', remember:'Simpan kunci di browser ini', keySrc:'Sumber kunci' , minimize:'Minimalkan', restore:'Pulihkan', toolStepsLabel:"Maks. putaran alat", toolLimitContinue:"Batas langkah alat tercapai — lanjutkan {n} langkah lagi?" ,cancel:'Batal',capiHint:'Memakai GitHub Copilot langsung — tanpa bridge atau CLI. Diperlukan langganan Copilot. PAT ditolak GitHub, jadi masuk lewat tombol di atas (OAuth device flow).',capiSignin:'Masuk dengan GitHub',capiSigninPrompt:'Buka {url} dan masukkan kode {code} — menunggu persetujuan…',capiSigninOk:'Berhasil masuk — token GitHub tersimpan.',capiSigninFailed:'Gagal masuk GitHub: {e}',capiSigninExpired:'Kode kedaluwarsa — masuk lagi.',capiNoToken:'Tidak ada token GitHub — buka pengaturan (roda gigi) dan masuk dengan GitHub.',capiTokenFailed:'Tidak bisa mendapat token Copilot (token tidak valid atau tanpa paket Copilot): {e}' },
+  th: { title:'แชท AI', settings:'การตั้งค่า', clear:'ล้างแชท', apiKey:'คีย์ API ของ Gemini', apiKeyPh:'AIza... (จัดเก็บในปลั๊กอิน)', model:'โมเดล', save:'บันทึก', saved:'บันทึกแล้ว', send:'ส่ง', inputPh:'ถามเกี่ยวกับแผนที่...', welcome:'ขอให้ผมบินไปที่ใดสักแห่ง ค้นหาสถานที่ หรือสลับเลเยอร์ได้', noKey:'ไม่มีคีย์ API — เพิ่มในการตั้งค่า (ฟันเฟือง)', noKeySet:'ไม่มีคีย์', keySet:'ตั้งคีย์แล้ว', tool:'เครื่องมือ', err:'ข้อผิดพลาด', cleared:'ล้างแชทแล้ว', timeout:'เครื่องมือหมดเวลา', noResponse:'(ไม่มีการตอบกลับ)', stepLimit:'(ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว)', keyWarn:'หมายเหตุ: คีย์จะถูกเก็บในเบราว์เซอร์นี้และส่งไปยัง Google พร้อมคำขอของหน้า — มองเห็นได้ใน devtools โปรดจำกัดคีย์ใน Google Cloud อย่าตั้ง geminiApiKey: ใน inspector บนเว็บไซต์สาธารณะ', remember:'บันทึกคีย์ในเบราว์เซอร์นี้', keySrc:'แหล่งที่มาของคีย์' , minimize:'ย่อ', restore:'คืนค่า', toolStepsLabel:"จำนวนรอบเครื่องมือสูงสุด", toolLimitContinue:"ถึงขีดจำกัดขั้นตอนเครื่องมือแล้ว — ดำเนินการต่ออีก {n} ขั้นตอนหรือไม่?" ,cancel:'ยกเลิก',capiHint:'ใช้ GitHub Copilot โดยตรง — ไม่ต้องใช้ bridge หรือ CLI ต้องมีการสมัคร Copilot PAT ถูก GitHub ปฏิเสธ จึงต้องล็อกอินด้วยปุ่มด้านบน (OAuth device flow)',capiSignin:'ล็อกอินด้วย GitHub',capiSigninPrompt:'เปิด {url} แล้วป้อนรหัส {code} — รอการอนุมัติ…',capiSigninOk:'ล็อกอินแล้ว — บันทึกโทเคน GitHub แล้ว',capiSigninFailed:'ล็อกอิน GitHub ล้มเหลว: {e}',capiSigninExpired:'รหัสหมดอายุ — ล็อกอินอีกครั้ง',capiNoToken:'ไม่มีโทเคน GitHub — เปิดการตั้งค่า (ฟันเฟือง) แล้วล็อกอินด้วย GitHub',capiTokenFailed:'ไม่สามารถรับโทเคน Copilot (โทเคนไม่ถูกต้องหรือไม่มีแพ็กเกจ Copilot): {e}' },
+  vi: { title:'Trò chuyện AI', settings:'Cài đặt', clear:'Xóa trò chuyện', apiKey:'Khóa API Gemini', apiKeyPh:'AIza... (lưu trong plugin)', model:'Mô hình', save:'Lưu', saved:'Đã lưu', send:'Gửi', inputPh:'Hỏi về bản đồ...', welcome:'Hãy yêu cầu tôi bay đến một nơi, tìm địa điểm hoặc bật/tắt lớp.', noKey:'Chưa có khóa API — thêm trong cài đặt (bánh răng).', noKeySet:'chưa có khóa', keySet:'đã có khóa', tool:'công cụ', err:'Lỗi', cleared:'Đã xóa trò chuyện.', timeout:'Công cụ hết thời gian', noResponse:'(không có phản hồi)', stepLimit:'(đã đạt giới hạn bước công cụ)', keyWarn:'Lưu ý: khóa được lưu trong trình duyệt này và gửi tới Google cùng yêu cầu trang — có thể xem trong devtools. Hãy giới hạn khóa trong Google Cloud. Không đặt geminiApiKey: trong inspector trên trang công khai.', remember:'Lưu khóa trong trình duyệt này', keySrc:'Nguồn khóa' , minimize:'Thu nhỏ', restore:'Khôi phục', toolStepsLabel:"Số vòng gọi công cụ tối đa", toolLimitContinue:"Đã đạt giới hạn bước công cụ — tiếp tục thêm {n} bước nữa?" ,cancel:'Hủy',capiHint:'Dùng GitHub Copilot trực tiếp — không cần bridge hay CLI. Yêu cầu gói Copilot. PAT bị GitHub từ chối, hãy đăng nhập bằng nút phía trên (OAuth device flow).',capiSignin:'Đăng nhập bằng GitHub',capiSigninPrompt:'Mở {url} và nhập mã {code} — đang chờ phê duyệt…',capiSigninOk:'Đã đăng nhập — đã lưu token GitHub.',capiSigninFailed:'Đăng nhập GitHub thất bại: {e}',capiSigninExpired:'Mã đã hết hạn — đăng nhập lại.',capiNoToken:'Chưa có token GitHub — mở cài đặt (bánh răng) và đăng nhập bằng GitHub.',capiTokenFailed:'Không lấy được token Copilot (token không hợp lệ hoặc không có gói Copilot): {e}' },
 };
 
 const html: string = `
@@ -765,8 +765,9 @@ const html: string = `
   .ai-form input { flex:1; border:1px solid #ccc; border-radius:6px; padding:7px 9px; font-size:0.85em; min-width:0; }
   .ai-form button { border:1px solid #3b7bd4; background:#3b7bd4; color:#fff; border-radius:6px; padding:0 14px; font-size:0.85em; cursor:pointer; }
   .ai-form button:disabled { opacity:0.5; cursor:default; }
-  .ai-settings { display:none; flex-direction:column; gap:6px; padding:8px; border-top:1px solid #e3e3e3; background:#fdfdf8; font-size:0.78em; }
+  .ai-settings { display:none; flex-direction:column; gap:6px; padding:8px; border-bottom:1px solid #e3e3e3; background:#fdfdf8; font-size:0.78em; max-height:380px; overflow-y:auto; }
   .ai-settings.open { display:flex; }
+  .ai-settings.open ~ .ai-msgs { height:140px; }
   .ai-settings label { color:#444; font-weight:600; }
   .ai-settings input { border:1px solid #ccc; border-radius:4px; padding:5px 7px; font-size:1em; width:100%; box-sizing:border-box; }
   .ai-settings .row { display:flex; gap:6px; align-items:center; }
@@ -786,11 +787,11 @@ const html: string = `
     <button id="ai-clear-btn" data-i18n-title="clear" title="Clear">&#128465;</button>
     <button id="ai-min-btn" data-i18n-title="minimize" title="Minimize">&mdash;</button>
   </div>
-  <div id="ai-msgs" class="ai-msgs"></div>
   <div id="ai-settings" class="ai-settings">
     <label data-i18n="provider">Provider</label>
     <select id="ai-provider">
       <option value="gemini">Gemini</option>
+      <option value="copilotapi">GitHub Copilot (API)</option>
       <option value="copilot">GitHub Copilot (bridge hub)</option>
       <option value="openai">OpenAI-compatible</option>
       <option value="sakura">Sakura AI Engine (さくらAI)</option>
@@ -798,14 +799,17 @@ const html: string = `
       <option value="azure">Azure OpenAI</option>
       <option value="agent">External agent (bridge)</option>
     </select>
-    <div class="pv-field" data-pv="openai azure anthropic agent copilot"><label data-i18n="endpoint">Endpoint</label>
+    <div class="pv-field" data-pv="openai azure anthropic agent copilot copilotapi"><label data-i18n="endpoint">Endpoint</label>
     <input id="ai-endpoint" type="text" autocomplete="off" placeholder="https://..."></div>
     <div class="pv-field" data-pv="azure"><label data-i18n="apiVer">API version</label>
     <input id="ai-apiver" type="text" autocomplete="off" placeholder="2024-10-21"></div>
-    <div class="pv-field" data-pv="gemini openai anthropic azure sakura"><div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
+    <div class="pv-field" data-pv="copilotapi"><button id="ai-capi-signin" type="button" data-i18n="capiSignin">Sign in with GitHub</button>
+    <div id="ai-capi-signin-status" class="ai-key-src" style="word-break:break-all;"></div>
+    <div class="ai-key-src" data-i18n="capiHint">Use GitHub Copilot directly (no bridge/CLI). A Copilot subscription is required; PATs are rejected, so sign in via OAuth device flow.</div></div>
+    <div class="pv-field" data-pv="gemini openai anthropic azure sakura copilotapi"><div class="row"><label data-i18n="apiKey" style="flex:1;">Gemini API key</label><span id="ai-key-status" class="ai-key-status"></span></div>
     <input id="ai-key" type="password" autocomplete="off" data-i18n-ph="apiKeyPh" placeholder="AIza..."></div>
     <div id="ai-key-src" class="ai-key-src"></div>
-    <div class="pv-field" data-pv="gemini openai anthropic azure copilot sakura"><label data-i18n="model">Model</label>
+    <div class="pv-field" data-pv="gemini openai anthropic azure copilot sakura copilotapi"><label data-i18n="model">Model</label>
     <input id="ai-model" type="text" placeholder="gemini-3.1-flash-lite" list="ai-model-list"><datalist id="ai-model-list"></datalist>
     <div id="ai-hub-status" class="ai-key-src" style="display:none;"></div></div>
     <div class="pv-field" data-pv="agent"><label data-i18n="agentModel">Agent note</label>
@@ -815,6 +819,7 @@ const html: string = `
     <div class="row"><button id="ai-save" data-i18n="save">Save</button><span id="ai-save-msg" style="color:#4a4;"></span></div>
     <div class="ai-key-warn" data-i18n="keyWarn">Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.</div>
   </div>
+  <div id="ai-msgs" class="ai-msgs"></div>
   <form id="ai-form" class="ai-form">
     <input id="ai-input" data-i18n-ph="inputPh" placeholder="Ask about the map..." autocomplete="off">
     <button id="ai-send" type="button" data-i18n="send">Send</button>
@@ -824,7 +829,7 @@ const html: string = `
 (function(){
   // --- i18n (English base; missing keys fall back to en) ---
   var GEO_I18N = {
-    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore", provider:'Provider', endpoint:'Endpoint URL', apiVer:'API version', agentModel:'Agent label (optional)', toolStepsLabel:'Max tool round trips', toolLimitContinue:'Tool step limit reached — continue for {n} more steps?' }
+    en: { title:'AI Chat', settings:'Settings', clear:'Clear chat', apiKey:'Gemini API key', apiKeyPh:'AIza... (stored in plugin storage)', model:'Model', save:'Save', saved:'Saved', send:'Send', inputPh:'Ask about the map...', welcome:'Ask me to fly somewhere, search places, or toggle layers.', noKey:'No API key — open settings (gear) to add one.', noKeySet:'key not set', keySet:'key set', tool:'tool', err:'Error', cleared:'Chat cleared.', timeout:'Tool timed out', noResponse:'(no response)', stepLimit:'(tool step limit reached)', keyWarn:'Note: the key is stored in this browser and sent to Google in page requests — it can be seen in devtools. Restrict it in Google Cloud. Do not set geminiApiKey: in the inspector on public sites.', remember:'Save key on this browser', keySrc:'Key source' , minimize:"Minimize", restore:"Restore", provider:'Provider', endpoint:'Endpoint URL', apiVer:'API version', agentModel:'Agent label (optional)', toolStepsLabel:'Max tool round trips', toolLimitContinue:'Tool step limit reached — continue for {n} more steps?', cancel:'Cancel', capiHint:'Use GitHub Copilot directly — no bridge or CLI needed. A Copilot subscription is required. PATs are rejected by GitHub, so sign in via the button above (OAuth device flow).', capiSignin:'Sign in with GitHub', capiSigninPrompt:'Open {url} and enter code {code} — waiting for approval...', capiSigninOk:'Signed in — GitHub token saved.', capiSigninFailed:'GitHub sign-in failed: {e}', capiSigninExpired:'The code expired — sign in again.', capiNoToken:'No GitHub token — open settings (gear) and sign in with GitHub.', capiTokenFailed:'Could not get a Copilot token (invalid token or no Copilot plan): {e}' }
   };
   var GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','ru','nl','pl','uk','tr','ar','hi','id','th','vi'];
   var GEO_LANG = 'en';
@@ -957,7 +962,8 @@ const html: string = `
   // provider — a Gemini key is never sent to another provider).
   var PROVIDER_KEY_LABEL = {
     openai: 'API key', sakura: 'Sakura AI API key', anthropic: 'Anthropic API key',
-    azure: 'Azure OpenAI API key', copilot: 'API key', agent: 'API key'
+    azure: 'Azure OpenAI API key', copilot: 'API key', agent: 'API key',
+    copilotapi: 'GitHub token'
   };
   function applyProviderFields() {
     var prev = _provider;
@@ -970,12 +976,20 @@ const html: string = `
       if (endpointInput && !endpointInput.value.trim()) endpointInput.value = 'http://127.0.0.1:8514/agent';
       if (modelInput && /^gemini-/.test(modelInput.value)) modelInput.value = '';
     }
+    if (pv === 'copilotapi') {
+      // The endpoint field is the optional Copilot API base URL — a leftover
+      // bridge-hub/agent URL from another provider must not be reused as it.
+      if (endpointInput && !/githubcopilot\.com/i.test(endpointInput.value)) endpointInput.value = '';
+      // Copilot serves claude-*/gemini-2.5-pro too — only clear names that are
+      // definitely another provider's (google-only gemini names, sakura gpt-oss).
+      if (modelInput && (/^(gemini-3\.1|gemini-2\.0|gemini-1|gpt-oss|auto$)/.test(modelInput.value) || !modelInput.value.trim())) modelInput.value = 'gpt-4o';
+    }
     if (pv === 'sakura') {
       // Fixed endpoint provider — clear models belonging to other providers so
       // the gpt-oss-120b default applies.
       if (modelInput && (/^(gemini-|claude-|gpt-4|o4|auto$)/.test(modelInput.value))) modelInput.value = '';
     }
-    if (modelInput) modelInput.placeholder = (pv === 'sakura') ? 'gpt-oss-120b' : 'gemini-3.1-flash-lite';
+    if (modelInput) modelInput.placeholder = (pv === 'sakura') ? 'gpt-oss-120b' : (pv === 'copilotapi' ? 'gpt-4o' : 'gemini-3.1-flash-lite');
     try { updateKeyStatus(); } catch (e) {}
     // On a real provider switch the key field still holds the previous
     // provider's key — seed defaults only; the aiGetConfig echo then
@@ -1084,7 +1098,7 @@ const html: string = `
       var noKeyNeeded = (_provider === 'copilot' || _provider === 'agent');
       var keyLabel = document.querySelector('[data-i18n="apiKey"]');
       if (keyLabel) keyLabel.textContent = PROVIDER_KEY_LABEL[_provider] || t('apiKey');
-      var hasAny = noKeyNeeded || !!(effKey() || _serverHasKey);
+      var hasAny = noKeyNeeded || !!effKey() || (_serverHasKey && _provider === 'gemini');
       keyStatus.textContent = noKeyNeeded ? 'no key (bridge)' : (hasAny ? t('keySet') : t('noKeySet'));
       keyStatus.className = 'ai-key-status' + (hasAny ? ' ok' : '');
       // Expose where the active key comes from so users can judge exposure.
@@ -1483,7 +1497,288 @@ const html: string = `
     });
     return chain.then(nextRound);
   }
-  function callOpenAICompat() {
+  // ---------- GitHub Copilot API (direct) ----------
+  // Port of KASUGAI Canvas web/shared/ai-chat.js "copilotapi": a GitHub OAuth
+  // token is exchanged for a short-lived Copilot token via copilot_internal,
+  // then api.githubcopilot.com is called as an OpenAI-compatible endpoint.
+  // Requires a Copilot subscription; PATs are rejected by copilot_internal,
+  // hence the OAuth device-flow sign-in below.
+  var COPILOT_API_DEFAULT_BASE = 'https://api.githubcopilot.com';
+  var COPILOT_API_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
+  var COPILOT_API_USER_URL = 'https://api.github.com/copilot_internal/user';
+  // Client identification headers required by api.githubcopilot.com (the same
+  // de-facto values VS Code's Copilot Chat sends — arbitrary ones get refused).
+  var COPILOT_API_HEADERS = {
+    'Editor-Version': 'vscode/1.99.3',
+    'Editor-Plugin-Version': 'copilot-chat/0.26.7',
+    'Copilot-Integration-Id': 'vscode-chat',
+    'Openai-Intent': 'conversation-panel'
+  };
+  // GitHub OAuth device flow. client_id is VS Code's public OAuth App (same
+  // de-facto value used by geo_driver / copilot-api and Canvas).
+  var GITHUB_DEVICE_CLIENT_ID = 'Iv1.b507a08c87ecfe98';
+  var GITHUB_DEVICE_CODE_URL = 'https://github.com/login/device/code';
+  var GITHUB_ACCESS_TOKEN_URL = 'https://github.com/login/oauth/access_token';
+  var copilotApiSessionCache = {};
+  // Model ids learned to be /responses-only (chat/completions rejected).
+  var copilotResponsesOnly = {};
+  function sanitizeHeaderToken(s) { return String(s || '').replace(/[^!-~]/g, ''); }
+  function capiErrText(e) {
+    if (!e) return 'unknown error';
+    if (typeof e === 'string') return e;
+    if (typeof e.message === 'string' && e.message) return e.message;
+    try { return JSON.stringify(e).slice(0, 300); } catch (x) {}
+    return String(e);
+  }
+  function capiProxy(url) { return PROXY_BASE + '/api/copilot?url=' + encodeURIComponent(url); }
+  function capiConfig() {
+    var base = ((endpointInput && endpointInput.value) || '').trim().replace(/[/]+$/, '');
+    return {
+      token: sanitizeHeaderToken(effKey()),
+      baseUrl: base || COPILOT_API_DEFAULT_BASE,
+      model: effModel() || 'gpt-4o'
+    };
+  }
+  // Direct fetch with relay fallback: api.github.com and
+  // api.githubcopilot.com answer CORS preflights, but a failed fetch inside
+  // the opaque plugin iframe may still be a CORS/preflight rejection — retry
+  // once via the /api/copilot relay (allowlisted to GitHub/Copilot hosts).
+  function capiFetch(url, init) {
+    return fetch(url, init).catch(function(e) {
+      if (e && e.name === 'AbortError') throw e;
+      return fetch(capiProxy(url), init);
+    });
+  }
+  // github.com OAuth endpoints have no CORS at all — always via the relay.
+  function capiOAuthPost(url, params) {
+    return fetch(capiProxy(url), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+      body: Object.keys(params).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&')
+    }).then(function(res) {
+      return res.text().then(function(raw) {
+        var data = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch (e) { data = null; }
+        if (!res.ok) throw new Error((data && (data.error_description || data.error)) || ('HTTP ' + res.status + ': ' + raw.slice(0, 200)));
+        return data || {};
+      });
+    });
+  }
+  // OAuth device flow: stores the resulting token as this provider's key
+  // (the same field the user could paste into manually). onStatus(html) gets
+  // the verification link/code while polling.
+  function copilotDeviceSignin(onStatus, isCancelled) {
+    return capiOAuthPost(GITHUB_DEVICE_CODE_URL, {
+      client_id: GITHUB_DEVICE_CLIENT_ID, scope: 'read:user'
+    }).then(function(req) {
+      if (!req || !req.device_code || !req.user_code) {
+        throw new Error('invalid device code response: ' + JSON.stringify(req).slice(0, 200));
+      }
+      var verifyUri = req.verification_uri || 'https://github.com/login/device';
+      try { window.open(verifyUri, '_blank', 'noopener'); } catch (e) {}
+      onStatus(t('capiSigninPrompt')
+        .replace('{url}', '<a href="' + verifyUri + '" target="_blank" rel="noopener">' + verifyUri + '<\/a>')
+        .replace('{code}', '<b>' + req.user_code + '<\/b>'));
+      var interval = Math.max(5, Number(req.interval) || 5);
+      var deadline = Date.now() + (Number(req.expires_in) || 900) * 1000;
+      function poll() {
+        if (isCancelled && isCancelled()) return Promise.reject(new Error(t('cancel')));
+        if (Date.now() >= deadline) return Promise.reject(new Error(t('capiSigninExpired')));
+        return new Promise(function(r) { setTimeout(r, interval * 1000); }).then(function() {
+          return capiOAuthPost(GITHUB_ACCESS_TOKEN_URL, {
+            client_id: GITHUB_DEVICE_CLIENT_ID,
+            device_code: req.device_code,
+            grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+          });
+        }).then(function(d) {
+          if (d && d.access_token) {
+            var tok = sanitizeHeaderToken(d.access_token);
+            try { keyInput.value = tok; } catch (e) {}
+            postToParent({ action: 'aiSetApiKey', key: tok, persist: !!(rememberEl && rememberEl.checked), provider: 'copilotapi' });
+            copilotApiSessionCache = {};
+            return tok;
+          }
+          if (d && d.error === 'authorization_pending') return poll();
+          if (d && d.error === 'slow_down') { interval += 5; return poll(); }
+          throw new Error((d && (d.error_description || d.error)) || 'authorization failed');
+        });
+      }
+      return poll();
+    });
+  }
+  // GitHub token -> (Copilot API bearer, API base). Only for the default base:
+  // a custom base means a copilot-api-compatible proxy where the GitHub token
+  // is used directly as the bearer. Tokens cached until 60s before expiry.
+  // Fallback mirrors @github/copilot: copilot_internal/user resolves just the
+  // API endpoint and the GitHub token is used as-is.
+  function copilotApiSession(githubToken, base) {
+    var u = String(base || '').trim().replace(/[/]+$/, '') || COPILOT_API_DEFAULT_BASE;
+    if (!githubToken) return Promise.reject(new Error(t('capiNoToken')));
+    if (u !== COPILOT_API_DEFAULT_BASE) return Promise.resolve({ token: githubToken, api: u });
+    var ent = copilotApiSessionCache[githubToken];
+    if (ent && ent.expiresAt - Date.now() / 1000 >= 60) return Promise.resolve({ token: ent.token, api: ent.api });
+    // api.github.com's CORS preflight only allows a limited header set, so the
+    // exchange calls send Authorization alone (Editor-* is only for
+    // api.githubcopilot.com).
+    var ghHeaders = { 'Authorization': 'token ' + githubToken };
+    return capiFetch(COPILOT_API_TOKEN_URL, { headers: ghHeaders }).then(function(res) {
+      return res.text().then(function(raw) {
+        var data = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch (e) { data = null; }
+        if (!res.ok) throw new Error((data && data.message) || ('HTTP ' + res.status + ': ' + raw.slice(0, 200)));
+        if (!data || !data.token) throw new Error('no token: ' + raw.slice(0, 200));
+        copilotApiSessionCache[githubToken] = {
+          token: data.token,
+          expiresAt: Number(data.expires_at) || (Date.now() / 1000 + Number(data.refresh_in || 1500)),
+          api: (data.endpoints && data.endpoints.api) || COPILOT_API_DEFAULT_BASE
+        };
+        return copilotApiSessionCache[githubToken];
+      });
+    }).catch(function(e1) {
+      return capiFetch(COPILOT_API_USER_URL, { headers: ghHeaders }).then(function(res) {
+        return res.text().then(function(raw) {
+          var user = null;
+          try { user = raw ? JSON.parse(raw) : null; } catch (e) { user = null; }
+          if (!res.ok) throw new Error((user && user.message) || ('HTTP ' + res.status + ': ' + raw.slice(0, 200)));
+          copilotApiSessionCache[githubToken] = {
+            token: githubToken,
+            expiresAt: Date.now() / 1000 + 1500,
+            api: (user && user.endpoints && user.endpoints.api) || COPILOT_API_DEFAULT_BASE
+          };
+          return copilotApiSessionCache[githubToken];
+        });
+      }).catch(function(e2) {
+        throw new Error(t('capiTokenFailed').replace('{e}', e1.message + ' / ' + e2.message));
+      });
+    });
+  }
+  // GET {api}/models -> chat-capable model list. Capability-bearing responses
+  // are filtered by type/policy; supported_endpoints teaches /responses-only
+  // models. Capability-less responses (compat proxies) pass through wholesale.
+  function copilotApiFetchModels(token, base) {
+    return copilotApiSession(token, base).then(function(sess) {
+      var headers = { 'Authorization': 'Bearer ' + sess.token };
+      for (var k in COPILOT_API_HEADERS) headers[k] = COPILOT_API_HEADERS[k];
+      return capiFetch(sess.api + '/models', { headers: headers }).then(function(res) {
+        return res.text().then(function(raw) {
+          var d = null;
+          try { d = raw ? JSON.parse(raw) : null; } catch (e) { d = null; }
+          if (!res.ok) throw new Error((d && d.error && d.error.message) || (d && d.message) || ('HTTP ' + res.status + ': ' + raw.slice(0, 200)));
+          var items = (d && Array.isArray(d.data)) ? d.data : [];
+          var out = [];
+          items.forEach(function(m) {
+            if (!m || !m.id) return;
+            var caps = m.capabilities;
+            if (caps && typeof caps === 'object') {
+              if (caps.type != null && caps.type !== 'chat') return;
+              if (m.policy && m.policy.state === 'disabled') return;
+            }
+            var eps = m.supported_endpoints;
+            if (Array.isArray(eps)) {
+              if (eps.indexOf('/chat/completions') < 0 && eps.indexOf('/responses') >= 0) copilotResponsesOnly[m.id] = 1;
+              else if (eps.indexOf('/chat/completions') >= 0) delete copilotResponsesOnly[m.id];
+            }
+            var e = { id: m.id };
+            var lim = (caps && caps.limits) || {};
+            if (lim.max_context_window_tokens) e.context = lim.max_context_window_tokens;
+            out.push(e);
+          });
+          return out.sort(function(a, b) { return a.id.localeCompare(b.id); });
+        });
+      });
+    });
+  }
+
+  // ---- OpenAI Responses API (POST {base}/responses) ----
+  // For Copilot models that reject /chat/completions. The wire format differs
+  // but the same OpenAI-shaped message list is converted at send time.
+  function responsesTools(tools) {
+    return (tools || []).map(function(tl) {
+      if (tl && tl.type === 'function' && tl.function && typeof tl.function === 'object') {
+        var o = { type: 'function' };
+        for (var k in tl.function) o[k] = tl.function[k];
+        return o;
+      }
+      return tl;
+    });
+  }
+  function responsesContentParts(content, role) {
+    var textType = (role === 'assistant') ? 'output_text' : 'input_text';
+    if (typeof content === 'string') return [{ type: textType, text: content }];
+    var parts = [];
+    (content || []).forEach(function(p) {
+      if (!p || typeof p !== 'object') return;
+      if (p.type === 'text') parts.push({ type: textType, text: p.text || '' });
+      else if (p.type === 'image_url') parts.push({ type: 'input_image', image_url: (p.image_url && p.image_url.url) || '' });
+      else if (p.type === 'input_text' || p.type === 'input_image') parts.push(p);
+    });
+    return parts;
+  }
+  function toolResultOutput(content) {
+    if (typeof content === 'string') return content;
+    var parts = [];
+    (content || []).forEach(function(p) {
+      if (!p || typeof p !== 'object') return;
+      if (p.type === 'text') parts.push({ type: 'input_text', text: p.text || '' });
+      else if (p.type === 'image_url') parts.push({ type: 'input_image', image_url: (p.image_url && p.image_url.url) || '' });
+    });
+    return parts.length ? parts : JSON.stringify(content == null ? null : content);
+  }
+  function openaiMsgsToResponsesInput(messages) {
+    var instr = [];
+    var items = [];
+    (messages || []).forEach(function(m) {
+      var role = m.role;
+      if (role === 'system') {
+        var c = m.content;
+        instr.push(typeof c === 'string' ? c : (Array.isArray(c)
+          ? c.filter(function(p) { return p && p.type === 'text'; }).map(function(p) { return p.text || ''; }).join('\\n')
+          : ''));
+        return;
+      }
+      if (role === 'assistant' && Array.isArray(m.tool_calls) && m.tool_calls.length) {
+        if (m.content) items.push({ type: 'message', role: 'assistant', content: responsesContentParts(m.content, 'assistant') });
+        m.tool_calls.forEach(function(tc) {
+          var fn = tc.function || {};
+          items.push({ type: 'function_call', call_id: tc.id || '', name: fn.name || '',
+            arguments: typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments || {}) });
+        });
+        return;
+      }
+      if (role === 'tool') {
+        items.push({ type: 'function_call_output', call_id: m.tool_call_id || '', output: toolResultOutput(m.content) });
+        return;
+      }
+      items.push({ type: 'message', role: role, content: responsesContentParts(m.content, role) });
+    });
+    return { instructions: instr.filter(Boolean).join('\\n'), input: items };
+  }
+  // Responses API output -> OpenAI-shaped assistant message
+  // ({content, tool_calls?}) so the shared loop can consume it.
+  function responsesOutputToMessage(data) {
+    var text = [];
+    var toolCalls = [];
+    ((data && data.output) || []).forEach(function(item) {
+      if (!item || typeof item !== 'object') return;
+      if (item.type === 'message') {
+        (item.content || []).forEach(function(c) {
+          if (c && c.type === 'output_text') text.push(c.text || '');
+        });
+      } else if (item.type === 'function_call') {
+        toolCalls.push({ id: item.call_id || item.id || '', type: 'function',
+          function: { name: item.name || '', arguments: typeof item.arguments === 'string' ? item.arguments : JSON.stringify(item.arguments || {}) } });
+      }
+    });
+    var msg = { role: 'assistant', content: text.join('') || null };
+    if (toolCalls.length) msg.tool_calls = toolCalls;
+    return msg;
+  }
+
+  // req (optional) overrides the provider-derived request: {url, headers,
+  // model, system, responses, responsesUrl}. Used by the Copilot API provider,
+  // which resolves its own endpoint/auth per call.
+  function callOpenAICompat(req) {
+    req = req || {};
     var isAzure = _provider === 'azure';
     // Sakura AI Engine is OpenAI-compatible with a fixed base URL — its
     // endpoint field is hidden, so any value still in it belongs to another
@@ -1492,16 +1787,18 @@ const html: string = `
     var endpoint = (_provider === 'sakura')
       ? 'https://api.ai.sakura.ad.jp'
       : (((endpointInput && endpointInput.value) || '').trim() || (isAzure ? '' : 'https://api.openai.com'));
-    if (!endpoint) return Promise.reject(new Error('endpoint required'));
-    var reqModel = effModel();
+    var responsesMode = !!req.responses;
+    if (!endpoint && !req.url) return Promise.reject(new Error('endpoint required'));
+    var reqModel = req.model || effModel();
     // A stored model name from another provider is invalid for sakura —
     // fall back to the gpt-oss-120b default (same contract as KASUGAI Canvas).
     if (_provider === 'sakura' && (!reqModel || /^(gemini-|claude-|gpt-4|o4|auto$)/.test(reqModel))) reqModel = 'gpt-oss-120b';
-    var url = isAzure
+    var url = req.url || (isAzure
       ? endpoint.replace(/[/]+$/, '') + '/openai/deployments/' + encodeURIComponent(reqModel) + '/chat/completions?api-version=' + encodeURIComponent((apiverInput && apiverInput.value || '').trim() || '2024-10-21')
-      : endpoint.replace(/[/]+$/, '') + '/v1/chat/completions';
-    var headers = { 'Content-Type': 'application/json' };
-    if (isAzure) headers['api-key'] = effKey(); else headers['Authorization'] = 'Bearer ' + effKey();
+      : endpoint.replace(/[/]+$/, '') + '/v1/chat/completions');
+    if (responsesMode) url = req.responsesUrl || (endpoint.replace(/[/]+$/, '') + '/v1/responses');
+    var headers = req.headers || { 'Content-Type': 'application/json' };
+    if (!req.headers) { if (isAzure) headers['api-key'] = effKey(); else headers['Authorization'] = 'Bearer ' + effKey(); }
     var step = 0;
     var maxSteps = getChatMaxToolSteps();
     function next() {
@@ -1510,12 +1807,41 @@ const html: string = `
         if (!inc) return { done: true, text: t('stepLimit') };
         maxSteps += inc;
       }
-      return fetch(url, { method: 'POST', headers: headers, body: JSON.stringify({
-        model: reqModel, messages: pxMsgsOpenAi(), tools: pxToolDecls('openai'), tool_choice: 'auto'
-      }) }).then(function(res) {
-        return res.json().then(function(data) {
-          if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
-          var msg = (data && data.choices && data.choices[0] && data.choices[0].message) || {};
+      var bodyObj;
+      if (responsesMode) {
+        var conv = openaiMsgsToResponsesInput(
+          (req.system ? [{ role: 'system', content: SYSTEM_INSTRUCTION }] : []).concat(pxMsgsOpenAi()));
+        bodyObj = { model: reqModel, input: conv.input, store: false };
+        if (conv.instructions) bodyObj.instructions = conv.instructions;
+        var rts = responsesTools(pxToolDecls('openai'));
+        if (rts.length) { bodyObj.tools = rts; bodyObj.tool_choice = 'auto'; }
+      } else {
+        bodyObj = {
+          model: reqModel,
+          messages: (req.system ? [{ role: 'system', content: SYSTEM_INSTRUCTION }] : []).concat(pxMsgsOpenAi()),
+          tools: pxToolDecls('openai'), tool_choice: 'auto'
+        };
+      }
+      var doFetch = function(u) {
+        return fetch(u, { method: 'POST', headers: headers, body: JSON.stringify(bodyObj) });
+      };
+      // req.relay(url) maps the request URL to a same-origin relay for callers
+      // whose endpoint may reject the opaque-iframe CORS preflight (Copilot
+      // API). Used only as a network-failure fallback — direct stays primary.
+      var p = doFetch(url);
+      if (req.relay) p = p.catch(function(e) { if (e && e.name === 'AbortError') throw e; return doFetch(req.relay(url)); });
+      return p.then(function(res) {
+        // Copilot API may answer auth/plan errors as plain text — read the body
+        // first and keep it in the error when it isn't JSON.
+        return res.text().then(function(raw) {
+          var data = null;
+          try { data = raw ? JSON.parse(raw) : null; } catch (e) { data = null; }
+          if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status + ': ' + raw.slice(0, 300)));
+          if (!data) throw new Error('non-JSON response: ' + raw.slice(0, 300));
+          var msg = responsesMode
+            ? (Array.isArray(data.output) ? responsesOutputToMessage(data) : null)
+            : ((data.choices && data.choices[0] && data.choices[0].message) || null);
+          if (!msg) throw new Error(t('noResponse'));
           var calls = (msg.tool_calls || []).map(function(tc) {
             var a = {}; try { a = JSON.parse(tc.function && tc.function.arguments || '{}'); } catch (e) {}
             return { id: tc.id, name: tc.function && tc.function.name, args: a };
@@ -1527,6 +1853,41 @@ const html: string = `
       });
     }
     return next();
+  }
+  // GitHub Copilot API chat. Session resolves token + per-plan API host, then
+  // the shared OpenAI-compatible loop runs. /responses-only models are routed
+  // directly once learned; an unlearned "not supported" error retrains and
+  // retries via /responses (the first round's history is rolled back).
+  function callCopilotApi() {
+    var c = capiConfig();
+    return copilotApiSession(c.token, c.baseUrl).then(function(sess) {
+      var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sess.token };
+      for (var hk in COPILOT_API_HEADERS) headers[hk] = COPILOT_API_HEADERS[hk];
+      var req = {
+        url: sess.api + '/chat/completions',
+        // api.*githubcopilot.com /responses has no CORS (OPTIONS 405) — relayed.
+        responsesUrl: capiProxy(sess.api + '/responses'),
+        // /chat/completions supports CORS on real origins, but this iframe is
+        // an opaque origin (Origin: null) — fall back to the relay on failure.
+        relay: function(u) { return u.indexOf('/api/copilot') >= 0 ? u : capiProxy(u); },
+        headers: headers,
+        model: c.model,
+        system: true,
+        responses: !!copilotResponsesOnly[c.model]
+      };
+      if (req.responses) return callOpenAICompat(req);
+      var hlen = _pxHist.length;
+      return callOpenAICompat(req).then(null, function(e) {
+        var s = String(e && e.message || e).toLowerCase();
+        if (s.indexOf('not accessible via the /chat/completions') < 0 &&
+            s.indexOf('model_not_supported') < 0 &&
+            s.indexOf('not supported') < 0) throw e;
+        copilotResponsesOnly[c.model] = 1;
+        _pxHist.length = hlen;
+        req.responses = true;
+        return callOpenAICompat(req);
+      });
+    });
   }
   function callAnthropic() {
     var endpoint = ((endpointInput && endpointInput.value) || '').trim() || 'https://api.anthropic.com';
@@ -1678,7 +2039,8 @@ const html: string = `
     gemini: ['gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-pro-preview'],
     openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1', 'gpt-4.1-nano', 'o4-mini'],
     anthropic: ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5'],
-    sakura: ['gpt-oss-120b', 'gpt-oss-20b']
+    sakura: ['gpt-oss-120b', 'gpt-oss-20b'],
+    copilotapi: ['gpt-4o', 'gpt-4.1', 'gpt-5-mini', 'claude-sonnet-4.5', 'gemini-2.5-pro']
   };
   var _modelFetchSeq = 0;
   function refreshProviderModels(defaultsOnly) {
@@ -1720,6 +2082,21 @@ const html: string = `
         var ms = (d && d.models) || [];
         fill(ms, (d && d.fallback) || !ms.length ? 'hub: connected, but no model list (not signed in?)' : 'hub: ' + ms.length + ' models');
       }).catch(function() { st.style.display = ''; st.textContent = 'hub: unreachable — install/start geosuite-hub.exe (port 8514)'; });
+      return;
+    }
+    if (pv === 'copilotapi') {
+      var cseeds = (STATIC_MODELS.copilotapi || []).slice();
+      var ctoken = capiConfig().token;
+      if (!ctoken) { fill(cseeds, 'models: defaults — sign in / paste a GitHub token to refresh'); return; }
+      st.textContent = 'models: fetching...';
+      st.style.display = '';
+      copilotApiFetchModels(ctoken, capiConfig().baseUrl).then(function(ms) {
+        var ids = ms.map(function(m) { return m.id; });
+        fill(ids.length ? ids.concat(cseeds.filter(function(s) { return ids.indexOf(s) < 0; })) : cseeds,
+          ms.length ? ('models: ' + ms.length) : 'models: none listed — defaults shown');
+      }).catch(function(e) {
+        fill(cseeds, 'models: fetch failed (' + String(e && e.message || e) + ') — defaults shown');
+      });
       return;
     }
     if (pv === 'gemini') {
@@ -1855,6 +2232,9 @@ const html: string = `
     if (_provider === 'openai' || _provider === 'azure' || _provider === 'sakura') {
       _pxHist.push({ role: 'user', text: text });
       p = callOpenAICompat();
+    } else if (_provider === 'copilotapi') {
+      _pxHist.push({ role: 'user', text: text });
+      p = callCopilotApi();
     } else if (_provider === 'anthropic') {
       _pxHist.push({ role: 'user', text: text });
       p = callAnthropic();
@@ -1888,7 +2268,10 @@ const html: string = `
     inputEl.value = '';
     addMsg('user', text);
     var needKey = (_provider !== 'copilot' && _provider !== 'agent');
-    if (needKey && !effKey() && !_serverHasKey) {
+    // Copilot API needs the GitHub token specifically — the server's Gemini
+    // key must not let an unauthenticated submission through.
+    if (_provider === 'copilotapi' && !effKey()) { addMsg('sys', t('capiNoToken')); return; }
+    if (needKey && _provider !== 'copilotapi' && !effKey() && !_serverHasKey) {
       ensureServerKey().then(function() {
         if (_serverHasKey || _apiKey) submit(text);
         else addMsg('sys', t('noKey'));
@@ -1946,6 +2329,34 @@ const html: string = `
     } });
     saveMsg.textContent = t('saved');
     setTimeout(function() { saveMsg.textContent = ''; }, 2000);
+  });
+
+  // GitHub sign-in for the Copilot API provider (OAuth device flow).
+  // Clicking again while polling cancels the flow.
+  var capiSigninBtn = document.getElementById('ai-capi-signin');
+  var capiSigninStatus = document.getElementById('ai-capi-signin-status');
+  var _capiFlow = null;
+  if (capiSigninBtn) capiSigninBtn.addEventListener('click', function() {
+    if (_capiFlow) { _capiFlow.cancelled = true; return; }
+    var flow = _capiFlow = { cancelled: false };
+    capiSigninBtn.textContent = t('cancel');
+    if (capiSigninStatus) { capiSigninStatus.style.color = ''; capiSigninStatus.textContent = ''; }
+    copilotDeviceSignin(function(html) {
+      if (capiSigninStatus) capiSigninStatus.innerHTML = html;
+    }, function() { return flow.cancelled; }).then(function() {
+      if (capiSigninStatus) { capiSigninStatus.innerHTML = ''; capiSigninStatus.textContent = t('capiSigninOk'); }
+      try { updateKeyStatus(); refreshProviderModels(); } catch (e) {}
+    }).catch(function(e) {
+      if (capiSigninStatus) {
+        capiSigninStatus.style.color = flow.cancelled ? '' : '#c0392b';
+        capiSigninStatus.innerHTML = '';
+        capiSigninStatus.textContent = flow.cancelled
+          ? t('cancel')
+          : t('capiSigninFailed').replace('{e}', capiErrText(e));
+      }
+    }).then(function() {
+      if (_capiFlow === flow) { _capiFlow = null; capiSigninBtn.textContent = t('capiSignin'); }
+    });
   });
 
   window.addEventListener('message', function(e) {
@@ -2026,6 +2437,7 @@ const html: string = `
         if (rememberEl) rememberEl.checked = (_keySource === 'storage');
         modelInput.value = _model;
         if (_provider === 'copilot' && /^gemini-/.test(modelInput.value)) modelInput.value = '';
+        if (_provider === 'copilotapi' && /^(gemini-3\.1|gemini-2\.0|gemini-1|gpt-oss|auto$)/.test(modelInput.value)) modelInput.value = 'gpt-4o';
         if (_provider === 'sakura' && /^(gemini-|claude-|gpt-4|o4|auto$)/.test(modelInput.value)) modelInput.value = '';
         updateKeyStatus();
         _configReceived = true;
