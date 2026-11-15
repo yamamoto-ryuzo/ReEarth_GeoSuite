@@ -1,5 +1,13 @@
 # Changelog
 
+## v22.11.0
+- 新規: **印刷・帳票出力**（issue #36、KASUGAI Canvas `web/shared/print.js` の移植）
+  - SHARE タブに「Print / Report」セクションを追加。現在表示を `reearth.viewer.capture` でキャプチャし、タイトル・用紙（A4/A3・横縦）・解像度（150/300dpi）を指定して帳票画像を canvas2d で合成
+  - 凡例（表示中レイヤー＋`legend:` 画像）・縮尺バー・方位記号（カメラ heading 追従）・出典・日付の付加をオプション選択可能
+  - 縮尺分母はカメラ高度と画像高さからの概算値（縮尺取得 API 無しのため仕様どおり推定）
+  - 「Print」は print-only シート＋`window.print()` 経路、「Save PNG」は `<a download>` による PNG ダウンロード
+  - 追加 i18n キー 19 個を全 20 ロケールへ展開
+
 ## v22.10.0
 - 新規: **時刻コントロール**（issue #37、KASUGAI Canvas `web/shared/sun-time.js` + `web/shared/kasc-time.js` の移植）
   - 太陽日時: 設定タブの Shadow ON 時に「Sun time」行（タイムゾーン選択 + 日時入力 + 時刻スライダー）を表示し、`reearth.timeline.setTime` でシーン時刻を制御（既存 Start/Stop/Current 行と併用）
