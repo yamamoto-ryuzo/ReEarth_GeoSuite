@@ -1,5 +1,11 @@
 # Changelog
 
+## v22.14.0
+- 新規: **属性統計（フィールド集計 / GROUP BY）**（issue #33、KASUGAI Canvas `web/shared/attr-stats.js` の移植）
+  - 「Attributes & Values」ウィジェットに「Stats」バーを追加。Group by（全フィールド）と Value（数値フィールドを自動検出して列挙）を選んで Run → グループ別の件数/合計/最小/最大/平均/数値件数、またはフィールド別サマリ（全フィールド一括・または Value 指定で単独）をテーブル表示。500 グループ上限・`__kasc` 内部プロパティ除外・ブラウザ内完結の純粋 JS 集計
+  - AI ツール `attrStats` をツールディスパッチャへ登録 — `{layer?, field?, groupBy?}`。引数無しで `{fields:{all,numeric}}`、`field` で単一フィールド集計、`groupBy` でキー別グループ集計（`field` 指定時はその値を集計）を返す。runCode `api.*`・外部ブリッジ経由でも利用可能
+  - i18n キー 16 個を全 20 ロケールへ追加（en/ja は翻訳済み、その他は英語値）
+
 ## v22.13.0
 - 新規: **レイヤ範囲へズーム（zoomToExtent）**（issue #34、KASUGAI Canvas `cesium/app.js` の `zoomToExtent`→`flyToRectangle` の移植）
   - レイヤー一覧各行に ⛶ ボタン（i18n `zoomToLayer`、全20言語）を追加。レイヤの GeoJSON/CSV 地物から `geomBbox` 相当の bbox を拡張 ctx で計算し、中心＋スパン由来の高さで `reearth.camera.flyTo`（真俯瞰）を実行
