@@ -13235,6 +13235,83 @@ function exportComputedGeoJson(ref) {
   return { fc: { type: 'FeatureCollection', features: feats }, count: feats.length, layers: layers };
 }
 
+// ---------- AI measure tools ----------
+// Port of kasugai_canvas web/cesium/geo-tools.js measureDistance/measureArea/
+// measureBearing. The math runs extension-side so the reply is a single
+// aiToolReply, and the measured geometry is drawn as a GeoJSON overlay layer
+// that each measure call replaces.
+const _MEASURE_EARTH_R = 6378137.0; // WGS84 equatorial radius (Cesium default)
+let _measureOverlayLayerId = null;
+
+function measureNormCoord(c) {
+  if (!c) return null;
+  if (Array.isArray(c)) {
+    const lng = parseFloat(c[0]), lat = parseFloat(c[1]);
+    return (isFinite(lat) && isFinite(lng)) ? { lat: lat, lng: lng } : null;
+  }
+  const lat = parseFloat(c.lat != null ? c.lat : c.latitude);
+  const lng = parseFloat(c.lng != null ? c.lng : (c.lon != null ? c.lon : c.longitude));
+  return (isFinite(lat) && isFinite(lng)) ? { lat: lat, lng: lng } : null;
+}
+function measureNormCoords(list) {
+  const pts = [];
+  (Array.isArray(list) ? list : []).forEach(c => { const p = measureNormCoord(c); if (p) pts.push(p); });
+  return pts;
+}
+function measureSegmentMeters(a, b) {
+  const rad = Math.PI / 180;
+  const p1 = a.lat * rad, p2 = b.lat * rad;
+  const dp = p2 - p1, dl = (b.lng - a.lng) * rad;
+  const s = Math.sin(dp / 2), t = Math.sin(dl / 2);
+  const h = s * s + Math.cos(p1) * Math.cos(p2) * t * t;
+  return 2 * _MEASURE_EARTH_R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function measureHeadingDeg(a, b) {
+  const rad = Math.PI / 180;
+  const p1 = a.lat * rad, p2 = b.lat * rad;
+  const dl = (b.lng - a.lng) * rad;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (Math.atan2(y, x) / rad + 360) % 360;
+}
+function measureRingAreaMeters(pts) {
+  // Spherical trapezoid formula (Turf-style geodesic area approximation).
+  const rad = Math.PI / 180;
+  let sum = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    sum += (b.lng - a.lng) * rad * (2 + Math.sin(a.lat * rad) + Math.sin(b.lat * rad));
+  }
+  return Math.abs(sum * _MEASURE_EARTH_R * _MEASURE_EARTH_R / 2);
+}
+function measureShowOverlay(features) {
+  try {
+    const fc = { type: 'FeatureCollection', features: features };
+    const exists = _measureOverlayLayerId && reearth.layers.findById
+      && reearth.layers.findById(_measureOverlayLayerId);
+    if (exists) {
+      reearth.layers.override(_measureOverlayLayerId, { data: { type: 'geojson', value: fc }, visible: true });
+      return _measureOverlayLayerId;
+    }
+    _measureOverlayLayerId = null;
+    const id = reearth.layers.add({
+      type: 'simple',
+      title: 'AI Measure',
+      visible: true,
+      data: { type: 'geojson', value: fc },
+      marker: { pointColor: '#ff8800', pointSize: 12 },
+      polyline: { strokeColor: '#ff8800', strokeWidth: 4, clampToGround: true },
+      polygon: { fillColor: '#ff880055', strokeColor: '#ff8800', strokeWidth: 3, heightReference: 'clamp' }
+    });
+    if (id) {
+      _measureOverlayLayerId = id;
+      try { _pluginAddedLayerIds.add(id); } catch (e) {}
+      try { scheduleShowUI('measureOverlay'); } catch (e) {}
+    }
+    return id;
+  } catch (e) { return null; }
+}
+
 function handleAiToolRequest(senderId, data) {
   const reqId = data && data.reqId;
   const name = data && data.name;
@@ -13840,6 +13917,47 @@ function handleAiToolRequest(senderId, data) {
           scene: { backgroundColor: col },
         });
         aiToolReply(senderId, reqId, true, { color: col });
+        return;
+      }
+      case 'measureDistance': {
+        const pts = measureNormCoords(args.coords || args.coordinates);
+        if (pts.length < 2) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'at least 2 coordinates required' }); return; }
+        const segs = [];
+        let total = 0;
+        for (let i = 0; i + 1 < pts.length; i++) { const d = measureSegmentMeters(pts[i], pts[i + 1]); segs.push(d); total += d; }
+        measureShowOverlay([
+          { type: 'Feature', properties: { kind: 'distance' }, geometry: { type: 'LineString', coordinates: pts.map(p => [p.lng, p.lat]) } }
+        ].concat(pts.map((p, i) => ({ type: 'Feature', properties: { name: 'P' + (i + 1) }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }))));
+        aiToolReply(senderId, reqId, true, { ok: true, totalMeters: total, segmentsMeters: segs });
+        return;
+      }
+      case 'measureArea': {
+        const pts = measureNormCoords(args.coords || args.coordinates);
+        if (pts.length < 3) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'at least 3 coordinates required' }); return; }
+        const ring = pts.map(p => [p.lng, p.lat]);
+        ring.push([pts[0].lng, pts[0].lat]);
+        let perimeter = 0;
+        for (let i = 0; i < pts.length; i++) perimeter += measureSegmentMeters(pts[i], pts[(i + 1) % pts.length]);
+        measureShowOverlay([
+          { type: 'Feature', properties: { kind: 'area' }, geometry: { type: 'Polygon', coordinates: [ring] } }
+        ].concat(pts.map((p, i) => ({ type: 'Feature', properties: { name: 'P' + (i + 1) }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }))));
+        aiToolReply(senderId, reqId, true, { ok: true, squareMeters: measureRingAreaMeters(pts), perimeterMeters: perimeter });
+        return;
+      }
+      case 'measureBearing': {
+        const from = measureNormCoord(args.from), to = measureNormCoord(args.to);
+        if (!from || !to) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'from and to {lat,lng} required' }); return; }
+        measureShowOverlay([
+          { type: 'Feature', properties: { kind: 'bearing' }, geometry: { type: 'LineString', coordinates: [[from.lng, from.lat], [to.lng, to.lat]] } },
+          { type: 'Feature', properties: { name: 'from' }, geometry: { type: 'Point', coordinates: [from.lng, from.lat] } },
+          { type: 'Feature', properties: { name: 'to' }, geometry: { type: 'Point', coordinates: [to.lng, to.lat] } }
+        ]);
+        aiToolReply(senderId, reqId, true, {
+          ok: true,
+          startHeadingDeg: measureHeadingDeg(from, to),
+          endHeadingDeg: (measureHeadingDeg(to, from) + 180) % 360,
+          distanceMeters: measureSegmentMeters(from, to)
+        });
         return;
       }
       default:

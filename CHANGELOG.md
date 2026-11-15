@@ -1,5 +1,11 @@
 # Changelog
 
+## v22.17.0
+- 新規: **AI 計測ツール**（issue #42、KASUGAI Canvas `web/cesium/geo-tools.js` measureDistance/measureArea/measureBearing の移植）
+  - AI チャットの `TOOL_DECLS` に `measureDistance({coords:[{lat,lng},...]})`・`measureArea({coords})`・`measureBearing({from,to})` を宣言し `PANEL_TOOLS` へ登録 — レイヤーパネル拡張へ `aiToolRequest` 転送
+  - パネル側に測地計算コアを実装（haversine 距離・球面台形公式の面積・大円初方位）。座標を受けて即計算し、計測ジオメトリを「AI Measure」GeoJSON オーバーレイレイヤ（オレンジ・呼出毎に置換）として描画してから結果を返却
+  - 戻り値は Canvas 版と同形式: `{ok,totalMeters,segmentsMeters}` / `{ok,squareMeters,perimeterMeters}` / `{ok,startHeadingDeg,endHeadingDeg,distanceMeters}`、点数不足時 `{ok:false,reason}`。runCode `api.*`・外部ブリッジ経由でも利用可能
+
 ## v22.16.0
 - 新規: **ミニマップ（俯瞰図）**（issue #31、KASUGAI Canvas `web/shared/minimap.js` の移植）
   - basemap-widget（左下・永続 iframe）に「Map」トグルボタンを追加。ON で Leaflet 1.9.4（CDN 遅延ロード）の小地図をウィジェット内に表示。タイルは選択中ベースマップの `{z}/{x}/{y}` テンプレートを再利用し、非テンプレート/「(なし)」時は地理院淡色地図へフォールバック
