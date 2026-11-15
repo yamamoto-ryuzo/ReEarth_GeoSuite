@@ -1,5 +1,13 @@
 # Changelog
 
+## v22.17.0
+- 新規: **見通し解析（lineOfSight）・可視領域（viewshed）**（issue #28、KASUGAI Canvas `web/cesium/geo-tools.js` の移植）
+  - レイヤーパネルに「Analysis」タブを追加。観測点/対象点（lng,lat —「use view center」ボタンで視点中心を入力可）・観測高/対象高を指定して通視判定（緑=通視区間、赤=遮蔽区間＋遮蔽点）と、観測点・半径・方位数・サンプル数による可視領域計算（可視=緑/不可視=赤の GeoJSON ポイントレイヤ）を実行
+  - 地形サンプリングは拡張 ctx の `reearth.viewer.tools.getTerrainHeightAsync`（API 非搭載時はエラー返却）。グリッド生成・ECEF/ENU 可視判定・GeoJSON 生成は UI iframe 側で実行（観測点局所 ENU 水平面からの仰角比較で地球曲率を考慮）
+  - 計算コスト上限: viewshed は半径 100-20000m・方位 16-180・サンプル 16-160・総 6144 点にクランプ（超過時はサンプル数→方位数を自動縮小）、LOS は 32-512 サンプルにクランプ
+  - AI ツール `lineOfSight`/`viewshed` をツールディスパッチャへ登録 — extensionMessage 起点の async 停滞を避けるため、拡張 ctx は `_anaPending`（armPendingTtl・ownReq トラッキング）で iframe 実行へ中継し、`anaFinish` で結果レイヤ追加＋`aiToolResult` 返送。runCode `api.*`・外部ブリッジ経由でも利用可能
+  - i18n キー 17 個を全 20 ロケールへ追加
+
 ## v22.16.0
 - 新規: **ミニマップ（俯瞰図）**（issue #31、KASUGAI Canvas `web/shared/minimap.js` の移植）
   - basemap-widget（左下・永続 iframe）に「Map」トグルボタンを追加。ON で Leaflet 1.9.4（CDN 遅延ロード）の小地図をウィジェット内に表示。タイルは選択中ベースマップの `{z}/{x}/{y}` テンプレートを再利用し、非テンプレート/「(なし)」時は地理院淡色地図へフォールバック
