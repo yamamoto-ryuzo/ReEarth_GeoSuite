@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.16.0
+- 新規: **ミニマップ（俯瞰図）**（issue #31、KASUGAI Canvas `web/shared/minimap.js` の移植）
+  - basemap-widget（左下・永続 iframe）に「Map」トグルボタンを追加。ON で Leaflet 1.9.4（CDN 遅延ロード）の小地図をウィジェット内に表示。タイルは選択中ベースマップの `{z}/{x}/{y}` テンプレートを再利用し、非テンプレート/「(なし)」時は地理院淡色地図へフォールバック
+  - カメラ移動に追従: 拡張側が `reearth.camera.on('move')`（200ms スロットル・トグル ON 中のみ）で `camUpdate` を iframe へ push。表示範囲はカメラ高度・ピッチから近似フットプリント矩形を描画し、斜めすぎ/高度不明時は中心マーカー（getGlobeIntersection の注視点優先）へフォールバック
+  - クリックで `minimapFlyTo` → 拡張側が `reearth.camera.flyTo`（現高度・方位・ピッチ維持、duration 0.8s）
+  - i18n キー `minimapTitle` を全 20 ロケールへ追加
+
 ## v22.15.0
 - 新規: **レイヤ / 属性エクスポート**（issue #32、KASUGAI Canvas `web/shared/export-formats.js` + `cesium/geo-tools.js` `exportLayer`/`getLayerGeoJson` の移植）
   - 「Attributes & Values」ウィジェットにエクスポートバーを追加。対象レイヤ（ドロップダウンで選択 / All = 全ベクタレイヤ結合）を GeoJSON / CSV / TSV / KML でダウンロード
