@@ -294,23 +294,6 @@ const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','
 // applied via data-i18n-html.
 const GEO_I18N = {
   en: {
-    tabAnalysis: 'Analysis',
-    anaLosTitle: 'Line of sight',
-    anaVsTitle: 'Viewshed',
-    anaObserver: 'Observer',
-    anaTarget: 'Target',
-    anaHeightM: 'height (m)',
-    anaRadiusM: 'radius (m)',
-    anaAzimuths: 'azimuths',
-    anaSamples: 'samples',
-    anaUseCenter: 'Use view center',
-    anaRun: 'Run',
-    anaRunning: 'Running...',
-    anaVisible: 'Visible',
-    anaBlocked: 'Blocked',
-    anaNoApi: 'terrain API unavailable',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Enter observer/target as lng,lat',
     minimize:'Minimize', restore:'Restore', move:'Move', moveCamera:'Move Camera',
     tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied', importTitle:'File import', importAddFile:'Add files', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip', aiBridgeTitle:'AI Bridge (CANVAS)', aiHubLbl:'Bridge hub endpoint', aiHubTest:'Test', aiHubHint:'aiHub: sets the CANVAS geosuite-hub endpoint shared with the AI chat providers (Copilot/agent). Saved to the settings text.',
     layersTitle:'Layers', note:'Note', refresh:'Refresh', refreshTitle:'Force Refresh User Layers',
@@ -343,23 +326,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ja: {
-    tabAnalysis: '解析',
-    anaLosTitle: '見通し',
-    anaVsTitle: '可視領域',
-    anaObserver: '観測点',
-    anaTarget: '対象点',
-    anaHeightM: '高さ (m)',
-    anaRadiusM: '半径 (m)',
-    anaAzimuths: '方位数',
-    anaSamples: 'サンプル数',
-    anaUseCenter: 'ビュー中心を使用',
-    anaRun: '実行',
-    anaRunning: '計算中...',
-    anaVisible: '見通しあり',
-    anaBlocked: '遮蔽',
-    anaNoApi: '地形APIが利用不可',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: '観測点/対象点を lng,lat で入力',
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
     tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました', importTitle:'ファイル取り込み', importAddFile:'ファイルを追加', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip', aiBridgeTitle:'AIブリッジ (CANVAS)', aiHubLbl:'ブリッジハブのエンドポイント', aiHubTest:'疎通確認', aiHubHint:'aiHub: は CANVAS ブリッジハブの接続先で、AIチャットのプロバイダ（Copilot/エージェント）と共有されます。設定テキストに保存されます。',
     layersTitle:'レイヤー', note:'注意', refresh:'更新', refreshTitle:'ユーザーレイヤーを強制更新',
@@ -392,23 +358,6 @@ const GEO_I18N = {
     exportBtn:'エクスポート', exportDone:'{file} を保存（{count} 地物）', exportFail:'エクスポートに失敗しました', exportFmtTitle:'出力形式'
   },
   'zh-CN': {
-    tabAnalysis: '分析',
-    anaLosTitle: '通视',
-    anaVsTitle: '可视域',
-    anaObserver: '观测点',
-    anaTarget: '目标点',
-    anaHeightM: '高度 (m)',
-    anaRadiusM: '半径 (m)',
-    anaAzimuths: '方位数',
-    anaSamples: '采样数',
-    anaUseCenter: '使用视图中心',
-    anaRun: '运行',
-    anaRunning: '计算中...',
-    anaVisible: '通视',
-    anaBlocked: '被遮挡',
-    anaNoApi: '地形API不可用',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: '请以 lng,lat 输入观测点/目标点',
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
     tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性', tabDisplay:'显示', manageTitle:'管理', manageInspectorLbl:'设置文本', manageApply:'应用', manageApplied:'已应用', importTitle:'文件导入', importAddFile:'添加文件', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'图层', note:'注意', refresh:'刷新', refreshTitle:'强制刷新用户图层',
@@ -441,23 +390,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   'zh-TW': {
-    tabAnalysis: '分析',
-    anaLosTitle: '通視',
-    anaVsTitle: '可視域',
-    anaObserver: '觀測點',
-    anaTarget: '目標點',
-    anaHeightM: '高度 (m)',
-    anaRadiusM: '半徑 (m)',
-    anaAzimuths: '方位數',
-    anaSamples: '取樣數',
-    anaUseCenter: '使用視圖中心',
-    anaRun: '執行',
-    anaRunning: '計算中...',
-    anaVisible: '通視',
-    anaBlocked: '被遮蔽',
-    anaNoApi: '地形API不可用',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: '請以 lng,lat 輸入觀測點/目標點',
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
     tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性', tabDisplay:'顯示', manageTitle:'管理', manageInspectorLbl:'設定文字', manageApply:'套用', manageApplied:'已套用', importTitle:'檔案匯入', importAddFile:'新增檔案', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'圖層', note:'注意', refresh:'重新整理', refreshTitle:'強制重新整理使用者圖層',
@@ -490,23 +422,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ko: {
-    tabAnalysis: '분석',
-    anaLosTitle: '가시선',
-    anaVsTitle: '가시권',
-    anaObserver: '관측점',
-    anaTarget: '대상점',
-    anaHeightM: '높이 (m)',
-    anaRadiusM: '반경 (m)',
-    anaAzimuths: '방위 수',
-    anaSamples: '샘플 수',
-    anaUseCenter: '뷰 중심 사용',
-    anaRun: '실행',
-    anaRunning: '계산 중...',
-    anaVisible: '가시',
-    anaBlocked: '차단됨',
-    anaNoApi: '지형 API 사용 불가',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: '관측점/대상점을 lng,lat로 입력',
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
     tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성', tabDisplay:'표시', manageTitle:'관리', manageInspectorLbl:'설정 텍스트', manageApply:'적용', manageApplied:'적용됨', importTitle:'파일 가져오기', importAddFile:'파일 추가', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'레이어', note:'주의', refresh:'새로고침', refreshTitle:'사용자 레이어 강제 새로고침',
@@ -539,23 +454,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   es: {
-    tabAnalysis: 'Analisis',
-    anaLosTitle: 'Linea de vision',
-    anaVsTitle: 'Cuenca visual',
-    anaObserver: 'Observador',
-    anaTarget: 'Objetivo',
-    anaHeightM: 'altura (m)',
-    anaRadiusM: 'radio (m)',
-    anaAzimuths: 'acimuts',
-    anaSamples: 'muestras',
-    anaUseCenter: 'Usar centro de vista',
-    anaRun: 'Ejecutar',
-    anaRunning: 'Calculando...',
-    anaVisible: 'Visible',
-    anaBlocked: 'Bloqueado',
-    anaNoApi: 'API de terreno no disponible',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Introduzca observador/objetivo como lng,lat',
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
     tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.', tabDisplay:'Vista', manageTitle:'Gestión', manageInspectorLbl:'Texto de configuración', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar archivo', importAddFile:'Agregar archivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Capas', note:'Nota', refresh:'Actualizar', refreshTitle:'Forzar actualización de capas de usuario',
@@ -588,23 +486,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   fr: {
-    tabAnalysis: 'Analyse',
-    anaLosTitle: 'Ligne de visee',
-    anaVsTitle: 'Bassin visuel',
-    anaObserver: 'Observateur',
-    anaTarget: 'Cible',
-    anaHeightM: 'hauteur (m)',
-    anaRadiusM: 'rayon (m)',
-    anaAzimuths: 'azimuts',
-    anaSamples: 'echantillons',
-    anaUseCenter: 'Centre de la vue',
-    anaRun: 'Executer',
-    anaRunning: 'Calcul...',
-    anaVisible: 'Visible',
-    anaBlocked: 'Masque',
-    anaNoApi: 'API terrain indisponible',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Saisir observateur/cible en lng,lat',
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
     tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.', tabDisplay:'Affichage', manageTitle:'Gestion', manageInspectorLbl:'Texte de configuration', manageApply:'Appliquer', manageApplied:'Appliqué', importTitle:'Importer un fichier', importAddFile:'Ajouter des fichiers', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Couches', note:'Note', refresh:'Actualiser', refreshTitle:'Forcer l’actualisation des couches',
@@ -637,23 +518,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   de: {
-    tabAnalysis: 'Analyse',
-    anaLosTitle: 'Sichtlinie',
-    anaVsTitle: 'Sichtfeld',
-    anaObserver: 'Beobachter',
-    anaTarget: 'Ziel',
-    anaHeightM: 'Hoehe (m)',
-    anaRadiusM: 'Radius (m)',
-    anaAzimuths: 'Azimute',
-    anaSamples: 'Samples',
-    anaUseCenter: 'Ansichtszentrum',
-    anaRun: 'Start',
-    anaRunning: 'Berechnung...',
-    anaVisible: 'Sichtbar',
-    anaBlocked: 'Verdeckt',
-    anaNoApi: 'Terrain-API nicht verfuegbar',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Beobachter/Ziel als lng,lat eingeben',
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
     tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.', tabDisplay:'Anzeige', manageTitle:'Verwaltung', manageInspectorLbl:'Einstellungstext', manageApply:'Anwenden', manageApplied:'Angewendet', importTitle:'Datei importieren', importAddFile:'Dateien hinzufügen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layer', note:'Hinweis', refresh:'Aktualisieren', refreshTitle:'Benutzer-Layer neu laden',
@@ -686,23 +550,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   it: {
-    tabAnalysis: 'Analisi',
-    anaLosTitle: 'Linea di vista',
-    anaVsTitle: 'Viewshed',
-    anaObserver: 'Osservatore',
-    anaTarget: 'Obiettivo',
-    anaHeightM: 'altezza (m)',
-    anaRadiusM: 'raggio (m)',
-    anaAzimuths: 'azimut',
-    anaSamples: 'campioni',
-    anaUseCenter: 'Usa centro vista',
-    anaRun: 'Esegui',
-    anaRunning: 'Calcolo...',
-    anaVisible: 'Visibile',
-    anaBlocked: 'Bloccato',
-    anaNoApi: 'API terreno non disponibile',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Inserire osservatore/obiettivo come lng,lat',
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
     tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.', tabDisplay:'Vista', manageTitle:'Gestione', manageInspectorLbl:'Testo di configurazione', manageApply:'Applica', manageApplied:'Applicato', importTitle:'Importa file', importAddFile:'Aggiungi file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layer', note:'Nota', refresh:'Aggiorna', refreshTitle:'Forza aggiornamento layer utente',
@@ -735,23 +582,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   pt: {
-    tabAnalysis: 'Analise',
-    anaLosTitle: 'Linha de visada',
-    anaVsTitle: 'Viewshed',
-    anaObserver: 'Observador',
-    anaTarget: 'Alvo',
-    anaHeightM: 'altura (m)',
-    anaRadiusM: 'raio (m)',
-    anaAzimuths: 'azimutes',
-    anaSamples: 'amostras',
-    anaUseCenter: 'Usar centro da vista',
-    anaRun: 'Executar',
-    anaRunning: 'Calculando...',
-    anaVisible: 'Visivel',
-    anaBlocked: 'Bloqueado',
-    anaNoApi: 'API de terreno indisponivel',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Insira observador/alvo como lng,lat',
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
     tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.', tabDisplay:'Exibição', manageTitle:'Gestão', manageInspectorLbl:'Texto de configuração', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar arquivo', importAddFile:'Adicionar arquivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Camadas', note:'Nota', refresh:'Atualizar', refreshTitle:'Forçar atualização das camadas',
@@ -784,23 +614,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ru: {
-    tabAnalysis: 'Анализ',
-    anaLosTitle: 'Линия визирования',
-    anaVsTitle: 'Зона видимости',
-    anaObserver: 'Наблюдатель',
-    anaTarget: 'Цель',
-    anaHeightM: 'высота (м)',
-    anaRadiusM: 'радиус (м)',
-    anaAzimuths: 'азимуты',
-    anaSamples: 'выборки',
-    anaUseCenter: 'Центр вида',
-    anaRun: 'Запуск',
-    anaRunning: 'Вычисление...',
-    anaVisible: 'Видно',
-    anaBlocked: 'Закрыто',
-    anaNoApi: 'API рельефа недоступен',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Введите наблюдателя/цель как lng,lat',
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
     tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.', tabDisplay:'Вид', manageTitle:'Управление', manageInspectorLbl:'Текст настроек', manageApply:'Применить', manageApplied:'Применено', importTitle:'Импорт файла', importAddFile:'Добавить файлы', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Слои', note:'Примечание', refresh:'Обновить', refreshTitle:'Принудительно обновить слои',
@@ -833,23 +646,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   nl: {
-    tabAnalysis: 'Analyse',
-    anaLosTitle: 'Zichtlijn',
-    anaVsTitle: 'Zichtveld',
-    anaObserver: 'Waarnemer',
-    anaTarget: 'Doel',
-    anaHeightM: 'hoogte (m)',
-    anaRadiusM: 'straal (m)',
-    anaAzimuths: 'azimuts',
-    anaSamples: 'samples',
-    anaUseCenter: 'Beeldcentrum gebruiken',
-    anaRun: 'Uitvoeren',
-    anaRunning: 'Berekenen...',
-    anaVisible: 'Zichtbaar',
-    anaBlocked: 'Geblokkeerd',
-    anaNoApi: 'terrein-API niet beschikbaar',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Voer waarnemer/doel in als lng,lat',
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
     tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.', tabDisplay:'Weergave', manageTitle:'Beheer', manageInspectorLbl:'Instellingentekst', manageApply:'Toepassen', manageApplied:'Toegepast', importTitle:'Bestand importeren', importAddFile:'Bestanden toevoegen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lagen', note:'Let op', refresh:'Vernieuwen', refreshTitle:'Gebruikerslagen geforceerd vernieuwen',
@@ -882,23 +678,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   pl: {
-    tabAnalysis: 'Analiza',
-    anaLosTitle: 'Linia widzenia',
-    anaVsTitle: 'Widocznosc',
-    anaObserver: 'Obserwator',
-    anaTarget: 'Cel',
-    anaHeightM: 'wysokosc (m)',
-    anaRadiusM: 'promien (m)',
-    anaAzimuths: 'azymuty',
-    anaSamples: 'probki',
-    anaUseCenter: 'Uzyj srodka widoku',
-    anaRun: 'Uruchom',
-    anaRunning: 'Obliczanie...',
-    anaVisible: 'Widoczny',
-    anaBlocked: 'Zasloniety',
-    anaNoApi: 'API terenu niedostepne',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Wpisz obserwatora/cel jako lng,lat',
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
     tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.', tabDisplay:'Widok', manageTitle:'Zarządzanie', manageInspectorLbl:'Tekst ustawień', manageApply:'Zastosuj', manageApplied:'Zastosowano', importTitle:'Import pliku', importAddFile:'Dodaj pliki', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Warstwy', note:'Uwaga', refresh:'Odśwież', refreshTitle:'Wymuś odświeżenie warstw użytkownika',
@@ -931,23 +710,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   uk: {
-    tabAnalysis: 'Аналіз',
-    anaLosTitle: 'Лінія огляду',
-    anaVsTitle: 'Зона видимості',
-    anaObserver: 'Спостерігач',
-    anaTarget: 'Ціль',
-    anaHeightM: 'висота (м)',
-    anaRadiusM: 'радіус (м)',
-    anaAzimuths: 'азимути',
-    anaSamples: 'зразки',
-    anaUseCenter: 'Центр виду',
-    anaRun: 'Запуск',
-    anaRunning: 'Обчислення...',
-    anaVisible: 'Видно',
-    anaBlocked: 'Закрито',
-    anaNoApi: 'API рельєфу недоступний',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Введіть спостерігача/ціль як lng,lat',
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
     tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.', tabDisplay:'Вигляд', manageTitle:'Керування', manageInspectorLbl:'Текст налаштувань', manageApply:'Застосувати', manageApplied:'Застосовано', importTitle:'Імпорт файлу', importAddFile:'Додати файли', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Шари', note:'Примітка', refresh:'Оновити', refreshTitle:'Примусово оновити шари користувача',
@@ -980,23 +742,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   tr: {
-    tabAnalysis: 'Analiz',
-    anaLosTitle: 'Gorus hatti',
-    anaVsTitle: 'Gorus alani',
-    anaObserver: 'Gozlemci',
-    anaTarget: 'Hedef',
-    anaHeightM: 'yukseklik (m)',
-    anaRadiusM: 'yaricap (m)',
-    anaAzimuths: 'azimutlar',
-    anaSamples: 'ornekler',
-    anaUseCenter: 'Gorunum merkezini kullan',
-    anaRun: 'Calistir',
-    anaRunning: 'Hesaplaniyor...',
-    anaVisible: 'Gorunur',
-    anaBlocked: 'Engellendi',
-    anaNoApi: 'arazi API kullanilamiyor',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Gozlemci/hedefi lng,lat olarak girin',
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
     tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik', tabDisplay:'Görünüm', manageTitle:'Yönetim', manageInspectorLbl:'Ayar metni', manageApply:'Uygula', manageApplied:'Uygulandı', importTitle:'Dosya içe aktar', importAddFile:'Dosya ekle', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Katmanlar', note:'Not', refresh:'Yenile', refreshTitle:'Kullanıcı katmanlarını zorla yenile',
@@ -1029,23 +774,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ar: {
-    tabAnalysis: 'تحليل',
-    anaLosTitle: 'خط الرؤية',
-    anaVsTitle: 'نطاق الرؤية',
-    anaObserver: 'نقطة المراقبة',
-    anaTarget: 'الهدف',
-    anaHeightM: 'الارتفاع (م)',
-    anaRadiusM: 'نصف القطر (م)',
-    anaAzimuths: 'الاتجاهات',
-    anaSamples: 'العينات',
-    anaUseCenter: 'استخدام مركز العرض',
-    anaRun: 'تشغيل',
-    anaRunning: 'جار الحساب...',
-    anaVisible: 'مرئي',
-    anaBlocked: 'محجوب',
-    anaNoApi: 'واجهة التضاريس غير متاحة',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'أدخل المراقب/الهدف كـ lng,lat',
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
     tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص', tabDisplay:'عرض', manageTitle:'إدارة', manageInspectorLbl:'نص الإعدادات', manageApply:'تطبيق', manageApplied:'تم التطبيق', importTitle:'استيراد ملف', importAddFile:'إضافة ملفات', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'الطبقات', note:'ملاحظة', refresh:'تحديث', refreshTitle:'فرض تحديث طبقات المستخدم',
@@ -1078,23 +806,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   hi: {
-    tabAnalysis: 'विश्लेषण',
-    anaLosTitle: 'दृष्टि रेखा',
-    anaVsTitle: 'दृश्य क्षेत्र',
-    anaObserver: 'प्रेक्षक',
-    anaTarget: 'लक्ष्य',
-    anaHeightM: 'ऊँचाई (m)',
-    anaRadiusM: 'त्रिज्या (m)',
-    anaAzimuths: 'दिशांश',
-    anaSamples: 'नमूने',
-    anaUseCenter: 'दृश्य केंद्र उपयोग करें',
-    anaRun: 'चलाएँ',
-    anaRunning: 'गणना जारी...',
-    anaVisible: 'दृश्यमान',
-    anaBlocked: 'अवरुद्ध',
-    anaNoApi: 'terrain API उपलब्ध नहीं',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'प्रेक्षक/लक्ष्य को lng,lat के रूप में दर्ज करें',
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
     tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ', tabDisplay:'प्रदर्शन', manageTitle:'प्रबंधन', manageInspectorLbl:'सेटिंग टेक्स्ट', manageApply:'लागू करें', manageApplied:'लागू किया गया', importTitle:'फ़ाइल आयात', importAddFile:'फ़ाइलें जोड़ें', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'लेयर', note:'नोट', refresh:'रीफ़्रेश', refreshTitle:'उपयोगकर्ता लेयर ज़बरदस्ती रीफ़्रेश',
@@ -1127,23 +838,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   id: {
-    tabAnalysis: 'Analisis',
-    anaLosTitle: 'Garis pandang',
-    anaVsTitle: 'Viewshed',
-    anaObserver: 'Pengamat',
-    anaTarget: 'Target',
-    anaHeightM: 'tinggi (m)',
-    anaRadiusM: 'radius (m)',
-    anaAzimuths: 'azimut',
-    anaSamples: 'sampel',
-    anaUseCenter: 'Pakai pusat tampilan',
-    anaRun: 'Jalankan',
-    anaRunning: 'Menghitung...',
-    anaVisible: 'Terlihat',
-    anaBlocked: 'Terhalang',
-    anaNoApi: 'API terrain tidak tersedia',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Masukkan pengamat/target sebagai lng,lat',
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
     tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut', tabDisplay:'Tampilan', manageTitle:'Kelola', manageInspectorLbl:'Teks pengaturan', manageApply:'Terapkan', manageApplied:'Diterapkan', importTitle:'Impor file', importAddFile:'Tambah file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lapisan', note:'Catatan', refresh:'Muat ulang', refreshTitle:'Paksa muat ulang lapisan pengguna',
@@ -1176,23 +870,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   th: {
-    tabAnalysis: 'วิเคราะห์',
-    anaLosTitle: 'เส้นสายตา',
-    anaVsTitle: 'พื้นที่มองเห็น',
-    anaObserver: 'จุดสังเกต',
-    anaTarget: 'เป้าหมาย',
-    anaHeightM: 'ความสูง (m)',
-    anaRadiusM: 'รัศมี (m)',
-    anaAzimuths: 'จำนวนอะซิมัท',
-    anaSamples: 'จำนวนตัวอย่าง',
-    anaUseCenter: 'ใช้กึ่งกลางมุมมอง',
-    anaRun: 'เรียกใช้',
-    anaRunning: 'กำลังคำนวณ...',
-    anaVisible: 'มองเห็น',
-    anaBlocked: 'ถูกบัง',
-    anaNoApi: 'ไม่มี API ภูมิประเทศ',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'ป้อนจุดสังเกต/เป้าหมายเป็น lng,lat',
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
     tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ', tabDisplay:'การแสดง', manageTitle:'จัดการ', manageInspectorLbl:'ข้อความการตั้งค่า', manageApply:'ใช้', manageApplied:'ใช้แล้ว', importTitle:'นำเข้าไฟล์', importAddFile:'เพิ่มไฟล์', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'เลเยอร์', note:'หมายเหตุ', refresh:'รีเฟรช', refreshTitle:'บังคับรีเฟรชเลเยอร์ผู้ใช้',
@@ -1225,23 +902,6 @@ const GEO_I18N = {
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   vi: {
-    tabAnalysis: 'Phan tich',
-    anaLosTitle: 'Tam nhin',
-    anaVsTitle: 'Vung nhin thay',
-    anaObserver: 'Diem quan sat',
-    anaTarget: 'Dich',
-    anaHeightM: 'cao (m)',
-    anaRadiusM: 'ban kinh (m)',
-    anaAzimuths: 'so phuong vi',
-    anaSamples: 'so mau',
-    anaUseCenter: 'Dung tam khung nhin',
-    anaRun: 'Chay',
-    anaRunning: 'Dang tinh...',
-    anaVisible: 'Nhin thay',
-    anaBlocked: 'Bi che',
-    anaNoApi: 'API dia hinh khong kha dung',
-    anaLngLatPh: 'lng,lat',
-    anaNeedPts: 'Nhap quan sat/dich dang lng,lat',
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
     tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính', tabDisplay:'Hiển thị', manageTitle:'Quản lý', manageInspectorLbl:'Văn bản cài đặt', manageApply:'Áp dụng', manageApplied:'Đã áp dụng', importTitle:'Nhập tệp', importAddFile:'Thêm tệp', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lớp', note:'Lưu ý', refresh:'Làm mới', refreshTitle:'Bắt buộc làm mới lớp người dùng',
@@ -2155,7 +1815,6 @@ function getUI() {
     <button class="tab active" data-target="layers-panel" aria-selected="true" data-i18n="tabLayers">Layers</button>
     <button class="tab" data-target="legend-panel" aria-selected="false" data-i18n="tabLegend">Legend</button>
     <button class="tab" data-target="search-panel" aria-selected="false" data-i18n="tabSearch">Search</button>
-    <button class="tab" data-target="analysis-panel" aria-selected="false" data-i18n="tabAnalysis">Analysis</button>
     <button class="tab" data-target="attr-panel" aria-selected="false" data-i18n="tabAttr">Attr</button>
     <button class="tab" data-target="cams-panel" aria-selected="false" data-i18n="tabCams">Cams</button>
     <button class="tab" data-target="settings-panel" aria-selected="false" data-i18n="tabDisplay">Display</button>
@@ -2538,38 +2197,6 @@ function getUI() {
     <div id="legend-instruction" class="text-sm" style="color:#888;padding:8px 0;font-size:0.8em;" data-i18n="legendInstr">
       Add "legend: ImageURL" to inspector text.
     </div>
-  </div>
-
-  <div id="analysis-panel" style="display:none;">
-    <div style="font-weight:600;margin-bottom:6px;" data-i18n="anaLosTitle">Line of sight</div>
-    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
-      <span style="min-width:58px;font-size:0.85em;" data-i18n="anaObserver">Observer</span>
-      <input id="ana-los-obs" type="text" style="flex:1;min-width:0;" data-i18n-ph="anaLngLatPh" placeholder="lng,lat">
-      <button id="ana-los-obsc" type="button" class="btn-primary p-6" data-i18n-title="anaUseCenter" title="Use view center">&#9678;</button>
-      <input id="ana-los-obsh" type="number" value="1.5" step="0.5" style="width:56px;" data-i18n-title="anaHeightM" title="height (m)">
-    </div>
-    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
-      <span style="min-width:58px;font-size:0.85em;" data-i18n="anaTarget">Target</span>
-      <input id="ana-los-tgt" type="text" style="flex:1;min-width:0;" data-i18n-ph="anaLngLatPh" placeholder="lng,lat">
-      <button id="ana-los-tgtc" type="button" class="btn-primary p-6" data-i18n-title="anaUseCenter" title="Use view center">&#9678;</button>
-      <input id="ana-los-tgth" type="number" value="0" step="0.5" style="width:56px;" data-i18n-title="anaHeightM" title="height (m)">
-    </div>
-    <button id="ana-los-run" type="button" class="btn-primary p-6" style="width:100%;margin-bottom:10px;" data-i18n="anaRun">Run</button>
-    <div style="font-weight:600;margin-bottom:6px;" data-i18n="anaVsTitle">Viewshed</div>
-    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
-      <span style="min-width:58px;font-size:0.85em;" data-i18n="anaObserver">Observer</span>
-      <input id="ana-vs-obs" type="text" style="flex:1;min-width:0;" data-i18n-ph="anaLngLatPh" placeholder="lng,lat">
-      <button id="ana-vs-obsc" type="button" class="btn-primary p-6" data-i18n-title="anaUseCenter" title="Use view center">&#9678;</button>
-      <input id="ana-vs-obsh" type="number" value="1.5" step="0.5" style="width:56px;" data-i18n-title="anaHeightM" title="height (m)">
-    </div>
-    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
-      <input id="ana-vs-tgth" type="number" value="0" step="0.5" style="width:56px;flex:0 0 auto;" data-i18n-title="anaHeightM" title="target height (m)">
-      <input id="ana-vs-radius" type="number" value="3000" step="500" style="width:78px;flex:1 1 auto;min-width:0;" data-i18n-title="anaRadiusM" title="radius (m)">
-      <input id="ana-vs-az" type="number" value="72" step="8" style="width:62px;flex:0 0 auto;" data-i18n-title="anaAzimuths" title="azimuths">
-      <input id="ana-vs-samples" type="number" value="64" step="8" style="width:62px;flex:0 0 auto;" data-i18n-title="anaSamples" title="samples">
-    </div>
-    <button id="ana-vs-run" type="button" class="btn-primary p-6" style="width:100%;" data-i18n="anaRun">Run</button>
-    <div id="ana-status" style="font-size:0.8em;color:#555;margin-top:6px;"></div>
   </div>
 
   <div id="attr-panel" style="display:none;">
@@ -6443,18 +6070,6 @@ function qmlStyleToReearth(xmlText, opts){
                     const p = window._flyPendingSample && window._flyPendingSample[msg.reqId];
                     if (p) { delete window._flyPendingSample[msg.reqId]; p(msg.heights || []); }
                   } catch (e) {}
-                } else if (msg.action === 'anaSampleResult') {
-                  try {
-                    const ap = window._anaPendingSample && window._anaPendingSample[msg.reqId];
-                    if (ap) { delete window._anaPendingSample[msg.reqId]; ap(msg.heights || null); }
-                  } catch (e) {}
-                } else if (msg.action === 'anaViewCenterResult') {
-                  try {
-                    const aq = window._anaPendingVc && window._anaPendingVc[msg.reqId];
-                    if (aq) { delete window._anaPendingVc[msg.reqId]; aq(msg.pt || null); }
-                  } catch (e) {}
-                } else if (msg.action === 'anaRun') {
-                  try { anaDispatch(msg.kind, msg.params || {}, String(msg.anaId || '')); } catch (e) {}
                 } else if (msg.action === 'captureResult') {
                   try {
                     const wrap = document.getElementById('capture-result');
@@ -7462,190 +7077,6 @@ function qmlStyleToReearth(xmlText, opts){
               setTimeout(function() { if (window._flyPendingSample[reqId]) { delete window._flyPendingSample[reqId]; resolve(zeros); } }, 20000);
             });
           }
-
-          // ---------- Visibility analysis (lineOfSight / viewshed) ----------
-          // Ported from kasugai_canvas web/cesium/geo-tools.js. The extension
-          // context relays terrain sampling (viewer.tools.getTerrainHeightAsync);
-          // grid build + ENU visibility math + GeoJSON build run here (browser JS).
-          var ANA_R = 6378137.0, ANA_E2 = 6.69437999014e-3, ANA_D2R = Math.PI / 180;
-          var _anaSeq = 0;
-          window._anaPendingSample = {};
-          window._anaPendingVc = {};
-          function anaPost(o) { try { if (window.parent) window.parent.postMessage(o, '*'); } catch (e) {} }
-          function anaSetStatus(s) { var el = document.getElementById('ana-status'); if (el) el.textContent = s || ''; }
-          function anaOkH(h) { return h != null && isFinite(h); }
-          function anaToEcef(lng, lat, h) {
-            var la = lat * ANA_D2R, lo = lng * ANA_D2R;
-            var sl = Math.sin(la), N = ANA_R / Math.sqrt(1 - ANA_E2 * sl * sl), cl = Math.cos(la);
-            return [(N + h) * cl * Math.cos(lo), (N + h) * cl * Math.sin(lo), (N * (1 - ANA_E2) + h) * sl];
-          }
-          function anaToGeodetic(x, y, z) {
-            var lo = Math.atan2(y, x), p = Math.sqrt(x * x + y * y);
-            var la = Math.atan2(z, p * (1 - ANA_E2)), N = ANA_R, h = 0;
-            for (var i = 0; i < 5; i++) { var sl = Math.sin(la); N = ANA_R / Math.sqrt(1 - ANA_E2 * sl * sl); h = p / Math.cos(la) - N; la = Math.atan2(z, p * (1 - ANA_E2 * N / (N + h))); }
-            return { lng: lo / ANA_D2R, lat: la / ANA_D2R, height: h };
-          }
-          function anaDest(lng, lat, hdg, dist) {
-            var d = dist / ANA_R, la1 = lat * ANA_D2R;
-            var la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(hdg));
-            var lo2 = lng * ANA_D2R + Math.atan2(Math.sin(hdg) * Math.sin(d) * Math.cos(la1), Math.cos(d) - Math.sin(la1) * Math.sin(la2));
-            return { lng: lo2 / ANA_D2R, lat: la2 / ANA_D2R };
-          }
-          function anaLlaVec(lng, lat) { var la = lat * ANA_D2R, lo = lng * ANA_D2R; return [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)]; }
-          function anaVecLla(v) { return { lng: Math.atan2(v[1], v[0]) / ANA_D2R, lat: Math.atan2(v[2], Math.sqrt(v[0] * v[0] + v[1] * v[1])) / ANA_D2R }; }
-          function anaSlerp(a, b, f) {
-            var va = anaLlaVec(a.lng, a.lat), vb = anaLlaVec(b.lng, b.lat);
-            var om = Math.acos(Math.min(1, Math.max(-1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2])));
-            if (om < 1e-9) return { lng: a.lng, lat: a.lat };
-            var s0 = Math.sin((1 - f) * om) / Math.sin(om), s1 = Math.sin(f * om) / Math.sin(om);
-            return anaVecLla([va[0] * s0 + vb[0] * s1, va[1] * s0 + vb[1] * s1, va[2] * s0 + vb[2] * s1]);
-          }
-          function anaDistM(a, b) {
-            var la1 = a.lat * ANA_D2R, la2 = b.lat * ANA_D2R, dla = la2 - la1, dlo = (b.lng - a.lng) * ANA_D2R;
-            var h = Math.sin(dla / 2) * Math.sin(dla / 2) + Math.cos(la1) * Math.cos(la2) * Math.sin(dlo / 2) * Math.sin(dlo / 2);
-            return 2 * ANA_R * Math.asin(Math.min(1, Math.sqrt(h)));
-          }
-          // Single-shot terrain sampling relayed through the extension context.
-          function anaSampleTerrain(pts, cb) {
-            var reqId = 'ana' + (++_anaSeq);
-            window._anaPendingSample[reqId] = cb;
-            anaPost({ action: 'anaSample', reqId: reqId, pts: pts });
-            setTimeout(function () { if (window._anaPendingSample[reqId]) { delete window._anaPendingSample[reqId]; cb(null); } }, 180000);
-          }
-          function anaNum(v, d) { var n = Number(v); return isFinite(n) ? n : d; }
-          function anaPt(o, alt1, alt2) {
-            var l = (o && o.lng !== undefined) ? o.lng : alt1;
-            var a = (o && o.lat !== undefined) ? o.lat : alt2;
-            var lng = Number(l), lat = Number(a);
-            return (isFinite(lng) && isFinite(lat)) ? { lng: lng, lat: lat } : null;
-          }
-          function anaDispatch(kind, params, anaId) {
-            var finish = function (res) {
-              res = res || {};
-              if (res.error) anaSetStatus('Error: ' + res.error);
-              else if (kind === 'los') anaSetStatus(res.visible ? t('anaVisible') + ' (' + res.distM + ' m)' : t('anaBlocked') + ' @ ' + res.blockedDistM + ' m');
-              else anaSetStatus('visible ' + (res.counts && res.counts.visible) + ' / blocked ' + (res.counts && res.counts.blocked));
-              anaPost({ action: 'anaFinish', anaId: anaId, ok: !res.error, result: res, layers: res.layers || [] });
-            };
-            try { if (kind === 'los') anaRunLos(params || {}, finish); else anaRunVs(params || {}, finish); }
-            catch (e) { finish({ error: String((e && e.message) || e) }); }
-          }
-          function anaRunLos(params, done) {
-            var o = anaPt(params.observer, params.observerLng, params.observerLat);
-            var g = anaPt(params.target, params.targetLng, params.targetLat);
-            if (!o || !g) return done({ error: 'observer/target lng,lat required' });
-            var obsH = anaNum(params.observerHeight, 1.5), tgtH = anaNum(params.targetHeight, 0);
-            var N = Math.round(Math.min(512, Math.max(32, anaNum(params.samples, 160))));
-            var pts = [];
-            for (var i = 0; i <= N; i++) pts.push(anaSlerp(o, g, i / N));
-            anaSetStatus(t('anaRunning'));
-            anaSampleTerrain(pts, function (terr) {
-              if (!terr || !terr.length) return done({ error: 'terrain sampling failed or unavailable' });
-              var g0 = anaOkH(terr[0]) ? terr[0] : 0, gN = anaOkH(terr[N]) ? terr[N] : 0;
-              var A = anaToEcef(o.lng, o.lat, g0 + obsH), B = anaToEcef(g.lng, g.lat, gN + tgtH);
-              var blocked = -1, bp = null, bh = 0, midGd = null;
-              for (var i = 1; i < N; i++) {
-                var f = i / N;
-                var gd = anaToGeodetic(A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f);
-                if (anaOkH(terr[i]) && terr[i] > gd.height) { blocked = i; bp = pts[i]; bh = terr[i]; midGd = gd; break; }
-              }
-              var start = [o.lng, o.lat, g0 + obsH], end = [g.lng, g.lat, gN + tgtH];
-              var layers = [];
-              if (blocked < 0) {
-                layers.push({ title: 'LOS sight (visible)', appearance: { polyline: { strokeColor: '#32cd32', strokeWidth: 3 } }, geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { kind: 'los', visible: true }, geometry: { type: 'LineString', coordinates: [start, end] } }] } });
-              } else {
-                var mid = [midGd.lng, midGd.lat, midGd.height];
-                layers.push({ title: 'LOS sight (visible part)', appearance: { polyline: { strokeColor: '#32cd32', strokeWidth: 3 } }, geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { kind: 'los', visible: true }, geometry: { type: 'LineString', coordinates: [start, mid] } }] } });
-                layers.push({ title: 'LOS sight (blocked part)', appearance: { polyline: { strokeColor: '#eb3232', strokeWidth: 3 }, marker: { pointColor: '#eb3232', pointSize: 10 } }, geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { kind: 'los', visible: false }, geometry: { type: 'LineString', coordinates: [mid, end] } }, { type: 'Feature', properties: { kind: 'blockPoint' }, geometry: { type: 'Point', coordinates: [bp.lng, bp.lat, bh + 1] } }] } });
-              }
-              layers.push({ title: 'LOS endpoints', appearance: { marker: { pointColor: '#1e90ff', pointSize: 8 } }, geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { kind: 'observer' }, geometry: { type: 'Point', coordinates: start } }, { type: 'Feature', properties: { kind: 'target' }, geometry: { type: 'Point', coordinates: end } }] } });
-              done({ ok: true, visible: blocked < 0, distM: Math.round(anaDistM(o, g)), blockedDistM: blocked < 0 ? null : Math.round(anaDistM(o, bp)), blockedAt: blocked < 0 ? null : { lng: bp.lng, lat: bp.lat, height: bh }, layers: layers });
-            });
-          }
-          function anaRunVs(params, done) {
-            var o = anaPt(params.observer, params.observerLng, params.observerLat);
-            if (!o) return done({ error: 'observer lng,lat required' });
-            var obsH = anaNum(params.observerHeight, 1.5), tgtH = anaNum(params.targetHeight, 0);
-            var clamp = function (v, d, lo, hi) { return Math.round(Math.min(hi, Math.max(lo, anaNum(v, d)))); };
-            var radius = clamp(params.radiusMeters, 3000, 100, 20000);
-            var A = clamp(params.azimuths, 72, 16, 180);
-            var M = clamp(params.samples, 64, 16, 160);
-            // Cost cap: keep total sampled points <= 6144 by shrinking the ray
-            // sample count first, then azimuths (mirrors Canvas resolveVsParams).
-            if (A * M > 6144) { M = Math.floor(6144 / A); if (M < 16) { M = 16; A = Math.min(180, Math.floor(6144 / M)); } }
-            var grid = [{ lng: o.lng, lat: o.lat }];
-            for (var i = 0; i < A; i++) { var hdg = (i / A) * 2 * Math.PI; for (var j = 1; j <= M; j++) grid.push(anaDest(o.lng, o.lat, hdg, radius * j / M)); }
-            anaSetStatus(t('anaRunning'));
-            anaSampleTerrain(grid, function (terr) {
-              if (!terr || !terr.length) return done({ error: 'terrain sampling failed or unavailable' });
-              var g0 = anaOkH(terr[0]) ? terr[0] : 0;
-              var eye = anaToEcef(o.lng, o.lat, g0 + obsH);
-              var la = o.lat * ANA_D2R, lo = o.lng * ANA_D2R;
-              var sl = Math.sin(la), cl = Math.cos(la), so = Math.sin(lo), co = Math.cos(lo);
-              var E = [-so, co, 0], Nv = [-sl * co, -sl * so, cl], U = [cl * co, cl * so, sl];
-              var angleAt = function (idx, h, wt) {
-                var p = anaToEcef(grid[idx].lng, grid[idx].lat, h + (wt ? tgtH : 0));
-                var dx = p[0] - eye[0], dy = p[1] - eye[1], dz = p[2] - eye[2];
-                var dE = dx * E[0] + dy * E[1] + dz * E[2], dN = dx * Nv[0] + dy * Nv[1] + dz * Nv[2], dU = dx * U[0] + dy * U[1] + dz * U[2];
-                return Math.atan2(dU, Math.sqrt(dE * dE + dN * dN));
-              };
-              var vis = [], blk = [], counts = { visible: 0, blocked: 0, unknown: 0 };
-              for (var i = 0; i < A; i++) {
-                var maxA = -Infinity;
-                for (var j = 0; j < M; j++) {
-                  var idx = 1 + i * M + j;
-                  if (!anaOkH(terr[idx])) { counts.unknown++; continue; }
-                  var ang = angleAt(idx, terr[idx], true), occ = angleAt(idx, terr[idx], false);
-                  if (ang > maxA + 1e-7) { vis.push([grid[idx].lng, grid[idx].lat, terr[idx] + 1]); counts.visible++; }
-                  else { blk.push([grid[idx].lng, grid[idx].lat, terr[idx] + 1]); counts.blocked++; }
-                  if (occ > maxA) maxA = occ;
-                }
-              }
-              var mkFc = function (coords, kind) {
-                return { type: 'FeatureCollection', features: coords.map(function (c) { return { type: 'Feature', properties: { kind: kind }, geometry: { type: 'Point', coordinates: c } }; }) };
-              };
-              var layers = [];
-              if (vis.length) layers.push({ title: 'Viewshed (visible)', appearance: { marker: { pointColor: '#32cd32', pointSize: 5 } }, geojson: mkFc(vis, 'visible') });
-              if (blk.length) layers.push({ title: 'Viewshed (blocked)', appearance: { marker: { pointColor: '#eb3232', pointSize: 5 } }, geojson: mkFc(blk, 'blocked') });
-              layers.push({ title: 'Viewshed observer', appearance: { marker: { pointColor: '#1e90ff', pointSize: 9 } }, geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { kind: 'observer' }, geometry: { type: 'Point', coordinates: [o.lng, o.lat, g0 + obsH] } }] } });
-              done({ ok: true, counts: counts, params: { radiusMeters: radius, azimuths: A, samples: M, totalPoints: 1 + A * M }, layers: layers });
-            });
-          }
-          function anaParseLngLat(id) {
-            var el = document.getElementById(id);
-            if (!el) return null;
-            var m = String(el.value || '').split(',');
-            if (m.length < 2) return null;
-            var x = parseFloat(m[0]), y = parseFloat(m[1]);
-            return (isFinite(x) && isFinite(y)) ? { lng: x, lat: y } : null;
-          }
-          function anaViewCenterInto(id) {
-            var reqId = 'anav' + (++_anaSeq);
-            window._anaPendingVc[reqId] = function (pt) {
-              if (pt) { var el = document.getElementById(id); if (el) el.value = pt.lng.toFixed(6) + ',' + pt.lat.toFixed(6); }
-            };
-            anaPost({ action: 'anaViewCenter', reqId: reqId });
-          }
-          function anaBind() {
-            var b1 = document.getElementById('ana-los-run');
-            if (b1) b1.addEventListener('click', function () {
-              var o = anaParseLngLat('ana-los-obs'), g = anaParseLngLat('ana-los-tgt');
-              if (!o || !g) { anaSetStatus(t('anaNeedPts')); return; }
-              var e1 = document.getElementById('ana-los-obsh'), e2 = document.getElementById('ana-los-tgth');
-              anaDispatch('los', { observer: o, target: g, observerHeight: e1 ? parseFloat(e1.value) : 1.5, targetHeight: e2 ? parseFloat(e2.value) : 0 }, 'ui' + (++_anaSeq));
-            });
-            var b2 = document.getElementById('ana-vs-run');
-            if (b2) b2.addEventListener('click', function () {
-              var o = anaParseLngLat('ana-vs-obs');
-              if (!o) { anaSetStatus(t('anaNeedPts')); return; }
-              var gv = function (id) { var el = document.getElementById(id); return el ? parseFloat(el.value) : NaN; };
-              anaDispatch('vs', { observer: o, observerHeight: gv('ana-vs-obsh'), targetHeight: gv('ana-vs-tgth'), radiusMeters: gv('ana-vs-radius'), azimuths: gv('ana-vs-az'), samples: gv('ana-vs-samples') }, 'ui' + (++_anaSeq));
-            });
-            var c1 = document.getElementById('ana-los-obsc'); if (c1) c1.addEventListener('click', function () { anaViewCenterInto('ana-los-obs'); });
-            var c2 = document.getElementById('ana-los-tgtc'); if (c2) c2.addEventListener('click', function () { anaViewCenterInto('ana-los-tgt'); });
-            var c3 = document.getElementById('ana-vs-obsc'); if (c3) c3.addEventListener('click', function () { anaViewCenterInto('ana-vs-obs'); });
-          }
-          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', anaBind); else anaBind();
 
           // Compute camera for route distance d and post flySetView (port of kasugai updateFlyPathCamera)
           function flyUpdateCam(d) {
@@ -11142,83 +10573,6 @@ async function flySampleTerrain(reqId, pts) {
     }
     postToUI({ action: 'flySampleResult', reqId: reqId, heights: heights });
 }
-// Terrain sampling relay for the visibility-analysis tools (issue #28) —
-// same batch pattern as flySampleTerrain, posted back as 'anaSampleResult'.
-async function anaSampleTerrain(reqId, pts) {
-    const heights = [];
-    try {
-        pts = (pts || []).slice(0, 8192);
-        if (reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function') {
-            for (let i = 0; i < pts.length; i += 16) {
-                const batch = pts.slice(i, i + 16);
-                const res = await Promise.all(batch.map(p => {
-                    try {
-                        return reearth.viewer.tools.getTerrainHeightAsync(p.lng, p.lat);
-                    }
-                    catch (e) {
-                        return Promise.resolve(undefined);
-                    }
-                }));
-                res.forEach(h => heights.push(h));
-            }
-        }
-    }
-    catch (e) {
-        try {
-            sendError('[anaSampleTerrain] error:', e);
-        }
-        catch (_) { }
-    }
-    postToUI({ action: 'anaSampleResult', reqId: reqId, heights: heights });
-}
-// Analysis finished in the UI iframe: add the result GeoJSON layers, then
-// resolve the pending AI tool call (if any) and refresh the layer list.
-function anaHandleFinish(msg) {
-    const anaId = String(msg.anaId || '');
-    const p = _anaPending[anaId];
-    if (p !== undefined)
-        delete _anaPending[anaId];
-    const result = (msg.result && typeof msg.result === 'object') ? Object.assign({}, msg.result) : {};
-    delete result.layers;
-    const layerIds = [];
-    if (msg.ok && Array.isArray(msg.layers)) {
-        msg.layers.forEach((spec) => {
-            try {
-                if (!spec || !spec.geojson)
-                    return;
-                const req = {
-                    type: "simple",
-                    title: String(spec.title || 'Analysis'),
-                    data: { type: "geojson", value: spec.geojson }
-                };
-                if (spec.appearance && typeof spec.appearance === 'object')
-                    Object.assign(req, spec.appearance);
-                const layerId = reearth.layers.add(req);
-                if (layerId) {
-                    layerIds.push(layerId);
-                    try {
-                        _pluginAddedLayerIds.add(layerId);
-                    }
-                    catch (e) { }
-                }
-            }
-            catch (e) { }
-        });
-    }
-    result.layerIds = layerIds;
-    if (p && p.senderId) {
-        if (msg.ok)
-            aiToolReply(p.senderId, p.reqId, true, result);
-        else
-            aiToolReply(p.senderId, p.reqId, false, { error: String(result.error || 'analysis failed') });
-    }
-    if (layerIds.length) {
-        try {
-            safeShowUI('anaFinish');
-        }
-        catch (e) { }
-    }
-}
 // Pending Street View verifications: svId -> { senderId, reqId } (AI tool) or
 // true (UI button). The UI iframe does the metadata fetch (the sandbox cannot).
 let _svSeq = 0;
@@ -11231,12 +10585,6 @@ const _placesPending = {};
 // Pending layer-export requests (issue #32): exId -> { senderId, reqId, geojson? }
 const _exportPending = {};
 let _exportSeq = 0;
-
-// Pending visibility-analysis runs (issue #28): anaId -> { senderId, reqId, ownReq? }.
-// The UI iframe orchestrates grid build + visibility math; the extension relays
-// terrain sampling and adds the result layers on 'anaFinish'.
-const _anaPending = {};
-let _anaSeq = 0;
 
 // Pending FlatGeobuf/GeoParquet decodes: fgId|pqId ->
 // {url,title,visible,classification,pending}. The UI iframe fetches + decodes
@@ -12784,42 +12132,6 @@ reearth.extension.on("message", (msg) => {
           try {
               if (Array.isArray(msg.pts) && msg.pts.length)
                   flySampleTerrain(msg.reqId, msg.pts);
-          }
-          catch (e) { }
-      }
-      else if (msg.action === 'anaSample') {
-          try {
-              if (Array.isArray(msg.pts) && msg.pts.length)
-                  anaSampleTerrain(msg.reqId, msg.pts);
-          }
-          catch (e) { }
-      }
-      else if (msg.action === 'anaViewCenter') {
-          try {
-              let pt = null;
-              try {
-                  if (reearth.camera && typeof reearth.camera.getGlobeIntersection === 'function') {
-                      const inter = reearth.camera.getGlobeIntersection({ withTerrain: true });
-                      if (inter && inter.center && isFinite(inter.center.lat) && isFinite(inter.center.lng))
-                          pt = { lng: inter.center.lng, lat: inter.center.lat };
-                  }
-              }
-              catch (e) { }
-              if (!pt) {
-                  try {
-                      const cur = reearth.camera && reearth.camera.position;
-                      if (cur && isFinite(cur.lat) && isFinite(cur.lng))
-                          pt = { lng: cur.lng, lat: cur.lat };
-                  }
-                  catch (e) { }
-              }
-              postToUI({ action: 'anaViewCenterResult', reqId: msg.reqId, pt: pt });
-          }
-          catch (e) { }
-      }
-      else if (msg.action === 'anaFinish') {
-          try {
-              anaHandleFinish(msg);
           }
           catch (e) { }
       }
@@ -14528,21 +13840,6 @@ function handleAiToolRequest(senderId, data) {
           scene: { backgroundColor: col },
         });
         aiToolReply(senderId, reqId, true, { color: col });
-        return;
-      }
-      case 'lineOfSight':
-      case 'viewshed': {
-        try {
-          const hasTerrain = !!(reearth.viewer && reearth.viewer.tools && typeof reearth.viewer.tools.getTerrainHeightAsync === 'function');
-          if (!hasTerrain) { fail('terrain sampling unavailable (viewer.tools.getTerrainHeightAsync missing)'); return; }
-        } catch (e) { fail('terrain sampling unavailable'); return; }
-        // Grid build + visibility math must run in the UI iframe (browser JS):
-        // extensionMessage-origin async continuations stall in this context, so
-        // the run is orchestrated there via anaRun/anaSample/anaFinish messages.
-        const anaId = 'ana' + (++_anaSeq);
-        _anaPending[anaId] = { senderId: senderId, reqId: reqId };
-        armPendingTtl(_anaPending, anaId, name, true);
-        postToOwnIframeTracked(_anaPending, anaId, { action: 'anaRun', anaId: anaId, kind: (name === 'lineOfSight' ? 'los' : 'vs'), params: args });
         return;
       }
       default:
