@@ -1,5 +1,11 @@
 # Changelog
 
+## [22.17.0] - 2026-11-15
+
+- `geojson:` レイヤ行に `where=<OGR SQL>` クライアントフィルタを追加（kasugai_canvas `web/shared/where-eval.js` を `WhereEval` として移植）。非クエリ系ベクター行でも読み込み時に地物を絞り込める
+- AI ツール `setLayerFilter` を追加: 表示中のベクター（geojson）レイヤへ後からフィルタを設定・解除できる（URL ソースは iframe フェッチ、value ソースは直接評価。属性パネル絞込みと併存）
+
+
 ## v22.16.0
 - 新規: **ミニマップ（俯瞰図）**（issue #31、KASUGAI Canvas `web/shared/minimap.js` の移植）
   - basemap-widget（左下・永続 iframe）に「Map」トグルボタンを追加。ON で Leaflet 1.9.4（CDN 遅延ロード）の小地図をウィジェット内に表示。タイルは選択中ベースマップの `{z}/{x}/{y}` テンプレートを再利用し、非テンプレート/「(なし)」時は地理院淡色地図へフォールバック
