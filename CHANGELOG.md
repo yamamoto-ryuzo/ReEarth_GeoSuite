@@ -1,5 +1,14 @@
 # Changelog
 
+## v22.18.2
+- 修正: **TOOL_DECLS 宣言済み5ツールを外部ブリッジから到達可能に**（issue #43）
+  - `searchLocation` / `flyToUrl` / `flyToCurrentLocation` / `setToolMaxSteps` / `showReport` は AI チャット iframe 内実装のため `dispatchToolCall` で `unknown tool` になっていた。新たに `CHAT_UI_TOOLS` へ登録し、`aiChatSend` 系と同じ `aiChatCmd` → `aiChatResult` 往復で chat iframe へディスパッチ。bridge `describe` の `chat` グループにも列挙（chat 系ツールは AI チャットウィジェットが開いていることが前提、`note` に明記）
+  - iframe 側 `aiChatCmd` ハンドラは当該ツール名を `executeTool`（モデル tool_call と同一ハンドラ）へ委譲し結果を `aiChatResult` で返送
+- 修正: **AI チャット iframe の inline script が SyntaxError で全滅していた既存バグ2件**（生成 HTML エスケープ罠）
+  - `attrStats` 説明文の `field\'s` が単一エスケープのため実行時に `field's` となり文字列リテラルが途切れ（v22.14.0 由来）
+  - `measureDistance`/`measureArea` 宣言の `}` が1つ過剰でオブジェクトリテラルが早期終了（v22.17.0 由来）
+  - これらにより `<script>` 全体がパース失敗し AI チャットウィジェットが無反応だった（issue #43 補足の aiChatStatus タイムアウトの実因）。合わせて `githubcopilot\.com` / `gemini-3\.1|gemini-2\.0` の正規表現内 `\.` も二重エスケープへ修正（実行時に任意文字へ緩んでいた）
+
 ## v22.18.1
 - 変更: **計測基盤の測地計算を WGS84 Vincenty 化**（issue #39、KASUGAI Canvas `web/shared/spatial-ops.js` の `geodesicInverse`/`segDistance`/`polygonArea` 移植）
   - v22.18.0（issue #40）で先行実装された計測 UI 枠組み・距離/面積モードの区間距離計算が球面ハバーシン近似だったのを、Vincenty 逆問題（非収束時ハバーシン fallback）へ置換。面積は Chamberlain–Duquette 球面公式のまま `polygonArea` として関数化、`measureHeadingDeg` も測地初方位へ統一

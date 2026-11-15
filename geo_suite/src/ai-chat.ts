@@ -105,6 +105,13 @@ const LOCAL_TOOLS = ['getCamera', 'flyTo', 'listLayers', 'setLayerVisible', 'foc
   'getShareUrl', 'buildShareUrl', 'setCamera', 'lookAt', 'zoomIn', 'zoomOut', 'openUrl',
   'listInstructions', 'readInstruction', 'saveInstruction', 'deleteInstruction', 'selectAgents'];
 
+// Tools executed inside the chat UI iframe: chat control plus the TOOL_DECLS
+// entries implemented in iframe context (DOM modal, geolocation, iframe-held
+// config). Round-trips through postToUI like aiChatSend — reachable via the
+// external bridge only while the AI chat widget is open.
+const CHAT_UI_TOOLS = ['aiChatSend', 'aiChatStatus', 'aiChatSet',
+  'searchLocation', 'flyToUrl', 'flyToCurrentLocation', 'setToolMaxSteps', 'showReport'];
+
 // reqIds currently forwarded to the layer panel; extensionMessage replies are routed back to the UI.
 const _pendingForward: any = {};
 
@@ -678,8 +685,8 @@ function bridgeToolCatalog(): any {
     local: LOCAL_TOOLS.slice(),
     panel: PANEL_TOOLS.slice(),
     bridge: ['describe', 'runCode', 'canvasApi'],
-    chat: ['aiChatSend', 'aiChatStatus', 'aiChatSet'],
-    note: 'Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/zoomToExtent/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack.'
+    chat: CHAT_UI_TOOLS.slice(),
+    note: 'Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/zoomToExtent/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack. chat-group tools execute inside the AI chat widget — open the AI chat panel before calling them.'
   };
 }
 
@@ -709,8 +716,9 @@ function dispatchToolCall(reqId: any, name: string, args: any, reply: (r: any) =
       }
       args._layerId = rl.id;
     }
-    // AI chat panel control — round-trips through our own UI iframe.
-    if (name === 'aiChatSend' || name === 'aiChatStatus' || name === 'aiChatSet') {
+    // Chat-iframe tools (chat control + iframe-implemented TOOL_DECLS entries)
+    // round-trip through our own UI iframe.
+    if (CHAT_UI_TOOLS.indexOf(name) >= 0) {
       _pendingForward[reqId] = { name: name, reply: reply };
       postToUI({ action: 'aiChatCmd', reqId: reqId, cmd: name, args: args });
       return;
@@ -1034,7 +1042,7 @@ const html: string = `
     { name:'searchLocation', description:'Search for a place or address by keyword (Japan GSI geocoding by default; provider "yahoo" uses Yahoo Local Search, "auto" tries Yahoo then GSI). Returns candidate names with lat/lng — call flyTo afterwards to move.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, limit:{type:'NUMBER'}, provider:{type:'STRING', description:'gsi (default) | yahoo | auto'} }, required:['query'] } },
     { name:'searchPlaces', description:'Search places/POIs worldwide via Google (Geocoding + Places Text Search, merged). Requires googleMapsApiKey in the plugin inspector. Returns names, addresses and lat/lng — call flyTo afterwards to move.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, limit:{type:'NUMBER'} }, required:['query'] } },
     { name:'vectorSearch', description:'Search loaded vector layer attributes by text (optionally filtered to one layer/attribute). Returns matching attribute/value hits with lat/lng — call flyTo or showFeatureAttributes afterwards.', parameters:{ type:'OBJECT', properties:{ query:{type:'STRING'}, layer:{type:'STRING'}, attribute:{type:'STRING'}, limit:{type:'NUMBER'} }, required:['query'] } },
-    { name:'attrStats', description:'Aggregate attributes of loaded vector layers (port of Canvas attr-stats; attribute fields, not geometry). With no field/groupBy returns {fields:{all,numeric}}; with field returns that field\'s {count,numeric,sum,min,max,avg}; with groupBy returns per-key group rows [{key,count,sum,min,max,avg,numeric}] (field = optional value field to aggregate).', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'}, field:{type:'STRING'}, groupBy:{type:'STRING'} } } },
+    { name:'attrStats', description:'Aggregate attributes of loaded vector layers (port of Canvas attr-stats; attribute fields, not geometry). With no field/groupBy returns {fields:{all,numeric}}; with field returns that field\\'s {count,numeric,sum,min,max,avg}; with groupBy returns per-key group rows [{key,count,sum,min,max,avg,numeric}] (field = optional value field to aggregate).', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'}, field:{type:'STRING'}, groupBy:{type:'STRING'} } } },
     { name:'listLayers', description:'List map layers (id, title, type, visible)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'setLayerVisible', description:'Show or hide a layer by title or id', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'}, visible:{type:'BOOLEAN'} }, required:['layer','visible'] } },
     { name:'focusLayer', description:'Fly the camera to a layer extent', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'} }, required:['layer'] } },
@@ -1093,8 +1101,8 @@ const html: string = `
     { name:'aiChatSend', description:'Send a message to the AI chat panel itself and return its reply (drives the chat)', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
     { name:'aiChatStatus', description:'Get the AI chat panel state (provider/model/key/busy)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'aiChatSet', description:'Configure the AI chat provider/endpoint/model/apiKey (persist:false to keep it session-only)', parameters:{ type:'OBJECT', properties:{ provider:{type:'STRING'}, endpoint:{type:'STRING'}, model:{type:'STRING'}, apiKey:{type:'STRING'}, apiVer:{type:'STRING'}, persist:{type:'BOOLEAN'} } } },
-    { name:'measureDistance', description:'Measure the geodesic distance along a polyline through waypoints (drawn on the map as an overlay). coords = ordered [{lat,lng},...], min 2. Returns {ok,totalMeters,segmentsMeters} or {ok:false,reason}.', parameters:{ type:'OBJECT', properties:{ coords:{type:'ARRAY', items:{type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'} } }} } }, required:['coords'] } },
-    { name:'measureArea', description:'Measure the geodesic area and perimeter of a polygon ring (drawn on the map as an overlay). coords = ordered ring vertices [{lat,lng},...], min 3; the ring closes automatically. Returns {ok,squareMeters,perimeterMeters} or {ok:false,reason}.', parameters:{ type:'OBJECT', properties:{ coords:{type:'ARRAY', items:{type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'} } }} } }, required:['coords'] } },
+    { name:'measureDistance', description:'Measure the geodesic distance along a polyline through waypoints (drawn on the map as an overlay). coords = ordered [{lat,lng},...], min 2. Returns {ok,totalMeters,segmentsMeters} or {ok:false,reason}.', parameters:{ type:'OBJECT', properties:{ coords:{type:'ARRAY', items:{type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'} } }} }, required:['coords'] } },
+    { name:'measureArea', description:'Measure the geodesic area and perimeter of a polygon ring (drawn on the map as an overlay). coords = ordered ring vertices [{lat,lng},...], min 3; the ring closes automatically. Returns {ok,squareMeters,perimeterMeters} or {ok:false,reason}.', parameters:{ type:'OBJECT', properties:{ coords:{type:'ARRAY', items:{type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'} } }} }, required:['coords'] } },
     { name:'measureBearing', description:'Measure the great-circle heading between two points and the distance between them (drawn on the map as an overlay). from/to = {lat,lng}. Returns {ok,startHeadingDeg,endHeadingDeg,distanceMeters} or {ok:false,reason}.', parameters:{ type:'OBJECT', properties:{ from:{type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'} } }, to:{type:'OBJECT', properties:{ lat:{type:'NUMBER'}, lng:{type:'NUMBER'} } } }, required:['from','to'] } },
     { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, attrStats, measureDistance, measureArea, measureBearing, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, zoomToExtent, getLayerGeoJson, exportLayer, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText, setToolMaxSteps, listInstructions, readInstruction, saveInstruction, deleteInstruction, selectAgents. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
@@ -1170,10 +1178,10 @@ const html: string = `
     if (pv === 'copilotapi') {
       // The endpoint field is the optional Copilot API base URL — a leftover
       // bridge-hub/agent URL from another provider must not be reused as it.
-      if (endpointInput && !/githubcopilot\.com/i.test(endpointInput.value)) endpointInput.value = '';
+      if (endpointInput && !/githubcopilot\\.com/i.test(endpointInput.value)) endpointInput.value = '';
       // Copilot serves claude-*/gemini-2.5-pro too — only clear names that are
       // definitely another provider's (google-only gemini names, sakura gpt-oss).
-      if (modelInput && (/^(gemini-3\.1|gemini-2\.0|gemini-1|gpt-oss|auto$)/.test(modelInput.value) || !modelInput.value.trim())) modelInput.value = 'gpt-4o';
+      if (modelInput && (/^(gemini-3\\.1|gemini-2\\.0|gemini-1|gpt-oss|auto$)/.test(modelInput.value) || !modelInput.value.trim())) modelInput.value = 'gpt-4o';
     }
     if (pv === 'sakura') {
       // Fixed endpoint provider — clear models belonging to other providers so
@@ -2629,6 +2637,18 @@ const html: string = `
           setTimeout(function() { if (_chatReplyCb) { var c = _chatReplyCb; _chatReplyCb = null; c({ error: 'chat timeout' }); } }, 120000);
           inputEl.value = String(aa.text || '');
           doSend();
+        } else if (cmd === 'searchLocation' || cmd === 'flyToUrl' || cmd === 'flyToCurrentLocation' || cmd === 'setToolMaxSteps' || cmd === 'showReport') {
+          // TOOL_DECLS tools implemented in this iframe — same handlers the
+          // model tool-call path uses, exposed to the external bridge.
+          try {
+            Promise.resolve(executeTool(cmd, aa)).then(function(r) {
+              postToParent({ action: 'aiChatResult', reqId: rid, result: (r === undefined) ? null : r });
+            }, function(e) {
+              postToParent({ action: 'aiChatResult', reqId: rid, result: { error: String(e && e.message || e) } });
+            });
+          } catch (e) {
+            postToParent({ action: 'aiChatResult', reqId: rid, result: { error: String(e && e.message || e) } });
+          }
         }
       } else if (msg.action === 'aiConfig') {
         _apiKey = (typeof msg.apiKey === 'string') ? msg.apiKey : '';
@@ -2665,7 +2685,7 @@ const html: string = `
         if (rememberEl) rememberEl.checked = (_keySource === 'storage');
         modelInput.value = _model;
         if (_provider === 'copilot' && /^gemini-/.test(modelInput.value)) modelInput.value = '';
-        if (_provider === 'copilotapi' && /^(gemini-3\.1|gemini-2\.0|gemini-1|gpt-oss|auto$)/.test(modelInput.value)) modelInput.value = 'gpt-4o';
+        if (_provider === 'copilotapi' && /^(gemini-3\\.1|gemini-2\\.0|gemini-1|gpt-oss|auto$)/.test(modelInput.value)) modelInput.value = 'gpt-4o';
         if (_provider === 'sakura' && /^(gemini-|claude-|gpt-4|o4|auto$)/.test(modelInput.value)) modelInput.value = '';
         updateKeyStatus();
         _configReceived = true;
