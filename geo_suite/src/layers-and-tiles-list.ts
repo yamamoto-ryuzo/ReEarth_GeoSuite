@@ -322,7 +322,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = ride on the route looking ahead; center (=chase) = aerial tracking of the point from behind/above.<br>Field changes apply immediately, even while flying.<br>Or press Draw and sketch a polyline on the map.',
     svOpen: 'Street View', captureBtn: 'Capture', capturedHint: 'Right-click the image to save', printTitle:"Print / Report", printTitlePh:"Map title", printA4L:"A4 landscape", printA4P:"A4 portrait", printA3L:"A3 landscape", printA3P:"A3 portrait", printDpi150:"Standard (150dpi)", printDpi300:"High (300dpi)", printOptLegend:"Legend", printOptScale:"Scale bar", printOptNorth:"North", printOptAttr:"Source", printOptDate:"Date", printDoPrint:"Print", printDoPng:"Save PNG", printCapturing:"Capturing map...", printFailed:"Map capture failed", printScalePfx:"Scale 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Optional component: geosuite-hub is not running. Install it once to speed up vector layers, lift the 4MB limit, and unlock AI bridge providers.', hubPromoBtn: 'Download geosuite-hub.zip', hubPromoWait: 'Downloaded. Extract the zip and run geosuite-hub.exe — waiting for the hub…', hubPromoOk: 'geosuite-hub detected', hubPromoRetry: 'Still not detected — extract the downloaded zip and run geosuite-hub.exe.', hubPromoSteps: 'Steps: 1) Download geosuite-hub.zip  2) Extract it  3) Run geosuite-hub.exe — auto-installs geosuite-hub + the geosuite-hub:// protocol (no admin needed).', hubPromoPrompt: 'If the browser shows a local network access prompt, click Allow — it unblocks geosuite-hub for this site.', hubPromoView: 'Open in GeoSuite viewer', hubPromoViewTitle: 'Requires one-time geosuite-hub:// registration (run geosuite-hub.exe)'
-, hubPromoExt: 'Ext', themeSelect: 'QGIS theme', pagesLabel:'Pages', pageSelect:'Apply a saved page (layer visibility)', pageNamePh:'New page name', pageSave:'Save page', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Delete page', zoomToLayer:'Zoom to layer extent', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext', themeSelect: 'QGIS theme', pagesLabel:'Pages', pageSelect:'Apply a saved page (layer visibility)', pageNamePh:'New page name', pageSave:'Save page', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Delete page', zoomToLayer:'Zoom to layer extent', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ja: {
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
@@ -353,7 +354,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名前|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=ルート上を進み前方を見る搭乗視点 / center(=chase)=後方上空から移動点を追う空撮視点。<br>入力値は再生中でも即時に反映されます。<br>または「描画」ボタンで地図上にポリラインを描きます。',
     svOpen: 'ストリートビュー', captureBtn: 'キャプチャ', capturedHint: '画像を右クリックで保存', printTitle:"印刷 / 帳票", printTitlePh:"地図タイトル", printA4L:"A4 横", printA4P:"A4 縦", printA3L:"A3 横", printA3P:"A3 縦", printDpi150:"標準 (150dpi)", printDpi300:"高精細 (300dpi)", printOptLegend:"凡例", printOptScale:"縮尺バー", printOptNorth:"方位", printOptAttr:"出典", printOptDate:"日付", printDoPrint:"印刷", printDoPng:"PNG保存", printCapturing:"地図を取得中…", printFailed:"地図画像を取得できませんでした", printScalePfx:"縮尺 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: '拡張コンポーネント: geosuite-hub が未検出です。1回導入するとベクターレイヤーが高速化し、4MB 制限が解除され、AI ブリッジ系プロバイダも使えます。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: 'geosuite-hub を検出しました', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: 'ブラウザにローカルネットワーク接続の許可プロンプトが表示されたら「許可」を押してください — このサイトで geosuite-hub が使えるようになります。', hubPromoView: 'GeoSuite viewer で開く', hubPromoViewTitle: 'geosuite-hub:// の登録が必要です（geosuite-hub.exe を実行）'
-, hubPromoExt: '拡張', themeSelect: 'QGISテーマ', pagesLabel:'ページ', pageSelect:'保存したページを適用（レイヤ表示状態）', pageNamePh:'新しいページ名', pageSave:'ページを保存', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', sqlTab:'SQL', sqlRun:'実行', sqlRunning:'実行中…', sqlAddLayer:'レイヤーとして追加', sqlTitlePh:'レイヤー名（省略可）', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm の SELECT。結果にジオメトリ列（または lon/lat 列）が必要です。:bbox は現在の表示範囲へ置換されます。ST_* 空間関数は同梱 spatial 拡張の対応範囲に依存します。', sqlErr:'エラー', sqlFeatures:'件', sqlRequested:'レイヤー追加を要求しました — レイヤータブを確認してください', pageDelete:'ページを削除', zoomToLayer:'レイヤー範囲へズーム', statsBtn:'統計', statRun:'実行', statGroupBy:'グループ化', statValue:'値フィールド', statNoGroup:'(グループ化なし)', statCountOnly:'(件数のみ)', statField:'フィールド', statKey:'キー', statCount:'件数', statNumeric:'数値', statSum:'合計', statAvg:'平均', statMin:'最小', statMax:'最大', statTruncated:'他 {n} グループ', statNoData:'データなし'
+, hubPromoExt: '拡張', themeSelect: 'QGISテーマ', pagesLabel:'ページ', pageSelect:'保存したページを適用（レイヤ表示状態）', pageNamePh:'新しいページ名', pageSave:'ページを保存', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', sqlTab:'SQL', sqlRun:'実行', sqlRunning:'実行中…', sqlAddLayer:'レイヤーとして追加', sqlTitlePh:'レイヤー名（省略可）', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm の SELECT。結果にジオメトリ列（または lon/lat 列）が必要です。:bbox は現在の表示範囲へ置換されます。ST_* 空間関数は同梱 spatial 拡張の対応範囲に依存します。', sqlErr:'エラー', sqlFeatures:'件', sqlRequested:'レイヤー追加を要求しました — レイヤータブを確認してください', pageDelete:'ページを削除', zoomToLayer:'レイヤー範囲へズーム', statsBtn:'統計', statRun:'実行', statGroupBy:'グループ化', statValue:'値フィールド', statNoGroup:'(グループ化なし)', statCountOnly:'(件数のみ)', statField:'フィールド', statKey:'キー', statCount:'件数', statNumeric:'数値', statSum:'合計', statAvg:'平均', statMin:'最小', statMax:'最大', statTruncated:'他 {n} グループ', statNoData:'データなし',
+    exportBtn:'エクスポート', exportDone:'{file} を保存（{count} 地物）', exportFail:'エクスポートに失敗しました', exportFmtTitle:'出力形式'
   },
   'zh-CN': {
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
@@ -384,7 +386,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名称|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路线前进、朝向前方的搭乘视角 / center(=chase)=从后方上空追踪移动点的航拍视角。<br>参数修改即时生效，飞行中也可调整。<br>或点击"绘制"在地图上画出折线。',
     svOpen: '街景', captureBtn: '截图', capturedHint: '右键点击图片保存', printTitle:"打印 / 报表", printTitlePh:"地图标题", printA4L:"A4 横向", printA4P:"A4 纵向", printA3L:"A3 横向", printA3P:"A3 纵向", printDpi150:"标准 (150dpi)", printDpi300:"高精度 (300dpi)", printOptLegend:"图例", printOptScale:"比例尺", printOptNorth:"指北针", printOptAttr:"来源", printOptDate:"日期", printDoPrint:"打印", printDoPng:"保存 PNG", printCapturing:"正在获取地图…", printFailed:"无法获取地图图像", printScalePfx:"比例尺 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: '可选组件：未检测到 geosuite-hub。安装一次即可加速矢量图层、解除 4MB 限制，并启用 AI 桥接提供程序。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: '已检测到 geosuite-hub', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: '如果浏览器显示本地网络访问提示，请点击"允许"— 即可在此站点启用 geosuite-hub。', hubPromoView: '在 GeoSuite viewer 中打开', hubPromoViewTitle: '需要一次性注册 geosuite-hub://（运行 geosuite-hub.exe）'
-, hubPromoExt: '扩展', pagesLabel:'页面', pageSelect:'应用已保存的页面（图层可见性）', pageNamePh:'新页面名称', pageSave:'保存页面', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'删除页面', zoomToLayer:'缩放到图层范围', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: '扩展', pagesLabel:'页面', pageSelect:'应用已保存的页面（图层可见性）', pageNamePh:'新页面名称', pageSave:'保存页面', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'删除页面', zoomToLayer:'缩放到图层范围', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   'zh-TW': {
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
@@ -415,7 +418,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:名稱|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=沿路線前進、朝向前方的搭乘視角 / center(=chase)=從後方上空追蹤移動點的空拍視角。<br>參數修改即時生效，飛行中也可調整。<br>或按「繪製」在地圖上畫出折線。',
     svOpen: '街景', captureBtn: '截圖', capturedHint: '在圖片上按右鍵儲存', printTitle:"列印 / 報表", printTitlePh:"地圖標題", printA4L:"A4 橫向", printA4P:"A4 縱向", printA3L:"A3 橫向", printA3P:"A3 縱向", printDpi150:"標準 (150dpi)", printDpi300:"高精細 (300dpi)", printOptLegend:"圖例", printOptScale:"比例尺", printOptNorth:"指北針", printOptAttr:"來源", printOptDate:"日期", printDoPrint:"列印", printDoPng:"儲存 PNG", printCapturing:"正在擷取地圖…", printFailed:"無法擷取地圖影像", printScalePfx:"比例尺 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: '可選元件：未偵測到 geosuite-hub。安裝一次即可加速向量圖層、解除 4MB 限制，並啟用 AI 橋接提供者。', hubPromoBtn: 'geosuite-hub.zip をダウンロード', hubPromoWait: 'ダウンロードしました。ZIP を展開して geosuite-hub.exe を実行してください — ハブを待機中…', hubPromoOk: '已偵測到 geosuite-hub', hubPromoRetry: 'まだ未検出です — ダウンロードした ZIP を展開して geosuite-hub.exe を実行してください。', hubPromoSteps: '手順: ① geosuite-hub.zip をダウンロード → ② 展開 → ③ geosuite-hub.exe を実行（geosuite-hub＋プロトコルを自動インストール・管理者権限不要）', hubPromoPrompt: '如果瀏覽器顯示本機網路存取提示，請點擊「允許」— 即可在此網站啟用 geosuite-hub。', hubPromoView: '在 GeoSuite viewer 中開啟', hubPromoViewTitle: '需要一次性註冊 geosuite-hub://（執行 geosuite-hub.exe）'
-, hubPromoExt: '擴充', pagesLabel:'頁面', pageSelect:'套用已儲存的頁面（圖層可見性）', pageNamePh:'新頁面名稱', pageSave:'儲存頁面', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'刪除頁面', zoomToLayer:'縮放至圖層範圍', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: '擴充', pagesLabel:'頁面', pageSelect:'套用已儲存的頁面（圖層可見性）', pageNamePh:'新頁面名稱', pageSave:'儲存頁面', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'刪除頁面', zoomToLayer:'縮放至圖層範圍', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ko: {
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
@@ -446,7 +450,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:이름|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera(=pov)=경로 위를 전진하며 전방을 보는 탑승 시점 / center(=chase)=후방 상공에서 이동 지점을 추적하는 항공 시점.<br>입력값은 재생 중에도 즉시 반영됩니다.<br>또는 「그리기」 버튼으로 지도에 폴리라인을 그립니다.',
     svOpen: '스트리트 뷰', captureBtn: '캡처', capturedHint: '이미지를 우클릭해 저장', printTitle:"인쇄 / 리포트", printTitlePh:"지도 제목", printA4L:"A4 가로", printA4P:"A4 세로", printA3L:"A3 가로", printA3P:"A3 세로", printDpi150:"표준 (150dpi)", printDpi300:"고해상도 (300dpi)", printOptLegend:"범례", printOptScale:"축척 바", printOptNorth:"북쪽", printOptAttr:"출처", printOptDate:"날짜", printDoPrint:"인쇄", printDoPng:"PNG 저장", printCapturing:"지도 캡처 중…", printFailed:"지도 이미지를 가져올 수 없습니다", printScalePfx:"축척 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: '선택 구성 요소: geosuite-hub가 감지되지 않습니다. 한 번 설치하면 벡터 레이어가 빨라지고 4MB 제한이 해제되며 AI 브리지 프로바이더를 사용할 수 있습니다.', hubPromoBtn: 'geosuite-hub.zip 다운로드', hubPromoWait: '다운로드했습니다. ZIP 압축을 해제하고 geosuite-hub.exe를 실행하세요 — 허브를 기다리는 중…', hubPromoOk: 'geosuite-hub가 감지되었습니다', hubPromoRetry: '아직 감지되지 않았습니다 — 다운로드한 ZIP 압축을 해제하고 geosuite-hub.exe를 실행하세요.', hubPromoSteps: '순서: 1) geosuite-hub.zip 다운로드 → 2) 압축 해제 → 3) geosuite-hub.exe 실행(geosuite-hub＋프로토콜 자동 설치·관리자 권한 불필요)', hubPromoPrompt: '브라우저에 로컬 네트워크 액세스 프롬프트가 표시되면 "허용"을 클릭하세요 — 이 사이트에서 geosuite-hub를 사용할 수 있습니다.', hubPromoView: 'GeoSuite viewer에서 열기', hubPromoViewTitle: 'geosuite-hub:// 등록이 필요합니다(geosuite-hub.exe 실행)'
-, hubPromoExt: '확장', pagesLabel:'페이지', pageSelect:'저장된 페이지 적용(레이어 표시 상태)', pageNamePh:'새 페이지 이름', pageSave:'페이지 저장', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'페이지 삭제', zoomToLayer:'레이어 범위로 확대', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: '확장', pagesLabel:'페이지', pageSelect:'저장된 페이지 적용(레이어 표시 상태)', pageNamePh:'새 페이지 이름', pageSave:'페이지 저장', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'페이지 삭제', zoomToLayer:'레이어 범위로 확대', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   es: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
@@ -477,7 +482,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nombre|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo que recorre la ruta; center (=chase) = vista aérea que sigue el punto desde atrás.<br>Los cambios se aplican de inmediato, incluso en vuelo.<br>O pulse Dibujar y trace una polilínea en el mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clic derecho en la imagen para guardar', printTitle:"Imprimir / Informe", printTitlePh:"Título del mapa", printA4L:"A4 horizontal", printA4P:"A4 vertical", printA3L:"A3 horizontal", printA3P:"A3 vertical", printDpi150:"Estándar (150dpi)", printDpi300:"Alta (300dpi)", printOptLegend:"Leyenda", printOptScale:"Barra de escala", printOptNorth:"Norte", printOptAttr:"Fuente", printOptDate:"Fecha", printDoPrint:"Imprimir", printDoPng:"Guardar PNG", printCapturing:"Capturando mapa…", printFailed:"No se pudo capturar el mapa", printScalePfx:"Escala 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Componente opcional: geosuite-hub no está en ejecución. Instálelo una vez para acelerar las capas vectoriales, eliminar el límite de 4MB y desbloquear los proveedores de puente de IA.', hubPromoBtn: 'Descargar geosuite-hub.zip', hubPromoWait: 'Descargado. Extraiga el ZIP y ejecute geosuite-hub.exe — esperando al hub…', hubPromoOk: 'geosuite-hub detectado', hubPromoRetry: 'Aún no detectado — extraiga el ZIP descargado y ejecute geosuite-hub.exe.', hubPromoSteps: 'Pasos: 1) Descargue geosuite-hub.zip  2) Extráigalo  3) Ejecute geosuite-hub.exe — instala automáticamente geosuite-hub y el protocolo geosuite-hub:// (sin derechos de administrador).', hubPromoPrompt: 'Si el navegador muestra el aviso de acceso a la red local, haga clic en Permitir — habilita geosuite-hub en este sitio.', hubPromoView: 'Abrir en GeoSuite viewer', hubPromoViewTitle: 'Requiere el registro único de geosuite-hub:// (ejecute geosuite-hub.exe)'
-, hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar una página guardada (visibilidad de capas)', pageNamePh:'Nombre de página nueva', pageSave:'Guardar página', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Eliminar página', zoomToLayer:'Zoom a la extensión de la capa', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar una página guardada (visibilidad de capas)', pageNamePh:'Nombre de página nueva', pageSave:'Guardar página', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Eliminar página', zoomToLayer:'Zoom a la extensión de la capa', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   fr: {
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
@@ -508,7 +514,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nom|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vue embarquée qui parcourt la route ; center (=chase) = vue aérienne qui suit le point par l’arrière.<br>Les réglages s’appliquent immédiatement, même en vol.<br>Ou appuyez sur Dessiner et tracez une polyligne sur la carte.',
     svOpen: 'Street View', captureBtn: 'Capturer', capturedHint: 'Clic droit sur l\u2019image pour enregistrer', printTitle:"Imprimer / Rapport", printTitlePh:"Titre de la carte", printA4L:"A4 paysage", printA4P:"A4 portrait", printA3L:"A3 paysage", printA3P:"A3 portrait", printDpi150:"Standard (150dpi)", printDpi300:"Haute (300dpi)", printOptLegend:"Légende", printOptScale:"Échelle", printOptNorth:"Nord", printOptAttr:"Source", printOptDate:"Date", printDoPrint:"Imprimer", printDoPng:"Enregistrer PNG", printCapturing:"Capture de la carte…", printFailed:"Échec de la capture", printScalePfx:"Échelle 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Composant optionnel : geosuite-hub n\'est pas détecté. Installez-le une fois pour accélérer les couches vectorielles, lever la limite de 4 Mo et débloquer les fournisseurs de pont IA.', hubPromoBtn: 'Télécharger geosuite-hub.zip', hubPromoWait: 'Téléchargé. Extrayez le ZIP et exécutez geosuite-hub.exe — en attente du hub…', hubPromoOk: 'geosuite-hub détecté', hubPromoRetry: 'Toujours non détecté — extrayez le ZIP téléchargé et exécutez geosuite-hub.exe.', hubPromoSteps: 'Étapes : 1) Téléchargez geosuite-hub.zip  2) Extrayez-le  3) Exécutez geosuite-hub.exe — installe automatiquement geosuite-hub et le protocole geosuite-hub:// (sans droits administrateur).', hubPromoPrompt: 'Si le navigateur affiche une invite d\'accès au réseau local, cliquez sur Autoriser — cela débloque geosuite-hub pour ce site.', hubPromoView: 'Ouvrir dans GeoSuite viewer', hubPromoViewTitle: 'Nécessite l\'enregistrement unique de geosuite-hub:// (exécutez geosuite-hub.exe)'
-, hubPromoExt: 'Ext.', pagesLabel:'Pages', pageSelect:'Appliquer une page enregistrée (visibilité des couches)', pageNamePh:'Nom de la nouvelle page', pageSave:'Enregistrer la page', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Supprimer la page', zoomToLayer:'Zoom sur l’étendue de la couche', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext.', pagesLabel:'Pages', pageSelect:'Appliquer une page enregistrée (visibilité des couches)', pageNamePh:'Nom de la nouvelle page', pageSave:'Enregistrer la page', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Supprimer la page', zoomToLayer:'Zoom sur l’étendue de la couche', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   de: {
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
@@ -539,7 +546,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Name|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = Bordansicht auf der Route nach vorn; center (=chase) = Luftansicht, die den Punkt von hinten verfolgt.<br>Änderungen wirken sofort, auch während des Flugs.<br>Oder mit „Zeichnen“ eine Polylinie auf der Karte skizzieren.',
     svOpen: 'Street View', captureBtn: 'Aufnehmen', capturedHint: 'Bild per Rechtsklick speichern', printTitle:"Drucken / Bericht", printTitlePh:"Kartentitel", printA4L:"A4 quer", printA4P:"A4 hoch", printA3L:"A3 quer", printA3P:"A3 hoch", printDpi150:"Standard (150dpi)", printDpi300:"Hoch (300dpi)", printOptLegend:"Legende", printOptScale:"Maßstabsbalken", printOptNorth:"Norden", printOptAttr:"Quelle", printOptDate:"Datum", printDoPrint:"Drucken", printDoPng:"PNG speichern", printCapturing:"Karte wird erfasst…", printFailed:"Kartenaufnahme fehlgeschlagen", printScalePfx:"Maßstab 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Optionale Komponente: geosuite-hub wurde nicht erkannt. Einmalig installieren, um Vektorebenen zu beschleunigen, das 4MB-Limit aufzuheben und KI-Bridge-Anbieter freizuschalten.', hubPromoBtn: 'geosuite-hub.zip herunterladen', hubPromoWait: 'Heruntergeladen. Entpacken Sie die ZIP und führen Sie geosuite-hub.exe aus — warte auf den Hub…', hubPromoOk: 'geosuite-hub erkannt', hubPromoRetry: 'Noch nicht erkannt — entpacken Sie die heruntergeladene ZIP und führen Sie geosuite-hub.exe aus.', hubPromoSteps: 'Schritte: 1) geosuite-hub.zip herunterladen  2) Entpacken  3) geosuite-hub.exe ausführen — installiert automatisch geosuite-hub und das geosuite-hub://-Protokoll (keine Adminrechte nötig).', hubPromoPrompt: 'Wenn der Browser eine Abfrage zum lokalen Netzwerkzugriff zeigt, klicken Sie auf Zulassen — dadurch wird geosuite-hub für diese Seite freigeschaltet.', hubPromoView: 'In GeoSuite viewer öffnen', hubPromoViewTitle: 'Erfordert einmalige Registrierung von geosuite-hub:// (geosuite-hub.exe ausführen)'
-, hubPromoExt: 'Ext.', pagesLabel:'Seiten', pageSelect:'Gespeicherte Seite anwenden (Ebenensichtbarkeit)', pageNamePh:'Neuer Seitenname', pageSave:'Seite speichern', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Seite löschen', zoomToLayer:'Auf die Layerausdehnung zoomen', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext.', pagesLabel:'Seiten', pageSelect:'Gespeicherte Seite anwenden (Ebenensichtbarkeit)', pageNamePh:'Neuer Seitenname', pageSave:'Seite speichern', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Seite löschen', zoomToLayer:'Auf die Layerausdehnung zoomen', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   it: {
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
@@ -570,7 +578,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo che percorre la rotta; center (=chase) = vista aerea che segue il punto da dietro.<br>Le modifiche si applicano subito, anche in volo.<br>Oppure premi Disegna e traccia una polilinea sulla mappa.',
     svOpen: 'Street View', captureBtn: 'Cattura', capturedHint: 'Tasto destro sull\u2019immagine per salvare', printTitle:"Stampa / Report", printTitlePh:"Titolo della mappa", printA4L:"A4 orizzontale", printA4P:"A4 verticale", printA3L:"A3 orizzontale", printA3P:"A3 verticale", printDpi150:"Standard (150dpi)", printDpi300:"Alta (300dpi)", printOptLegend:"Legenda", printOptScale:"Barra di scala", printOptNorth:"Nord", printOptAttr:"Fonte", printOptDate:"Data", printDoPrint:"Stampa", printDoPng:"Salva PNG", printCapturing:"Acquisizione mappa…", printFailed:"Acquisizione non riuscita", printScalePfx:"Scala 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Componente opzionale: geosuite-hub non rilevato. Installalo una volta per velocizzare i layer vettoriali, rimuovere il limite di 4MB e sbloccare i provider bridge AI.', hubPromoBtn: 'Scarica geosuite-hub.zip', hubPromoWait: 'Scaricato. Estrai lo ZIP ed esegui geosuite-hub.exe — in attesa dell\'hub…', hubPromoOk: 'geosuite-hub rilevato', hubPromoRetry: 'Ancora non rilevato — estrai lo ZIP scaricato ed esegui geosuite-hub.exe.', hubPromoSteps: 'Passi: 1) Scarica geosuite-hub.zip  2) Estrailo  3) Esegui geosuite-hub.exe — installa automaticamente geosuite-hub e il protocollo geosuite-hub:// (nessun diritto di amministratore).', hubPromoPrompt: 'Se il browser mostra la richiesta di accesso alla rete locale, fai clic su Consenti — abilita geosuite-hub per questo sito.', hubPromoView: 'Apri in GeoSuite viewer', hubPromoViewTitle: 'Richiede la registrazione una tantum di geosuite-hub:// (esegui geosuite-hub.exe)'
-, hubPromoExt: 'Ext.', pagesLabel:'Pagine', pageSelect:'Applica una pagina salvata (visibilità dei layer)', pageNamePh:'Nome nuova pagina', pageSave:'Salva pagina', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Elimina pagina', zoomToLayer:'Zoom sull’estensione del layer', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext.', pagesLabel:'Pagine', pageSelect:'Applica una pagina salvata (visibilità dei layer)', pageNamePh:'Nome nuova pagina', pageSave:'Salva pagina', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Elimina pagina', zoomToLayer:'Zoom sull’estensione del layer', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   pt: {
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
@@ -601,7 +610,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nome|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = vista a bordo percorrendo a rota; center (=chase) = vista aérea que segue o ponto por trás.<br>As alterações aplicam-se de imediato, mesmo em voo.<br>Ou pressione Desenhar e esboce uma polilinha no mapa.',
     svOpen: 'Street View', captureBtn: 'Capturar', capturedHint: 'Clique com o botão direito na imagem para salvar', printTitle:"Imprimir / Relatório", printTitlePh:"Título do mapa", printA4L:"A4 paisagem", printA4P:"A4 retrato", printA3L:"A3 paisagem", printA3P:"A3 retrato", printDpi150:"Padrão (150dpi)", printDpi300:"Alta (300dpi)", printOptLegend:"Legenda", printOptScale:"Barra de escala", printOptNorth:"Norte", printOptAttr:"Fonte", printOptDate:"Data", printDoPrint:"Imprimir", printDoPng:"Salvar PNG", printCapturing:"Capturando mapa…", printFailed:"Falha ao capturar o mapa", printScalePfx:"Escala 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Componente opcional: geosuite-hub não detectado. Instale-o uma vez para acelerar as camadas vetoriais, remover o limite de 4MB e desbloquear os provedores de ponte de IA.', hubPromoBtn: 'Baixar geosuite-hub.zip', hubPromoWait: 'Baixado. Extraia o ZIP e execute geosuite-hub.exe — aguardando o hub…', hubPromoOk: 'geosuite-hub detectado', hubPromoRetry: 'Ainda não detectado — extraia o ZIP baixado e execute geosuite-hub.exe.', hubPromoSteps: 'Passos: 1) Baixe geosuite-hub.zip  2) Extraia-o  3) Execute geosuite-hub.exe — instala automaticamente o geosuite-hub e o protocolo geosuite-hub:// (sem direitos de administrador).', hubPromoPrompt: 'Se o navegador mostrar o aviso de acesso à rede local, clique em Permitir — isso desbloqueia o geosuite-hub neste site.', hubPromoView: 'Abrir no GeoSuite viewer', hubPromoViewTitle: 'Requer registro único de geosuite-hub:// (execute geosuite-hub.exe)'
-, hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar uma página guardada (visibilidade das camadas)', pageNamePh:'Nome da nova página', pageSave:'Guardar página', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Eliminar página', zoomToLayer:'Zoom para a extensão da camada', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar uma página guardada (visibilidade das camadas)', pageNamePh:'Nome da nova página', pageSave:'Guardar página', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Eliminar página', zoomToLayer:'Zoom para a extensão da camada', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ru: {
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
@@ -632,7 +642,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Имя|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид с борта, движение по маршруту вперёд; center (=chase) = аэровид, слежение за точкой сзади.<br>Изменения применяются сразу, даже во время полёта.<br>Или нажмите «Нарисовать» и начертите ломаную на карте.',
     svOpen: 'Просмотр улиц', captureBtn: 'Снимок', capturedHint: 'Щёлкните изображение правой кнопкой, чтобы сохранить', printTitle:"Печать / Отчёт", printTitlePh:"Заголовок карты", printA4L:"A4 альбомная", printA4P:"A4 книжная", printA3L:"A3 альбомная", printA3P:"A3 книжная", printDpi150:"Стандарт (150dpi)", printDpi300:"Высокое (300dpi)", printOptLegend:"Легенда", printOptScale:"Масштабная линейка", printOptNorth:"Север", printOptAttr:"Источник", printOptDate:"Дата", printDoPrint:"Печать", printDoPng:"Сохранить PNG", printCapturing:"Захват карты…", printFailed:"Не удалось захватить карту", printScalePfx:"Масштаб 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Дополнительный компонент: geosuite-hub не обнаружен. Установите один раз, чтобы ускорить векторные слои, снять лимит 4 МБ и разблокировать ИИ-мосты.', hubPromoBtn: 'Скачать geosuite-hub.zip', hubPromoWait: 'Загружено. Распакуйте ZIP и запустите geosuite-hub.exe — ожидание хаба…', hubPromoOk: 'geosuite-hub обнаружен', hubPromoRetry: 'Пока не обнаружено — распакуйте скачанный ZIP и запустите geosuite-hub.exe.', hubPromoSteps: 'Шаги: 1) Скачайте geosuite-hub.zip  2) Распакуйте его  3) Запустите geosuite-hub.exe — автоматически установит geosuite-hub и протокол geosuite-hub:// (права администратора не нужны).', hubPromoPrompt: 'Если браузер показывает запрос доступа к локальной сети, нажмите «Разрешить» — это разблокирует geosuite-hub для сайта.', hubPromoView: 'Открыть в GeoSuite viewer', hubPromoViewTitle: 'Требуется однократная регистрация geosuite-hub:// (запустите geosuite-hub.exe)'
-, hubPromoExt: 'Расш.', pagesLabel:'Страницы', pageSelect:'Применить сохранённую страницу (видимость слоёв)', pageNamePh:'Имя новой страницы', pageSave:'Сохранить страницу', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Удалить страницу', zoomToLayer:'Масштабировать до границ слоя', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Расш.', pagesLabel:'Страницы', pageSelect:'Применить сохранённую страницу (видимость слоёв)', pageNamePh:'Имя новой страницы', pageSave:'Сохранить страницу', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Удалить страницу', zoomToLayer:'Масштабировать до границ слоя', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   nl: {
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
@@ -663,7 +674,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Naam|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = boordbeeld dat de route aflegt; center (=chase) = luchtbeeld dat het punt van achteren volgt.<br>Wijzigingen gelden direct, ook tijdens de vlucht.<br>Of druk op Tekenen en schets een polylijn op de kaart.',
     svOpen: 'Street View', captureBtn: 'Vastleggen', capturedHint: 'Rechtermuisknop op afbeelding om op te slaan', printTitle:"Afdrukken / Rapport", printTitlePh:"Kaarttitel", printA4L:"A4 liggend", printA4P:"A4 staand", printA3L:"A3 liggend", printA3P:"A3 staand", printDpi150:"Standaard (150dpi)", printDpi300:"Hoog (300dpi)", printOptLegend:"Legenda", printOptScale:"Schaalbalk", printOptNorth:"Noorden", printOptAttr:"Bron", printOptDate:"Datum", printDoPrint:"Afdrukken", printDoPng:"PNG opslaan", printCapturing:"Kaart vastleggen…", printFailed:"Kaartbeeld mislukt", printScalePfx:"Schaal 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Optionele component: geosuite-hub is niet gedetecteerd. Eenmalig installeren versnelt vectorlagen, heft de 4MB-limiet op en ontgrendelt AI-bridgeproviders.', hubPromoBtn: 'geosuite-hub.zip downloaden', hubPromoWait: 'Gedownload. Pak de ZIP uit en voer geosuite-hub.exe uit — wachten op de hub…', hubPromoOk: 'geosuite-hub gedetecteerd', hubPromoRetry: 'Nog niet gedetecteerd — pak de gedownloade ZIP uit en voer geosuite-hub.exe uit.', hubPromoSteps: 'Stappen: 1) Download geosuite-hub.zip  2) Pak het uit  3) Voer geosuite-hub.exe uit — installeert automatisch geosuite-hub en het geosuite-hub://-protocol (geen beheerdersrechten nodig).', hubPromoPrompt: 'Als de browser om lokale netwerktoegang vraagt, klik op Toestaan — hiermee wordt geosuite-hub voor deze site ontgrendeld.', hubPromoView: 'Openen in GeoSuite viewer', hubPromoViewTitle: 'Vereist eenmalige registratie van geosuite-hub:// (voer geosuite-hub.exe uit)'
-, hubPromoExt: 'Ext.', pagesLabel:'Pagina\'s', pageSelect:'Opgeslagen pagina toepassen (laagzichtbaarheid)', pageNamePh:'Nieuwe paginanaam', pageSave:'Pagina opslaan', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Pagina verwijderen', zoomToLayer:'Zoomen naar laagbereik', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Ext.', pagesLabel:'Pagina\'s', pageSelect:'Opgeslagen pagina toepassen (laagzichtbaarheid)', pageNamePh:'Nieuwe paginanaam', pageSave:'Pagina opslaan', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Pagina verwijderen', zoomToLayer:'Zoomen naar laagbereik', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   pl: {
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
@@ -694,7 +706,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nazwa|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = widok z pokładu jadący po trasie; center (=chase) = widok lotniczy śledzący punkt z tyłu.<br>Zmiany działają od razu, także w locie.<br>Albo naciśnij Rysuj i naszkicuj linię łamaną na mapie.',
     svOpen: 'Street View', captureBtn: 'Zrzut', capturedHint: 'Kliknij obraz prawym przyciskiem, aby zapisać', printTitle:"Drukuj / Raport", printTitlePh:"Tytuł mapy", printA4L:"A4 poziomo", printA4P:"A4 pionowo", printA3L:"A3 poziomo", printA3P:"A3 pionowo", printDpi150:"Standardowa (150dpi)", printDpi300:"Wysoka (300dpi)", printOptLegend:"Legenda", printOptScale:"Podziałka", printOptNorth:"Północ", printOptAttr:"Źródło", printOptDate:"Data", printDoPrint:"Drukuj", printDoPng:"Zapisz PNG", printCapturing:"Przechwytywanie mapy…", printFailed:"Przechwycenie mapy nie powiodło się", printScalePfx:"Skala 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Opcjonalny komponent: nie wykryto geosuite-hub. Zainstaluj raz, aby przyspieszyć warstwy wektorowe, znieść limit 4MB i odblokować dostawców mostu AI.', hubPromoBtn: 'Pobierz geosuite-hub.zip', hubPromoWait: 'Pobrano. Wypakuj ZIP i uruchom geosuite-hub.exe — oczekiwanie na hub…', hubPromoOk: 'Wykryto geosuite-hub', hubPromoRetry: 'Nadal nie wykryto — wypakuj pobrany ZIP i uruchom geosuite-hub.exe.', hubPromoSteps: 'Kroki: 1) Pobierz geosuite-hub.zip  2) Wypakuj go  3) Uruchom geosuite-hub.exe — automatycznie instaluje geosuite-hub i protokół geosuite-hub:// (bez uprawnień administratora).', hubPromoPrompt: 'Jeśli przeglądarka wyświetli monit o dostęp do sieci lokalnej, kliknij Zezwól — odblokuje to geosuite-hub dla tej witryny.', hubPromoView: 'Otwórz w GeoSuite viewer', hubPromoViewTitle: 'Wymaga jednorazowej rejestracji geosuite-hub:// (uruchom geosuite-hub.exe)'
-, hubPromoExt: 'Rozsz.', pagesLabel:'Strony', pageSelect:'Zastosuj zapisaną stronę (widoczność warstw)', pageNamePh:'Nazwa nowej strony', pageSave:'Zapisz stronę', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Usuń stronę', zoomToLayer:'Powiększ do zakresu warstwy', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Rozsz.', pagesLabel:'Strony', pageSelect:'Zastosuj zapisaną stronę (widoczność warstw)', pageNamePh:'Nazwa nowej strony', pageSave:'Zapisz stronę', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Usuń stronę', zoomToLayer:'Powiększ do zakresu warstwy', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   uk: {
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
@@ -725,7 +738,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Назва|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = вид з борту, рух маршрутом уперед; center (=chase) = аеровигляд, стеження за точкою ззаду.<br>Зміни застосовуються одразу, навіть у польоті.<br>Або натисніть «Намалювати» й накресліть ламану на мапі.',
     svOpen: 'Перегляд вулиць', captureBtn: 'Знімок', capturedHint: 'Клацніть зображення правою кнопкою, щоб зберегти', printTitle:"Друк / Звіт", printTitlePh:"Заголовок мапи", printA4L:"A4 альбомна", printA4P:"A4 книжна", printA3L:"A3 альбомна", printA3P:"A3 книжна", printDpi150:"Стандарт (150dpi)", printDpi300:"Висока (300dpi)", printOptLegend:"Легенда", printOptScale:"Масштабна лінійка", printOptNorth:"Північ", printOptAttr:"Джерело", printOptDate:"Дата", printDoPrint:"Друк", printDoPng:"Зберегти PNG", printCapturing:"Захоплення мапи…", printFailed:"Не вдалося захопити мапу", printScalePfx:"Масштаб 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Додатковий компонент: geosuite-hub не виявлено. Встановіть один раз, щоб прискорити векторні шари, зняти ліміт 4 МБ і розблокувати ШІ-мости.', hubPromoBtn: 'Завантажити geosuite-hub.zip', hubPromoWait: 'Завантажено. Розпакуйте ZIP і запустіть geosuite-hub.exe — очікування хаба…', hubPromoOk: 'geosuite-hub виявлено', hubPromoRetry: 'Досі не виявлено — розпакуйте завантажений ZIP і запустіть geosuite-hub.exe.', hubPromoSteps: 'Кроки: 1) Завантажте geosuite-hub.zip  2) Розпакуйте його  3) Запустіть geosuite-hub.exe — автоматично встановить geosuite-hub і протокол geosuite-hub:// (права адміністратора не потрібні).', hubPromoPrompt: 'Якщо браузер показує запит на доступ до локальної мережі, натисніть «Дозволити» — це розблокує geosuite-hub для цього сайту.', hubPromoView: 'Відкрити в GeoSuite viewer', hubPromoViewTitle: 'Потрібна одноразова реєстрація geosuite-hub:// (запустіть geosuite-hub.exe)'
-, hubPromoExt: 'Розш.', pagesLabel:'Сторінки', pageSelect:'Застосувати збережену сторінку (видимість шарів)', pageNamePh:'Назва нової сторінки', pageSave:'Зберегти сторінку', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Видалити сторінку', zoomToLayer:'Масштабувати до меж шару', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Розш.', pagesLabel:'Сторінки', pageSelect:'Застосувати збережену сторінку (видимість шарів)', pageNamePh:'Назва нової сторінки', pageSave:'Зберегти сторінку', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Видалити сторінку', zoomToLayer:'Масштабувати до меж шару', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   tr: {
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
@@ -756,7 +770,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Ad|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = rotada ilerleyen araç içi görünüm; center (=chase) = noktayı arkadan izleyen hava görünümü.<br>Değişiklikler uçuş sırasında da anında uygulanır.<br>Ya da Çiz düğmesiyle haritada çoklu çizgi çizin.',
     svOpen: 'Sokak Görünümü', captureBtn: 'Yakala', capturedHint: 'Kaydetmek için görüntüye sağ tıklayın', printTitle:"Yazdır / Rapor", printTitlePh:"Harita başlığı", printA4L:"A4 yatay", printA4P:"A4 dikey", printA3L:"A3 yatay", printA3P:"A3 dikey", printDpi150:"Standart (150dpi)", printDpi300:"Yüksek (300dpi)", printOptLegend:"Lejant", printOptScale:"Ölçek çubuğu", printOptNorth:"Kuzey", printOptAttr:"Kaynak", printOptDate:"Tarih", printDoPrint:"Yazdır", printDoPng:"PNG kaydet", printCapturing:"Harita alınıyor…", printFailed:"Harita görüntüsü alınamadı", printScalePfx:"Ölçek 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'İsteğe bağlı bileşen: geosuite-hub algılanmadı. Vektör katmanlarını hızlandırmak, 4MB sınırını kaldırmak ve AI köprü sağlayıcılarını açmak için bir kez kurun.', hubPromoBtn: 'geosuite-hub.zip indir', hubPromoWait: 'İndirildi. ZIP\'i çıkarıp geosuite-hub.exe çalıştırın — hub bekleniyor…', hubPromoOk: 'geosuite-hub algılandı', hubPromoRetry: 'Hâlâ algılanmadı — indirilen ZIP\'i çıkarıp geosuite-hub.exe çalıştırın.', hubPromoSteps: 'Adımlar: 1) geosuite-hub.zip indirin  2) Çıkarın  3) geosuite-hub.exe çalıştırın — geosuite-hub ve geosuite-hub:// protokolünü otomatik kurar (yönetici hakkı gerekmez).', hubPromoPrompt: 'Tarayıcı yerel ağ erişimi istemi gösterirse İzin ver seçeneğine tıklayın — bu site için geosuite-hub etkinleşir.', hubPromoView: 'GeoSuite viewer içinde aç', hubPromoViewTitle: 'Bir kerelik geosuite-hub:// kaydı gerekir (geosuite-hub.exe çalıştırın)'
-, hubPromoExt: 'Eklenti', pagesLabel:'Sayfalar', pageSelect:'Kayıtlı sayfayı uygula (katman görünürlüğü)', pageNamePh:'Yeni sayfa adı', pageSave:'Sayfayı kaydet', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Sayfayı sil', zoomToLayer:'Katman kapsamına yakınlaştır', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Eklenti', pagesLabel:'Sayfalar', pageSelect:'Kayıtlı sayfayı uygula (katman görünürlüğü)', pageNamePh:'Yeni sayfa adı', pageSave:'Sayfayı kaydet', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Sayfayı sil', zoomToLayer:'Katman kapsamına yakınlaştır', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   ar: {
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
@@ -787,7 +802,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:الاسم|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = منظر على متن المسار يتقدم للأمام؛ center (=chase) = منظر جوّي يتعقب النقطة من الخلف.<br>تُطبَّق التغييرات فورًا حتى أثناء التحليق.<br>أو اضغط «رسم» وارسم خطًا متعددًا على الخريطة.',
     svOpen: 'التجوّل الافتراضي', captureBtn: 'لقطة', capturedHint: 'انقر بزر الفأرة الأيمن على الصورة للحفظ', printTitle:"طباعة / تقرير", printTitlePh:"عنوان الخريطة", printA4L:"A4 أفقي", printA4P:"A4 عمودي", printA3L:"A3 أفقي", printA3P:"A3 عمودي", printDpi150:"قياسي (150dpi)", printDpi300:"عالي (300dpi)", printOptLegend:"وسيلة إيضاح", printOptScale:"شريط المقياس", printOptNorth:"الشمال", printOptAttr:"المصدر", printOptDate:"التاريخ", printDoPrint:"طباعة", printDoPng:"حفظ PNG", printCapturing:"جارٍ التقاط الخريطة…", printFailed:"تعذر التقاط صورة الخريطة", printScalePfx:"المقياس 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'مكوّن اختياري: لم يتم اكتشاف geosuite-hub. ثبّته مرة واحدة لتسريع الطبقات المتجهة وإزالة حد 4MB وفتح موفري جسر الذكاء الاصطناعي.', hubPromoBtn: 'تنزيل geosuite-hub.zip', hubPromoWait: 'تم التنزيل. فك ضغط ZIP وشغّل geosuite-hub.exe — بانتظار المركز…', hubPromoOk: 'تم اكتشاف geosuite-hub', hubPromoRetry: 'لم يُكتشف بعد — فك ضغط ZIP الذي تم تنزيله وشغّل geosuite-hub.exe.', hubPromoSteps: 'الخطوات: 1) نزّل geosuite-hub.zip  2) فك ضغطه  3) شغّل geosuite-hub.exe — يثبّت تلقائيًا geosuite-hub وبروتوكول geosuite-hub:// (لا يحتاج صلاحيات مسؤول).', hubPromoPrompt: 'إذا ظهرت مطالبة الوصول إلى الشبكة المحلية في المتصفح، انقر على سماح — فهذا يفعّل geosuite-hub لهذا الموقع.', hubPromoView: 'فتح في GeoSuite viewer', hubPromoViewTitle: 'يتطلب تسجيل geosuite-hub:// لمرة واحدة (شغّل geosuite-hub.exe)'
-, hubPromoExt: 'إضافة', pagesLabel:'صفحات', pageSelect:'تطبيق صفحة محفوظة (رؤية الطبقات)', pageNamePh:'اسم الصفحة الجديدة', pageSave:'حفظ الصفحة', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'حذف الصفحة', zoomToLayer:'تكبير إلى نطاق الطبقة', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'إضافة', pagesLabel:'صفحات', pageSelect:'تطبيق صفحة محفوظة (رؤية الطبقات)', pageNamePh:'اسم الصفحة الجديدة', pageSave:'حفظ الصفحة', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'حذف الصفحة', zoomToLayer:'تكبير إلى نطاق الطبقة', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   hi: {
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
@@ -818,7 +834,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:नाम|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = मार्ग पर चलने वाला सवारी दृश्य; center (=chase) = बिंदु को पीछे से ट्रैक करने वाला हवाई दृश्य।<br>बदलाव उड़ान के दौरान भी तुरंत लागू होते हैं।<br>या Draw दबाकर मानचित्र पर पॉलीलाइन बनाएँ।',
     svOpen: 'स्ट्रीट व्यू', captureBtn: 'कैप्चर', capturedHint: 'सहेजने के लिए छवि पर राइट-क्लिक करें', printTitle:"प्रिंट / रिपोर्ट", printTitlePh:"मानचित्र शीर्षक", printA4L:"A4 क्षैतिज", printA4P:"A4 ऊर्ध्व", printA3L:"A3 क्षैतिज", printA3P:"A3 ऊर्ध्व", printDpi150:"मानक (150dpi)", printDpi300:"उच्च (300dpi)", printOptLegend:"लीजेंड", printOptScale:"स्केल बार", printOptNorth:"उत्तर", printOptAttr:"स्रोत", printOptDate:"तिथि", printDoPrint:"प्रिंट", printDoPng:"PNG सहेजें", printCapturing:"मानचित्र कैप्चर हो रहा है…", printFailed:"मानचित्र छवि प्राप्त नहीं हुई", printScalePfx:"स्केल 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'वैकल्पिक घटक: geosuite-hub नहीं मिला। वेक्टर लेयर तेज़ करने, 4MB सीमा हटाने और AI ब्रिज प्रदाता अनलॉक करने के लिए एक बार इंस्टॉल करें।', hubPromoBtn: 'geosuite-hub.zip डाउनलोड करें', hubPromoWait: 'डाउनलोड हो गया। ZIP निकालकर geosuite-hub.exe चलाएँ — हब की प्रतीक्षा में…', hubPromoOk: 'geosuite-hub मिल गया', hubPromoRetry: 'अभी नहीं मिला — डाउनलोड की गई ZIP निकालकर geosuite-hub.exe चलाएँ।', hubPromoSteps: 'चरण: 1) geosuite-hub.zip डाउनलोड करें  2) निकालें  3) geosuite-hub.exe चलाएँ — geosuite-hub और geosuite-hub:// प्रोटोकॉल ऑटो-इंस्टॉल होता है (एडमिन अधिकार आवश्यक नहीं)', hubPromoPrompt: 'यदि ब्राउज़र लोकल नेटवर्क एक्सेस का प्रॉम्प्ट दिखाए तो "अनुमति दें" पर क्लिक करें — इससे इस साइट पर geosuite-hub सक्षम होगा।', hubPromoView: 'GeoSuite viewer में खोलें', hubPromoViewTitle: 'एक-बार geosuite-hub:// पंजीकरण आवश्यक (geosuite-hub.exe चलाएँ)'
-, hubPromoExt: 'एक्स.', pagesLabel:'पेज', pageSelect:'सहेजा गया पेज लागू करें (लेयर दृश्यता)', pageNamePh:'नए पेज का नाम', pageSave:'पेज सहेजें', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'पेज हटाएँ', zoomToLayer:'परत सीमा पर ज़ूम करें', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'एक्स.', pagesLabel:'पेज', pageSelect:'सहेजा गया पेज लागू करें (लेयर दृश्यता)', pageNamePh:'नए पेज का नाम', pageSave:'पेज सहेजें', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'पेज हटाएँ', zoomToLayer:'परत सीमा पर ज़ूम करें', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   id: {
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
@@ -849,7 +866,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Nama|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = tampilan menumpang yang bergerak di rute; center (=chase) = tampilan udara yang melacak titik dari belakang.<br>Perubahan langsung berlaku, bahkan saat terbang.<br>Atau tekan Gambar lalu sketsa polyline di peta.',
     svOpen: 'Street View', captureBtn: 'Tangkap', capturedHint: 'Klik kanan gambar untuk menyimpan', printTitle:"Cetak / Laporan", printTitlePh:"Judul peta", printA4L:"A4 lanskap", printA4P:"A4 potret", printA3L:"A3 lanskap", printA3P:"A3 potret", printDpi150:"Standar (150dpi)", printDpi300:"Tinggi (300dpi)", printOptLegend:"Legenda", printOptScale:"Bilah skala", printOptNorth:"Utara", printOptAttr:"Sumber", printOptDate:"Tanggal", printDoPrint:"Cetak", printDoPng:"Simpan PNG", printCapturing:"Mengambil peta…", printFailed:"Gagal mengambil gambar peta", printScalePfx:"Skala 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Komponen opsional: geosuite-hub tidak terdeteksi. Instal sekali untuk mempercepat layer vektor, menghapus batas 4MB, dan membuka penyedia bridge AI.', hubPromoBtn: 'Unduh geosuite-hub.zip', hubPromoWait: 'Terunduh. Ekstrak ZIP dan jalankan geosuite-hub.exe — menunggu hub…', hubPromoOk: 'geosuite-hub terdeteksi', hubPromoRetry: 'Belum terdeteksi — ekstrak ZIP yang diunduh dan jalankan geosuite-hub.exe.', hubPromoSteps: 'Langkah: 1) Unduh geosuite-hub.zip  2) Ekstrak  3) Jalankan geosuite-hub.exe — otomatis menginstal geosuite-hub dan protokol geosuite-hub:// (tanpa hak admin).', hubPromoPrompt: 'Jika browser menampilkan prompt akses jaringan lokal, klik Izinkan — ini mengaktifkan geosuite-hub untuk situs ini.', hubPromoView: 'Buka di GeoSuite viewer', hubPromoViewTitle: 'Memerlukan pendaftaran geosuite-hub:// satu kali (jalankan geosuite-hub.exe)'
-, hubPromoExt: 'Eks.', pagesLabel:'Halaman', pageSelect:'Terapkan halaman tersimpan (visibilitas layer)', pageNamePh:'Nama halaman baru', pageSave:'Simpan halaman', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Hapus halaman', zoomToLayer:'Zoom ke cakupan lapisan', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Eks.', pagesLabel:'Halaman', pageSelect:'Terapkan halaman tersimpan (visibilitas layer)', pageNamePh:'Nama halaman baru', pageSave:'Simpan halaman', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Hapus halaman', zoomToLayer:'Zoom ke cakupan lapisan', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   th: {
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
@@ -880,7 +898,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:ชื่อ|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = มุมมองนั่งร่วมเคลื่อนตามเส้นทาง; center (=chase) = มุมมองทางอากาศที่ติดตามจุดจากด้านหลัง<br>ค่าที่แก้ไขมีผลทันที แม้ขณะบิน<br>หรือกด วาด แล้วสเก็ตช์เส้นหลายทบบนแผนที่',
     svOpen: 'Street View', captureBtn: 'จับภาพ', capturedHint: 'คลิกขวาที่ภาพเพื่อบันทึก', printTitle:"พิมพ์ / รายงาน", printTitlePh:"ชื่อแผนที่", printA4L:"A4 แนวนอน", printA4P:"A4 แนวตั้ง", printA3L:"A3 แนวนอน", printA3P:"A3 แนวตั้ง", printDpi150:"มาตรฐาน (150dpi)", printDpi300:"สูง (300dpi)", printOptLegend:"คำอธิบายสัญลักษณ์", printOptScale:"แถบมาตราส่วน", printOptNorth:"เหนือ", printOptAttr:"แหล่งที่มา", printOptDate:"วันที่", printDoPrint:"พิมพ์", printDoPng:"บันทึก PNG", printCapturing:"กำลังจับภาพแผนที่…", printFailed:"จับภาพแผนที่ไม่สำเร็จ", printScalePfx:"มาตราส่วน 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'ส่วนประกอบเสริม: ไม่พบ geosuite-hub ติดตั้งครั้งเดียวเพื่อเร่งเลเยอร์เวกเตอร์ ยกเลิกขีดจำกัด 4MB และปลดล็อกผู้ให้บริการบริดจ์ AI', hubPromoBtn: 'ดาวน์โหลด geosuite-hub.zip', hubPromoWait: 'ดาวน์โหลดแล้ว แตกไฟล์ ZIP แล้วรัน geosuite-hub.exe — กำลังรอฮับ…', hubPromoOk: 'พบ geosuite-hub แล้ว', hubPromoRetry: 'ยังไม่พบ — แตกไฟล์ ZIP ที่ดาวน์โหลดแล้วรัน geosuite-hub.exe', hubPromoSteps: 'ขั้นตอน: 1) ดาวน์โหลด geosuite-hub.zip → 2) แตกไฟล์ → 3) รัน geosuite-hub.exe — ติดตั้ง geosuite-hub และโปรโตคอล geosuite-hub:// อัตโนมัติ (ไม่ต้องใช้สิทธิ์ผู้ดูแล)', hubPromoPrompt: 'หากเบราว์เซอร์แสดงข้อความขอเข้าถึงเครือข่ายภายใน ให้คลิก อนุญาต — จะเปิดใช้งาน geosuite-hub สำหรับไซต์นี้', hubPromoView: 'เปิดใน GeoSuite viewer', hubPromoViewTitle: 'ต้องลงทะเบียน geosuite-hub:// ครั้งเดียว (รัน geosuite-hub.exe)'
-, hubPromoExt: 'ขยาย', pagesLabel:'หน้า', pageSelect:'ใช้หน้าที่บันทึกไว้ (การมองเห็นเลเยอร์)', pageNamePh:'ชื่อหน้าใหม่', pageSave:'บันทึกหน้า', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'ลบหน้า', zoomToLayer:'ซูมไปยังขอบเขตเลเยอร์', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'ขยาย', pagesLabel:'หน้า', pageSelect:'ใช้หน้าที่บันทึกไว้ (การมองเห็นเลเยอร์)', pageNamePh:'ชื่อหน้าใหม่', pageSave:'บันทึกหน้า', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'ลบหน้า', zoomToLayer:'ซูมไปยังขอบเขตเลเยอร์', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
   vi: {
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
@@ -911,7 +930,8 @@ const GEO_I18N = {
     flyHelp: 'fly_geojson:Tên|URL|speed=30|height=0|pitch=-10|loop=true|view=camera|center<br>camera (=pov) = góc nhìn đi cùng di chuyển trên tuyến; center (=chase) = góc nhìn trên không theo dõi điểm từ phía sau.<br>Thay đổi áp dụng ngay, kể cả khi đang bay.<br>Hoặc bấm Vẽ và phác thảo đường gấp khúc trên bản đồ.',
     svOpen: 'Street View', captureBtn: 'Chụp', capturedHint: 'Nhấp chuột phải vào ảnh để lưu', printTitle:"In / Báo cáo", printTitlePh:"Tiêu đề bản đồ", printA4L:"A4 ngang", printA4P:"A4 dọc", printA3L:"A3 ngang", printA3P:"A3 dọc", printDpi150:"Chuẩn (150dpi)", printDpi300:"Cao (300dpi)", printOptLegend:"Chú giải", printOptScale:"Thanh tỷ lệ", printOptNorth:"Bắc", printOptAttr:"Nguồn", printOptDate:"Ngày", printDoPrint:"In", printDoPng:"Lưu PNG", printCapturing:"Đang chụp bản đồ…", printFailed:"Không lấy được ảnh bản đồ", printScalePfx:"Tỷ lệ 1:", printSource:"Re:Earth / GeoSuite",
     hubPromoNote: 'Thành phần tùy chọn: không phát hiện geosuite-hub. Cài một lần để tăng tốc lớp vector, bỏ giới hạn 4MB và mở khóa nhà cung cấp cầu nối AI.', hubPromoBtn: 'Tải geosuite-hub.zip', hubPromoWait: 'Đã tải xuống. Giải nén ZIP và chạy geosuite-hub.exe — đang chờ hub…', hubPromoOk: 'Đã phát hiện geosuite-hub', hubPromoRetry: 'Vẫn chưa phát hiện — giải nén ZIP đã tải và chạy geosuite-hub.exe.', hubPromoSteps: 'Các bước: 1) Tải geosuite-hub.zip  2) Giải nén  3) Chạy geosuite-hub.exe — tự động cài đặt geosuite-hub và giao thức geosuite-hub:// (không cần quyền quản trị).', hubPromoPrompt: 'Nếu trình duyệt hiển thị lời nhắc truy cập mạng cục bộ, hãy nhấp Cho phép — điều này mở khóa geosuite-hub cho trang này.', hubPromoView: 'Mở trong GeoSuite viewer', hubPromoViewTitle: 'Yêu cầu đăng ký geosuite-hub:// một lần (chạy geosuite-hub.exe)'
-, hubPromoExt: 'Mở rộng', pagesLabel:'Trang', pageSelect:'Áp dụng trang đã lưu (hiển thị lớp)', pageNamePh:'Tên trang mới', pageSave:'Lưu trang', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Xóa trang', zoomToLayer:'Thu phóng đến phạm vi lớp', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data'
+, hubPromoExt: 'Mở rộng', pagesLabel:'Trang', pageSelect:'Áp dụng trang đã lưu (hiển thị lớp)', pageNamePh:'Tên trang mới', pageSave:'Lưu trang', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Xóa trang', zoomToLayer:'Thu phóng đến phạm vi lớp', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
+    exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   }
 };
 
@@ -2209,6 +2229,16 @@ function getUI() {
         <thead id="vector-attr-stats-head" class="vector-attr-widget-thead"></thead>
         <tbody id="vector-attr-stats-body"></tbody>
       </table>
+    </div>
+    <div id="vector-attr-export-bar" style="display:flex; align-items:center; gap:6px; padding:4px 12px; border-bottom:1px solid #e4ecef;">
+      <select id="vector-attr-export-format" class="vector-attr-widget-layer" title="Export format" data-i18n-title="exportFmtTitle" style="flex:0 0 auto; min-width:0;">
+        <option value="geojson">GeoJSON</option>
+        <option value="csv">CSV</option>
+        <option value="tsv">TSV</option>
+        <option value="kml">KML</option>
+      </select>
+      <button id="vector-attr-export-run" class="btn-primary p-6" type="button" data-i18n="exportBtn">Export</button>
+      <span id="vector-attr-export-status" style="font-size:0.78em;color:#71818d;"></span>
     </div>
     <div id="vector-attr-table-wrap" class="vector-attr-widget-table-wrap">
       <table class="vector-attr-widget-table">
@@ -5841,6 +5871,150 @@ function qmlStyleToReearth(xmlText, opts){
                       if (window.parent) window.parent.postMessage({ action: 'vectorFeatureData', layers: results }, '*');
                     });
                   } catch (e) { console.error('[requestVectorFeatureData] UI error', e); }
+                } else if (msg.action === 'exportLayerSource') {
+                  // Layer export (issue #32 — port of kasugai_canvas
+                  // web/shared/export-formats.js). Everything runs in this
+                  // iframe: the source is fetched here, converted, and saved
+                  // via <a download>, so data never crosses the QuickJS
+                  // extension context and is not bound by the 4MB bridge cap.
+                  try {
+                    var expExId = String(msg.exId || '');
+                    var expFmt = String(msg.format || 'geojson').toLowerCase();
+                    var expBase = String(msg.baseName || 'layer').replace(/[\\/:*?"<>|]/g, '_').trim() || 'layer';
+                    var expReport = function(ok, extra) {
+                      try {
+                        if (expExId.indexOf('ui') === 0) {
+                          var stEl = document.getElementById('vector-attr-export-status');
+                          if (stEl) stEl.textContent = ok ? t('exportDone', { file: (extra && extra.file) || '', count: (extra && extra.count) || 0 }) : (t('exportFail') + ': ' + ((extra && extra.error) || ''));
+                        }
+                      } catch (e9) {}
+                      var res = { action: 'exportLayerDone', exId: expExId, ok: ok };
+                      if (extra) { for (var ek in extra) res[ek] = extra[ek]; }
+                      try { if (window.parent) window.parent.postMessage(res, '*'); } catch (e9) {}
+                    };
+                    var expNum = function(n) { return Number.isFinite(+n) ? String(+n) : '0'; };
+                    var expHasZ = function(cs) { if (!Array.isArray(cs)) return false; if (typeof cs[0] === 'number') return cs.length >= 3; return cs.some(expHasZ); };
+                    var expWktPt = function(c, z) { return expNum(c[0]) + ' ' + expNum(c[1]) + (z ? ' ' + expNum(c[2]) : ''); };
+                    var expWktLine = function(cs, z) { return '(' + (cs || []).map(function(c) { return expWktPt(c, z); }).join(', ') + ')'; };
+                    var expWktGeom = null;
+                    expWktGeom = function(g, z) {
+                      var Z = z ? ' Z' : '', cs = g.coordinates;
+                      switch (g.type) {
+                        case 'Point': return 'POINT' + Z + ' ' + (Array.isArray(cs) && typeof cs[0] === 'number' ? expWktPt(cs, z) : 'EMPTY');
+                        case 'MultiPoint': return !cs || !cs.length ? 'MULTIPOINT' + Z + ' EMPTY' : 'MULTIPOINT' + Z + ' (' + cs.map(function(c) { return expWktPt(c, z); }).join(', ') + ')';
+                        case 'LineString': return 'LINESTRING' + Z + ' ' + (cs && cs.length ? expWktLine(cs, z) : 'EMPTY');
+                        case 'MultiLineString': return !cs || !cs.length ? 'MULTILINESTRING' + Z + ' EMPTY' : 'MULTILINESTRING' + Z + ' (' + cs.map(function(l) { return expWktLine(l, z); }).join(', ') + ')';
+                        case 'Polygon': return !cs || !cs.length ? 'POLYGON' + Z + ' EMPTY' : 'POLYGON' + Z + ' (' + cs.map(function(r) { return expWktLine(r, z); }).join(', ') + ')';
+                        case 'MultiPolygon': return !cs || !cs.length ? 'MULTIPOLYGON' + Z + ' EMPTY' : 'MULTIPOLYGON' + Z + ' (' + cs.map(function(p) { return '(' + p.map(function(r) { return expWktLine(r, z); }).join(', ') + ')'; }).join(', ') + ')';
+                        case 'GeometryCollection': return 'GEOMETRYCOLLECTION' + Z + ' ' + ((g.geometries || []).length ? '(' + g.geometries.map(function(x) { return expWktGeom(x, z); }).join(', ') + ')' : 'EMPTY');
+                        default: return '';
+                      }
+                    };
+                    var expGeomWkt = function(g) { return g && g.type ? expWktGeom(g, expHasZ(g.type === 'GeometryCollection' ? (g.geometries || []) : g.coordinates)) : ''; };
+                    var expToDelimited = function(fc, delim) {
+                      var feats = (fc && fc.features || []).filter(Boolean);
+                      var cols = [], seen = {};
+                      feats.forEach(function(f) { var p = f.properties; if (p && typeof p === 'object') { Object.keys(p).forEach(function(k) { if (!seen[k]) { seen[k] = 1; cols.push(k); } }); } });
+                      var esc = function(v) {
+                        if (v == null) return '';
+                        if (typeof v === 'object') v = JSON.stringify(v);
+                        v = String(v);
+                        return (v.indexOf('"') >= 0 || v.indexOf(delim) >= 0 || /[\\r\\n]/.test(v)) ? '"' + v.replace(/"/g, '""') + '"' : v;
+                      };
+                      var rows = [['WKT'].concat(cols).map(esc).join(delim)];
+                      feats.forEach(function(f) {
+                        var p = (f.properties && typeof f.properties === 'object') ? f.properties : {};
+                        rows.push([expGeomWkt(f.geometry)].concat(cols.map(function(c) { return p[c]; })).map(esc).join(delim));
+                      });
+                      return '\\uFEFF' + rows.join('\\r\\n') + '\\r\\n';
+                    };
+                    var expXml = function(s) { return String(s).replace(/[<>&'"]/g, function(c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]; }); };
+                    var expKmlCoords = function(cs) { return (cs || []).map(function(c) { return (+c[0] || 0) + ',' + (+c[1] || 0) + (c.length > 2 ? ',' + (+c[2] || 0) : ''); }).join(' '); };
+                    var expKmlGeom = null;
+                    expKmlGeom = function(g) {
+                      if (!g) return '';
+                      var kpt = function(c) { return '<Point><coordinates>' + expKmlCoords([c]) + '<\/coordinates><\/Point>'; };
+                      var kln = function(cs) { return '<LineString><coordinates>' + expKmlCoords(cs) + '<\/coordinates><\/LineString>'; };
+                      var kpoly = function(rs) { return '<Polygon><outerBoundaryIs><LinearRing><coordinates>' + expKmlCoords(rs[0]) + '<\/coordinates><\/LinearRing><\/outerBoundaryIs>' + rs.slice(1).map(function(r) { return '<innerBoundaryIs><LinearRing><coordinates>' + expKmlCoords(r) + '<\/coordinates><\/LinearRing><\/innerBoundaryIs>'; }).join('') + '<\/Polygon>'; };
+                      switch (g.type) {
+                        case 'Point': return kpt(g.coordinates);
+                        case 'MultiPoint': return '<MultiGeometry>' + g.coordinates.map(kpt).join('') + '<\/MultiGeometry>';
+                        case 'LineString': return kln(g.coordinates);
+                        case 'MultiLineString': return '<MultiGeometry>' + g.coordinates.map(kln).join('') + '<\/MultiGeometry>';
+                        case 'Polygon': return kpoly(g.coordinates);
+                        case 'MultiPolygon': return '<MultiGeometry>' + g.coordinates.map(kpoly).join('') + '<\/MultiGeometry>';
+                        case 'GeometryCollection': return '<MultiGeometry>' + (g.geometries || []).map(expKmlGeom).join('') + '<\/MultiGeometry>';
+                        default: return '';
+                      }
+                    };
+                    var expToKml = function(fc, name) {
+                      var marks = (fc.features || []).filter(function(f) { return f && f.geometry; }).map(function(f) {
+                        var p = (f.properties && typeof f.properties === 'object') ? f.properties : {};
+                        var nm = (p.name != null && p.name !== '') ? p.name : ((p.title != null && p.title !== '') ? p.title : p.NAME);
+                        var data = Object.keys(p).map(function(k) { var v = p[k]; return '<Data name="' + expXml(k) + '"><value>' + expXml(v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : v)) + '<\/value><\/Data>'; }).join('');
+                        return '<Placemark>' + (nm != null && nm !== '' ? '<name>' + expXml(nm) + '<\/name>' : '') + (data ? '<ExtendedData>' + data + '<\/ExtendedData>' : '') + expKmlGeom(f.geometry) + '<\/Placemark>';
+                      }).join('');
+                      return '<?xml version="1.0" encoding="UTF-8"?>\\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>' + expXml(name) + '<\/name>' + marks + '<\/Document><\/kml>';
+                    };
+                    var expAsFc = function(g) {
+                      if (!g) return null;
+                      if (g.type === 'FeatureCollection' && Array.isArray(g.features)) return g;
+                      if (g.type === 'Feature') return { type: 'FeatureCollection', features: [g] };
+                      if (g.type && (g.coordinates || g.geometries)) return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: g }] };
+                      if (Array.isArray(g)) return { type: 'FeatureCollection', features: g };
+                      return null;
+                    };
+                    var expSrcToFc = function(s) {
+                      return new Promise(function(resolve, reject) {
+                        var fail = function(e) { reject(e instanceof Error ? e : new Error(String(e && e.message || e))); };
+                        var done = function(g) { try { resolve(expAsFc(g)); } catch (e2) { resolve(null); } };
+                        try {
+                          if (s.value !== undefined && s.value !== null) {
+                            if (typeof s.value === 'string') {
+                              if (s.type === 'csv') { try { done(window._csvTextToGeoJson(s.value)); } catch (e2) { fail(e2); } }
+                              else { try { done(JSON.parse(s.value)); } catch (e2) { fail(e2); } }
+                            } else done(s.value);
+                          } else if (s.url) {
+                            fetch(s.url, { method: 'GET' })
+                              .then(function(res) { if (!res || !res.ok) throw new Error('fetch failed: ' + (res && res.status)); return res.text(); })
+                              .then(function(text) {
+                                if (s.type === 'csv') { try { done(window._csvTextToGeoJson(text)); } catch (e2) { fail(e2); } }
+                                else { try { done(JSON.parse(text)); } catch (e2) { fail(e2); } }
+                              })
+                              .catch(fail);
+                          } else resolve(null);
+                        } catch (e) { fail(e); }
+                      });
+                    };
+                    var expSources = (msg.sources || []).slice();
+                    if (!expSources.length) { expReport(false, { error: 'no exportable vector source' }); }
+                    else Promise.all(expSources.map(expSrcToFc)).then(function(fcs) {
+                      var feats = [];
+                      fcs.forEach(function(fc) { if (fc && fc.features) fc.features.forEach(function(f) { if (f) feats.push(f); }); });
+                      var fc = { type: 'FeatureCollection', features: feats };
+                      if (msg.wantGeoJson) {
+                        var raw = '';
+                        try { raw = JSON.stringify(fc); } catch (e7) { expReport(false, { error: 'geojson not serializable' }); return; }
+                        if (raw.length > 4 * 1024 * 1024) { expReport(false, { error: 'geojson exceeds the 4MB extension bridge limit (' + feats.length + ' features) — use exportLayer to download it instead' }); return; }
+                        expReport(true, { count: feats.length, geojson: fc });
+                        return;
+                      }
+                      if (!feats.length) { expReport(false, { error: 'no exportable features' }); return; }
+                      var out = null;
+                      if (expFmt === 'csv') out = { data: expToDelimited(fc, ','), ext: 'csv', mime: 'text/csv;charset=utf-8' };
+                      else if (expFmt === 'tsv') out = { data: expToDelimited(fc, '\\t'), ext: 'tsv', mime: 'text/tab-separated-values;charset=utf-8' };
+                      else if (expFmt === 'kml') out = { data: expToKml(fc, expBase), ext: 'kml', mime: 'application/vnd.google-earth.kml+xml' };
+                      else out = { data: JSON.stringify(fc), ext: 'geojson', mime: 'application/geo+json' };
+                      var file = expBase + '.' + out.ext;
+                      var blob = new Blob([out.data], { type: out.mime });
+                      var u = URL.createObjectURL(blob);
+                      var a = document.createElement('a');
+                      a.href = u; a.download = file;
+                      document.body.appendChild(a); a.click();
+                      setTimeout(function() { try { a.remove(); URL.revokeObjectURL(u); } catch (e8) {} }, 1000);
+                      expReport(true, { file: file, count: feats.length });
+                    }).catch(function(err) { expReport(false, { error: String(err && err.message || err) }); });
+                  } catch (e) { console.error('[exportLayerSource] error', e); }
                 } else if (msg.action === 'vectorFeatureIndex') {
                   try {
                     const layerSelect = document.getElementById('vector-layer');
@@ -9318,6 +9492,20 @@ function qmlStyleToReearth(xmlText, opts){
           try { runAttrStats(); showAttrStatsView(); } catch (e) { console.error('attr stats run error', e); }
         });
       }
+      const vectorAttrExportRun = document.getElementById('vector-attr-export-run');
+      const vectorAttrExportFmt = document.getElementById('vector-attr-export-format');
+      const vectorAttrExportStatus = document.getElementById('vector-attr-export-status');
+      var vectorAttrExportSeq = 0;
+      if (vectorAttrExportRun) {
+        vectorAttrExportRun.addEventListener('click', function() {
+          try {
+            var layerId = (vectorAttrWidgetLayerSelect && vectorAttrWidgetLayerSelect.value) ? vectorAttrWidgetLayerSelect.value : '__all__';
+            var fmt = vectorAttrExportFmt ? vectorAttrExportFmt.value : 'geojson';
+            if (vectorAttrExportStatus) vectorAttrExportStatus.textContent = '…';
+            window.parent.postMessage({ action: 'exportLayerRequest', exId: 'ui' + (++vectorAttrExportSeq), layerId: layerId, format: fmt }, '*');
+          } catch (e) { console.error('vector attr export error', e); }
+        });
+      }
       const attrStatsHideResult = function() {
         try {
           if (vectorAttrStatsWrap) vectorAttrStatsWrap.style.display = 'none';
@@ -10394,6 +10582,9 @@ const _svPending = {};
 // psId -> { senderId, reqId }. The UI iframe does the fetch (the sandbox cannot).
 let _psSeq = 0;
 const _placesPending = {};
+// Pending layer-export requests (issue #32): exId -> { senderId, reqId, geojson? }
+const _exportPending = {};
+let _exportSeq = 0;
 
 // Pending FlatGeobuf/GeoParquet decodes: fgId|pqId ->
 // {url,title,visible,classification,pending}. The UI iframe fetches + decodes
@@ -11846,6 +12037,24 @@ reearth.extension.on("message", (msg) => {
         try {
           flyToVectorFeature(msg.layerId, msg.attrName, msg.value);
         } catch (e) { try { sendError('[vectorFeatureFly] error:', e); } catch(_) {} }
+      } else if (msg.action === 'exportLayerRequest') {
+        // UI export bar (issue #32): resolve the layer ref to source
+        // descriptors; the iframe fetches + converts + downloads them.
+        try {
+          const ref = (msg.layerId && msg.layerId !== '__all__') ? msg.layerId : null;
+          const srcs = exportSourcesFor(ref);
+          postToUI({ action: 'exportLayerSource', exId: String(msg.exId || ''), format: String(msg.format || 'geojson'), sources: srcs, baseName: (srcs.length === 1 ? srcs[0].title : 'layers') });
+        } catch (e) { try { sendError('[exportLayerRequest] error:', e); } catch(_) {} }
+      } else if (msg.action === 'exportLayerDone') {
+        try {
+          const p = _exportPending[msg.exId];
+          if (p !== undefined) {
+            delete _exportPending[msg.exId];
+            if (msg.ok && p.geojson) aiToolReply(p.senderId, p.reqId, true, { features: msg.count || 0, geojson: msg.geojson });
+            else if (msg.ok) aiToolReply(p.senderId, p.reqId, true, { file: msg.file, count: msg.count });
+            else aiToolReply(p.senderId, p.reqId, false, { error: String(msg.error || 'export failed') });
+          }
+        } catch (e) { try { sendError('[exportLayerDone] error:', e); } catch(_) {} }
       } else if (msg.action === 'flyToLatLng') {
         try {
           if (typeof msg.lat === 'number' && typeof msg.lng === 'number') {
@@ -12957,6 +13166,75 @@ function attrStatsGroup(src, groupField, valueField, cap) {
   return { groups: allGroups.slice(0, limit), totalGroups: allGroups.length };
 }
 
+// Collect export sources for a layer ref (same geojson/csv classification as
+// requestVectorFeatureIndex). ref = layer id or title (substring match); a
+// null/empty ref selects every vector layer.
+function exportSourcesFor(ref) {
+  const out = [];
+  try {
+    const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
+    const want = (ref === undefined || ref === null || ref === '') ? null : String(ref).toLowerCase();
+    layersAll.forEach((l) => {
+      try {
+        if (!l || !l.data || (!l.data.url && l.data.value === undefined)) return;
+        const typeRaw = String(l.data.type || l.type || '').toLowerCase();
+        const url = l.data.url ? String(l.data.url).toLowerCase() : '';
+        const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
+        const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.includes('.geojson?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
+        if (!isCsv && !isGeojson) return;
+        if (want) {
+          const t = String(l.title || '').toLowerCase();
+          const id = String(l.id || '').toLowerCase();
+          if (!(t === want || id === want || t.indexOf(want) >= 0)) return;
+        }
+        out.push({ id: l.id, title: l.title || l.id || '', type: isCsv ? 'csv' : 'geojson', url: l.data.url || null, csv: l.data.csv || null, value: l.data.value });
+      } catch (e) {}
+    });
+  } catch (e) {}
+  return out;
+}
+
+// Synchronous GeoJSON collection via reearth's computed features — avoids a
+// source re-fetch when the engine already parsed the layer (same access path
+// as buildVectorFeatureIndexFromLayers). Returns null when nothing matched.
+function exportComputedGeoJson(ref) {
+  const feats = [];
+  const layers = [];
+  try {
+    const layersAll = (reearth && reearth.layers && reearth.layers.layers) ? (Array.isArray(reearth.layers.layers) ? reearth.layers.layers : Object.values(reearth.layers.layers)) : [];
+    const want = (ref === undefined || ref === null || ref === '') ? null : String(ref).toLowerCase();
+    layersAll.forEach((l) => {
+      try {
+        if (!l || !l.data) return;
+        const typeRaw = String(l.data.type || '').toLowerCase();
+        const url = l.data.url ? String(l.data.url).toLowerCase() : '';
+        const isCsv = (typeRaw === 'csv') || url.endsWith('.csv') || url.includes('.csv?') || url.startsWith('data:text/csv') || url.startsWith('data:application/csv') || url.startsWith('data:attachment/csv');
+        const isGeojson = (typeRaw === 'geojson') || url.endsWith('.geojson') || url.includes('.geojson?') || url.startsWith('data:application/json') || url.startsWith('data:application/geo+json');
+        if (!isCsv && !isGeojson) return;
+        if (want) {
+          const t = String(l.title || '').toLowerCase();
+          const id = String(l.id || '').toLowerCase();
+          if (!(t === want || id === want || t.indexOf(want) >= 0)) return;
+        }
+        let src = null;
+        try { src = (l.computed && Array.isArray(l.computed.originalFeatures) && l.computed.originalFeatures.length) ? l.computed.originalFeatures : ((l.computed && Array.isArray(l.computed.features)) ? l.computed.features : null); } catch (e) { src = null; }
+        if (!src || !src.length) return;
+        let added = 0;
+        src.forEach((f) => {
+          try {
+            if (!f || !f.geometry) return;
+            feats.push(JSON.parse(JSON.stringify({ type: 'Feature', properties: f.properties || {}, geometry: f.geometry })));
+            added++;
+          } catch (e) {}
+        });
+        if (added) layers.push(String(l.title || l.id || ''));
+      } catch (e) {}
+    });
+  } catch (e) {}
+  if (!feats.length) return null;
+  return { fc: { type: 'FeatureCollection', features: feats }, count: feats.length, layers: layers };
+}
+
 function handleAiToolRequest(senderId, data) {
   const reqId = data && data.reqId;
   const name = data && data.name;
@@ -13296,6 +13574,43 @@ function handleAiToolRequest(senderId, data) {
           return;
         }
         aiToolReply(senderId, reqId, true, { layer: layerTitle, fields: fields });
+        return;
+      }
+      case 'getLayerGeoJson': {
+        // Port of kasugai_canvas geo-tools getLayerGeoJson. Computed features
+        // are used synchronously when available; otherwise the UI iframe
+        // fetches the source and posts the FeatureCollection back (the iframe
+        // drops it with an error when it would exceed the 4MB bridge cap).
+        const computed = exportComputedGeoJson(args.layer);
+        if (computed) {
+          let size = 0;
+          try { size = JSON.stringify(computed.fc).length; } catch (e) {}
+          if (size > 4 * 1024 * 1024) { fail('geojson exceeds the 4MB extension bridge limit (' + computed.count + ' features) — use exportLayer to download it instead'); return; }
+          aiToolReply(senderId, reqId, true, { layers: computed.layers, features: computed.count, geojson: computed.fc });
+          return;
+        }
+        const sources = exportSourcesFor(args.layer);
+        if (!sources.length) { fail('no vector layer' + (args.layer ? ': ' + args.layer : '')); return; }
+        const gjId = 'ex' + (++_exportSeq);
+        _exportPending[gjId] = { senderId: senderId, reqId: reqId, geojson: true };
+        armPendingTtl(_exportPending, gjId, 'getLayerGeoJson', true);
+        try { postToUI({ action: 'exportLayerSource', exId: gjId, wantGeoJson: true, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
+        catch (e) { delete _exportPending[gjId]; fail(String(e)); }
+        return;
+      }
+      case 'exportLayer': {
+        // Port of kasugai_canvas geo-tools exportLayer/doExport. The UI iframe
+        // fetches the source and runs the <a download> itself, so exported
+        // files are not limited by the 4MB bridge cap.
+        const fmt = String(args.format || 'geojson').toLowerCase();
+        if (['geojson', 'csv', 'tsv', 'kml'].indexOf(fmt) < 0) { fail('unsupported format: ' + fmt + ' (geojson|csv|tsv|kml)'); return; }
+        const sources = exportSourcesFor(args.layer);
+        if (!sources.length) { fail('no vector layer' + (args.layer ? ': ' + args.layer : '')); return; }
+        const exId = 'ex' + (++_exportSeq);
+        _exportPending[exId] = { senderId: senderId, reqId: reqId };
+        armPendingTtl(_exportPending, exId, 'exportLayer', true);
+        try { postToUI({ action: 'exportLayerSource', exId: exId, format: fmt, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
+        catch (e) { delete _exportPending[exId]; fail(String(e)); }
         return;
       }
       case 'searchPlaces': {

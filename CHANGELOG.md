@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.15.0
+- 新規: **レイヤ / 属性エクスポート**（issue #32、KASUGAI Canvas `web/shared/export-formats.js` + `cesium/geo-tools.js` `exportLayer`/`getLayerGeoJson` の移植）
+  - 「Attributes & Values」ウィジェットにエクスポートバーを追加。対象レイヤ（ドロップダウンで選択 / All = 全ベクタレイヤ結合）を GeoJSON / CSV / TSV / KML でダウンロード
+  - ソース取得・形式変換・保存は全て UI iframe 内で実行 — URL ソースは iframe が直接 fetch するため拡張ctx 横断の 4MB 上限を回避（Canvas export-formats 同等: CSV/TSV は先頭列 WKT・BOM 付き UTF-8、KML は属性を ExtendedData へ、ジオメトリは Multi*/GeometryCollection 対応）
+  - AI ツール `exportLayer`（`{layer?, format?}` → iframe 内ダウンロード、{file, count} を返却）と `getLayerGeoJson`（`{layer?}` → FeatureCollection を返却、computed.features 優先・未取得時は iframe 経由、4MB ガード付きで超過時は exportLayer を案内）をツールディスパッチャへ登録。runCode `api.*`・外部ブリッジ経由でも利用可能
+  - i18n キー 4 個を全 20 ロケールへ追加（en/ja は翻訳済み、その他は英語値）
+
 ## v22.14.0
 - 新規: **属性統計（フィールド集計 / GROUP BY）**（issue #33、KASUGAI Canvas `web/shared/attr-stats.js` の移植）
   - 「Attributes & Values」ウィジェットに「Stats」バーを追加。Group by（全フィールド）と Value（数値フィールドを自動検出して列挙）を選んで Run → グループ別の件数/合計/最小/最大/平均/数値件数、またはフィールド別サマリ（全フィールド一括・または Value 指定で単独）をテーブル表示。500 グループ上限・`__kasc` 内部プロパティ除外・ブラウザ内完結の純粋 JS 集計
