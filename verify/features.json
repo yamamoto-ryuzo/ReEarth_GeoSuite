@@ -1,0 +1,1597 @@
+{
+ "component": "ReEarth_GeoSuite",
+ "component_type": "reearth_plugin",
+ "version": "22.18.1",
+ "driver": {
+  "type": "npm_script",
+  "detect": "curl http://localhost:8787/",
+  "launch": "npm run dev (tsc --watch + workbench server)",
+  "ready": "workbench :8787 応答",
+  "control": "CDP via workbench/test.js",
+  "detected_from": "workbench/package.json scripts + AGENTS.md"
+ },
+ "updated": "2026-11-15T23:39:13+09:00",
+ "features": [
+  {
+   "id": "compile.tsc_noemit",
+   "kind": "logic_fn",
+   "name": "TypeScript型チェック",
+   "source": "geo_suite/tsconfig.json",
+   "signature": "tsc -p geo_suite/tsconfig.json --noEmit",
+   "summary": "プラグインTSの型整合",
+   "needs_runtime": false,
+   "standalone_ok": true,
+   "depends": [],
+   "verify": {
+    "standalone": "npx tsc --noEmit → 0 errors",
+    "integrated": ""
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "0 errors"
+  },
+  {
+   "id": "compile.hub_cargo",
+   "kind": "logic_fn",
+   "name": "hub crate 静的検証",
+   "source": "hub/Cargo.toml",
+   "signature": "cargo check",
+   "summary": "Rust hub コンパイル",
+   "needs_runtime": false,
+   "standalone_ok": true,
+   "depends": [],
+   "verify": {
+    "standalone": "cargo check → Finished",
+    "integrated": ""
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "Finished 7.01s"
+  },
+  {
+   "id": "build.inline_scripts",
+   "kind": "logic_fn",
+   "name": "インラインスクリプト構文検証",
+   "source": "workbench/check_inline_scripts.js",
+   "signature": "node workbench/check_inline_scripts.js",
+   "summary": "widget template 内 <script> の構文チェック",
+   "needs_runtime": false,
+   "standalone_ok": true,
+   "depends": [],
+   "verify": {
+    "standalone": "node workbench/check_inline_scripts.js",
+    "integrated": ""
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "basemap-widget/navigation-toolbar/layers-and-tiles-list/ai-chat 全てOK（mock-sandbox note は情報）"
+  },
+  {
+   "id": "wb.loaded",
+   "kind": "ui_control",
+   "name": "Workbench 読み込み",
+   "source": "workbench/test.js",
+   "signature": "workbench e2e",
+   "summary": "Re:Earth Visualizer Workbench 起動",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "npm run dev(:8787)"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "node workbench/test.js"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "PASS workbench loaded — Re:Earth Visualizer Workbench"
+  },
+  {
+   "id": "wb.sse_live",
+   "kind": "ui_control",
+   "name": "SSE ライブステータス",
+   "source": "workbench/test.js",
+   "signature": "workbench e2e",
+   "summary": "SSE接続で live status 表示",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "npm run dev(:8787)"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "node workbench/test.js"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "PASS live status (SSE connected)"
+  },
+  {
+   "id": "wb.widget_iframes",
+   "kind": "ui_control",
+   "name": "widget iframe 展開",
+   "source": "workbench/test.js",
+   "signature": "workbench e2e",
+   "summary": "4 widget iframe 存在",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "npm run dev(:8787)"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "node workbench/test.js"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "PASS widget iframes exist — 4 iframes"
+  },
+  {
+   "id": "wb.widget_contexts",
+   "kind": "ui_control",
+   "name": "widget コンテキスト到達",
+   "source": "workbench/test.js",
+   "signature": "workbench e2e",
+   "summary": "N/AI Chat/拡張 コンテキスト到達",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "npm run dev(:8787)"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "node workbench/test.js"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "PASS widget contexts reachable — 4 targets"
+  },
+  {
+   "id": "wb.widget_click",
+   "kind": "ui_control",
+   "name": "widget タブクリック",
+   "source": "workbench/test.js",
+   "signature": "workbench e2e",
+   "summary": "「検索」タブクリック応答",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "npm run dev(:8787)"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "node workbench/test.js"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "PASS clicked a widget tab — 検索"
+  },
+  {
+   "id": "wb.hotreload",
+   "kind": "ui_control",
+   "name": "SSE ホットリロード",
+   "source": "workbench/test.js",
+   "signature": "workbench e2e",
+   "summary": "src保存→tsc watch→SSE→自動再読込",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "npm run dev(:8787)"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "node workbench/test.js"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T22:55:19+09:00",
+   "note": "PASS auto reload on save (SSE)"
+  },
+  {
+   "id": "ai.tool.addDuckDbLayer",
+   "kind": "ai_integration",
+   "name": "AI tool addDuckDbLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "addDuckDbLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.addFlatGeobufLayer",
+   "kind": "ai_integration",
+   "name": "AI tool addFlatGeobufLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "addFlatGeobufLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.addGeoJsonLayer",
+   "kind": "ai_integration",
+   "name": "AI tool addGeoJsonLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "addGeoJsonLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.addParquetLayer",
+   "kind": "ai_integration",
+   "name": "AI tool addParquetLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "addParquetLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.addTileLayer",
+   "kind": "ai_integration",
+   "name": "AI tool addTileLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "addTileLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.aiChatSend",
+   "kind": "ai_integration",
+   "name": "AI tool aiChatSend",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "aiChatSend(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.aiChatSet",
+   "kind": "ai_integration",
+   "name": "AI tool aiChatSet",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "aiChatSet(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.aiChatStatus",
+   "kind": "ai_integration",
+   "name": "AI tool aiChatStatus",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "aiChatStatus(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.applyInspectorText",
+   "kind": "ai_integration",
+   "name": "AI tool applyInspectorText",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "applyInspectorText(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.applyKascTheme",
+   "kind": "ai_integration",
+   "name": "AI tool applyKascTheme",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "applyKascTheme(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.attrStats",
+   "kind": "ai_integration",
+   "name": "AI tool attrStats",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "attrStats(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.buildShareUrl",
+   "kind": "ai_integration",
+   "name": "AI tool buildShareUrl",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "buildShareUrl(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.captureView",
+   "kind": "ai_integration",
+   "name": "AI tool captureView",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "captureView(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.createFlyPath",
+   "kind": "ai_integration",
+   "name": "AI tool createFlyPath",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "createFlyPath(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.deleteFlyPath",
+   "kind": "ai_integration",
+   "name": "AI tool deleteFlyPath",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "deleteFlyPath(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.deleteInstruction",
+   "kind": "ai_integration",
+   "name": "AI tool deleteInstruction",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "deleteInstruction(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.exportLayer",
+   "kind": "ai_integration",
+   "name": "AI tool exportLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "exportLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.flyTo",
+   "kind": "ai_integration",
+   "name": "AI tool flyTo",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "flyTo(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.flyToCurrentLocation",
+   "kind": "ai_integration",
+   "name": "AI tool flyToCurrentLocation",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "flyToCurrentLocation(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "fail",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+  },
+  {
+   "id": "ai.tool.flyToFeature",
+   "kind": "ai_integration",
+   "name": "AI tool flyToFeature",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "flyToFeature(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.flyToPreset",
+   "kind": "ai_integration",
+   "name": "AI tool flyToPreset",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "flyToPreset(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.flyToUrl",
+   "kind": "ai_integration",
+   "name": "AI tool flyToUrl",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "flyToUrl(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "fail",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+  },
+  {
+   "id": "ai.tool.focusLayer",
+   "kind": "ai_integration",
+   "name": "AI tool focusLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "focusLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.getCamera",
+   "kind": "ai_integration",
+   "name": "AI tool getCamera",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "getCamera(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.getInspectorText",
+   "kind": "ai_integration",
+   "name": "AI tool getInspectorText",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "getInspectorText(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.getLayerGeoJson",
+   "kind": "ai_integration",
+   "name": "AI tool getLayerGeoJson",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "getLayerGeoJson(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.getShareUrl",
+   "kind": "ai_integration",
+   "name": "AI tool getShareUrl",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "getShareUrl(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listBasemaps",
+   "kind": "ai_integration",
+   "name": "AI tool listBasemaps",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listBasemaps(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listCameraPresets",
+   "kind": "ai_integration",
+   "name": "AI tool listCameraPresets",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listCameraPresets(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listFlyPaths",
+   "kind": "ai_integration",
+   "name": "AI tool listFlyPaths",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listFlyPaths(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listInstructions",
+   "kind": "ai_integration",
+   "name": "AI tool listInstructions",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listInstructions(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listLayers",
+   "kind": "ai_integration",
+   "name": "AI tool listLayers",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listLayers(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listLegends",
+   "kind": "ai_integration",
+   "name": "AI tool listLegends",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listLegends(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.listThemes",
+   "kind": "ai_integration",
+   "name": "AI tool listThemes",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "listThemes(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.lookAt",
+   "kind": "ai_integration",
+   "name": "AI tool lookAt",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "lookAt(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.measureArea",
+   "kind": "ai_integration",
+   "name": "AI tool measureArea",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "measureArea(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.measureBearing",
+   "kind": "ai_integration",
+   "name": "AI tool measureBearing",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "measureBearing(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.measureDistance",
+   "kind": "ai_integration",
+   "name": "AI tool measureDistance",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "measureDistance(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.openStreetView",
+   "kind": "ai_integration",
+   "name": "AI tool openStreetView",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "openStreetView(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.openUrl",
+   "kind": "ai_integration",
+   "name": "AI tool openUrl",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "openUrl(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.playFlyPath",
+   "kind": "ai_integration",
+   "name": "AI tool playFlyPath",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "playFlyPath(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.readInstruction",
+   "kind": "ai_integration",
+   "name": "AI tool readInstruction",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "readInstruction(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.removeLayer",
+   "kind": "ai_integration",
+   "name": "AI tool removeLayer",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "removeLayer(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.runCode",
+   "kind": "ai_integration",
+   "name": "AI tool runCode",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "runCode(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.saveInstruction",
+   "kind": "ai_integration",
+   "name": "AI tool saveInstruction",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "saveInstruction(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.searchLocation",
+   "kind": "ai_integration",
+   "name": "AI tool searchLocation",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "searchLocation(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "fail",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+  },
+  {
+   "id": "ai.tool.searchPlaces",
+   "kind": "ai_integration",
+   "name": "AI tool searchPlaces",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "searchPlaces(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.selectAgents",
+   "kind": "ai_integration",
+   "name": "AI tool selectAgents",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "selectAgents(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setBackground",
+   "kind": "ai_integration",
+   "name": "AI tool setBackground",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setBackground(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setBasemap",
+   "kind": "ai_integration",
+   "name": "AI tool setBasemap",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setBasemap(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setCamera",
+   "kind": "ai_integration",
+   "name": "AI tool setCamera",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setCamera(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setDepthTest",
+   "kind": "ai_integration",
+   "name": "AI tool setDepthTest",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setDepthTest(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setFlySettings",
+   "kind": "ai_integration",
+   "name": "AI tool setFlySettings",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setFlySettings(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setGeojsonDrape",
+   "kind": "ai_integration",
+   "name": "AI tool setGeojsonDrape",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setGeojsonDrape(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setLayerVisible",
+   "kind": "ai_integration",
+   "name": "AI tool setLayerVisible",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setLayerVisible(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setShadow",
+   "kind": "ai_integration",
+   "name": "AI tool setShadow",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setShadow(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.setTerrain",
+   "kind": "ai_integration",
+   "name": "AI tool setTerrain",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setTerrain(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.setToolMaxSteps",
+   "kind": "ai_integration",
+   "name": "AI tool setToolMaxSteps",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "setToolMaxSteps(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "fail",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+  },
+  {
+   "id": "ai.tool.showFeatureAttributes",
+   "kind": "ai_integration",
+   "name": "AI tool showFeatureAttributes",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "showFeatureAttributes(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.showInfo",
+   "kind": "ai_integration",
+   "name": "AI tool showInfo",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "showInfo(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.showPanel",
+   "kind": "ai_integration",
+   "name": "AI tool showPanel",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "showPanel(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.showReport",
+   "kind": "ai_integration",
+   "name": "AI tool showReport",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "showReport(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "fail",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+  },
+  {
+   "id": "ai.tool.stopFly",
+   "kind": "ai_integration",
+   "name": "AI tool stopFly",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "stopFly(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.vectorSearch",
+   "kind": "ai_integration",
+   "name": "AI tool vectorSearch",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "vectorSearch(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.zoomIn",
+   "kind": "ai_integration",
+   "name": "AI tool zoomIn",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "zoomIn(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.zoomOut",
+   "kind": "ai_integration",
+   "name": "AI tool zoomOut",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "zoomOut(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  },
+  {
+   "id": "ai.tool.zoomToExtent",
+   "kind": "ai_integration",
+   "name": "AI tool zoomToExtent",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "zoomToExtent(args)",
+   "summary": "AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-15T23:39:13+09:00",
+   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+  }
+ ]
+}

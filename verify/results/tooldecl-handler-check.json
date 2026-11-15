@@ -1,0 +1,5 @@
+{
+ "check": "TOOL_DECLS name \u2192 dispatch handler \u9759\u7684\u7167\u5408",
+ "decls": 67,
+ "unhandled": []
+}
