@@ -1,5 +1,11 @@
 # Changelog
 
+## v22.10.0
+- 新規: **時刻コントロール**（issue #37、KASUGAI Canvas `web/shared/sun-time.js` + `web/shared/kasc-time.js` の移植）
+  - 太陽日時: 設定タブの Shadow ON 時に「Sun time」行（タイムゾーン選択 + 日時入力 + 時刻スライダー）を表示し、`reearth.timeline.setTime` でシーン時刻を制御（既存 Start/Stop/Current 行と併用）
+  - 時刻属性フィルタ: `geojson:` 行に `time=<属性>` / `time_end=<属性>`（`timeend=` も可）を指定するとレイヤータブ下部に時刻スライダーが出現。instant: time<=T、ranged: time<=T かつ time_end>=T で地物を絞り込み、「All time」で解除。URL レイヤは iframe 側で fetch、kasczip/data.value レイヤはホスト保持の元 FC を利用し、iframe 再生成後は `requestRestoreState` で自動再登録
+- i18n: `sunTime`/`allTime` を全20言語へ追加
+
 ## v22.9.0
 - 新規: AI チャットに**永続指示（instructions）**機能を追加（issue #38、KASUGAI Canvas `ai-chat.js` の移植）— 名前付き指示書を `agents`（有効時はシステムプロンプトへ常時注入）/ `skills`（id+要約のみ提示し readInstruction で本文をオンデマンド取得）の2種で保存・一覧・読出・削除できる。保存先は Canvas のサーバファイルの代わりに `reearth.data.clientStorage`（ブラウザ完結）
 - 新規: AI ツール `listInstructions` / `readInstruction` / `saveInstruction` / `deleteInstruction` / `selectAgents` をツールディスパッチャへ登録 — runCode の `api.*`・外部ブリッジ経由でも利用可能。agents 保存時は既定で有効化（`enabled:false` で休眠）、`selectAgents` で注入集合を全置換

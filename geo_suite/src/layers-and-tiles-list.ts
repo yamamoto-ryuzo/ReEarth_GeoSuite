@@ -243,6 +243,27 @@ let _hubPromoDismissed = false;
 let _inspectorGoogleMapsApiKey = null; // optional googleMapsApiKey read from inspector text (Google Places search / Street View pano verification)
 let _systemLayerSettings = []; // settings for system layers from inspector
 let _inspectorAttrUrlOpen = 'newtab'; // attribute panel URL click mode: 'panel' | 'newtab'
+// time=/time_end= attribute filter specs (kasc-time.js port). layerId ->
+// { title, tf, te, url, geojson } — geojson holds the ORIGINAL
+// FeatureCollection only for data.value-backed layers (kasczip members
+// etc.) so filter state survives iframe recreation; url layers are
+// re-fetched iframe-side.
+const _timeSpecLayers = {};
+// url -> { tf, te, title } for specs declared before the layer id exists
+// (kasczip member decode completes in handleVecResult).
+const _timeSpecByUrl = {};
+function postTimeSpec(layerId) {
+    const s = _timeSpecLayers[layerId];
+    if (!s) return;
+    const msg = { action: 'timeSpecLayer', layerId: layerId, title: s.title, tf: s.tf, te: s.te || null, url: s.url || null };
+    if (s.geojson) msg.geojson = s.geojson;
+    try { postToUI(msg); } catch (e) {}
+}
+function registerTimeSpecLayer(layerId, title, tf, te, url, geojson) {
+    if (!layerId || layerId === '__qml_pending__' || !tf) return;
+    _timeSpecLayers[layerId] = { title: title, tf: tf, te: te || null, url: url || null, geojson: geojson || null };
+    postTimeSpec(layerId);
+}
 let _vectorFeatureIndex = null; // cached index of vector layer features: { attributes: string[], valuesByAttr: { [attr]: string[] }, featureByAttr: { [attr]: { [value]: { lat, lng } } } }
 let _vectorIndexDirty = true;   // vector layer set changed since the last index build (starts dirty: nothing built yet)
 let _vectorIndexPosted = null;  // last vectorFeatureIndex payload posted to the UI — replayed for unchanged-layer requests
@@ -284,7 +305,7 @@ const GEO_I18N = {
     addrSearch:'Address Search', providerGsi:'GSI', searchPh:'Enter search keyword', searching:'Searching...', noResults:'No results', searchFailCors:'Search failed. Check your network (CORS).', appIdMissing:'yahooAppId is not set. Add the following line to the plugin inspector:', appIdSample:'yahooAppId: your Yahoo AppID', searchFailAppId:'Search failed. Check the AppID setting and network (CORS).', yahooWarn:'Note: yahooAppId may be exposed. Do not use on public sites.', googleWarn:'Note: googleMapsApiKey may be exposed. Do not use on public sites.', googleKeyMissing:'googleMapsApiKey is not set. Add the following line to the plugin inspector:', googleKeySample:'googleMapsApiKey: your Google Maps API key', manageSecretWarn:'Note: geminiApiKey: and yahooAppId: written here are saved with the project and published to all site visitors.',
     camsTitle:'Camera Presets', camHelp:'cam:Title|Lat|Lng<br>cam:Title|Lat|Lng|h=Height(m)<br>cam:Title|Lat|Lng|h=Height|d=Heading&deg;|p=Pitch&deg;<br><br>Ex: cam:Tokyo Station|35.6812|139.7671<br>Ex: cam:Mt. Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Unspecified parameters keep the current camera settings', currentCamera:'Current Camera', positionLabel:'Position', hprLabel:'Heading/Pitch/Roll', flyToTitle:'Fly to {v}',
     terrain:'Terrain', shadow:'Shadow', depthTest:'Depth Test', on:'ON', off:'OFF', geojsonDrape:'GeoJSON 3D Drape',
-    start:'Start', stop:'Stop', current:'Current', apply:'Apply', sentCurrent:'Sent (current set)', sent:'Sent', sendFailed:'Send failed',
+    start:'Start', stop:'Stop', current:'Current', apply:'Apply', sentCurrent:'Sent (current set)', sent:'Sent', sendFailed:'Send failed',    sunTime:'Sun time', allTime:'All time',
     legendTitle:'Legend', legendInstr:'Add "legend: ImageURL" to inspector text.', legendMain:'Main',
     attrTitle:'Attributes', noFeature:'No feature selected.', noAttrAvail:'No attributes available or feature deselected.', backToAttrList:'Back to attribute list', openNewTab:'Open in new tab (bypass sandbox)',
     selectLayer:'Select layer', attrOrValuePh:'Search attributes or values', selectLayerPrompt:'Please select a layer', countFmt:'{rows} items / {attrs} attributes', sortTitle:'Click to sort', noMatchingFeatures:'No matching features', clickToFly:'Click to fly', limitSuffix:' (showing up to {n})', closeAria:'Close',
@@ -315,7 +336,7 @@ const GEO_I18N = {
     addrSearch:'住所検索', providerGsi:'地理院', searchPh:'検索ワードを入力', searching:'検索中...', noResults:'結果なし', searchFailCors:'検索に失敗しました。ネットワーク（CORS）を確認してください。', appIdMissing:'AppIDが設定されていません。プラグインのインスペクターに次の行を追加してください：', appIdSample:'yahooAppId: あなたのYahoo AppID', searchFailAppId:'検索に失敗しました。AppID設定やネットワーク（CORS）を確認してください。', yahooWarn:'注意: yahooAppIdは漏洩する可能性があります。公開サイトでは使用しないでください。', googleWarn:'注意: googleMapsApiKeyは漏洩する可能性があります。公開サイトでは使用しないでください。', googleKeyMissing:'googleMapsApiKeyが設定されていません。プラグインのインスペクターに次の行を追加してください：', googleKeySample:'googleMapsApiKey: あなたのGoogle Maps APIキー', manageSecretWarn:'注意：ここに書いた geminiApiKey: や yahooAppId: はプロジェクトに保存され、公開サイトの全訪問者に配布されます。',
     camsTitle:'カメラプリセット', camHelp:'cam:タイトル|緯度|経度<br>cam:タイトル|緯度|経度|h=高度m<br>cam:タイトル|緯度|経度|h=高度|d=方位&deg;|p=傾き&deg;<br><br>例: cam:東京駅|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定のパラメータは現在のカメラ設定を維持', currentCamera:'現在のカメラ', positionLabel:'位置', hprLabel:'方位/傾き/回転', flyToTitle:'{v} へ移動',
     terrain:'地形', shadow:'影', depthTest:'深度テスト', on:'ON', off:'OFF', geojsonDrape:'GeoJSON 3D ドレープ',
-    start:'開始', stop:'終了', current:'現在', apply:'適用', sentCurrent:'送信しました（現在時刻設定済）', sent:'送信しました', sendFailed:'送信に失敗しました',
+    start:'開始', stop:'終了', current:'現在', apply:'適用', sentCurrent:'送信しました（現在時刻設定済）', sent:'送信しました', sendFailed:'送信に失敗しました',    sunTime:'太陽日時', allTime:'全期間',
     legendTitle:'凡例', legendInstr:'インスペクターテキストに "legend: 画像URL" を追加してください。', legendMain:'メイン',
     attrTitle:'属性', noFeature:'地物が選択されていません。', noAttrAvail:'属性がないか、地物の選択が解除されました。', backToAttrList:'属性一覧に戻る', openNewTab:'新しいタブで開く（Sandbox回避）',
     selectLayer:'レイヤを選択', attrOrValuePh:'属性または値で検索', selectLayerPrompt:'レイヤを選択してください', countFmt:'{rows} 件 / {attrs} 属性', sortTitle:'クリックで並び替え', noMatchingFeatures:'該当する地物がありません', clickToFly:'クリックで移動', limitSuffix:' （表示上限 {n} 件）', closeAria:'閉じる',
@@ -346,7 +367,7 @@ const GEO_I18N = {
     addrSearch:'地址搜索', providerGsi:'地理院', searchPh:'输入搜索关键词', searching:'搜索中...', noResults:'无结果', searchFailCors:'搜索失败。请检查网络（CORS）。', appIdMissing:'未设置 AppID。请在插件检查器中添加以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜索失败。请检查 AppID 设置和网络（CORS）。', yahooWarn:'注意：yahooAppId 可能会泄露。请勿在公开网站上使用。', googleWarn:'注意：googleMapsApiKey 可能会泄露。请勿在公开网站上使用。', googleKeyMissing:'未设置 googleMapsApiKey。请在插件检查器中添加以下行：', googleKeySample:'googleMapsApiKey: 您的 Google Maps API 密钥', manageSecretWarn:'注意：在此填写的 geminiApiKey: 和 yahooAppId: 会随项目保存并发布给所有站点访问者。',
     camsTitle:'相机预设', camHelp:'cam:标题|纬度|经度<br>cam:标题|纬度|经度|h=高度m<br>cam:标题|纬度|经度|h=高度|d=方位&deg;|p=俯仰&deg;<br><br>例: cam:东京站|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定的参数将保持当前相机设置', currentCamera:'当前相机', positionLabel:'位置', hprLabel:'航向/俯仰/横滚', flyToTitle:'飞往 {v}',
     terrain:'地形', shadow:'阴影', depthTest:'深度测试', on:'开', off:'关', geojsonDrape:'GeoJSON 3D 贴地',
-    start:'开始', stop:'结束', current:'当前', apply:'应用', sentCurrent:'已发送（已设置当前时间）', sent:'已发送', sendFailed:'发送失败',
+    start:'开始', stop:'结束', current:'当前', apply:'应用', sentCurrent:'已发送（已设置当前时间）', sent:'已发送', sendFailed:'发送失败',    sunTime:'太阳时间', allTime:'全部时间',
     legendTitle:'图例', legendInstr:'在检查器文本中添加 "legend: 图片URL"。', legendMain:'主图',
     attrTitle:'属性', noFeature:'未选择要素。', noAttrAvail:'没有属性或已取消选择要素。', backToAttrList:'返回属性列表', openNewTab:'在新标签页打开（绕过沙箱）',
     selectLayer:'选择图层', attrOrValuePh:'按属性或值搜索', selectLayerPrompt:'请选择图层', countFmt:'{rows} 项 / {attrs} 个属性', sortTitle:'点击排序', noMatchingFeatures:'没有匹配的要素', clickToFly:'点击移动', limitSuffix:' （最多显示 {n} 项）', closeAria:'关闭',
@@ -377,7 +398,7 @@ const GEO_I18N = {
     addrSearch:'地址搜尋', providerGsi:'地理院', searchPh:'輸入搜尋關鍵字', searching:'搜尋中...', noResults:'無結果', searchFailCors:'搜尋失敗。請檢查網路（CORS）。', appIdMissing:'未設定 AppID。請在外掛檢查器中新增以下行：', appIdSample:'yahooAppId: 您的 Yahoo AppID', searchFailAppId:'搜尋失敗。請檢查 AppID 設定與網路（CORS）。', yahooWarn:'注意：yahooAppId 可能會外洩。請勿在公開網站上使用。', googleWarn:'注意：googleMapsApiKey 可能會外洩。請勿在公開網站上使用。', googleKeyMissing:'未設定 googleMapsApiKey。請在外掛檢查器中新增以下行：', googleKeySample:'googleMapsApiKey: 您的 Google Maps API 金鑰', manageSecretWarn:'注意：在此填寫的 geminiApiKey: 和 yahooAppId: 會隨專案儲存並發布給所有網站訪客。',
     camsTitle:'相機預設', camHelp:'cam:標題|緯度|經度<br>cam:標題|緯度|經度|h=高度m<br>cam:標題|緯度|經度|h=高度|d=方位&deg;|p=俯仰&deg;<br><br>例: cam:東京車站|35.6812|139.7671<br>例: cam:富士山|35.3606|138.7274|h=5000|p=-30<br><br>未指定的參數將維持目前相機設定', currentCamera:'目前相機', positionLabel:'位置', hprLabel:'航向/俯仰/橫滾', flyToTitle:'飛往 {v}',
     terrain:'地形', shadow:'陰影', depthTest:'深度測試', on:'開', off:'關', geojsonDrape:'GeoJSON 3D 貼地',
-    start:'開始', stop:'結束', current:'目前', apply:'套用', sentCurrent:'已傳送（已設定目前時間）', sent:'已傳送', sendFailed:'傳送失敗',
+    start:'開始', stop:'結束', current:'目前', apply:'套用', sentCurrent:'已傳送（已設定目前時間）', sent:'已傳送', sendFailed:'傳送失敗',    sunTime:'太陽時間', allTime:'全部時間',
     legendTitle:'圖例', legendInstr:'在檢查器文字中新增 "legend: 圖片URL"。', legendMain:'主圖',
     attrTitle:'屬性', noFeature:'未選擇圖徵。', noAttrAvail:'沒有屬性或已取消選擇圖徵。', backToAttrList:'返回屬性清單', openNewTab:'在新分頁開啟（繞過沙箱）',
     selectLayer:'選擇圖層', attrOrValuePh:'按屬性或值搜尋', selectLayerPrompt:'請選擇圖層', countFmt:'{rows} 項 / {attrs} 個屬性', sortTitle:'點擊排序', noMatchingFeatures:'沒有符合的圖徵', clickToFly:'點擊移動', limitSuffix:' （最多顯示 {n} 項）', closeAria:'關閉',
@@ -408,7 +429,7 @@ const GEO_I18N = {
     addrSearch:'주소 검색', providerGsi:'지리원', searchPh:'검색어 입력', searching:'검색 중...', noResults:'결과 없음', searchFailCors:'검색에 실패했습니다. 네트워크(CORS)를 확인하세요.', appIdMissing:'AppID가 설정되어 있지 않습니다. 플러그인 인스펙터에 다음 줄을 추가하세요:', appIdSample:'yahooAppId: Yahoo AppID 입력', searchFailAppId:'검색에 실패했습니다. AppID 설정과 네트워크(CORS)를 확인하세요.', yahooWarn:'주의: yahooAppId가 노출될 수 있습니다. 공개 사이트에서는 사용하지 마세요.', googleWarn:'주의: googleMapsApiKey가 노출될 수 있습니다. 공개 사이트에서는 사용하지 마세요.', googleKeyMissing:'googleMapsApiKey가 설정되어 있지 않습니다. 플러그인 인스펙터에 다음 줄을 추가하세요:', googleKeySample:'googleMapsApiKey: Google Maps API 키 입력', manageSecretWarn:'주의: 여기에 입력한 geminiApiKey: 및 yahooAppId: 는 프로젝트와 함께 저장되어 공개 사이트의 모든 방문자에게 배포됩니다.',
     camsTitle:'카메라 프리셋', camHelp:'cam:제목|위도|경도<br>cam:제목|위도|경도|h=고도m<br>cam:제목|위도|경도|h=고도|d=방위&deg;|p=기울기&deg;<br><br>예: cam:도쿄역|35.6812|139.7671<br>예: cam:후지산|35.3606|138.7274|h=5000|p=-30<br><br>지정하지 않은 파라미터는 현재 카메라 설정을 유지', currentCamera:'현재 카메라', positionLabel:'위치', hprLabel:'방위/기울기/회전', flyToTitle:'{v}(으)로 이동',
     terrain:'지형', shadow:'그림자', depthTest:'깊이 테스트', on:'켜기', off:'끄기', geojsonDrape:'GeoJSON 3D 드레이프',
-    start:'시작', stop:'종료', current:'현재', apply:'적용', sentCurrent:'전송됨(현재 시간 설정)', sent:'전송됨', sendFailed:'전송 실패',
+    start:'시작', stop:'종료', current:'현재', apply:'적용', sentCurrent:'전송됨(현재 시간 설정)', sent:'전송됨', sendFailed:'전송 실패',    sunTime:'태양 시간', allTime:'전체 기간',
     legendTitle:'범례', legendInstr:'인스펙터 텍스트에 "legend: 이미지URL"을 추가하세요.', legendMain:'메인',
     attrTitle:'속성', noFeature:'선택된 피처가 없습니다.', noAttrAvail:'속성이 없거나 피처 선택이 해제되었습니다.', backToAttrList:'속성 목록으로 돌아가기', openNewTab:'새 탭에서 열기(샌드박스 우회)',
     selectLayer:'레이어 선택', attrOrValuePh:'속성 또는 값으로 검색', selectLayerPrompt:'레이어를 선택하세요', countFmt:'{rows}건 / {attrs}개 속성', sortTitle:'클릭하여 정렬', noMatchingFeatures:'일치하는 피처가 없습니다', clickToFly:'클릭하여 이동', limitSuffix:' (표시 상한 {n}건)', closeAria:'닫기',
@@ -439,7 +460,7 @@ const GEO_I18N = {
     addrSearch:'Búsqueda de direcciones', providerGsi:'GSI', searchPh:'Introduce palabra clave', searching:'Buscando...', noResults:'Sin resultados', searchFailCors:'Búsqueda fallida. Revisa la red (CORS).', appIdMissing:'AppID no configurado. Añade la siguiente línea al inspector del plugin:', appIdSample:'yahooAppId: tu AppID de Yahoo', searchFailAppId:'Búsqueda fallida. Revisa el AppID y la red (CORS).', yahooWarn:'Nota: yahooAppId puede quedar expuesto. No usar en sitios públicos.', googleWarn:'Nota: googleMapsApiKey puede quedar expuesto. No usar en sitios públicos.', googleKeyMissing:'googleMapsApiKey no configurado. Añade la siguiente línea al inspector del plugin:', googleKeySample:'googleMapsApiKey: tu clave de API de Google Maps', manageSecretWarn:'Nota: geminiApiKey: y yahooAppId: escritos aquí se guardan con el proyecto y se publican a todos los visitantes del sitio.',
     camsTitle:'Preajustes de cámara', camHelp:'cam:Título|Lat|Lng<br>cam:Título|Lat|Lng|h=Altura(m)<br>cam:Título|Lat|Lng|h=Altura|d=Rumbo&deg;|p=Inclinación&deg;<br><br>Ej: cam:Estación de Tokio|35.6812|139.7671<br>Ej: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Los parámetros no especificados mantienen la cámara actual', currentCamera:'Cámara actual', positionLabel:'Posición', hprLabel:'Rumbo/Inclinación/Balance', flyToTitle:'Volar a {v}',
     terrain:'Terreno', shadow:'Sombra', depthTest:'Prueba de profundidad', on:'SÍ', off:'NO', geojsonDrape:'Drapeado 3D GeoJSON',
-    start:'Inicio', stop:'Fin', current:'Actual', apply:'Aplicar', sentCurrent:'Enviado (actual fijado)', sent:'Enviado', sendFailed:'Error al enviar',
+    start:'Inicio', stop:'Fin', current:'Actual', apply:'Aplicar', sentCurrent:'Enviado (actual fijado)', sent:'Enviado', sendFailed:'Error al enviar',    sunTime:'Hora solar', allTime:'Todo el tiempo',
     legendTitle:'Leyenda', legendInstr:'Añade "legend: URLdeImagen" al texto del inspector.', legendMain:'Principal',
     attrTitle:'Atributos', noFeature:'Ninguna entidad seleccionada.', noAttrAvail:'Sin atributos o entidad deseleccionada.', backToAttrList:'Volver a la lista', openNewTab:'Abrir en nueva pestaña (evitar sandbox)',
     selectLayer:'Seleccionar capa', attrOrValuePh:'Buscar atributos o valores', selectLayerPrompt:'Selecciona una capa', countFmt:'{rows} elementos / {attrs} atributos', sortTitle:'Clic para ordenar', noMatchingFeatures:'No hay entidades coincidentes', clickToFly:'Clic para volar', limitSuffix:' (máx. {n} mostrados)', closeAria:'Cerrar',
@@ -470,7 +491,7 @@ const GEO_I18N = {
     addrSearch:'Recherche d’adresse', providerGsi:'GSI', searchPh:'Saisir un mot-clé', searching:'Recherche...', noResults:'Aucun résultat', searchFailCors:'Échec de la recherche. Vérifiez le réseau (CORS).', appIdMissing:'AppID non défini. Ajoutez la ligne suivante à l’inspecteur du plugin :', appIdSample:'yahooAppId : votre AppID Yahoo', searchFailAppId:'Échec de la recherche. Vérifiez l’AppID et le réseau (CORS).', yahooWarn:'Note : yahooAppId peut être exposé. Ne pas utiliser sur des sites publics.', googleWarn:'Note : googleMapsApiKey peut être exposé. Ne pas utiliser sur des sites publics.', googleKeyMissing:'googleMapsApiKey non défini. Ajoutez la ligne suivante à l’inspecteur du plugin :', googleKeySample:'googleMapsApiKey : votre clé API Google Maps', manageSecretWarn:'Note : les lignes geminiApiKey: et yahooAppId: écrites ici sont enregistrées avec le projet et publiées à tous les visiteurs du site.',
     camsTitle:'Préréglages caméra', camHelp:'cam:Titre|Lat|Lng<br>cam:Titre|Lat|Lng|h=Altitude(m)<br>cam:Titre|Lat|Lng|h=Altitude|d=Cap&deg;|p=Inclinaison&deg;<br><br>Ex : cam:Gare de Tokyo|35.6812|139.7671<br>Ex : cam:Mont Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Les paramètres non spécifiés conservent les réglages actuels', currentCamera:'Caméra actuelle', positionLabel:'Position', hprLabel:'Cap/Inclinaison/Roulis', flyToTitle:'Vol vers {v}',
     terrain:'Terrain', shadow:'Ombre', depthTest:'Test de profondeur', on:'OUI', off:'NON', geojsonDrape:'Drapé 3D GeoJSON',
-    start:'Début', stop:'Fin', current:'Actuel', apply:'Appliquer', sentCurrent:'Envoyé (actuel défini)', sent:'Envoyé', sendFailed:'Échec de l’envoi',
+    start:'Début', stop:'Fin', current:'Actuel', apply:'Appliquer', sentCurrent:'Envoyé (actuel défini)', sent:'Envoyé', sendFailed:'Échec de l’envoi',    sunTime:'Heure solaire', allTime:'Toute la période',
     legendTitle:'Légende', legendInstr:'Ajoutez "legend: URLimage" au texte de l’inspecteur.', legendMain:'Principal',
     attrTitle:'Attributs', noFeature:'Aucun objet sélectionné.', noAttrAvail:'Pas d’attributs ou objet désélectionné.', backToAttrList:'Retour à la liste', openNewTab:'Ouvrir dans un nouvel onglet (contourner le sandbox)',
     selectLayer:'Choisir une couche', attrOrValuePh:'Rechercher attributs ou valeurs', selectLayerPrompt:'Veuillez choisir une couche', countFmt:'{rows} éléments / {attrs} attributs', sortTitle:'Cliquer pour trier', noMatchingFeatures:'Aucun objet correspondant', clickToFly:'Cliquer pour voler', limitSuffix:' (affichage limité à {n})', closeAria:'Fermer',
@@ -501,7 +522,7 @@ const GEO_I18N = {
     addrSearch:'Adresssuche', providerGsi:'GSI', searchPh:'Suchbegriff eingeben', searching:'Suche...', noResults:'Keine Ergebnisse', searchFailCors:'Suche fehlgeschlagen. Netzwerk (CORS) prüfen.', appIdMissing:'AppID nicht gesetzt. Fügen Sie folgende Zeile im Plugin-Inspektor hinzu:', appIdSample:'yahooAppId: Ihre Yahoo-AppID', searchFailAppId:'Suche fehlgeschlagen. AppID und Netzwerk (CORS) prüfen.', yahooWarn:'Hinweis: yahooAppId könnte offengelegt werden. Nicht auf öffentlichen Seiten verwenden.', googleWarn:'Hinweis: googleMapsApiKey könnte offengelegt werden. Nicht auf öffentlichen Seiten verwenden.', googleKeyMissing:'googleMapsApiKey nicht gesetzt. Fügen Sie folgende Zeile im Plugin-Inspektor hinzu:', googleKeySample:'googleMapsApiKey: Ihr Google-Maps-API-Schlüssel', manageSecretWarn:'Hinweis: Hier eingetragene geminiApiKey: und yahooAppId: werden mit dem Projekt gespeichert und an alle Besucher der Site veröffentlicht.',
     camsTitle:'Kamera-Voreinstellungen', camHelp:'cam:Titel|Lat|Lng<br>cam:Titel|Lat|Lng|h=Höhe(m)<br>cam:Titel|Lat|Lng|h=Höhe|d=Kurs&deg;|p=Neigung&deg;<br><br>Bsp.: cam:Bahnhof Tokio|35.6812|139.7671<br>Bsp.: cam:Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Nicht angegebene Parameter behalten die aktuellen Kameraeinstellungen', currentCamera:'Aktuelle Kamera', positionLabel:'Position', hprLabel:'Kurs/Neigung/Roll', flyToTitle:'Flug zu {v}',
     terrain:'Gelände', shadow:'Schatten', depthTest:'Tiefentest', on:'EIN', off:'AUS', geojsonDrape:'GeoJSON-3D-Drape',
-    start:'Start', stop:'Ende', current:'Aktuell', apply:'Anwenden', sentCurrent:'Gesendet (aktuell gesetzt)', sent:'Gesendet', sendFailed:'Senden fehlgeschlagen',
+    start:'Start', stop:'Ende', current:'Aktuell', apply:'Anwenden', sentCurrent:'Gesendet (aktuell gesetzt)', sent:'Gesendet', sendFailed:'Senden fehlgeschlagen',    sunTime:'Sonnenzeit', allTime:'Gesamter Zeitraum',
     legendTitle:'Legende', legendInstr:'"legend: BildURL" zum Inspektor-Text hinzufügen.', legendMain:'Haupt',
     attrTitle:'Attribute', noFeature:'Kein Objekt ausgewählt.', noAttrAvail:'Keine Attribute oder Auswahl aufgehoben.', backToAttrList:'Zurück zur Liste', openNewTab:'In neuem Tab öffnen (Sandbox umgehen)',
     selectLayer:'Layer wählen', attrOrValuePh:'Attribute oder Werte suchen', selectLayerPrompt:'Bitte Layer wählen', countFmt:'{rows} Einträge / {attrs} Attribute', sortTitle:'Klicken zum Sortieren', noMatchingFeatures:'Keine passenden Objekte', clickToFly:'Klicken zum Anfliegen', limitSuffix:' (max. {n} angezeigt)', closeAria:'Schließen',
@@ -532,7 +553,7 @@ const GEO_I18N = {
     addrSearch:'Ricerca indirizzi', providerGsi:'GSI', searchPh:'Inserisci parola chiave', searching:'Ricerca...', noResults:'Nessun risultato', searchFailCors:'Ricerca fallita. Controlla la rete (CORS).', appIdMissing:'AppID non configurato. Aggiungi la riga seguente nell’ispettore del plugin:', appIdSample:'yahooAppId: il tuo AppID Yahoo', searchFailAppId:'Ricerca fallita. Controlla AppID e rete (CORS).', yahooWarn:'Nota: yahooAppId potrebbe essere esposto. Non usare su siti pubblici.', googleWarn:'Nota: googleMapsApiKey potrebbe essere esposto. Non usare su siti pubblici.', googleKeyMissing:'googleMapsApiKey non configurato. Aggiungi la riga seguente nell’ispettore del plugin:', googleKeySample:'googleMapsApiKey: la tua chiave API di Google Maps', manageSecretWarn:'Nota: geminiApiKey: e yahooAppId: scritti qui vengono salvati con il progetto e pubblicati a tutti i visitatori del sito.',
     camsTitle:'Preset camera', camHelp:'cam:Titolo|Lat|Lng<br>cam:Titolo|Lat|Lng|h=Altezza(m)<br>cam:Titolo|Lat|Lng|h=Altezza|d=Direzione&deg;|p=Inclinazione&deg;<br><br>Es: cam:Stazione di Tokyo|35.6812|139.7671<br>Es: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>I parametri non specificati mantengono le impostazioni attuali', currentCamera:'Camera corrente', positionLabel:'Posizione', hprLabel:'Direzione/Inclinazione/Rollio', flyToTitle:'Vola a {v}',
     terrain:'Terreno', shadow:'Ombra', depthTest:'Test profondità', on:'SÌ', off:'NO', geojsonDrape:'Drappeggio 3D GeoJSON',
-    start:'Inizio', stop:'Fine', current:'Corrente', apply:'Applica', sentCurrent:'Inviato (corrente impostato)', sent:'Inviato', sendFailed:'Invio fallito',
+    start:'Inizio', stop:'Fine', current:'Corrente', apply:'Applica', sentCurrent:'Inviato (corrente impostato)', sent:'Inviato', sendFailed:'Invio fallito',    sunTime:'Ora solare', allTime:'Tutto il periodo',
     legendTitle:'Legenda', legendInstr:'Aggiungi "legend: URLimmagine" al testo dell’ispettore.', legendMain:'Principale',
     attrTitle:'Attributi', noFeature:'Nessun elemento selezionato.', noAttrAvail:'Nessun attributo o selezione rimossa.', backToAttrList:'Torna all’elenco', openNewTab:'Apri in nuova scheda (aggira sandbox)',
     selectLayer:'Seleziona layer', attrOrValuePh:'Cerca attributi o valori', selectLayerPrompt:'Seleziona un layer', countFmt:'{rows} elementi / {attrs} attributi', sortTitle:'Clicca per ordinare', noMatchingFeatures:'Nessun elemento corrispondente', clickToFly:'Clicca per volare', limitSuffix:' (max {n} mostrati)', closeAria:'Chiudi',
@@ -563,7 +584,7 @@ const GEO_I18N = {
     addrSearch:'Busca de endereço', providerGsi:'GSI', searchPh:'Digite a palavra-chave', searching:'Buscando...', noResults:'Sem resultados', searchFailCors:'Falha na busca. Verifique a rede (CORS).', appIdMissing:'AppID não configurado. Adicione a linha a seguir ao inspetor do plugin:', appIdSample:'yahooAppId: seu AppID do Yahoo', searchFailAppId:'Falha na busca. Verifique o AppID e a rede (CORS).', yahooWarn:'Nota: o yahooAppId pode ser exposto. Não use em sites públicos.', googleWarn:'Nota: o googleMapsApiKey pode ser exposto. Não use em sites públicos.', googleKeyMissing:'googleMapsApiKey não configurado. Adicione a linha a seguir ao inspetor do plugin:', googleKeySample:'googleMapsApiKey: sua chave de API do Google Maps', manageSecretWarn:'Nota: geminiApiKey: e yahooAppId: escritos aqui são guardados com o projeto e publicados para todos os visitantes do site.',
     camsTitle:'Predefinições de câmera', camHelp:'cam:Título|Lat|Lng<br>cam:Título|Lat|Lng|h=Altura(m)<br>cam:Título|Lat|Lng|h=Altura|d=Direção&deg;|p=Inclinação&deg;<br><br>Ex: cam:Estação de Tóquio|35.6812|139.7671<br>Ex: cam:Monte Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Parâmetros não especificados mantêm as configurações atuais', currentCamera:'Câmera atual', positionLabel:'Posição', hprLabel:'Direção/Inclinação/Rolagem', flyToTitle:'Voar para {v}',
     terrain:'Terreno', shadow:'Sombra', depthTest:'Teste de profundidade', on:'SIM', off:'NÃO', geojsonDrape:'Drapeado 3D GeoJSON',
-    start:'Início', stop:'Fim', current:'Atual', apply:'Aplicar', sentCurrent:'Enviado (atual definido)', sent:'Enviado', sendFailed:'Falha ao enviar',
+    start:'Início', stop:'Fim', current:'Atual', apply:'Aplicar', sentCurrent:'Enviado (atual definido)', sent:'Enviado', sendFailed:'Falha ao enviar',    sunTime:'Hora solar', allTime:'Todo o período',
     legendTitle:'Legenda', legendInstr:'Adicione "legend: URLdaImagem" ao texto do inspetor.', legendMain:'Principal',
     attrTitle:'Atributos', noFeature:'Nenhum elemento selecionado.', noAttrAvail:'Sem atributos ou elemento desmarcado.', backToAttrList:'Voltar à lista', openNewTab:'Abrir em nova aba (contornar sandbox)',
     selectLayer:'Selecionar camada', attrOrValuePh:'Buscar atributos ou valores', selectLayerPrompt:'Selecione uma camada', countFmt:'{rows} itens / {attrs} atributos', sortTitle:'Clique para ordenar', noMatchingFeatures:'Nenhum elemento correspondente', clickToFly:'Clique para voar', limitSuffix:' (mostrando até {n})', closeAria:'Fechar',
@@ -594,7 +615,7 @@ const GEO_I18N = {
     addrSearch:'Поиск адреса', providerGsi:'GSI', searchPh:'Введите ключевое слово', searching:'Поиск...', noResults:'Нет результатов', searchFailCors:'Поиск не удался. Проверьте сеть (CORS).', appIdMissing:'AppID не задан. Добавьте следующую строку в инспектор плагина:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Поиск не удался. Проверьте AppID и сеть (CORS).', yahooWarn:'Внимание: yahooAppId может быть раскрыт. Не используйте на публичных сайтах.', googleWarn:'Внимание: googleMapsApiKey может быть раскрыт. Не используйте на публичных сайтах.', googleKeyMissing:'googleMapsApiKey не задан. Добавьте следующую строку в инспектор плагина:', googleKeySample:'googleMapsApiKey: ваш ключ API Google Maps', manageSecretWarn:'Примечание: указанные здесь geminiApiKey: и yahooAppId: сохраняются в проекте и публикуются для всех посетителей сайта.',
     camsTitle:'Предустановки камеры', camHelp:'cam:Название|Широта|Долгота<br>cam:Название|Широта|Долгота|h=Высота(м)<br>cam:Название|Широта|Долгота|h=Высота|d=Азимут&deg;|p=Наклон&deg;<br><br>Пример: cam:Токийский вокзал|35.6812|139.7671<br>Пример: cam:Фудзи|35.3606|138.7274|h=5000|p=-30<br><br>Неуказанные параметры сохраняют текущие настройки камеры', currentCamera:'Текущая камера', positionLabel:'Позиция', hprLabel:'Азимут/Наклон/Крен', flyToTitle:'Перейти к {v}',
     terrain:'Рельеф', shadow:'Тень', depthTest:'Тест глубины', on:'ВКЛ', off:'ВЫКЛ', geojsonDrape:'3D-драпировка GeoJSON',
-    start:'Начало', stop:'Конец', current:'Текущее', apply:'Применить', sentCurrent:'Отправлено (текущее задано)', sent:'Отправлено', sendFailed:'Ошибка отправки',
+    start:'Начало', stop:'Конец', current:'Текущее', apply:'Применить', sentCurrent:'Отправлено (текущее задано)', sent:'Отправлено', sendFailed:'Ошибка отправки',    sunTime:'Солнечное время', allTime:'Весь период',
     legendTitle:'Легенда', legendInstr:'Добавьте "legend: URLизображения" в текст инспектора.', legendMain:'Основная',
     attrTitle:'Атрибуты', noFeature:'Объект не выбран.', noAttrAvail:'Нет атрибутов или выбор снят.', backToAttrList:'Назад к списку', openNewTab:'Открыть в новой вкладке (обход sandbox)',
     selectLayer:'Выберите слой', attrOrValuePh:'Поиск по атрибутам или значениям', selectLayerPrompt:'Выберите слой', countFmt:'{rows} записей / {attrs} атрибутов', sortTitle:'Нажмите для сортировки', noMatchingFeatures:'Нет подходящих объектов', clickToFly:'Нажмите для перехода', limitSuffix:' (показано до {n})', closeAria:'Закрыть',
@@ -625,7 +646,7 @@ const GEO_I18N = {
     addrSearch:'Adres zoeken', providerGsi:'GSI', searchPh:'Voer zoekterm in', searching:'Zoeken...', noResults:'Geen resultaten', searchFailCors:'Zoeken mislukt. Controleer netwerk (CORS).', appIdMissing:'AppID niet ingesteld. Voeg de volgende regel toe aan de plugin-inspector:', appIdSample:'yahooAppId: uw Yahoo AppID', searchFailAppId:'Zoeken mislukt. Controleer AppID en netwerk (CORS).', yahooWarn:'Let op: yahooAppId kan zichtbaar worden. Niet gebruiken op openbare sites.', googleWarn:'Let op: googleMapsApiKey kan zichtbaar worden. Niet gebruiken op openbare sites.', googleKeyMissing:'googleMapsApiKey niet ingesteld. Voeg de volgende regel toe aan de plugin-inspector:', googleKeySample:'googleMapsApiKey: uw Google Maps API-sleutel', manageSecretWarn:'Let op: hier ingevoerde geminiApiKey: en yahooAppId: worden met het project opgeslagen en aan alle sitebezoekers gepubliceerd.',
     camsTitle:'Camera-presets', camHelp:'cam:Titel|Lat|Lng<br>cam:Titel|Lat|Lng|h=Hoogte(m)<br>cam:Titel|Lat|Lng|h=Hoogte|d=Richting&deg;|p=Helling&deg;<br><br>Bijv: cam:Station Tokio|35.6812|139.7671<br>Bijv: cam:Mount Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Niet-opgegeven parameters behouden de huidige camera-instellingen', currentCamera:'Huidige camera', positionLabel:'Positie', hprLabel:'Richting/Helling/Rol', flyToTitle:'Vlieg naar {v}',
     terrain:'Terrein', shadow:'Schaduw', depthTest:'Dieptetest', on:'AAN', off:'UIT', geojsonDrape:'GeoJSON 3D-drape',
-    start:'Start', stop:'Einde', current:'Huidig', apply:'Toepassen', sentCurrent:'Verzonden (huidig ingesteld)', sent:'Verzonden', sendFailed:'Verzenden mislukt',
+    start:'Start', stop:'Einde', current:'Huidig', apply:'Toepassen', sentCurrent:'Verzonden (huidig ingesteld)', sent:'Verzonden', sendFailed:'Verzenden mislukt',    sunTime:'Zonnetijd', allTime:'Hele periode',
     legendTitle:'Legenda', legendInstr:'Voeg "legend: AfbeeldingsURL" toe aan inspectortekst.', legendMain:'Hoofd',
     attrTitle:'Attributen', noFeature:'Geen object geselecteerd.', noAttrAvail:'Geen attributen of selectie opgeheven.', backToAttrList:'Terug naar lijst', openNewTab:'Openen in nieuw tabblad (sandbox omzeilen)',
     selectLayer:'Kies laag', attrOrValuePh:'Zoek attributen of waarden', selectLayerPrompt:'Kies een laag', countFmt:'{rows} items / {attrs} attributen', sortTitle:'Klik om te sorteren', noMatchingFeatures:'Geen overeenkomende objecten', clickToFly:'Klik om te vliegen', limitSuffix:' (max. {n} weergegeven)', closeAria:'Sluiten',
@@ -656,7 +677,7 @@ const GEO_I18N = {
     addrSearch:'Wyszukiwanie adresu', providerGsi:'GSI', searchPh:'Wpisz słowo kluczowe', searching:'Wyszukiwanie...', noResults:'Brak wyników', searchFailCors:'Wyszukiwanie nie powiodło się. Sprawdź sieć (CORS).', appIdMissing:'AppID nie jest ustawione. Dodaj następujący wiersz do inspektora wtyczki:', appIdSample:'yahooAppId: Twój AppID Yahoo', searchFailAppId:'Wyszukiwanie nie powiodło się. Sprawdź AppID i sieć (CORS).', yahooWarn:'Uwaga: yahooAppId może zostać ujawnione. Nie używaj na publicznych stronach.', googleWarn:'Uwaga: googleMapsApiKey może zostać ujawnione. Nie używaj na publicznych stronach.', googleKeyMissing:'googleMapsApiKey nie jest ustawione. Dodaj następujący wiersz do inspektora wtyczki:', googleKeySample:'googleMapsApiKey: Twój klucz API Google Maps', manageSecretWarn:'Uwaga: wpisane tu geminiApiKey: i yahooAppId: są zapisywane w projekcie i publikowane wszystkim odwiedzającym stronę.',
     camsTitle:'Presety kamery', camHelp:'cam:Tytuł|Szer.|Dług.<br>cam:Tytuł|Szer.|Dług.|h=Wysokość(m)<br>cam:Tytuł|Szer.|Dług.|h=Wysokość|d=Kierunek&deg;|p=Nachylenie&deg;<br><br>Przykład: cam:Stacja Tokio|35.6812|139.7671<br>Przykład: cam:Góra Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Nieokreślone parametry zachowują bieżące ustawienia kamery', currentCamera:'Bieżąca kamera', positionLabel:'Pozycja', hprLabel:'Kierunek/Nachylenie/Przechylenie', flyToTitle:'Leć do {v}',
     terrain:'Teren', shadow:'Cień', depthTest:'Test głębi', on:'WŁ.', off:'WYŁ.', geojsonDrape:'Drapowanie 3D GeoJSON',
-    start:'Start', stop:'Koniec', current:'Bieżący', apply:'Zastosuj', sentCurrent:'Wysłano (bieżący ustawiony)', sent:'Wysłano', sendFailed:'Wysyłanie nie powiodło się',
+    start:'Start', stop:'Koniec', current:'Bieżący', apply:'Zastosuj', sentCurrent:'Wysłano (bieżący ustawiony)', sent:'Wysłano', sendFailed:'Wysyłanie nie powiodło się',    sunTime:'Czas słoneczny', allTime:'Cały okres',
     legendTitle:'Legenda', legendInstr:'Dodaj "legend: URLobrazu" do tekstu inspektora.', legendMain:'Główna',
     attrTitle:'Atrybuty', noFeature:'Nie wybrano obiektu.', noAttrAvail:'Brak atrybutów lub odznaczono obiekt.', backToAttrList:'Powrót do listy', openNewTab:'Otwórz w nowej karcie (obejście sandbox)',
     selectLayer:'Wybierz warstwę', attrOrValuePh:'Szukaj atrybutów lub wartości', selectLayerPrompt:'Wybierz warstwę', countFmt:'{rows} elementów / {attrs} atrybutów', sortTitle:'Kliknij, aby sortować', noMatchingFeatures:'Brak pasujących obiektów', clickToFly:'Kliknij, aby polecieć', limitSuffix:' (wyświetlono maks. {n})', closeAria:'Zamknij',
@@ -687,7 +708,7 @@ const GEO_I18N = {
     addrSearch:'Пошук адреси', providerGsi:'GSI', searchPh:'Введіть ключове слово', searching:'Пошук...', noResults:'Немає результатів', searchFailCors:'Пошук не вдався. Перевірте мережу (CORS).', appIdMissing:'AppID не задано. Додайте наступний рядок в інспектор плагіна:', appIdSample:'yahooAppId: ваш Yahoo AppID', searchFailAppId:'Пошук не вдався. Перевірте AppID та мережу (CORS).', yahooWarn:'Увага: yahooAppId може бути розкрито. Не використовуйте на публічних сайтах.', googleWarn:'Увага: googleMapsApiKey може бути розкрито. Не використовуйте на публічних сайтах.', googleKeyMissing:'googleMapsApiKey не задано. Додайте наступний рядок в інспектор плагіна:', googleKeySample:'googleMapsApiKey: ваш ключ API Google Maps', manageSecretWarn:'Примітка: вказані тут geminiApiKey: і yahooAppId: зберігаються в проєкті й публікуються всім відвідувачам сайту.',
     camsTitle:'Пресети камери', camHelp:'cam:Назва|Широта|Довгота<br>cam:Назва|Широта|Довгота|h=Висота(м)<br>cam:Назва|Широта|Довгота|h=Висота|d=Азимут&deg;|p=Нахил&deg;<br><br>Приклад: cam:Токійський вокзал|35.6812|139.7671<br>Приклад: cam:Фудзі|35.3606|138.7274|h=5000|p=-30<br><br>Невказані параметри зберігають поточні налаштування камери', currentCamera:'Поточна камера', positionLabel:'Позиція', hprLabel:'Азимут/Нахил/Крен', flyToTitle:'Летіти до {v}',
     terrain:'Рельєф', shadow:'Тінь', depthTest:'Тест глибини', on:'УВІМК', off:'ВИМК', geojsonDrape:'3D-драпірування GeoJSON',
-    start:'Початок', stop:'Кінець', current:'Поточний', apply:'Застосувати', sentCurrent:'Надіслано (поточний задано)', sent:'Надіслано', sendFailed:'Помилка надсилання',
+    start:'Початок', stop:'Кінець', current:'Поточний', apply:'Застосувати', sentCurrent:'Надіслано (поточний задано)', sent:'Надіслано', sendFailed:'Помилка надсилання',    sunTime:'Сонячний час', allTime:'Весь період',
     legendTitle:'Легенда', legendInstr:'Додайте "legend: URLзображення" до тексту інспектора.', legendMain:'Основна',
     attrTitle:'Атрибути', noFeature:'Об’єкт не вибрано.', noAttrAvail:'Немає атрибутів або вибір скасовано.', backToAttrList:'Назад до списку', openNewTab:'Відкрити в новій вкладці (обхід sandbox)',
     selectLayer:'Виберіть шар', attrOrValuePh:'Пошук атрибутів або значень', selectLayerPrompt:'Виберіть шар', countFmt:'{rows} записів / {attrs} атрибутів', sortTitle:'Натисніть для сортування', noMatchingFeatures:'Немає відповідних об’єктів', clickToFly:'Натисніть, щоб летіти', limitSuffix:' (показано до {n})', closeAria:'Закрити',
@@ -718,7 +739,7 @@ const GEO_I18N = {
     addrSearch:'Adres arama', providerGsi:'GSI', searchPh:'Anahtar kelime girin', searching:'Aranıyor...', noResults:'Sonuç yok', searchFailCors:'Arama başarısız. Ağı (CORS) kontrol edin.', appIdMissing:'AppID ayarlanmadı. Plugin denetçisine şu satırı ekleyin:', appIdSample:'yahooAppId: Yahoo AppID’niz', searchFailAppId:'Arama başarısız. AppID ve ağı (CORS) kontrol edin.', yahooWarn:'Not: yahooAppId ifşa olabilir. Herkese açık sitelerde kullanmayın.', googleWarn:'Not: googleMapsApiKey ifşa olabilir. Herkese açık sitelerde kullanmayın.', googleKeyMissing:'googleMapsApiKey ayarlanmadı. Plugin denetçisine şu satırı ekleyin:', googleKeySample:'googleMapsApiKey: Google Maps API anahtarınız', manageSecretWarn:'Not: buraya yazılan geminiApiKey: ve yahooAppId: proje ile birlikte kaydedilir ve sitenin tüm ziyaretçilerine yayınlanır.',
     camsTitle:'Kamera önayarları', camHelp:'cam:Başlık|Enlem|Boylam<br>cam:Başlık|Enlem|Boylam|h=Yükseklik(m)<br>cam:Başlık|Enlem|Boylam|h=Yükseklik|d=Yön&deg;|p=Eğim&deg;<br><br>Örn: cam:Tokyo İstasyonu|35.6812|139.7671<br>Örn: cam:Fuji Dağı|35.3606|138.7274|h=5000|p=-30<br><br>Belirtilmeyen parametreler geçerli kamera ayarlarını korur', currentCamera:'Geçerli kamera', positionLabel:'Konum', hprLabel:'Yön/Eğim/Yatış', flyToTitle:'{v} konumuna uç',
     terrain:'Arazi', shadow:'Gölge', depthTest:'Derinlik testi', on:'AÇIK', off:'KAPALI', geojsonDrape:'GeoJSON 3D Kaplama',
-    start:'Başlangıç', stop:'Bitiş', current:'Geçerli', apply:'Uygula', sentCurrent:'Gönderildi (geçerli ayarlı)', sent:'Gönderildi', sendFailed:'Gönderim başarısız',
+    start:'Başlangıç', stop:'Bitiş', current:'Geçerli', apply:'Uygula', sentCurrent:'Gönderildi (geçerli ayarlı)', sent:'Gönderildi', sendFailed:'Gönderim başarısız',    sunTime:'Güneş saati', allTime:'Tüm dönem',
     legendTitle:'Lejant', legendInstr:'Denetçi metnine "legend: ResimURL" ekleyin.', legendMain:'Ana',
     attrTitle:'Öznitelikler', noFeature:'Öğe seçilmedi.', noAttrAvail:'Öznitelik yok veya seçim kaldırıldı.', backToAttrList:'Listeye dön', openNewTab:'Yeni sekmede aç (sandbox’ı atla)',
     selectLayer:'Katman seç', attrOrValuePh:'Öznitelik veya değer ara', selectLayerPrompt:'Lütfen katman seçin', countFmt:'{rows} öğe / {attrs} öznitelik', sortTitle:'Sıralamak için tıklayın', noMatchingFeatures:'Eşleşen öğe yok', clickToFly:'Uçmak için tıklayın', limitSuffix:' (en fazla {n} gösteriliyor)', closeAria:'Kapat',
@@ -749,7 +770,7 @@ const GEO_I18N = {
     addrSearch:'بحث العنوان', providerGsi:'GSI', searchPh:'أدخل كلمة البحث', searching:'جارٍ البحث...', noResults:'لا نتائج', searchFailCors:'فشل البحث. تحقق من الشبكة (CORS).', appIdMissing:'AppID غير مضبوط. أضف السطر التالي إلى مفتش الإضافة:', appIdSample:'yahooAppId: مُعرّف Yahoo الخاص بك', searchFailAppId:'فشل البحث. تحقق من AppID والشبكة (CORS).', yahooWarn:'ملاحظة: قد يتم كشف yahooAppId. لا تستخدمه في المواقع العامة.', googleWarn:'ملاحظة: قد يتم كشف googleMapsApiKey. لا تستخدمه في المواقع العامة.', googleKeyMissing:'لم يتم تعيين googleMapsApiKey. أضف السطر التالي إلى مفتش الإضافة:', googleKeySample:'googleMapsApiKey: مفتاح Google Maps API الخاص بك', manageSecretWarn:'ملاحظة: ما تكتبه هنا من geminiApiKey: و yahooAppId: يُحفظ مع المشروع ويُنشر لجميع زوّار الموقع.',
     camsTitle:'إعدادات الكاميرا المسبقة', camHelp:'cam:العنوان|خط العرض|خط الطول<br>cam:العنوان|خط العرض|خط الطول|h=الارتفاع(م)<br>cam:العنوان|خط العرض|خط الطول|h=الارتفاع|d=الاتجاه&deg;|p=الميل&deg;<br><br>مثال: cam:محطة طوكيو|35.6812|139.7671<br>مثال: cam:جبل فوجي|35.3606|138.7274|h=5000|p=-30<br><br>المعلمات غير المحددة تحتفظ بإعدادات الكاميرا الحالية', currentCamera:'الكاميرا الحالية', positionLabel:'الموقع', hprLabel:'الاتجاه/الميل/الدوران', flyToTitle:'الانتقال إلى {v}',
     terrain:'التضاريس', shadow:'الظل', depthTest:'اختبار العمق', on:'تشغيل', off:'إيقاف', geojsonDrape:'إسقاط GeoJSON ثلاثي الأبعاد',
-    start:'البداية', stop:'النهاية', current:'الحالي', apply:'تطبيق', sentCurrent:'تم الإرسال (تم تعيين الحالي)', sent:'تم الإرسال', sendFailed:'فشل الإرسال',
+    start:'البداية', stop:'النهاية', current:'الحالي', apply:'تطبيق', sentCurrent:'تم الإرسال (تم تعيين الحالي)', sent:'تم الإرسال', sendFailed:'فشل الإرسال',    sunTime:'وقت الشمس', allTime:'الفترة كلها',
     legendTitle:'المفتاح', legendInstr:'أضف "legend: رابط الصورة" إلى نص المفتش.', legendMain:'رئيسي',
     attrTitle:'الخصائص', noFeature:'لم يتم اختيار عنصر.', noAttrAvail:'لا توجد خصائص أو تم إلغاء التحديد.', backToAttrList:'العودة إلى القائمة', openNewTab:'فتح في تبويب جديد (تجاوز sandbox)',
     selectLayer:'اختر طبقة', attrOrValuePh:'بحث في الخصائص أو القيم', selectLayerPrompt:'يرجى اختيار طبقة', countFmt:'{rows} عنصر / {attrs} خاصية', sortTitle:'انقر للترتيب', noMatchingFeatures:'لا توجد عناصر مطابقة', clickToFly:'انقر للانتقال', limitSuffix:' (بحد أقصى {n})', closeAria:'إغلاق',
@@ -780,7 +801,7 @@ const GEO_I18N = {
     addrSearch:'पता खोज', providerGsi:'GSI', searchPh:'खोज शब्द दर्ज करें', searching:'खोजा जा रहा है...', noResults:'कोई परिणाम नहीं', searchFailCors:'खोज विफल। नेटवर्क (CORS) जाँचें।', appIdMissing:'AppID सेट नहीं है। प्लगइन इंस्पेक्टर में यह पंक्ति जोड़ें:', appIdSample:'yahooAppId: आपकी Yahoo AppID', searchFailAppId:'खोज विफल। AppID और नेटवर्क (CORS) जाँचें।', yahooWarn:'नोट: yahooAppId उजागर हो सकती है। सार्वजनिक साइटों पर उपयोग न करें।', googleWarn:'नोट: googleMapsApiKey उजागर हो सकती है। सार्वजनिक साइटों पर उपयोग न करें।', googleKeyMissing:'googleMapsApiKey सेट नहीं है। प्लगइन इंस्पेक्टर में यह पंक्ति जोड़ें:', googleKeySample:'googleMapsApiKey: आपकी Google Maps API कुंजी', manageSecretWarn:'नोट: यहाँ लिखी गई geminiApiKey: और yahooAppId: परियोजना के साथ सहेजी जाती हैं और साइट के सभी आगंतुकों को प्रकाशित होती हैं।',
     camsTitle:'कैमरा प्रीसेट', camHelp:'cam:शीर्षक|अक्षांश|देशांतर<br>cam:शीर्षक|अक्षांश|देशांतर|h=ऊँचाई(m)<br>cam:शीर्षक|अक्षांश|देशांतर|h=ऊँचाई|d=दिशा&deg;|p=झुकाव&deg;<br><br>उदा: cam:टोक्यो स्टेशन|35.6812|139.7671<br>उदा: cam:फ़ूजी पर्वत|35.3606|138.7274|h=5000|p=-30<br><br>अनिर्दिष्ट पैरामीटर वर्तमान कैमरा सेटिंग बनाए रखते हैं', currentCamera:'वर्तमान कैमरा', positionLabel:'स्थिति', hprLabel:'दिशा/झुकाव/रोल', flyToTitle:'{v} पर जाएँ',
     terrain:'भू-आकृति', shadow:'छाया', depthTest:'गहराई परीक्षण', on:'चालू', off:'बंद', geojsonDrape:'GeoJSON 3D ड्रेप',
-    start:'प्रारंभ', stop:'समाप्त', current:'वर्तमान', apply:'लागू करें', sentCurrent:'भेजा गया (वर्तमान सेट)', sent:'भेजा गया', sendFailed:'भेजना विफल',
+    start:'प्रारंभ', stop:'समाप्त', current:'वर्तमान', apply:'लागू करें', sentCurrent:'भेजा गया (वर्तमान सेट)', sent:'भेजा गया', sendFailed:'भेजना विफल',    sunTime:'सूर्य समय', allTime:'पूरा समय',
     legendTitle:'लीजेंड', legendInstr:'इंस्पेक्टर टेक्स्ट में "legend: छविURL" जोड़ें।', legendMain:'मुख्य',
     attrTitle:'विशेषताएँ', noFeature:'कोई फ़ीचर चयनित नहीं।', noAttrAvail:'कोई विशेषता नहीं या चयन हटाया गया।', backToAttrList:'सूची पर वापस', openNewTab:'नए टैब में खोलें (sandbox बायपास)',
     selectLayer:'लेयर चुनें', attrOrValuePh:'विशेषता या मान खोजें', selectLayerPrompt:'कृपया लेयर चुनें', countFmt:'{rows} आइटम / {attrs} विशेषताएँ', sortTitle:'क्रमबद्ध करने क्लिक करें', noMatchingFeatures:'कोई मेल खाने वाला फ़ीचर नहीं', clickToFly:'जाने के लिए क्लिक करें', limitSuffix:' (अधिकतम {n} दिखाए गए)', closeAria:'बंद करें',
@@ -811,7 +832,7 @@ const GEO_I18N = {
     addrSearch:'Pencarian alamat', providerGsi:'GSI', searchPh:'Masukkan kata kunci', searching:'Mencari...', noResults:'Tidak ada hasil', searchFailCors:'Pencarian gagal. Periksa jaringan (CORS).', appIdMissing:'AppID belum diatur. Tambahkan baris berikut ke inspektur plugin:', appIdSample:'yahooAppId: AppID Yahoo Anda', searchFailAppId:'Pencarian gagal. Periksa AppID dan jaringan (CORS).', yahooWarn:'Catatan: yahooAppId dapat terekspos. Jangan gunakan di situs publik.', googleWarn:'Catatan: googleMapsApiKey dapat terekspos. Jangan gunakan di situs publik.', googleKeyMissing:'googleMapsApiKey belum diatur. Tambahkan baris berikut ke inspektur plugin:', googleKeySample:'googleMapsApiKey: kunci API Google Maps Anda', manageSecretWarn:'Catatan: geminiApiKey: dan yahooAppId: yang ditulis di sini disimpan bersama proyek dan dipublikasikan ke semua pengunjung situs.',
     camsTitle:'Preset kamera', camHelp:'cam:Judul|Lintang|Bujur<br>cam:Judul|Lintang|Bujur|h=Ketinggian(m)<br>cam:Judul|Lintang|Bujur|h=Ketinggian|d=Arah&deg;|p=Kemiringan&deg;<br><br>Cth: cam:Stasiun Tokyo|35.6812|139.7671<br>Cth: cam:Gunung Fuji|35.3606|138.7274|h=5000|p=-30<br><br>Parameter yang tidak diisi mempertahankan pengaturan kamera saat ini', currentCamera:'Kamera saat ini', positionLabel:'Posisi', hprLabel:'Arah/Kemiringan/Roll', flyToTitle:'Terbang ke {v}',
     terrain:'Medan', shadow:'Bayangan', depthTest:'Uji kedalaman', on:'AKTIF', off:'MATI', geojsonDrape:'Drape 3D GeoJSON',
-    start:'Mulai', stop:'Selesai', current:'Saat ini', apply:'Terapkan', sentCurrent:'Terkirim (saat ini diatur)', sent:'Terkirim', sendFailed:'Gagal mengirim',
+    start:'Mulai', stop:'Selesai', current:'Saat ini', apply:'Terapkan', sentCurrent:'Terkirim (saat ini diatur)', sent:'Terkirim', sendFailed:'Gagal mengirim',    sunTime:'Waktu matahari', allTime:'Semua waktu',
     legendTitle:'Legenda', legendInstr:'Tambahkan "legend: URLGambar" ke teks inspektur.', legendMain:'Utama',
     attrTitle:'Atribut', noFeature:'Tidak ada fitur dipilih.', noAttrAvail:'Tidak ada atribut atau pilihan dibatalkan.', backToAttrList:'Kembali ke daftar', openNewTab:'Buka di tab baru (lewati sandbox)',
     selectLayer:'Pilih lapisan', attrOrValuePh:'Cari atribut atau nilai', selectLayerPrompt:'Silakan pilih lapisan', countFmt:'{rows} item / {attrs} atribut', sortTitle:'Klik untuk mengurutkan', noMatchingFeatures:'Tidak ada fitur yang cocok', clickToFly:'Klik untuk terbang', limitSuffix:' (maks {n} ditampilkan)', closeAria:'Tutup',
@@ -842,7 +863,7 @@ const GEO_I18N = {
     addrSearch:'ค้นหาที่อยู่', providerGsi:'GSI', searchPh:'ป้อนคำค้นหา', searching:'กำลังค้นหา...', noResults:'ไม่มีผลลัพธ์', searchFailCors:'ค้นหาล้มเหลว ตรวจสอบเครือข่าย (CORS)', appIdMissing:'ยังไม่ได้ตั้ง AppID เพิ่มบรรทัดต่อไปนี้ในอินสเปกเตอร์ของปลั๊กอิน:', appIdSample:'yahooAppId: AppID Yahoo ของคุณ', searchFailAppId:'ค้นหาล้มเหลว ตรวจสอบ AppID และเครือข่าย (CORS)', yahooWarn:'หมายเหตุ: yahooAppId อาจรั่วไหลได้ อย่าใช้บนเว็บไซต์สาธารณะ', googleWarn:'หมายเหตุ: googleMapsApiKey อาจรั่วไหลได้ อย่าใช้บนเว็บไซต์สาธารณะ', googleKeyMissing:'ยังไม่ได้ตั้ง googleMapsApiKey เพิ่มบรรทัดต่อไปนี้ในอินสเปกเตอร์ของปลั๊กอิน:', googleKeySample:'googleMapsApiKey: คีย์ API Google Maps ของคุณ', manageSecretWarn:'หมายเหตุ: geminiApiKey: และ yahooAppId: ที่เขียนที่นี่จะถูกบันทึกพร้อมโปรเจกต์และเผยแพร่ให้ผู้เยี่ยมชมไซต์ทุกคน',
     camsTitle:'พรีเซ็ตกล้อง', camHelp:'cam:ชื่อ|ละติจูด|ลองจิจูด<br>cam:ชื่อ|ละติจูด|ลองจิจูด|h=ความสูง(m)<br>cam:ชื่อ|ละติจูด|ลองจิจูด|h=ความสูง|d=ทิศ&deg;|p=ความเอียง&deg;<br><br>ตัวอย่าง: cam:สถานีโตเกียว|35.6812|139.7671<br>ตัวอย่าง: cam:ภูเขาไฟฟูจิ|35.3606|138.7274|h=5000|p=-30<br><br>พารามิเตอร์ที่ไม่ระบุจะใช้การตั้งค่ากล้องปัจจุบัน', currentCamera:'กล้องปัจจุบัน', positionLabel:'ตำแหน่ง', hprLabel:'ทิศ/ความเอียง/มุมกลิ้ง', flyToTitle:'บินไป {v}',
     terrain:'ภูมิประเทศ', shadow:'เงา', depthTest:'ทดสอบความลึก', on:'เปิด', off:'ปิด', geojsonDrape:'การวาง GeoJSON 3D',
-    start:'เริ่ม', stop:'สิ้นสุด', current:'ปัจจุบัน', apply:'ใช้', sentCurrent:'ส่งแล้ว (ตั้งค่าปัจจุบัน)', sent:'ส่งแล้ว', sendFailed:'ส่งไม่สำเร็จ',
+    start:'เริ่ม', stop:'สิ้นสุด', current:'ปัจจุบัน', apply:'ใช้', sentCurrent:'ส่งแล้ว (ตั้งค่าปัจจุบัน)', sent:'ส่งแล้ว', sendFailed:'ส่งไม่สำเร็จ',    sunTime:'เวลาพระอาทิตย์', allTime:'ทุกช่วงเวลา',
     legendTitle:'คำอธิบาย', legendInstr:'เพิ่ม "legend: URLรูปภาพ" ในข้อความอินสเปกเตอร์', legendMain:'หลัก',
     attrTitle:'คุณลักษณะ', noFeature:'ไม่ได้เลือกฟีเจอร์', noAttrAvail:'ไม่มีคุณลักษณะหรือยกเลิกการเลือกแล้ว', backToAttrList:'กลับไปที่รายการ', openNewTab:'เปิดในแท็บใหม่ (ข้าม sandbox)',
     selectLayer:'เลือกเลเยอร์', attrOrValuePh:'ค้นหาคุณลักษณะหรือค่า', selectLayerPrompt:'โปรดเลือกเลเยอร์', countFmt:'{rows} รายการ / {attrs} คุณลักษณะ', sortTitle:'คลิกเพื่อจัดเรียง', noMatchingFeatures:'ไม่มีฟีเจอร์ที่ตรงกัน', clickToFly:'คลิกเพื่อบินไป', limitSuffix:' (แสดงสูงสุด {n})', closeAria:'ปิด',
@@ -873,7 +894,7 @@ const GEO_I18N = {
     addrSearch:'Tìm địa chỉ', providerGsi:'GSI', searchPh:'Nhập từ khóa', searching:'Đang tìm...', noResults:'Không có kết quả', searchFailCors:'Tìm kiếm thất bại. Kiểm tra mạng (CORS).', appIdMissing:'Chưa đặt AppID. Thêm dòng sau vào inspector của plugin:', appIdSample:'yahooAppId: AppID Yahoo của bạn', searchFailAppId:'Tìm kiếm thất bại. Kiểm tra AppID và mạng (CORS).', yahooWarn:'Lưu ý: yahooAppId có thể bị lộ. Không dùng trên trang công khai.', googleWarn:'Lưu ý: googleMapsApiKey có thể bị lộ. Không dùng trên trang công khai.', googleKeyMissing:'Chưa đặt googleMapsApiKey. Thêm dòng sau vào inspector của plugin:', googleKeySample:'googleMapsApiKey: khóa API Google Maps của bạn', manageSecretWarn:'Lưu ý: geminiApiKey: và yahooAppId: viết ở đây được lưu cùng dự án và công khai tới mọi khách truy cập trang.',
     camsTitle:'Preset camera', camHelp:'cam:Tiêu đề|Vĩ độ|Kinh độ<br>cam:Tiêu đề|Vĩ độ|Kinh độ|h=Độ cao(m)<br>cam:Tiêu đề|Vĩ độ|Kinh độ|h=Độ cao|d=Hướng&deg;|p=Nghiêng&deg;<br><br>VD: cam:Ga Tokyo|35.6812|139.7671<br>VD: cam:Núi Phú Sĩ|35.3606|138.7274|h=5000|p=-30<br><br>Tham số không chỉ định sẽ giữ cài đặt camera hiện tại', currentCamera:'Camera hiện tại', positionLabel:'Vị trí', hprLabel:'Hướng/Nghiêng/Cuộn', flyToTitle:'Bay tới {v}',
     terrain:'Địa hình', shadow:'Bóng', depthTest:'Kiểm tra độ sâu', on:'BẬT', off:'TẮT', geojsonDrape:'Drape 3D GeoJSON',
-    start:'Bắt đầu', stop:'Kết thúc', current:'Hiện tại', apply:'Áp dụng', sentCurrent:'Đã gửi (đặt hiện tại)', sent:'Đã gửi', sendFailed:'Gửi thất bại',
+    start:'Bắt đầu', stop:'Kết thúc', current:'Hiện tại', apply:'Áp dụng', sentCurrent:'Đã gửi (đặt hiện tại)', sent:'Đã gửi', sendFailed:'Gửi thất bại',    sunTime:'Giờ mặt trời', allTime:'Toàn bộ thời gian',
     legendTitle:'Chú giải', legendInstr:'Thêm "legend: URLẢnh" vào văn bản inspector.', legendMain:'Chính',
     attrTitle:'Thuộc tính', noFeature:'Chưa chọn đối tượng.', noAttrAvail:'Không có thuộc tính hoặc đã bỏ chọn.', backToAttrList:'Quay lại danh sách', openNewTab:'Mở trong tab mới (bỏ qua sandbox)',
     selectLayer:'Chọn lớp', attrOrValuePh:'Tìm thuộc tính hoặc giá trị', selectLayerPrompt:'Vui lòng chọn lớp', countFmt:'{rows} mục / {attrs} thuộc tính', sortTitle:'Nhấp để sắp xếp', noMatchingFeatures:'Không có đối tượng phù hợp', clickToFly:'Nhấp để bay', limitSuffix:' (hiển thị tối đa {n})', closeAria:'Đóng',
@@ -1950,6 +1971,12 @@ function getUI() {
     <ul class="layers-list">
       ${combinedLayerItems}${loadingLayerItems}${failedLayerItems}
     </ul>
+    <div id="timefilter-dock" style="display:none;align-items:center;gap:8px;margin-top:6px;padding:4px 8px;border:1px solid #ccc;border-radius:6px;">
+      <span>&#128337;</span>
+      <input type="range" id="timefilter-slider" min="0" step="1" style="flex:1;min-width:60px;">
+      <span id="timefilter-cur" class="text-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:12em;"></span>
+      <button id="timefilter-reset" type="button" class="btn-primary p-6" data-i18n="allTime" style="min-height:24px;">All time</button>
+    </div>
   </div>
 
   <div id="cams-panel" style="display:none;">
@@ -2033,6 +2060,14 @@ function getUI() {
       </div>
       <button id="applyTimeBtn" class="btn-primary p-8" style="min-height:28px;" data-i18n="apply">Apply</button>
       <div id="time-status" class="text-sm" style="margin-left:8px; color:#333;">&nbsp;</div>
+    </div>
+
+    <!-- Sun time row: timezone select + datetime + hour slider (shown with Shadow) -->
+    <div id="sun-row" class="primary-background terrain-row rounded-sm" style="margin-bottom:8px; gap:6px; flex-wrap:wrap; display:none;">
+      <div class="text-md" data-i18n="sunTime">Sun time</div>
+      <select id="sunTz" style="height:28px;max-width:180px;"></select>
+      <input type="datetime-local" id="sunDatetime" style="height:28px;" />
+      <input type="range" id="sunHour" min="0" max="24" step="0.25" style="flex:1;min-width:90px;" />
     </div>
   </div>
 
@@ -4472,13 +4507,15 @@ function qmlStyleToReearth(xmlText, opts){
             const toggleShadow = document.getElementById('toggleShadowSwitch');
             const shadowStatus = document.getElementById('shadow-status');
             const timeRow = document.getElementById('time-row');
+            const sunRow = document.getElementById('sun-row');
             const updateTimeRowVisibility = (visible) => {
-              if (!timeRow) return;
-              timeRow.style.display = visible ? 'flex' : 'none';
+              if (timeRow) timeRow.style.display = visible ? 'flex' : 'none';
+              if (sunRow) sunRow.style.display = visible ? 'flex' : 'none';
             };
 
-            // Always hide time row initially to avoid flash
+            // Always hide time rows initially to avoid flash
             if (timeRow) timeRow.style.display = 'none';
+            if (sunRow) sunRow.style.display = 'none';
 
             if (toggleShadow && shadowStatus) {
               // initialize visibility explicitly based on checked state
@@ -5635,6 +5672,8 @@ function qmlStyleToReearth(xmlText, opts){
                       try { if (typeof window._flyPanelVisibility === 'function') window._flyPanelVisibility(false); } catch(e) {}
                     } catch(e) {}
                   }
+                } else if (msg.action === 'timeSpecLayer') {
+                  try { tfRegister(msg); } catch (e) { console.error('[timeSpecLayer] error', e); }
                 } else if (msg.action === 'requestVectorFeatureData') {
                   try {
                     const sources = msg.sources || [];
@@ -7222,6 +7261,136 @@ function qmlStyleToReearth(xmlText, opts){
             }
 
         
+          // --- Sun time controls (port of kasugai web/shared/sun-time.js) ---
+          var SUN_TIMEZONES = [
+            ['Japan (UTC+9)',9],['E. Australia (UTC+10)',10],['China/Singapore (UTC+8)',8],
+            ['India (UTC+5:30)',5.5],['Dubai (UTC+4)',4],['Moscow (UTC+3)',3],
+            ['C. Europe (UTC+1)',1],['UK/UTC (UTC+0)',0],['Brazil (UTC-3)',-3],
+            ['New York (UTC-5)',-5],['Chicago (UTC-6)',-6],['Denver (UTC-7)',-7],
+            ['Los Angeles (UTC-8)',-8],['Hawaii (UTC-10)',-10]
+          ];
+          var _sunP2 = function(n){ return String(n).padStart(2,'0'); };
+          var sunFmtLocal = function(utcMs, offMin){
+            var d = new Date(utcMs + offMin*60000);
+            return d.getUTCFullYear()+'-'+_sunP2(d.getUTCMonth()+1)+'-'+_sunP2(d.getUTCDate())+'T'+_sunP2(d.getUTCHours())+':'+_sunP2(d.getUTCMinutes());
+          };
+          var sunParseLocal = function(s, offMin){
+            var m = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/.exec(String(s||''));
+            return m ? Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]) - offMin*60000 : null;
+          };
+          try {
+            var _sunUtcMs = 0, _sunFirst = true;
+            var sunTz = document.getElementById('sunTz'), sunDt = document.getElementById('sunDatetime'), sunHr = document.getElementById('sunHour');
+            var sunOff = function(){ return Number((sunTz && sunTz.value) || 9)*60; };
+            var sunSync = function(keepDt, keepHr){
+              if (!keepDt && sunDt) sunDt.value = sunFmtLocal(_sunUtcMs, sunOff());
+              if (!keepHr && sunHr) sunHr.value = String((((Math.round((_sunUtcMs+sunOff()*60000)/60000))%1440)+1440)%1440/60);
+            };
+            var sunApply = function(){
+              // First apply() at mount must not reset the scene time on every
+              // panel re-render; only user actions post setTime.
+              if (_sunFirst) { _sunFirst = false; return; }
+              try { if (window.parent) window.parent.postMessage({ action:'setTime', current: new Date(_sunUtcMs).toISOString() }, '*'); } catch(e){}
+            };
+            if (sunTz && !sunTz.options.length) {
+              for (var _si=0;_si<SUN_TIMEZONES.length;_si++){
+                var _so=document.createElement('option'); _so.value=String(SUN_TIMEZONES[_si][1]); _so.textContent=SUN_TIMEZONES[_si][0];
+                if (SUN_TIMEZONES[_si][1]===9) _so.selected=true;
+                sunTz.append(_so);
+              }
+            }
+            { var _off0=sunOff(); var _loc=new Date(Date.now()+_off0*60000);
+              _sunUtcMs = Date.UTC(_loc.getUTCFullYear(),_loc.getUTCMonth(),_loc.getUTCDate(),10,0) - _off0*60000; }
+            sunSync(); sunApply();
+            if (sunDt) sunDt.addEventListener('input', function(e){
+              var u = sunParseLocal(e.target.value, sunOff()); if (u==null) return;
+              _sunUtcMs=u; sunApply(); sunSync(true,false);
+            });
+            if (sunHr) sunHr.addEventListener('input', function(e){
+              var _off=sunOff(); var _l=new Date(_sunUtcMs+_off*60000);
+              _sunUtcMs = Date.UTC(_l.getUTCFullYear(),_l.getUTCMonth(),_l.getUTCDate(),0,Math.round(Number(e.target.value)*60)) - _off*60000;
+              sunApply(); sunSync(false,true);
+            });
+            if (sunTz) sunTz.addEventListener('change', function(){ sunSync(false,false); sunApply(); });
+          } catch(e) { try { console.error('[sun] init error', e); } catch(_){} }
+
+          // --- time= / time_end= attribute filter (port of kasugai web/shared/kasc-time.js) ---
+          var _tfLayers = {}; // layerId -> { title, spec:{tf,te}, geojson, values }
+          var _tfDomain = [];
+          function tfTimeKey(v){
+            if (v===undefined||v===null||v==='') return null;
+            if (typeof v==='number') return v;
+            var s=String(v).trim(); var n=Number(s);
+            return (s!==''&&Number.isFinite(n)) ? n : s;
+          }
+          // instant: time<=T ; ranged: time<=T && (time_end absent or time_end>=T)
+          function tfFeatureIn(props, spec, tv){
+            var s = tfTimeKey(props && props[spec.tf]);
+            if (s==null) return false;
+            if (s>tv) return false;
+            if (spec.te){ var e=tfTimeKey(props && props[spec.te]); if (e!=null&&e<tv) return false; }
+            return true;
+          }
+          function tfCollect(geojson, tf){
+            var out={}, fs=(geojson&&geojson.features)||[];
+            for (var i=0;i<fs.length;i++){ var v=fs[i]&&fs[i].properties&&fs[i].properties[tf];
+              if (v!==undefined&&v!==null&&v!=='') out[String(v)]=v; }
+            var arr=[]; for (var k in out) { if (out.hasOwnProperty(k)) arr.push(out[k]); }
+            return arr;
+          }
+          function tfSortDomain(values){
+            return values.slice().sort(function(a,b){
+              var ka=tfTimeKey(a),kb=tfTimeKey(b);
+              var na=typeof ka==='number',nb=typeof kb==='number';
+              if(na&&nb) return ka-kb; if(na!==nb) return na?-1:1;
+              return ka<kb?-1:(ka>kb?1:0);
+            });
+          }
+          function tfApplyAll(tv){
+            Object.keys(_tfLayers).forEach(function(id){
+              var L=_tfLayers[id]; if(!L||!L.geojson) return;
+              try {
+                var fc = (tv==null) ? L.geojson : { type:(L.geojson.type||'FeatureCollection'),
+                  features:(L.geojson.features||[]).filter(function(f){ return tfFeatureIn(f&&f.properties,L.spec,tv); }) };
+                if (window.parent) window.parent.postMessage({ action:'timeApply', layerId:id, geojson:fc }, '*');
+              } catch(e){}
+            });
+            var cur=document.getElementById('timefilter-cur');
+            if (cur){ cur.textContent = (tv==null) ? ('('+t('allTime')+')') : String(tv); cur.title=cur.textContent; }
+          }
+          function tfRebuild(){
+            var vals=[]; Object.keys(_tfLayers).forEach(function(id){ var L=_tfLayers[id]; if(L) vals=vals.concat(L.values||[]); });
+            var uniq={}; vals.forEach(function(v){ uniq[String(v)]=v; });
+            var arr=[]; for (var k in uniq) { if (uniq.hasOwnProperty(k)) arr.push(uniq[k]); }
+            _tfDomain=tfSortDomain(arr);
+            var dock=document.getElementById('timefilter-dock'), sl=document.getElementById('timefilter-slider');
+            var has=Object.keys(_tfLayers).length>0 && _tfDomain.length>0;
+            if (dock) dock.style.display = has ? 'flex' : 'none';
+            if (sl){ sl.max=String(Math.max(0,_tfDomain.length-1)); sl.value=sl.max; }
+            if (has) tfApplyAll(_tfDomain[_tfDomain.length-1]); else tfApplyAll(null);
+          }
+          function tfRegister(msg){
+            var id=msg.layerId; if(!id||!msg.tf) return;
+            var done=function(gj){
+              if(!gj) return;
+              _tfLayers[id]={ title:(msg.title||id), spec:{tf:msg.tf,te:(msg.te||null)}, geojson:gj, values:tfCollect(gj,msg.tf) };
+              tfRebuild();
+            };
+            if (msg.geojson){ done(msg.geojson); return; }
+            if (msg.url){
+              try { fetch(msg.url,{method:'GET'})
+                .then(function(r){ if(!r||!r.ok) throw new Error('status '+(r&&r.status)); return r.json(); })
+                .then(done)
+                .catch(function(e){ console.error('[timefilter] fetch failed',msg.url,e); });
+              } catch(e){}
+            }
+          }
+          try {
+            var _tfSl=document.getElementById('timefilter-slider'), _tfRs=document.getElementById('timefilter-reset');
+            if (_tfSl) _tfSl.addEventListener('input', function(){ tfApplyAll(_tfDomain[Number(_tfSl.value)]); });
+            if (_tfRs) _tfRs.addEventListener('click', function(){ tfApplyAll(null); });
+          } catch(e){}
+
       const toggleLayer = (layerId, isVisible) => {
         try {
           if (layerId) {
@@ -10551,6 +10720,10 @@ function handleVecResult(msg) {
     const title = p.title || (label + ': ' + p.url);
     const p0 = (((msg.geojson || {}).features || [])[0] || {}).properties || null;
     const newId = addGeoJsonValueLayer(msg.geojson, title, p.visible !== false, p.classification, label + ': ' + p.url, p.style, p0);
+    {
+        const _ts = _timeSpecByUrl[p.url];
+        if (_ts) { delete _timeSpecByUrl[p.url]; registerTimeSpecLayer(newId, title, _ts.tf, _ts.te, null, msg.geojson); }
+    }
     if (p.pending && p.pending.senderId) aiToolReply(p.pending.senderId, p.pending.reqId, !!newId, { id: newId, title: title, features: (msg.geojson.features || []).length });
 }
 
@@ -11073,6 +11246,17 @@ reearth.extension.on("message", (msg) => {
         } catch (e) {
           try { sendError('[setTime] invalid date payload', msg, e); } catch(err){}
         }
+      } else if (msg.action === 'timeApply') {
+        try {
+          if (msg.layerId && msg.geojson) {
+            if (geojsonMsgTooBig(msg.geojson)) {
+              try { sendError('[timeApply] filtered geojson exceeds the 4MB bridge cap'); } catch (e2) {}
+            } else {
+              try { reearth.layers.override(msg.layerId, { data: { type: 'geojson', value: msg.geojson } }); markVectorIndexDirty(); }
+              catch (e) { try { sendError('[timeApply] override failed', e); } catch (e2) {} }
+            }
+          }
+        } catch (e) { try { sendError('[timeApply] error:', e); } catch (_) {} }
       } else if (msg.action === "applyPermalinkState") {
         try {
           applyPermalinkFromObject(msg);
@@ -11164,6 +11348,14 @@ reearth.extension.on("message", (msg) => {
             // recreated iframe does not lose its options (same rule as the
             // pending-request re-sends above).
             postKascThemes();
+            // time= filter specs live host-side; re-post so a recreated
+            // iframe rebuilds its registry (url specs re-fetch, geojson
+            // specs reuse the stored original FeatureCollection).
+            Object.keys(_timeSpecLayers).forEach(function(lid) {
+              let alive = true;
+              try { alive = !!(reearth.layers.findById && reearth.layers.findById(lid)); } catch (e) {}
+              if (alive) { try { postTimeSpec(lid); } catch (e) {} } else { delete _timeSpecLayers[lid]; }
+            });
           } catch (e) {}
         } catch (e) { try { sendError('[requestRestoreState] error:', e); } catch(_) {} }
       } else if (msg.action === 'flyInitRequest') {
@@ -13299,7 +13491,13 @@ function processInspectorText(text) {
       let style = null;
       const sm = geoStr.match(/(?:^|\|)\s*(?:style|qml)=(\S+)/i);
       if (sm) style = sm[1].trim();
-      if (url) tiles.push({ url, title, type: 'geojson', visible, classification, style });
+      let time = null;
+      const tm = geoStr.match(/(?:^|\|)\s*time=(\S+)/i);
+      if (tm) time = tm[1].trim();
+      let timeEnd = null;
+      const tem = geoStr.match(/(?:^|\|)\s*time_?end=(\S+)/i);
+      if (tem) timeEnd = tem[1].trim();
+      if (url) tiles.push({ url, title, type: 'geojson', visible, classification, style, time, timeEnd });
       if (keep !== false) nonCamLines.push(line);
       return;
     }
@@ -13851,7 +14049,8 @@ function addXyzLayersFromArray(items) {
       enqueueExtPath(() => { try { applyExtPathItem(it, u, t, type, visible, zoom); } catch (e) {} });
       continue;
     }
-    addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution, it.classification, it.style);
+    const _addedId = addXyzLayer(u, t, type, isBase, visible, zoom, it.attribution, it.classification, it.style);
+    if (_addedId && type === 'geojson' && it.time) registerTimeSpecLayer(_addedId, t || u, it.time, it.timeEnd || null, u, null);
   }
 }
 
@@ -13934,6 +14133,7 @@ function applyExtPathItem(it, u, t, type, visible, zoom) {
       try { sendLog('[addXyzLayersFromArray] skip duplicate geojson(zip):', u); } catch(e){}
       return;
     }
+    if (it.time) _timeSpecByUrl[u] = { tf: it.time, te: it.timeEnd || null, title: gjTitle };
     loadGeoJsonViaIframe(u, gjTitle, visible, it.classification, it.style);
     return;
   }
@@ -13944,7 +14144,8 @@ function applyExtPathItem(it, u, t, type, visible, zoom) {
     try { sendLog('[addXyzLayersFromArray] skip duplicate geojson(style):', u); } catch(e){}
     return;
   }
-  addXyzLayer(u, t, type, false, visible, zoom, it.attribution, it.classification, it.style);
+  addXyzLayer(u, t, type, false, visible, zoom, it.attribution, it.classification, it.style,
+    it.time ? function(fid) { registerTimeSpecLayer(fid, t || u, it.time, it.timeEnd || null, u, null); } : null);
 }
 
 // Send info URL to UI to load in iframe
