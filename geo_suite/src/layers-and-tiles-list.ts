@@ -311,7 +311,7 @@ const GEO_I18N = {
     selectLayer:'Select layer', attrOrValuePh:'Search attributes or values', selectLayerPrompt:'Please select a layer', countFmt:'{rows} items / {attrs} attributes', sortTitle:'Click to sort', noMatchingFeatures:'No matching features', clickToFly:'Click to fly', limitSuffix:' (showing up to {n})', closeAria:'Close',
     noUrlConfigured: 'No URL configured',
     tabFly: 'Fly',
-    flyRoute: 'Route', flyRoutePh: 'Select route', flyDraw: 'Draw', flyDrawing: 'Drawing — click the map to add points, double-click to finish', flyCancelDraw: 'Cancel', flyDelete: 'Delete', flySaveGeo: 'Save', flySaved: 'Saved!', tabMeasure:'Measure', measureTitle:'Measure', measureDistBtn:'Distance', measureAreaBtn:'Area', measureClearBtn:'Clear', measureHint:'Pick a mode, then click the map to draw. Double-click to finish.', measureDrawing:'Drawing — click the map to add points, double-click to finish', measureLengthLbl:'Length', measureAreaLbl:'Area', measurePerimeterLbl:'Perimeter', measureUnavailable:'Sketch API not available',
+    flyRoute: 'Route', flyRoutePh: 'Select route', flyDraw: 'Draw', flyDrawing: 'Drawing — click the map to add points, double-click to finish', flyCancelDraw: 'Cancel', flyDelete: 'Delete', flySaveGeo: 'Save', flySaved: 'Saved!', tabMeasure:'Measure', measureTitle:'Measure', measureDistBtn:'Distance', measureAreaBtn:'Area', measureClearBtn:'Clear', measureHint:'Pick a mode, then click the map to draw. Double-click to finish.', measureDrawing:'Drawing — click the map to add points, double-click to finish', measureLengthLbl:'Length', measureAreaLbl:'Area', measurePerimeterLbl:'Perimeter', measureUnavailable:'Sketch API not available', measureUnitsLbl:'Units',
     flyPlay: 'Play', flyPause: 'Pause', flyStop: 'Stop', flyRestart: 'Restart',
     flySpeedLbl: 'Speed (km/h)', flyHeightLbl: 'AGL (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'View', flyViewCam: 'Ride', flyViewCenter: 'Aerial',
     flyPreset: 'Preset', flyPresetCustom: 'Custom', flyPresetWalk: 'Walk (h2 s5 p-5)', flyPresetDrive: 'Drive (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Overview (h1000 s300 p-45)', flyReverse: 'Reverse', flyImport: 'Import',
@@ -343,7 +343,7 @@ const GEO_I18N = {
     selectLayer:'レイヤを選択', attrOrValuePh:'属性または値で検索', selectLayerPrompt:'レイヤを選択してください', countFmt:'{rows} 件 / {attrs} 属性', sortTitle:'クリックで並び替え', noMatchingFeatures:'該当する地物がありません', clickToFly:'クリックで移動', limitSuffix:' （表示上限 {n} 件）', closeAria:'閉じる',
     noUrlConfigured: 'URLが設定されていません',
     tabFly: 'Fly',
-    flyRoute: 'ルート', flyRoutePh: 'ルートを選択', flyDraw: '描画', flyDrawing: '描画中 — 地図をクリックで点を追加、ダブルクリックで終了', flyCancelDraw: 'キャンセル', flyDelete: '削除', flySaveGeo: '保存', flySaved: '保存しました', tabMeasure:'計測', measureTitle:'計測', measureDistBtn:'距離', measureAreaBtn:'面積', measureClearBtn:'クリア', measureHint:'モードを選び、地図をクリックして描画。ダブルクリックで終了', measureDrawing:'描画中 — 地図をクリックで点を追加、ダブルクリックで終了', measureLengthLbl:'長さ', measureAreaLbl:'面積', measurePerimeterLbl:'周長', measureUnavailable:'Sketch API が利用できません',
+    flyRoute: 'ルート', flyRoutePh: 'ルートを選択', flyDraw: '描画', flyDrawing: '描画中 — 地図をクリックで点を追加、ダブルクリックで終了', flyCancelDraw: 'キャンセル', flyDelete: '削除', flySaveGeo: '保存', flySaved: '保存しました', tabMeasure:'計測', measureTitle:'計測', measureDistBtn:'距離', measureAreaBtn:'面積', measureClearBtn:'クリア', measureHint:'モードを選び、地図をクリックして描画。ダブルクリックで終了', measureDrawing:'描画中 — 地図をクリックで点を追加、ダブルクリックで終了', measureLengthLbl:'長さ', measureAreaLbl:'面積', measurePerimeterLbl:'周長', measureUnavailable:'Sketch API が利用できません', measureUnitsLbl:'単位',
     flyPlay: '再生', flyPause: '一時停止', flyStop: '停止', flyRestart: '最初から',
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '地上高 (m)', flyPitchLbl: 'ピッチ (°)', flyLoop: 'ループ', flyView: '視点', flyViewCam: '搭乗', flyViewCenter: '空撮',
     flyPreset: 'プリセット', flyPresetCustom: 'カスタム', flyPresetWalk: '徒歩 (h2 s5 p-5)', flyPresetDrive: '車載 (h2 s60 p-10)', flyPresetDrone: 'ドローン (h200 s60 p-30)', flyPresetOverview: '広域 (h1000 s300 p-45)', flyReverse: '逆転', flyImport: '取込',
@@ -375,7 +375,7 @@ const GEO_I18N = {
     selectLayer:'选择图层', attrOrValuePh:'按属性或值搜索', selectLayerPrompt:'请选择图层', countFmt:'{rows} 项 / {attrs} 个属性', sortTitle:'点击排序', noMatchingFeatures:'没有匹配的要素', clickToFly:'点击移动', limitSuffix:' （最多显示 {n} 项）', closeAria:'关闭',
     noUrlConfigured: '未配置 URL',
     tabFly: '飞行',
-    flyRoute: '路线', flyRoutePh: '选择路线', flyDraw: '绘制', flyDrawing: '绘制中 — 单击地图添加点，双击结束', flyCancelDraw: '取消', flyDelete: '删除', flySaveGeo: '保存', flySaved: '已保存', tabMeasure:'测量', measureTitle:'测量', measureDistBtn:'距离', measureAreaBtn:'面积', measureClearBtn:'清除', measureHint:'选择模式，然后点击地图绘制。双击结束。', measureDrawing:'绘制中 — 单击地图添加点，双击结束', measureLengthLbl:'长度', measureAreaLbl:'面积', measurePerimeterLbl:'周长', measureUnavailable:'Sketch API 不可用',
+    flyRoute: '路线', flyRoutePh: '选择路线', flyDraw: '绘制', flyDrawing: '绘制中 — 单击地图添加点，双击结束', flyCancelDraw: '取消', flyDelete: '删除', flySaveGeo: '保存', flySaved: '已保存', tabMeasure:'测量', measureTitle:'测量', measureDistBtn:'距离', measureAreaBtn:'面积', measureClearBtn:'清除', measureHint:'选择模式，然后点击地图绘制。双击结束。', measureDrawing:'绘制中 — 单击地图添加点，双击结束', measureLengthLbl:'长度', measureAreaLbl:'面积', measurePerimeterLbl:'周长', measureUnavailable:'Sketch API 不可用', measureUnitsLbl:'单位',
     flyPlay: '播放', flyPause: '暂停', flyStop: '停止', flyRestart: '重新开始',
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '离地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循环', flyView: '视角', flyViewCam: '搭乘', flyViewCenter: '航拍',
     flyPreset: '预设', flyPresetCustom: '自定义', flyPresetWalk: '步行 (h2 s5 p-5)', flyPresetDrive: '车载 (h2 s60 p-10)', flyPresetDrone: '无人机 (h200 s60 p-30)', flyPresetOverview: '广域 (h1000 s300 p-45)', flyReverse: '反转', flyImport: '导入',
@@ -407,7 +407,7 @@ const GEO_I18N = {
     selectLayer:'選擇圖層', attrOrValuePh:'按屬性或值搜尋', selectLayerPrompt:'請選擇圖層', countFmt:'{rows} 項 / {attrs} 個屬性', sortTitle:'點擊排序', noMatchingFeatures:'沒有符合的圖徵', clickToFly:'點擊移動', limitSuffix:' （最多顯示 {n} 項）', closeAria:'關閉',
     noUrlConfigured: '未設定 URL',
     tabFly: '飛行',
-    flyRoute: '路線', flyRoutePh: '選擇路線', flyDraw: '繪製', flyDrawing: '繪製中 — 點擊地圖新增點，雙擊結束', flyCancelDraw: '取消', flyDelete: '刪除', flySaveGeo: '儲存', flySaved: '已儲存', tabMeasure:'測量', measureTitle:'測量', measureDistBtn:'距離', measureAreaBtn:'面積', measureClearBtn:'清除', measureHint:'選擇模式，然後點擊地圖繪製。雙擊結束。', measureDrawing:'繪製中 — 點擊地圖新增點，雙擊結束', measureLengthLbl:'長度', measureAreaLbl:'面積', measurePerimeterLbl:'周長', measureUnavailable:'Sketch API 無法使用',
+    flyRoute: '路線', flyRoutePh: '選擇路線', flyDraw: '繪製', flyDrawing: '繪製中 — 點擊地圖新增點，雙擊結束', flyCancelDraw: '取消', flyDelete: '刪除', flySaveGeo: '儲存', flySaved: '已儲存', tabMeasure:'測量', measureTitle:'測量', measureDistBtn:'距離', measureAreaBtn:'面積', measureClearBtn:'清除', measureHint:'選擇模式，然後點擊地圖繪製。雙擊結束。', measureDrawing:'繪製中 — 點擊地圖新增點，雙擊結束', measureLengthLbl:'長度', measureAreaLbl:'面積', measurePerimeterLbl:'周長', measureUnavailable:'Sketch API 無法使用', measureUnitsLbl:'單位',
     flyPlay: '播放', flyPause: '暫停', flyStop: '停止', flyRestart: '重新開始',
     flySpeedLbl: '速度 (km/h)', flyHeightLbl: '離地高度 (m)', flyPitchLbl: '俯仰角 (°)', flyLoop: '循環', flyView: '視角', flyViewCam: '搭乘', flyViewCenter: '空拍',
     flyPreset: '預設', flyPresetCustom: '自訂', flyPresetWalk: '步行 (h2 s5 p-5)', flyPresetDrive: '車載 (h2 s60 p-10)', flyPresetDrone: '無人機 (h200 s60 p-30)', flyPresetOverview: '廣域 (h1000 s300 p-45)', flyReverse: '反轉', flyImport: '匯入',
@@ -439,7 +439,7 @@ const GEO_I18N = {
     selectLayer:'레이어 선택', attrOrValuePh:'속성 또는 값으로 검색', selectLayerPrompt:'레이어를 선택하세요', countFmt:'{rows}건 / {attrs}개 속성', sortTitle:'클릭하여 정렬', noMatchingFeatures:'일치하는 피처가 없습니다', clickToFly:'클릭하여 이동', limitSuffix:' (표시 상한 {n}건)', closeAria:'닫기',
     noUrlConfigured: 'URL이 설정되지 않았습니다',
     tabFly: '비행',
-    flyRoute: '경로', flyRoutePh: '경로 선택', flyDraw: '그리기', flyDrawing: '그리는 중 — 지도를 클릭해 점 추가, 더블클릭으로 완료', flyCancelDraw: '취소', flyDelete: '삭제', flySaveGeo: '저장', flySaved: '저장됨', tabMeasure:'측정', measureTitle:'측정', measureDistBtn:'거리', measureAreaBtn:'면적', measureClearBtn:'지우기', measureHint:'모드를 선택한 후 지도를 클릭해 그리세요. 더블클릭으로 완료', measureDrawing:'그리는 중 — 지도를 클릭해 점 추가, 더블클릭으로 완료', measureLengthLbl:'길이', measureAreaLbl:'면적', measurePerimeterLbl:'둘레', measureUnavailable:'Sketch API를 사용할 수 없습니다',
+    flyRoute: '경로', flyRoutePh: '경로 선택', flyDraw: '그리기', flyDrawing: '그리는 중 — 지도를 클릭해 점 추가, 더블클릭으로 완료', flyCancelDraw: '취소', flyDelete: '삭제', flySaveGeo: '저장', flySaved: '저장됨', tabMeasure:'측정', measureTitle:'측정', measureDistBtn:'거리', measureAreaBtn:'면적', measureClearBtn:'지우기', measureHint:'모드를 선택한 후 지도를 클릭해 그리세요. 더블클릭으로 완료', measureDrawing:'그리는 중 — 지도를 클릭해 점 추가, 더블클릭으로 완료', measureLengthLbl:'길이', measureAreaLbl:'면적', measurePerimeterLbl:'둘레', measureUnavailable:'Sketch API를 사용할 수 없습니다', measureUnitsLbl:'단위',
     flyPlay: '재생', flyPause: '일시정지', flyStop: '정지', flyRestart: '처음부터',
     flySpeedLbl: '속도 (km/h)', flyHeightLbl: '지상고 (m)', flyPitchLbl: '피치 (°)', flyLoop: '반복', flyView: '시점', flyViewCam: '탑승', flyViewCenter: '항공',
     flyPreset: '프리셋', flyPresetCustom: '사용자 지정', flyPresetWalk: '도보 (h2 s5 p-5)', flyPresetDrive: '차량 (h2 s60 p-10)', flyPresetDrone: '드론 (h200 s60 p-30)', flyPresetOverview: '광역 (h1000 s300 p-45)', flyReverse: '반전', flyImport: '가져오기',
@@ -471,7 +471,7 @@ const GEO_I18N = {
     selectLayer:'Seleccionar capa', attrOrValuePh:'Buscar atributos o valores', selectLayerPrompt:'Selecciona una capa', countFmt:'{rows} elementos / {attrs} atributos', sortTitle:'Clic para ordenar', noMatchingFeatures:'No hay entidades coincidentes', clickToFly:'Clic para volar', limitSuffix:' (máx. {n} mostrados)', closeAria:'Cerrar',
     noUrlConfigured: 'URL no configurada',
     tabFly: 'Vuelo',
-    flyRoute: 'Ruta', flyRoutePh: 'Seleccionar ruta', flyDraw: 'Dibujar', flyDrawing: 'Dibujando — haga clic en el mapa para añadir puntos, doble clic para terminar', flyCancelDraw: 'Cancelar', flyDelete: 'Eliminar', flySaveGeo: 'Guardar', flySaved: '¡Guardado!', tabMeasure:'Medir', measureTitle:'Medición', measureDistBtn:'Distancia', measureAreaBtn:'Área', measureClearBtn:'Limpiar', measureHint:'Elija un modo y haga clic en el mapa para dibujar. Doble clic para terminar.', measureDrawing:'Dibujando — haga clic en el mapa para añadir puntos, doble clic para terminar', measureLengthLbl:'Longitud', measureAreaLbl:'Área', measurePerimeterLbl:'Perímetro', measureUnavailable:'API de dibujo no disponible',
+    flyRoute: 'Ruta', flyRoutePh: 'Seleccionar ruta', flyDraw: 'Dibujar', flyDrawing: 'Dibujando — haga clic en el mapa para añadir puntos, doble clic para terminar', flyCancelDraw: 'Cancelar', flyDelete: 'Eliminar', flySaveGeo: 'Guardar', flySaved: '¡Guardado!', tabMeasure:'Medir', measureTitle:'Medición', measureDistBtn:'Distancia', measureAreaBtn:'Área', measureClearBtn:'Limpiar', measureHint:'Elija un modo y haga clic en el mapa para dibujar. Doble clic para terminar.', measureDrawing:'Dibujando — haga clic en el mapa para añadir puntos, doble clic para terminar', measureLengthLbl:'Longitud', measureAreaLbl:'Área', measurePerimeterLbl:'Perímetro', measureUnavailable:'API de dibujo no disponible', measureUnitsLbl:'Unidades',
     flyPlay: 'Reproducir', flyPause: 'Pausa', flyStop: 'Detener', flyRestart: 'Reiniciar',
     flySpeedLbl: 'Velocidad (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Bucle', flyView: 'Vista', flyViewCam: 'A bordo', flyViewCenter: 'Aérea',
     flyPreset: 'Preajuste', flyPresetCustom: 'Personalizado', flyPresetWalk: 'A pie (h2 s5 p-5)', flyPresetDrive: 'Coche (h2 s60 p-10)', flyPresetDrone: 'Dron (h200 s60 p-30)', flyPresetOverview: 'Panorámica (h1000 s300 p-45)', flyReverse: 'Invertir', flyImport: 'Importar',
@@ -503,7 +503,7 @@ const GEO_I18N = {
     selectLayer:'Choisir une couche', attrOrValuePh:'Rechercher attributs ou valeurs', selectLayerPrompt:'Veuillez choisir une couche', countFmt:'{rows} éléments / {attrs} attributs', sortTitle:'Cliquer pour trier', noMatchingFeatures:'Aucun objet correspondant', clickToFly:'Cliquer pour voler', limitSuffix:' (affichage limité à {n})', closeAria:'Fermer',
     noUrlConfigured: 'Aucune URL configurée',
     tabFly: 'Vol',
-    flyRoute: 'Route', flyRoutePh: 'Sélectionner une route', flyDraw: 'Dessiner', flyDrawing: 'Dessin — cliquez sur la carte pour ajouter des points, double-clic pour terminer', flyCancelDraw: 'Annuler', flyDelete: 'Supprimer', flySaveGeo: 'Enregistrer', flySaved: 'Enregistré !', tabMeasure:'Mesurer', measureTitle:'Mesure', measureDistBtn:'Distance', measureAreaBtn:'Aire', measureClearBtn:'Effacer', measureHint:'Choisissez un mode puis cliquez sur la carte pour dessiner. Double-clic pour terminer.', measureDrawing:'Dessin — cliquez sur la carte pour ajouter des points, double-clic pour terminer', measureLengthLbl:'Longueur', measureAreaLbl:'Aire', measurePerimeterLbl:'Périmètre', measureUnavailable:'API de dessin non disponible',
+    flyRoute: 'Route', flyRoutePh: 'Sélectionner une route', flyDraw: 'Dessiner', flyDrawing: 'Dessin — cliquez sur la carte pour ajouter des points, double-clic pour terminer', flyCancelDraw: 'Annuler', flyDelete: 'Supprimer', flySaveGeo: 'Enregistrer', flySaved: 'Enregistré !', tabMeasure:'Mesurer', measureTitle:'Mesure', measureDistBtn:'Distance', measureAreaBtn:'Aire', measureClearBtn:'Effacer', measureHint:'Choisissez un mode puis cliquez sur la carte pour dessiner. Double-clic pour terminer.', measureDrawing:'Dessin — cliquez sur la carte pour ajouter des points, double-clic pour terminer', measureLengthLbl:'Longueur', measureAreaLbl:'Aire', measurePerimeterLbl:'Périmètre', measureUnavailable:'API de dessin non disponible', measureUnitsLbl:'Unités',
     flyPlay: 'Lecture', flyPause: 'Pause', flyStop: 'Arrêter', flyRestart: 'Recommencer',
     flySpeedLbl: 'Vitesse (km/h)', flyHeightLbl: 'Hauteur (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Boucle', flyView: 'Vue', flyViewCam: 'Embarquée', flyViewCenter: 'Aérienne',
     flyPreset: 'Préréglage', flyPresetCustom: 'Personnalisé', flyPresetWalk: 'À pied (h2 s5 p-5)', flyPresetDrive: 'Voiture (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Vue large (h1000 s300 p-45)', flyReverse: 'Inverser', flyImport: 'Importer',
@@ -535,7 +535,7 @@ const GEO_I18N = {
     selectLayer:'Layer wählen', attrOrValuePh:'Attribute oder Werte suchen', selectLayerPrompt:'Bitte Layer wählen', countFmt:'{rows} Einträge / {attrs} Attribute', sortTitle:'Klicken zum Sortieren', noMatchingFeatures:'Keine passenden Objekte', clickToFly:'Klicken zum Anfliegen', limitSuffix:' (max. {n} angezeigt)', closeAria:'Schließen',
     noUrlConfigured: 'Keine URL konfiguriert',
     tabFly: 'Flug',
-    flyRoute: 'Route', flyRoutePh: 'Route wählen', flyDraw: 'Zeichnen', flyDrawing: 'Zeichnen — auf die Karte klicken, um Punkte zu setzen, Doppelklick zum Beenden', flyCancelDraw: 'Abbrechen', flyDelete: 'Löschen', flySaveGeo: 'Speichern', flySaved: 'Gespeichert!', tabMeasure:'Messen', measureTitle:'Messung', measureDistBtn:'Distanz', measureAreaBtn:'Fläche', measureClearBtn:'Löschen', measureHint:'Modus wählen, dann auf die Karte klicken zum Zeichnen. Doppelklick zum Beenden.', measureDrawing:'Zeichnen — auf die Karte klicken, um Punkte zu setzen, Doppelklick zum Beenden', measureLengthLbl:'Länge', measureAreaLbl:'Fläche', measurePerimeterLbl:'Umfang', measureUnavailable:'Sketch-API nicht verfügbar',
+    flyRoute: 'Route', flyRoutePh: 'Route wählen', flyDraw: 'Zeichnen', flyDrawing: 'Zeichnen — auf die Karte klicken, um Punkte zu setzen, Doppelklick zum Beenden', flyCancelDraw: 'Abbrechen', flyDelete: 'Löschen', flySaveGeo: 'Speichern', flySaved: 'Gespeichert!', tabMeasure:'Messen', measureTitle:'Messung', measureDistBtn:'Distanz', measureAreaBtn:'Fläche', measureClearBtn:'Löschen', measureHint:'Modus wählen, dann auf die Karte klicken zum Zeichnen. Doppelklick zum Beenden.', measureDrawing:'Zeichnen — auf die Karte klicken, um Punkte zu setzen, Doppelklick zum Beenden', measureLengthLbl:'Länge', measureAreaLbl:'Fläche', measurePerimeterLbl:'Umfang', measureUnavailable:'Sketch-API nicht verfügbar', measureUnitsLbl:'Einheiten',
     flyPlay: 'Abspielen', flyPause: 'Pause', flyStop: 'Stopp', flyRestart: 'Neustart',
     flySpeedLbl: 'Tempo (km/h)', flyHeightLbl: 'Höhe ü.Gr. (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Schleife', flyView: 'Ansicht', flyViewCam: 'Bord', flyViewCenter: 'Luft',
     flyPreset: 'Voreinstellung', flyPresetCustom: 'Benutzerdef.', flyPresetWalk: 'Zu Fuß (h2 s5 p-5)', flyPresetDrive: 'Auto (h2 s60 p-10)', flyPresetDrone: 'Drohne (h200 s60 p-30)', flyPresetOverview: 'Überblick (h1000 s300 p-45)', flyReverse: 'Umkehren', flyImport: 'Importieren',
@@ -567,7 +567,7 @@ const GEO_I18N = {
     selectLayer:'Seleziona layer', attrOrValuePh:'Cerca attributi o valori', selectLayerPrompt:'Seleziona un layer', countFmt:'{rows} elementi / {attrs} attributi', sortTitle:'Clicca per ordinare', noMatchingFeatures:'Nessun elemento corrispondente', clickToFly:'Clicca per volare', limitSuffix:' (max {n} mostrati)', closeAria:'Chiudi',
     noUrlConfigured: 'URL non configurato',
     tabFly: 'Volo',
-    flyRoute: 'Percorso', flyRoutePh: 'Seleziona percorso', flyDraw: 'Disegna', flyDrawing: 'Disegno — clicca sulla mappa per aggiungere punti, doppio clic per terminare', flyCancelDraw: 'Annulla', flyDelete: 'Elimina', flySaveGeo: 'Salva', flySaved: 'Salvato!', tabMeasure:'Misura', measureTitle:'Misura', measureDistBtn:'Distanza', measureAreaBtn:'Area', measureClearBtn:'Cancella', measureHint:'Scegli una modalità, poi clicca sulla mappa per disegnare. Doppio clic per terminare.', measureDrawing:'Disegno — clicca sulla mappa per aggiungere punti, doppio clic per terminare', measureLengthLbl:'Lunghezza', measureAreaLbl:'Area', measurePerimeterLbl:'Perimetro', measureUnavailable:'API di disegno non disponibile',
+    flyRoute: 'Percorso', flyRoutePh: 'Seleziona percorso', flyDraw: 'Disegna', flyDrawing: 'Disegno — clicca sulla mappa per aggiungere punti, doppio clic per terminare', flyCancelDraw: 'Annulla', flyDelete: 'Elimina', flySaveGeo: 'Salva', flySaved: 'Salvato!', tabMeasure:'Misura', measureTitle:'Misura', measureDistBtn:'Distanza', measureAreaBtn:'Area', measureClearBtn:'Cancella', measureHint:'Scegli una modalità, poi clicca sulla mappa per disegnare. Doppio clic per terminare.', measureDrawing:'Disegno — clicca sulla mappa per aggiungere punti, doppio clic per terminare', measureLengthLbl:'Lunghezza', measureAreaLbl:'Area', measurePerimeterLbl:'Perimetro', measureUnavailable:'API di disegno non disponibile', measureUnitsLbl:'Unità',
     flyPlay: 'Riproduci', flyPause: 'Pausa', flyStop: 'Ferma', flyRestart: 'Riavvia',
     flySpeedLbl: 'Velocità (km/h)', flyHeightLbl: 'Quota (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Ciclo', flyView: 'Vista', flyViewCam: 'A bordo', flyViewCenter: 'Aerea',
     flyPreset: 'Predefinito', flyPresetCustom: 'Personalizzato', flyPresetWalk: 'A piedi (h2 s5 p-5)', flyPresetDrive: 'Auto (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Panoramica (h1000 s300 p-45)', flyReverse: 'Inverti', flyImport: 'Importa',
@@ -599,7 +599,7 @@ const GEO_I18N = {
     selectLayer:'Selecionar camada', attrOrValuePh:'Buscar atributos ou valores', selectLayerPrompt:'Selecione uma camada', countFmt:'{rows} itens / {attrs} atributos', sortTitle:'Clique para ordenar', noMatchingFeatures:'Nenhum elemento correspondente', clickToFly:'Clique para voar', limitSuffix:' (mostrando até {n})', closeAria:'Fechar',
     noUrlConfigured: 'URL não configurada',
     tabFly: 'Voo',
-    flyRoute: 'Rota', flyRoutePh: 'Selecionar rota', flyDraw: 'Desenhar', flyDrawing: 'Desenhando — clique no mapa para adicionar pontos, clique duplo para terminar', flyCancelDraw: 'Cancelar', flyDelete: 'Excluir', flySaveGeo: 'Guardar', flySaved: 'Guardado!', tabMeasure:'Medir', measureTitle:'Medição', measureDistBtn:'Distância', measureAreaBtn:'Área', measureClearBtn:'Limpar', measureHint:'Escolha um modo e clique no mapa para desenhar. Duplo clique para terminar.', measureDrawing:'Desenhando — clique no mapa para adicionar pontos, clique duplo para terminar', measureLengthLbl:'Comprimento', measureAreaLbl:'Área', measurePerimeterLbl:'Perímetro', measureUnavailable:'API de desenho indisponível',
+    flyRoute: 'Rota', flyRoutePh: 'Selecionar rota', flyDraw: 'Desenhar', flyDrawing: 'Desenhando — clique no mapa para adicionar pontos, clique duplo para terminar', flyCancelDraw: 'Cancelar', flyDelete: 'Excluir', flySaveGeo: 'Guardar', flySaved: 'Guardado!', tabMeasure:'Medir', measureTitle:'Medição', measureDistBtn:'Distância', measureAreaBtn:'Área', measureClearBtn:'Limpar', measureHint:'Escolha um modo e clique no mapa para desenhar. Duplo clique para terminar.', measureDrawing:'Desenhando — clique no mapa para adicionar pontos, clique duplo para terminar', measureLengthLbl:'Comprimento', measureAreaLbl:'Área', measurePerimeterLbl:'Perímetro', measureUnavailable:'API de desenho indisponível', measureUnitsLbl:'Unidades',
     flyPlay: 'Reproduzir', flyPause: 'Pausar', flyStop: 'Parar', flyRestart: 'Reiniciar',
     flySpeedLbl: 'Velocidade (km/h)', flyHeightLbl: 'Altura (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Vista', flyViewCam: 'A bordo', flyViewCenter: 'Aérea',
     flyPreset: 'Predefinição', flyPresetCustom: 'Personalizado', flyPresetWalk: 'A pé (h2 s5 p-5)', flyPresetDrive: 'Carro (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Panorâmica (h1000 s300 p-45)', flyReverse: 'Inverter', flyImport: 'Importar',
@@ -631,7 +631,7 @@ const GEO_I18N = {
     selectLayer:'Выберите слой', attrOrValuePh:'Поиск по атрибутам или значениям', selectLayerPrompt:'Выберите слой', countFmt:'{rows} записей / {attrs} атрибутов', sortTitle:'Нажмите для сортировки', noMatchingFeatures:'Нет подходящих объектов', clickToFly:'Нажмите для перехода', limitSuffix:' (показано до {n})', closeAria:'Закрыть',
     noUrlConfigured: 'URL не настроен',
     tabFly: 'Полёт',
-    flyRoute: 'Маршрут', flyRoutePh: 'Выберите маршрут', flyDraw: 'Нарисовать', flyDrawing: 'Рисование — кликайте по карте для добавления точек, двойной клик для завершения', flyCancelDraw: 'Отмена', flyDelete: 'Удалить', flySaveGeo: 'Сохранить', flySaved: 'Сохранено!', tabMeasure:'Измерение', measureTitle:'Измерение', measureDistBtn:'Расстояние', measureAreaBtn:'Площадь', measureClearBtn:'Очистить', measureHint:'Выберите режим и кликайте по карте для рисования. Двойной клик для завершения.', measureDrawing:'Рисование — кликайте по карте для добавления точек, двойной клик для завершения', measureLengthLbl:'Длина', measureAreaLbl:'Площадь', measurePerimeterLbl:'Периметр', measureUnavailable:'Sketch API недоступен',
+    flyRoute: 'Маршрут', flyRoutePh: 'Выберите маршрут', flyDraw: 'Нарисовать', flyDrawing: 'Рисование — кликайте по карте для добавления точек, двойной клик для завершения', flyCancelDraw: 'Отмена', flyDelete: 'Удалить', flySaveGeo: 'Сохранить', flySaved: 'Сохранено!', tabMeasure:'Измерение', measureTitle:'Измерение', measureDistBtn:'Расстояние', measureAreaBtn:'Площадь', measureClearBtn:'Очистить', measureHint:'Выберите режим и кликайте по карте для рисования. Двойной клик для завершения.', measureDrawing:'Рисование — кликайте по карте для добавления точек, двойной клик для завершения', measureLengthLbl:'Длина', measureAreaLbl:'Площадь', measurePerimeterLbl:'Периметр', measureUnavailable:'Sketch API недоступен', measureUnitsLbl:'Единицы',
     flyPlay: 'Старт', flyPause: 'Пауза', flyStop: 'Стоп', flyRestart: 'Сначала',
     flySpeedLbl: 'Скорость (км/ч)', flyHeightLbl: 'Высота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По кругу', flyView: 'Вид', flyViewCam: 'Борт', flyViewCenter: 'Аэро',
     flyPreset: 'Пресет', flyPresetCustom: 'Свой', flyPresetWalk: 'Пешком (h2 s5 p-5)', flyPresetDrive: 'Авто (h2 s60 p-10)', flyPresetDrone: 'Дрон (h200 s60 p-30)', flyPresetOverview: 'Обзор (h1000 s300 p-45)', flyReverse: 'Обратно', flyImport: 'Импорт',
@@ -663,7 +663,7 @@ const GEO_I18N = {
     selectLayer:'Kies laag', attrOrValuePh:'Zoek attributen of waarden', selectLayerPrompt:'Kies een laag', countFmt:'{rows} items / {attrs} attributen', sortTitle:'Klik om te sorteren', noMatchingFeatures:'Geen overeenkomende objecten', clickToFly:'Klik om te vliegen', limitSuffix:' (max. {n} weergegeven)', closeAria:'Sluiten',
     noUrlConfigured: 'Geen URL geconfigureerd',
     tabFly: 'Vliegen',
-    flyRoute: 'Route', flyRoutePh: 'Route kiezen', flyDraw: 'Tekenen', flyDrawing: 'Tekenen — klik op de kaart om punten toe te voegen, dubbelklik om te voltooien', flyCancelDraw: 'Annuleren', flyDelete: 'Verwijderen', flySaveGeo: 'Opslaan', flySaved: 'Opgeslagen!', tabMeasure:'Meten', measureTitle:'Meting', measureDistBtn:'Afstand', measureAreaBtn:'Oppervlakte', measureClearBtn:'Wissen', measureHint:'Kies een modus en klik op de kaart om te tekenen. Dubbelklik om te voltooien.', measureDrawing:'Tekenen — klik op de kaart om punten toe te voegen, dubbelklik om te voltooien', measureLengthLbl:'Lengte', measureAreaLbl:'Oppervlakte', measurePerimeterLbl:'Omtrek', measureUnavailable:'Sketch API niet beschikbaar',
+    flyRoute: 'Route', flyRoutePh: 'Route kiezen', flyDraw: 'Tekenen', flyDrawing: 'Tekenen — klik op de kaart om punten toe te voegen, dubbelklik om te voltooien', flyCancelDraw: 'Annuleren', flyDelete: 'Verwijderen', flySaveGeo: 'Opslaan', flySaved: 'Opgeslagen!', tabMeasure:'Meten', measureTitle:'Meting', measureDistBtn:'Afstand', measureAreaBtn:'Oppervlakte', measureClearBtn:'Wissen', measureHint:'Kies een modus en klik op de kaart om te tekenen. Dubbelklik om te voltooien.', measureDrawing:'Tekenen — klik op de kaart om punten toe te voegen, dubbelklik om te voltooien', measureLengthLbl:'Lengte', measureAreaLbl:'Oppervlakte', measurePerimeterLbl:'Omtrek', measureUnavailable:'Sketch API niet beschikbaar', measureUnitsLbl:'Eenheden',
     flyPlay: 'Afspelen', flyPause: 'Pauze', flyStop: 'Stop', flyRestart: 'Opnieuw',
     flySpeedLbl: 'Snelheid (km/h)', flyHeightLbl: 'Hoogte (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Herhalen', flyView: 'Weergave', flyViewCam: 'Boord', flyViewCenter: 'Lucht',
     flyPreset: 'Voorinstelling', flyPresetCustom: 'Aangepast', flyPresetWalk: 'Te voet (h2 s5 p-5)', flyPresetDrive: 'Auto (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Overzicht (h1000 s300 p-45)', flyReverse: 'Omkeren', flyImport: 'Importeren',
@@ -695,7 +695,7 @@ const GEO_I18N = {
     selectLayer:'Wybierz warstwę', attrOrValuePh:'Szukaj atrybutów lub wartości', selectLayerPrompt:'Wybierz warstwę', countFmt:'{rows} elementów / {attrs} atrybutów', sortTitle:'Kliknij, aby sortować', noMatchingFeatures:'Brak pasujących obiektów', clickToFly:'Kliknij, aby polecieć', limitSuffix:' (wyświetlono maks. {n})', closeAria:'Zamknij',
     noUrlConfigured: 'Nie skonfigurowano URL',
     tabFly: 'Lot',
-    flyRoute: 'Trasa', flyRoutePh: 'Wybierz trasę', flyDraw: 'Rysuj', flyDrawing: 'Rysowanie — klikaj mapę, aby dodawać punkty, dwuklik kończy', flyCancelDraw: 'Anuluj', flyDelete: 'Usuń', flySaveGeo: 'Zapisz', flySaved: 'Zapisano!', tabMeasure:'Pomiar', measureTitle:'Pomiar', measureDistBtn:'Odległość', measureAreaBtn:'Powierzchnia', measureClearBtn:'Wyczyść', measureHint:'Wybierz tryb i klikaj mapę, aby rysować. Dwuklik kończy.', measureDrawing:'Rysowanie — klikaj mapę, aby dodawać punkty, dwuklik kończy', measureLengthLbl:'Długość', measureAreaLbl:'Powierzchnia', measurePerimeterLbl:'Obwód', measureUnavailable:'Sketch API niedostępne',
+    flyRoute: 'Trasa', flyRoutePh: 'Wybierz trasę', flyDraw: 'Rysuj', flyDrawing: 'Rysowanie — klikaj mapę, aby dodawać punkty, dwuklik kończy', flyCancelDraw: 'Anuluj', flyDelete: 'Usuń', flySaveGeo: 'Zapisz', flySaved: 'Zapisano!', tabMeasure:'Pomiar', measureTitle:'Pomiar', measureDistBtn:'Odległość', measureAreaBtn:'Powierzchnia', measureClearBtn:'Wyczyść', measureHint:'Wybierz tryb i klikaj mapę, aby rysować. Dwuklik kończy.', measureDrawing:'Rysowanie — klikaj mapę, aby dodawać punkty, dwuklik kończy', measureLengthLbl:'Długość', measureAreaLbl:'Powierzchnia', measurePerimeterLbl:'Obwód', measureUnavailable:'Sketch API niedostępne', measureUnitsLbl:'Jednostki',
     flyPlay: 'Odtwórz', flyPause: 'Pauza', flyStop: 'Stop', flyRestart: 'Od początku',
     flySpeedLbl: 'Prędkość (km/h)', flyHeightLbl: 'Wysokość (m)', flyPitchLbl: 'Pochylenie (°)', flyLoop: 'Pętla', flyView: 'Widok', flyViewCam: 'Pokład', flyViewCenter: 'Lotniczy',
     flyPreset: 'Preset', flyPresetCustom: 'Własne', flyPresetWalk: 'Pieszo (h2 s5 p-5)', flyPresetDrive: 'Samochód (h2 s60 p-10)', flyPresetDrone: 'Dron (h200 s60 p-30)', flyPresetOverview: 'Przegląd (h1000 s300 p-45)', flyReverse: 'Odwróć', flyImport: 'Importuj',
@@ -727,7 +727,7 @@ const GEO_I18N = {
     selectLayer:'Виберіть шар', attrOrValuePh:'Пошук атрибутів або значень', selectLayerPrompt:'Виберіть шар', countFmt:'{rows} записів / {attrs} атрибутів', sortTitle:'Натисніть для сортування', noMatchingFeatures:'Немає відповідних об’єктів', clickToFly:'Натисніть, щоб летіти', limitSuffix:' (показано до {n})', closeAria:'Закрити',
     noUrlConfigured: 'URL не налаштовано',
     tabFly: 'Політ',
-    flyRoute: 'Маршрут', flyRoutePh: 'Оберіть маршрут', flyDraw: 'Намалювати', flyDrawing: 'Малювання — клацайте мапу для додавання точок, подвійний клік для завершення', flyCancelDraw: 'Скасувати', flyDelete: 'Видалити', flySaveGeo: 'Зберегти', flySaved: 'Збережено!', tabMeasure:'Вимірювання', measureTitle:'Вимірювання', measureDistBtn:'Відстань', measureAreaBtn:'Площа', measureClearBtn:'Очистити', measureHint:'Оберіть режим і клацайте мапу для малювання. Подвійний клік для завершення.', measureDrawing:'Малювання — клацайте мапу для додавання точок, подвійний клік для завершення', measureLengthLbl:'Довжина', measureAreaLbl:'Площа', measurePerimeterLbl:'Периметр', measureUnavailable:'Sketch API недоступний',
+    flyRoute: 'Маршрут', flyRoutePh: 'Оберіть маршрут', flyDraw: 'Намалювати', flyDrawing: 'Малювання — клацайте мапу для додавання точок, подвійний клік для завершення', flyCancelDraw: 'Скасувати', flyDelete: 'Видалити', flySaveGeo: 'Зберегти', flySaved: 'Збережено!', tabMeasure:'Вимірювання', measureTitle:'Вимірювання', measureDistBtn:'Відстань', measureAreaBtn:'Площа', measureClearBtn:'Очистити', measureHint:'Оберіть режим і клацайте мапу для малювання. Подвійний клік для завершення.', measureDrawing:'Малювання — клацайте мапу для додавання точок, подвійний клік для завершення', measureLengthLbl:'Довжина', measureAreaLbl:'Площа', measurePerimeterLbl:'Периметр', measureUnavailable:'Sketch API недоступний', measureUnitsLbl:'Одиниці',
     flyPlay: 'Старт', flyPause: 'Пауза', flyStop: 'Стоп', flyRestart: 'Спочатку',
     flySpeedLbl: 'Швидкість (км/год)', flyHeightLbl: 'Висота (м)', flyPitchLbl: 'Тангаж (°)', flyLoop: 'По колу', flyView: 'Вигляд', flyViewCam: 'Борт', flyViewCenter: 'Аеро',
     flyPreset: 'Пресет', flyPresetCustom: 'Власний', flyPresetWalk: 'Пішки (h2 s5 p-5)', flyPresetDrive: 'Авто (h2 s60 p-10)', flyPresetDrone: 'Дрон (h200 s60 p-30)', flyPresetOverview: 'Огляд (h1000 s300 p-45)', flyReverse: 'Назад', flyImport: 'Імпорт',
@@ -759,7 +759,7 @@ const GEO_I18N = {
     selectLayer:'Katman seç', attrOrValuePh:'Öznitelik veya değer ara', selectLayerPrompt:'Lütfen katman seçin', countFmt:'{rows} öğe / {attrs} öznitelik', sortTitle:'Sıralamak için tıklayın', noMatchingFeatures:'Eşleşen öğe yok', clickToFly:'Uçmak için tıklayın', limitSuffix:' (en fazla {n} gösteriliyor)', closeAria:'Kapat',
     noUrlConfigured: 'URL yapılandırılmadı',
     tabFly: 'Uçuş',
-    flyRoute: 'Rota', flyRoutePh: 'Rota seçin', flyDraw: 'Çiz', flyDrawing: 'Çiziliyor — nokta eklemek için haritaya tıklayın, bitirmek için çift tıklayın', flyCancelDraw: 'İptal', flyDelete: 'Sil', flySaveGeo: 'Kaydet', flySaved: 'Kaydedildi!', tabMeasure:'Ölçüm', measureTitle:'Ölçüm', measureDistBtn:'Mesafe', measureAreaBtn:'Alan', measureClearBtn:'Temizle', measureHint:'Bir mod seçin ve çizmek için haritaya tıklayın. Bitirmek için çift tıklayın.', measureDrawing:'Çiziliyor — nokta eklemek için haritaya tıklayın, bitirmek için çift tıklayın', measureLengthLbl:'Uzunluk', measureAreaLbl:'Alan', measurePerimeterLbl:'Çevre', measureUnavailable:'Sketch API kullanılamıyor',
+    flyRoute: 'Rota', flyRoutePh: 'Rota seçin', flyDraw: 'Çiz', flyDrawing: 'Çiziliyor — nokta eklemek için haritaya tıklayın, bitirmek için çift tıklayın', flyCancelDraw: 'İptal', flyDelete: 'Sil', flySaveGeo: 'Kaydet', flySaved: 'Kaydedildi!', tabMeasure:'Ölçüm', measureTitle:'Ölçüm', measureDistBtn:'Mesafe', measureAreaBtn:'Alan', measureClearBtn:'Temizle', measureHint:'Bir mod seçin ve çizmek için haritaya tıklayın. Bitirmek için çift tıklayın.', measureDrawing:'Çiziliyor — nokta eklemek için haritaya tıklayın, bitirmek için çift tıklayın', measureLengthLbl:'Uzunluk', measureAreaLbl:'Alan', measurePerimeterLbl:'Çevre', measureUnavailable:'Sketch API kullanılamıyor', measureUnitsLbl:'Birimler',
     flyPlay: 'Oynat', flyPause: 'Duraklat', flyStop: 'Durdur', flyRestart: 'Yeniden',
     flySpeedLbl: 'Hız (km/sa)', flyHeightLbl: 'Yükseklik (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Döngü', flyView: 'Görünüm', flyViewCam: 'Araç içi', flyViewCenter: 'Hava',
     flyPreset: 'Hazır ayar', flyPresetCustom: 'Özel', flyPresetWalk: 'Yürüyüş (h2 s5 p-5)', flyPresetDrive: 'Araç (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Genel bakış (h1000 s300 p-45)', flyReverse: 'Ters çevir', flyImport: 'İçe aktar',
@@ -791,7 +791,7 @@ const GEO_I18N = {
     selectLayer:'اختر طبقة', attrOrValuePh:'بحث في الخصائص أو القيم', selectLayerPrompt:'يرجى اختيار طبقة', countFmt:'{rows} عنصر / {attrs} خاصية', sortTitle:'انقر للترتيب', noMatchingFeatures:'لا توجد عناصر مطابقة', clickToFly:'انقر للانتقال', limitSuffix:' (بحد أقصى {n})', closeAria:'إغلاق',
     noUrlConfigured: 'لم يتم تكوين URL',
     tabFly: 'طيران',
-    flyRoute: 'المسار', flyRoutePh: 'اختر المسار', flyDraw: 'رسم', flyDrawing: 'جارٍ الرسم — انقر على الخريطة لإضافة نقاط، انقر نقرًا مزدوجًا للإنهاء', flyCancelDraw: 'إلغاء', flyDelete: 'حذف', flySaveGeo: 'حفظ', flySaved: 'تم الحفظ!', tabMeasure:'قياس', measureTitle:'قياس', measureDistBtn:'مسافة', measureAreaBtn:'مساحة', measureClearBtn:'مسح', measureHint:'اختر وضعًا ثم انقر على الخريطة للرسم. انقر نقرًا مزدوجًا للإنهاء.', measureDrawing:'جارٍ الرسم — انقر على الخريطة لإضافة نقاط، انقر نقرًا مزدوجًا للإنهاء', measureLengthLbl:'الطول', measureAreaLbl:'المساحة', measurePerimeterLbl:'المحيط', measureUnavailable:'Sketch API غير متاح',
+    flyRoute: 'المسار', flyRoutePh: 'اختر المسار', flyDraw: 'رسم', flyDrawing: 'جارٍ الرسم — انقر على الخريطة لإضافة نقاط، انقر نقرًا مزدوجًا للإنهاء', flyCancelDraw: 'إلغاء', flyDelete: 'حذف', flySaveGeo: 'حفظ', flySaved: 'تم الحفظ!', tabMeasure:'قياس', measureTitle:'قياس', measureDistBtn:'مسافة', measureAreaBtn:'مساحة', measureClearBtn:'مسح', measureHint:'اختر وضعًا ثم انقر على الخريطة للرسم. انقر نقرًا مزدوجًا للإنهاء.', measureDrawing:'جارٍ الرسم — انقر على الخريطة لإضافة نقاط، انقر نقرًا مزدوجًا للإنهاء', measureLengthLbl:'الطول', measureAreaLbl:'المساحة', measurePerimeterLbl:'المحيط', measureUnavailable:'Sketch API غير متاح', measureUnitsLbl:'الوحدات',
     flyPlay: 'تشغيل', flyPause: 'إيقاف مؤقت', flyStop: 'إيقاف', flyRestart: 'إعادة البدء',
     flySpeedLbl: 'السرعة (كم/س)', flyHeightLbl: 'الارتفاع (م)', flyPitchLbl: 'الميل (°)', flyLoop: 'تكرار', flyView: 'العرض', flyViewCam: 'على متن', flyViewCenter: 'جوّي',
     flyPreset: 'إعداد مسبق', flyPresetCustom: 'مخصص', flyPresetWalk: 'مشي (h2 s5 p-5)', flyPresetDrive: 'سيارة (h2 s60 p-10)', flyPresetDrone: 'درون (h200 s60 p-30)', flyPresetOverview: 'نظرة عامة (h1000 s300 p-45)', flyReverse: 'عكس', flyImport: 'استيراد',
@@ -823,7 +823,7 @@ const GEO_I18N = {
     selectLayer:'लेयर चुनें', attrOrValuePh:'विशेषता या मान खोजें', selectLayerPrompt:'कृपया लेयर चुनें', countFmt:'{rows} आइटम / {attrs} विशेषताएँ', sortTitle:'क्रमबद्ध करने क्लिक करें', noMatchingFeatures:'कोई मेल खाने वाला फ़ीचर नहीं', clickToFly:'जाने के लिए क्लिक करें', limitSuffix:' (अधिकतम {n} दिखाए गए)', closeAria:'बंद करें',
     noUrlConfigured: 'URL कॉन्फ़िगर नहीं',
     tabFly: 'उड़ान',
-    flyRoute: 'मार्ग', flyRoutePh: 'मार्ग चुनें', flyDraw: 'बनाएँ', flyDrawing: 'बना रहे हैं — बिंदु जोड़ने के लिए मानचित्र पर क्लिक करें, समाप्त करने के लिए डबल-क्लिक करें', flyCancelDraw: 'रद्द करें', flyDelete: 'हटाएँ', flySaveGeo: 'सहेजें', flySaved: 'सहेजा गया!', tabMeasure:'माप', measureTitle:'माप', measureDistBtn:'दूरी', measureAreaBtn:'क्षेत्रफल', measureClearBtn:'साफ़ करें', measureHint:'मोड चुनें और बनाने के लिए मानचित्र पर क्लिक करें। समाप्त करने के लिए डबल-क्लिक करें।', measureDrawing:'बना रहे हैं — बिंदु जोड़ने के लिए मानचित्र पर क्लिक करें, समाप्त करने के लिए डबल-क्लिक करें', measureLengthLbl:'लंबाई', measureAreaLbl:'क्षेत्रफल', measurePerimeterLbl:'परिधि', measureUnavailable:'Sketch API उपलब्ध नहीं',
+    flyRoute: 'मार्ग', flyRoutePh: 'मार्ग चुनें', flyDraw: 'बनाएँ', flyDrawing: 'बना रहे हैं — बिंदु जोड़ने के लिए मानचित्र पर क्लिक करें, समाप्त करने के लिए डबल-क्लिक करें', flyCancelDraw: 'रद्द करें', flyDelete: 'हटाएँ', flySaveGeo: 'सहेजें', flySaved: 'सहेजा गया!', tabMeasure:'माप', measureTitle:'माप', measureDistBtn:'दूरी', measureAreaBtn:'क्षेत्रफल', measureClearBtn:'साफ़ करें', measureHint:'मोड चुनें और बनाने के लिए मानचित्र पर क्लिक करें। समाप्त करने के लिए डबल-क्लिक करें।', measureDrawing:'बना रहे हैं — बिंदु जोड़ने के लिए मानचित्र पर क्लिक करें, समाप्त करने के लिए डबल-क्लिक करें', measureLengthLbl:'लंबाई', measureAreaLbl:'क्षेत्रफल', measurePerimeterLbl:'परिधि', measureUnavailable:'Sketch API उपलब्ध नहीं', measureUnitsLbl:'इकाइयां',
     flyPlay: 'चलाएँ', flyPause: 'रोकें', flyStop: 'बंद करें', flyRestart: 'पुनः आरंभ',
     flySpeedLbl: 'गति (km/h)', flyHeightLbl: 'ऊँचाई (m)', flyPitchLbl: 'पिच (°)', flyLoop: 'लूप', flyView: 'दृश्य', flyViewCam: 'सवारी', flyViewCenter: 'हवाई',
     flyPreset: 'प्रीसेट', flyPresetCustom: 'कस्टम', flyPresetWalk: 'पैदल (h2 s5 p-5)', flyPresetDrive: 'वाहन (h2 s60 p-10)', flyPresetDrone: 'ड्रोन (h200 s60 p-30)', flyPresetOverview: 'विस्तृत (h1000 s300 p-45)', flyReverse: 'उलटें', flyImport: 'आयात',
@@ -855,7 +855,7 @@ const GEO_I18N = {
     selectLayer:'Pilih lapisan', attrOrValuePh:'Cari atribut atau nilai', selectLayerPrompt:'Silakan pilih lapisan', countFmt:'{rows} item / {attrs} atribut', sortTitle:'Klik untuk mengurutkan', noMatchingFeatures:'Tidak ada fitur yang cocok', clickToFly:'Klik untuk terbang', limitSuffix:' (maks {n} ditampilkan)', closeAria:'Tutup',
     noUrlConfigured: 'URL belum dikonfigurasi',
     tabFly: 'Terbang',
-    flyRoute: 'Rute', flyRoutePh: 'Pilih rute', flyDraw: 'Gambar', flyDrawing: 'Menggambar — klik peta untuk menambah titik, klik ganda untuk selesai', flyCancelDraw: 'Batal', flyDelete: 'Hapus', flySaveGeo: 'Simpan', flySaved: 'Tersimpan!', tabMeasure:'Ukur', measureTitle:'Pengukuran', measureDistBtn:'Jarak', measureAreaBtn:'Luas', measureClearBtn:'Hapus', measureHint:'Pilih mode, lalu klik peta untuk menggambar. Klik ganda untuk selesai.', measureDrawing:'Menggambar — klik peta untuk menambah titik, klik ganda untuk selesai', measureLengthLbl:'Panjang', measureAreaLbl:'Luas', measurePerimeterLbl:'Keliling', measureUnavailable:'Sketch API tidak tersedia',
+    flyRoute: 'Rute', flyRoutePh: 'Pilih rute', flyDraw: 'Gambar', flyDrawing: 'Menggambar — klik peta untuk menambah titik, klik ganda untuk selesai', flyCancelDraw: 'Batal', flyDelete: 'Hapus', flySaveGeo: 'Simpan', flySaved: 'Tersimpan!', tabMeasure:'Ukur', measureTitle:'Pengukuran', measureDistBtn:'Jarak', measureAreaBtn:'Luas', measureClearBtn:'Hapus', measureHint:'Pilih mode, lalu klik peta untuk menggambar. Klik ganda untuk selesai.', measureDrawing:'Menggambar — klik peta untuk menambah titik, klik ganda untuk selesai', measureLengthLbl:'Panjang', measureAreaLbl:'Luas', measurePerimeterLbl:'Keliling', measureUnavailable:'Sketch API tidak tersedia', measureUnitsLbl:'Satuan',
     flyPlay: 'Putar', flyPause: 'Jeda', flyStop: 'Berhenti', flyRestart: 'Mulai ulang',
     flySpeedLbl: 'Kecepatan (km/j)', flyHeightLbl: 'Ketinggian (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Loop', flyView: 'Tampilan', flyViewCam: 'Menumpang', flyViewCenter: 'Udara',
     flyPreset: 'Preset', flyPresetCustom: 'Kustom', flyPresetWalk: 'Jalan kaki (h2 s5 p-5)', flyPresetDrive: 'Mobil (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Gambaran (h1000 s300 p-45)', flyReverse: 'Balik', flyImport: 'Impor',
@@ -887,7 +887,7 @@ const GEO_I18N = {
     selectLayer:'เลือกเลเยอร์', attrOrValuePh:'ค้นหาคุณลักษณะหรือค่า', selectLayerPrompt:'โปรดเลือกเลเยอร์', countFmt:'{rows} รายการ / {attrs} คุณลักษณะ', sortTitle:'คลิกเพื่อจัดเรียง', noMatchingFeatures:'ไม่มีฟีเจอร์ที่ตรงกัน', clickToFly:'คลิกเพื่อบินไป', limitSuffix:' (แสดงสูงสุด {n})', closeAria:'ปิด',
     noUrlConfigured: 'ยังไม่ได้ตั้งค่า URL',
     tabFly: 'บิน',
-    flyRoute: 'เส้นทาง', flyRoutePh: 'เลือกเส้นทาง', flyDraw: 'วาด', flyDrawing: 'กำลังวาด — คลิกแผนที่เพื่อเพิ่มจุด ดับเบิลคลิกเพื่อจบ', flyCancelDraw: 'ยกเลิก', flyDelete: 'ลบ', flySaveGeo: 'บันทึก', flySaved: 'บันทึกแล้ว!', tabMeasure:'วัด', measureTitle:'การวัด', measureDistBtn:'ระยะทาง', measureAreaBtn:'พื้นที่', measureClearBtn:'ล้าง', measureHint:'เลือกโหมดแล้วคลิกแผนที่เพื่อวาด ดับเบิลคลิกเพื่อจบ', measureDrawing:'กำลังวาด — คลิกแผนที่เพื่อเพิ่มจุด ดับเบิลคลิกเพื่อจบ', measureLengthLbl:'ความยาว', measureAreaLbl:'พื้นที่', measurePerimeterLbl:'เส้นรอบวง', measureUnavailable:'Sketch API ไม่พร้อมใช้งาน',
+    flyRoute: 'เส้นทาง', flyRoutePh: 'เลือกเส้นทาง', flyDraw: 'วาด', flyDrawing: 'กำลังวาด — คลิกแผนที่เพื่อเพิ่มจุด ดับเบิลคลิกเพื่อจบ', flyCancelDraw: 'ยกเลิก', flyDelete: 'ลบ', flySaveGeo: 'บันทึก', flySaved: 'บันทึกแล้ว!', tabMeasure:'วัด', measureTitle:'การวัด', measureDistBtn:'ระยะทาง', measureAreaBtn:'พื้นที่', measureClearBtn:'ล้าง', measureHint:'เลือกโหมดแล้วคลิกแผนที่เพื่อวาด ดับเบิลคลิกเพื่อจบ', measureDrawing:'กำลังวาด — คลิกแผนที่เพื่อเพิ่มจุด ดับเบิลคลิกเพื่อจบ', measureLengthLbl:'ความยาว', measureAreaLbl:'พื้นที่', measurePerimeterLbl:'เส้นรอบวง', measureUnavailable:'Sketch API ไม่พร้อมใช้งาน', measureUnitsLbl:'หน่วย',
     flyPlay: 'เล่น', flyPause: 'หยุดชั่วคราว', flyStop: 'หยุด', flyRestart: 'เริ่มใหม่',
     flySpeedLbl: 'ความเร็ว (km/h)', flyHeightLbl: 'ความสูง (m)', flyPitchLbl: 'พิตช์ (°)', flyLoop: 'วนซ้ำ', flyView: 'มุมมอง', flyViewCam: 'นั่งร่วม', flyViewCenter: 'ทางอากาศ',
     flyPreset: 'พรีเซ็ต', flyPresetCustom: 'กำหนดเอง', flyPresetWalk: 'เดิน (h2 s5 p-5)', flyPresetDrive: 'รถยนต์ (h2 s60 p-10)', flyPresetDrone: 'โดรน (h200 s60 p-30)', flyPresetOverview: 'ภาพรวม (h1000 s300 p-45)', flyReverse: 'กลับทาง', flyImport: 'นำเข้า',
@@ -919,7 +919,7 @@ const GEO_I18N = {
     selectLayer:'Chọn lớp', attrOrValuePh:'Tìm thuộc tính hoặc giá trị', selectLayerPrompt:'Vui lòng chọn lớp', countFmt:'{rows} mục / {attrs} thuộc tính', sortTitle:'Nhấp để sắp xếp', noMatchingFeatures:'Không có đối tượng phù hợp', clickToFly:'Nhấp để bay', limitSuffix:' (hiển thị tối đa {n})', closeAria:'Đóng',
     noUrlConfigured: 'Chưa cấu hình URL',
     tabFly: 'Bay',
-    flyRoute: 'Tuyến đường', flyRoutePh: 'Chọn tuyến đường', flyDraw: 'Vẽ', flyDrawing: 'Đang vẽ — nhấp bản đồ để thêm điểm, nhấp đúp để kết thúc', flyCancelDraw: 'Hủy', flyDelete: 'Xóa', flySaveGeo: 'Lưu', flySaved: 'Đã lưu!', tabMeasure:'Đo', measureTitle:'Đo lường', measureDistBtn:'Khoảng cách', measureAreaBtn:'Diện tích', measureClearBtn:'Xóa', measureHint:'Chọn chế độ rồi nhấp bản đồ để vẽ. Nhấp đúp để kết thúc.', measureDrawing:'Đang vẽ — nhấp bản đồ để thêm điểm, nhấp đúp để kết thúc', measureLengthLbl:'Độ dài', measureAreaLbl:'Diện tích', measurePerimeterLbl:'Chu vi', measureUnavailable:'Sketch API không khả dụng',
+    flyRoute: 'Tuyến đường', flyRoutePh: 'Chọn tuyến đường', flyDraw: 'Vẽ', flyDrawing: 'Đang vẽ — nhấp bản đồ để thêm điểm, nhấp đúp để kết thúc', flyCancelDraw: 'Hủy', flyDelete: 'Xóa', flySaveGeo: 'Lưu', flySaved: 'Đã lưu!', tabMeasure:'Đo', measureTitle:'Đo lường', measureDistBtn:'Khoảng cách', measureAreaBtn:'Diện tích', measureClearBtn:'Xóa', measureHint:'Chọn chế độ rồi nhấp bản đồ để vẽ. Nhấp đúp để kết thúc.', measureDrawing:'Đang vẽ — nhấp bản đồ để thêm điểm, nhấp đúp để kết thúc', measureLengthLbl:'Độ dài', measureAreaLbl:'Diện tích', measurePerimeterLbl:'Chu vi', measureUnavailable:'Sketch API không khả dụng', measureUnitsLbl:'Đơn vị',
     flyPlay: 'Phát', flyPause: 'Tạm dừng', flyStop: 'Dừng', flyRestart: 'Chơi lại',
     flySpeedLbl: 'Tốc độ (km/h)', flyHeightLbl: 'Độ cao (m)', flyPitchLbl: 'Pitch (°)', flyLoop: 'Lặp lại', flyView: 'Góc nhìn', flyViewCam: 'Đi cùng', flyViewCenter: 'Trên không',
     flyPreset: 'Cài sẵn', flyPresetCustom: 'Tùy chỉnh', flyPresetWalk: 'Đi bộ (h2 s5 p-5)', flyPresetDrive: 'Ô tô (h2 s60 p-10)', flyPresetDrone: 'Drone (h200 s60 p-30)', flyPresetOverview: 'Tổng quan (h1000 s300 p-45)', flyReverse: 'Đảo chiều', flyImport: 'Nhập',
@@ -1960,6 +1960,11 @@ function getUI() {
       <button id="measure-clear-btn" class="btn-primary p-6" style="font-size:0.9em;white-space:nowrap;" data-i18n="measureClearBtn">Clear</button>
     </div>
     <div id="measure-status" class="text-sm" style="color:#666;min-height:1.2em;">&nbsp;</div>
+    <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+      <span class="text-sm" style="font-size:0.8em;color:#888;" data-i18n="measureUnitsLbl">Units</span>
+      <select id="measure-dist-unit" style="font-size:0.85em;"><option value="auto">auto</option><option value="m">m</option><option value="km">km</option><option value="ft">ft</option><option value="mi">mi</option></select>
+      <select id="measure-area-unit" style="font-size:0.85em;"><option value="auto">auto</option><option value="m2">m²</option><option value="ha">ha</option><option value="tsubo">坪</option><option value="km2">km²</option></select>
+    </div>
     <div class="text-sm" style="color:#888;font-size:0.8em;" data-i18n-html="measureHint">Pick a mode, then click the map to draw. Double-click to finish.</div>
   </div>
 
@@ -6078,14 +6083,15 @@ function qmlStyleToReearth(xmlText, opts){
                 } else if (msg.action === 'flyDrawn') {
                   try { flyOnSketchCreated(msg.geojson); } catch (e) {}
                 } else if (msg.action === 'measureResult') {
+                  try { window._measureShowResult(msg); } catch (e) {}
+                } else if (msg.action === 'measureProgress') {
                   try {
-                    if (msg.error) { measureSetStatus(t('measureHint')); }
-                    else if (msg.mode === 'area' && typeof msg.squareMeters === 'number') {
-                      measureSetStatus(t('measureAreaLbl') + ': ' + measureFmtArea(msg.squareMeters) + '  /  ' + t('measurePerimeterLbl') + ': ' + measureFmtDist(msg.perimeterMeters));
-                    } else if (msg.mode === 'distance' && typeof msg.totalMeters === 'number') {
-                      measureSetStatus(t('measureLengthLbl') + ': ' + measureFmtDist(msg.totalMeters));
+                    if (typeof msg.totalMeters === 'number') {
+                      measureSetStatus((msg.mode === 'area' ? t('measurePerimeterLbl') : t('measureLengthLbl')) + ': ' + measureFmtDist(msg.totalMeters) + ' (' + (msg.pointCount || 0) + ')');
                     }
                   } catch (e) {}
+                } else if (msg.action === 'measureUnits') {
+                  try { window._measureSyncUnits(msg.dist, msg.area); } catch (e) {}
                 } else if (msg.action === 'measureStopped') {
                   try { measureMode = null; measureSyncBtns(); } catch (e) {}
                 } else if (msg.action === 'measureUnavailable') {
@@ -7422,10 +7428,43 @@ function qmlStyleToReearth(xmlText, opts){
             // Measure panel (issue #40): toggle Distance/Area sketch modes and
             // show the geodesic result posted back as 'measureResult'.
             var measureMode = null;
+            window._measureUnits = { dist: 'auto', area: 'auto' };
+            window._measureLastResult = null;
             function measurePost(o) { try { parent.postMessage(o, '*'); } catch (e) {} }
-            function measureFmtDist(m) { m = Number(m) || 0; return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : m.toFixed(1) + ' m'; }
-            function measureFmtArea(a) { a = Number(a) || 0; return a >= 1000000 ? (a / 1000000).toFixed(2) + ' km²' : a.toFixed(1) + ' m²'; }
+            function measureFmtDist(m) {
+              m = Number(m) || 0;
+              var u = (window._measureUnits && window._measureUnits.dist) || 'auto';
+              if (u === 'm') return m.toFixed(1) + ' m';
+              if (u === 'km') return (m / 1000).toFixed(3) + ' km';
+              if (u === 'ft') return (m * 3.280839895).toFixed(1) + ' ft';
+              if (u === 'mi') return (m / 1609.344).toFixed(3) + ' mi';
+              return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : m.toFixed(1) + ' m';
+            }
+            function measureFmtArea(a) {
+              a = Number(a) || 0;
+              var u = (window._measureUnits && window._measureUnits.area) || 'auto';
+              if (u === 'm2') return a.toFixed(1) + ' m²';
+              if (u === 'ha') return (a / 10000).toFixed(3) + ' ha';
+              if (u === 'tsubo') return (a / 3.305785124).toFixed(2) + ' 坪';
+              if (u === 'km2') return (a / 1000000).toFixed(3) + ' km²';
+              return a >= 1000000 ? (a / 1000000).toFixed(2) + ' km²' : a.toFixed(1) + ' m²';
+            }
             function measureSetStatus(txt) { var ms = document.getElementById('measure-status'); if (ms) ms.textContent = txt; }
+            window._measureShowResult = function(msg) {
+              window._measureLastResult = msg;
+              if (msg.error) { measureSetStatus(t('measureHint')); return; }
+              if (msg.mode === 'area' && typeof msg.squareMeters === 'number') {
+                measureSetStatus(t('measureAreaLbl') + ': ' + measureFmtArea(msg.squareMeters) + '  /  ' + t('measurePerimeterLbl') + ': ' + measureFmtDist(msg.perimeterMeters));
+              } else if (msg.mode === 'distance' && typeof msg.totalMeters === 'number') {
+                measureSetStatus(t('measureLengthLbl') + ': ' + measureFmtDist(msg.totalMeters));
+              }
+            };
+            window._measureSyncUnits = function(dist, area) {
+              window._measureUnits = { dist: dist || 'auto', area: area || 'auto' };
+              var ds = document.getElementById('measure-dist-unit'); if (ds) ds.value = window._measureUnits.dist;
+              var as = document.getElementById('measure-area-unit'); if (as) as.value = window._measureUnits.area;
+              if (window._measureLastResult) window._measureShowResult(window._measureLastResult);
+            };
             function measureSyncBtns() {
               [['measure-dist-btn','distance'],['measure-area-btn','area']].forEach(function(pr) {
                 var b = document.getElementById(pr[0]); if (!b) return;
@@ -7444,7 +7483,17 @@ function qmlStyleToReearth(xmlText, opts){
             var measureAreaBtn = document.getElementById('measure-area-btn');
             if (measureAreaBtn) measureAreaBtn.addEventListener('click', function() { measureSetMode('area'); });
             var measureClearBtn = document.getElementById('measure-clear-btn');
-            if (measureClearBtn) measureClearBtn.addEventListener('click', function() { measurePost({ action: 'measureClear' }); measureSetStatus(' '); });
+            if (measureClearBtn) measureClearBtn.addEventListener('click', function() { measurePost({ action: 'measureClear' }); measureSetStatus(' '); window._measureLastResult = null; });
+            ['measure-dist-unit', 'measure-area-unit'].forEach(function(sid) {
+              var sel = document.getElementById(sid); if (!sel) return;
+              sel.addEventListener('change', function() {
+                var ds = document.getElementById('measure-dist-unit');
+                var as = document.getElementById('measure-area-unit');
+                var dv = ds ? ds.value : 'auto', av = as ? as.value : 'auto';
+                measurePost({ action: 'measureSetUnits', dist: dv, area: av });
+                window._measureSyncUnits(dv, av);
+              });
+            });
             window._measurePanelVisibility = function(visible) {
               if (!visible && measureMode) measureSetMode(measureMode);
             };
@@ -12157,6 +12206,8 @@ reearth.extension.on("message", (msg) => {
             // recreated iframe does not lose its options (same rule as the
             // pending-request re-sends above).
             postKascThemes();
+            // Measure unit selects live iframe-side; re-post current units.
+            try { postToUI({ action: 'measureUnits', dist: _measureDistUnit, area: _measureAreaUnit }); } catch (e) {}
             // time= filter specs live host-side; re-post so a recreated
             // iframe rebuilds its registry (url specs re-fetch, geojson
             // specs reuse the stored original FeatureCollection).
@@ -12251,6 +12302,12 @@ reearth.extension.on("message", (msg) => {
       else if (msg.action === 'measureClear') {
           try {
               measureClearOverlay();
+          }
+          catch (e) { }
+      }
+      else if (msg.action === 'measureSetUnits') {
+          try {
+              measureSetUnitsSpec(String(msg.dist != null ? msg.dist : '') + '/' + String(msg.area != null ? msg.area : ''));
           }
           catch (e) { }
       }
@@ -13407,6 +13464,102 @@ function measureHeadingDeg(a, b) {
 function measureRingAreaMeters(pts) {
   return polygonArea(pts);
 }
+// Display units: dist = auto|m|km|ft|mi, area = auto|m2|ha|tsubo|km2.
+// 'auto' keeps the v22.18.x magnitude-based m/km and m²/km² formatting.
+let _measureDistUnit = 'auto';
+let _measureAreaUnit = 'auto';
+// Accumulated measurements — each finished measure (sketch, AI tool, or
+// bridge session) appends a record; the overlay FeatureCollection is rebuilt
+// from these so per-segment and total labels re-render on unit changes.
+let _measureRecords = [];
+// Programmatic session driven by the bridge tools measureStart / measureAddPoint / measureFinish.
+let _bridgeMeasure = null;
+// Sketch live-total tracking: 'click' collects committed vertices and
+// 'mousemove' tracks the cursor for the running total (event-driven).
+let _measureLivePts = [];
+let _measureCursor = null;
+let _measureLiveWired = false;
+function measureFmtDist(m) {
+  m = Number(m) || 0;
+  if (_measureDistUnit === 'm') return m.toFixed(1) + ' m';
+  if (_measureDistUnit === 'km') return (m / 1000).toFixed(3) + ' km';
+  if (_measureDistUnit === 'ft') return (m * 3.280839895).toFixed(1) + ' ft';
+  if (_measureDistUnit === 'mi') return (m / 1609.344).toFixed(3) + ' mi';
+  return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : m.toFixed(1) + ' m';
+}
+function measureFmtArea(a) {
+  a = Number(a) || 0;
+  if (_measureAreaUnit === 'm2') return a.toFixed(1) + ' m²';
+  if (_measureAreaUnit === 'ha') return (a / 10000).toFixed(3) + ' ha';
+  if (_measureAreaUnit === 'tsubo') return (a / 3.305785124).toFixed(2) + ' 坪';
+  if (_measureAreaUnit === 'km2') return (a / 1000000).toFixed(3) + ' km²';
+  return a >= 1000000 ? (a / 1000000).toFixed(2) + ' km²' : a.toFixed(1) + ' m²';
+}
+function measureLabelFeature(lat, lng, text) {
+  return { type: 'Feature', properties: { source: 'measure', measureLabel: text }, geometry: { type: 'Point', coordinates: [lng, lat] } };
+}
+function measureVertexFeature(p, name) {
+  return { type: 'Feature', properties: { source: 'measure', name: name, measureLabel: '' }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } };
+}
+// Rebuild the overlay FeatureCollection from _measureRecords — geometry plus
+// per-segment distance labels (edge midpoints) and a total/area label.
+// Called on every completed measurement and on unit changes.
+function measureRenderOverlay() {
+  const feats = [];
+  (_measureRecords || []).forEach(function (r) {
+    const pts = (r && r.pts) || [];
+    if (r.mode === 'area' && pts.length >= 3) {
+      const ring = pts.concat([pts[0]]);
+      feats.push({ type: 'Feature', properties: { source: 'measure', measureLabel: '' }, geometry: { type: 'Polygon', coordinates: [ring.map(function (p) { return [p.lng, p.lat]; })] } });
+      let cx = 0, cy = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        cx += a.lat; cy += a.lng;
+        feats.push(measureLabelFeature((a.lat + b.lat) / 2, (a.lng + b.lng) / 2, measureFmtDist(measureSegmentMeters(a, b))));
+      }
+      feats.push(measureLabelFeature(cx / pts.length, cy / pts.length, measureFmtArea(measureRingAreaMeters(pts))));
+      pts.forEach(function (p, i) { feats.push(measureVertexFeature(p, 'P' + (i + 1))); });
+    } else if (pts.length >= 2) {
+      feats.push({ type: 'Feature', properties: { source: 'measure', measureLabel: '' }, geometry: { type: 'LineString', coordinates: pts.map(function (p) { return [p.lng, p.lat]; }) } });
+      let total = 0;
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const d = measureSegmentMeters(pts[i], pts[i + 1]);
+        total += d;
+        feats.push(measureLabelFeature((pts[i].lat + pts[i + 1].lat) / 2, (pts[i].lng + pts[i + 1].lng) / 2, measureFmtDist(d)));
+      }
+      feats.push(measureLabelFeature(pts[pts.length - 1].lat, pts[pts.length - 1].lng, 'Σ ' + measureFmtDist(total)));
+      pts.forEach(function (p, i) { feats.push(measureVertexFeature(p, 'P' + (i + 1))); });
+    }
+  });
+  measureShowOverlay(feats);
+}
+function measureApplyUnits() {
+  try { if ((_measureRecords || []).length) measureRenderOverlay(); } catch (e) {}
+  try { postToUI({ action: 'measureUnits', dist: _measureDistUnit, area: _measureAreaUnit }); } catch (e) {}
+}
+const MEASURE_DIST_UNITS = ['auto', 'm', 'km', 'ft', 'mi'];
+const MEASURE_AREA_UNITS = ['auto', 'm2', 'ha', 'tsubo', 'km2'];
+// "measureUnits: auto | <dist>[/<area>]" — a bare token sets whichever unit
+// class it belongs to; 'auto' resets both.
+function measureSetUnitsSpec(spec) {
+  let changed = false;
+  String(spec || '').split('/').forEach(function (tok) {
+    const t = String(tok || '').trim().toLowerCase();
+    if (!t) return;
+    if (t === 'auto') { _measureDistUnit = 'auto'; _measureAreaUnit = 'auto'; changed = true; }
+    else if (MEASURE_DIST_UNITS.indexOf(t) >= 0) { _measureDistUnit = t; changed = true; }
+    else if (MEASURE_AREA_UNITS.indexOf(t) >= 0) { _measureAreaUnit = t; changed = true; }
+  });
+  if (changed) measureApplyUnits();
+}
+function measurePostLive() {
+  if (!_measureSketchArmed || !_measureMode) return;
+  const pts = _measureLivePts || [];
+  let total = 0;
+  for (let i = 0; i + 1 < pts.length; i++) total += measureSegmentMeters(pts[i], pts[i + 1]);
+  if (pts.length && _measureCursor) total += measureSegmentMeters(pts[pts.length - 1], _measureCursor);
+  try { postToUI({ action: 'measureProgress', mode: _measureMode, totalMeters: total, pointCount: pts.length }); } catch (e) {}
+}
 function measureShowOverlay(features) {
   try {
     const fc = { type: 'FeatureCollection', features: features };
@@ -13422,7 +13575,7 @@ function measureShowOverlay(features) {
       title: 'AI Measure',
       visible: true,
       data: { type: 'geojson', value: fc },
-      marker: { pointColor: '#ff8800', pointSize: 12 },
+      marker: { pointColor: '#ff8800', pointSize: 12, heightReference: 'clamp', label: true, labelText: { expression: "'${measureLabel}'" }, labelTypography: { fontSize: 13 }, labelBackground: true, labelBackgroundColor: '#00000099', labelBackgroundPaddingHorizontal: 5, labelBackgroundPaddingVertical: 3 },
       polyline: { strokeColor: '#ff8800', strokeWidth: 4, clampToGround: true },
       polygon: { fillColor: '#ff880055', strokeColor: '#ff8800', strokeWidth: 3, heightReference: 'clamp' }
     });
@@ -13462,6 +13615,7 @@ function measureArmTool() {
 }
 function measureSketchCreate(prop) {
   try {
+    _measureLivePts = []; _measureCursor = null;
     const feature = prop && prop.feature;
     const g = feature && feature.geometry;
     let pts = [];
@@ -13479,14 +13633,16 @@ function measureSketchCreate(prop) {
       else {
         let perim = 0;
         for (let i = 0; i < pts.length; i++) perim += measureSegmentMeters(pts[i], pts[(i + 1) % pts.length]);
-        measureShowOverlay([{ type: 'Feature', properties: { source: 'measure' }, geometry: { type: 'Polygon', coordinates: [pts.concat([pts[0]]).map(p => [p.lng, p.lat])] } }]);
+        _measureRecords.push({ mode: 'area', pts: pts });
+        measureRenderOverlay();
         postToUI({ action: 'measureResult', mode: 'area', squareMeters: measureRingAreaMeters(pts), perimeterMeters: perim });
       }
     }
     else if (mode === 'distance' && pts.length >= 2) {
       let total = 0;
       for (let i = 0; i + 1 < pts.length; i++) total += measureSegmentMeters(pts[i], pts[i + 1]);
-      measureShowOverlay([{ type: 'Feature', properties: { source: 'measure' }, geometry: { type: 'LineString', coordinates: pts.map(p => [p.lng, p.lat]) } }]);
+      _measureRecords.push({ mode: 'distance', pts: pts });
+      measureRenderOverlay();
       postToUI({ action: 'measureResult', mode: 'distance', totalMeters: total });
     }
   } catch (e) {
@@ -13504,10 +13660,29 @@ function measureStart(mode) {
       return;
     }
     const next = (mode === 'distance') ? 'distance' : 'area';
-    if (_measureMode && _measureMode !== next) measureClearOverlay();
     _measureMode = next;
     _measureSketchArmed = true;
+    _measureLivePts = [];
+    _measureCursor = null;
     try { flyStopSketch(); } catch (e) { }
+    if (!_measureLiveWired) {
+      _measureLiveWired = true;
+      try { reearth.on('click', (e) => {
+        if (!_measureSketchArmed) return;
+        const p = measureNormCoord(e);
+        if (!p) return;
+        const l = _measureLivePts[_measureLivePts.length - 1];
+        if (!l || Math.abs(l.lat - p.lat) > 1e-9 || Math.abs(l.lng - p.lng) > 1e-9) _measureLivePts.push(p);
+        measurePostLive();
+      }); } catch (e) { }
+      try { reearth.on('mousemove', (e) => {
+        if (!_measureSketchArmed) return;
+        const p = measureNormCoord(e);
+        if (!p) return;
+        _measureCursor = p;
+        measurePostLive();
+      }); } catch (e) { }
+    }
     if (!_measureSketchWired) {
       _measureSketchWired = true;
       try {
@@ -13524,6 +13699,8 @@ function measureStart(mode) {
 function measureStop() {
   _measureSketchArmed = false;
   _measureMode = null;
+  _measureLivePts = [];
+  _measureCursor = null;
   try {
     if (reearth.sketch && typeof reearth.sketch.setTool === 'function')
       reearth.sketch.setTool(undefined);
@@ -13535,6 +13712,7 @@ function measureStop() {
 }
 function measureClearOverlay() {
   try {
+    _measureRecords = [];
     if (!_measureOverlayLayerId) return;
     if (typeof reearth.layers.delete === 'function') reearth.layers.delete(_measureOverlayLayerId);
     else if (typeof reearth.layers.remove === 'function') reearth.layers.remove(_measureOverlayLayerId);
@@ -14157,9 +14335,8 @@ function handleAiToolRequest(senderId, data) {
         const segs = [];
         let total = 0;
         for (let i = 0; i + 1 < pts.length; i++) { const d = measureSegmentMeters(pts[i], pts[i + 1]); segs.push(d); total += d; }
-        measureShowOverlay([
-          { type: 'Feature', properties: { kind: 'distance' }, geometry: { type: 'LineString', coordinates: pts.map(p => [p.lng, p.lat]) } }
-        ].concat(pts.map((p, i) => ({ type: 'Feature', properties: { name: 'P' + (i + 1) }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }))));
+        _measureRecords.push({ mode: 'distance', pts: pts });
+        measureRenderOverlay();
         aiToolReply(senderId, reqId, true, { ok: true, totalMeters: total, segmentsMeters: segs });
         return;
       }
@@ -14170,26 +14347,69 @@ function handleAiToolRequest(senderId, data) {
         ring.push([pts[0].lng, pts[0].lat]);
         let perimeter = 0;
         for (let i = 0; i < pts.length; i++) perimeter += measureSegmentMeters(pts[i], pts[(i + 1) % pts.length]);
-        measureShowOverlay([
-          { type: 'Feature', properties: { kind: 'area' }, geometry: { type: 'Polygon', coordinates: [ring] } }
-        ].concat(pts.map((p, i) => ({ type: 'Feature', properties: { name: 'P' + (i + 1) }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }))));
+        _measureRecords.push({ mode: 'area', pts: pts });
+        measureRenderOverlay();
         aiToolReply(senderId, reqId, true, { ok: true, squareMeters: measureRingAreaMeters(pts), perimeterMeters: perimeter });
         return;
       }
       case 'measureBearing': {
         const from = measureNormCoord(args.from), to = measureNormCoord(args.to);
         if (!from || !to) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'from and to {lat,lng} required' }); return; }
-        measureShowOverlay([
-          { type: 'Feature', properties: { kind: 'bearing' }, geometry: { type: 'LineString', coordinates: [[from.lng, from.lat], [to.lng, to.lat]] } },
-          { type: 'Feature', properties: { name: 'from' }, geometry: { type: 'Point', coordinates: [from.lng, from.lat] } },
-          { type: 'Feature', properties: { name: 'to' }, geometry: { type: 'Point', coordinates: [to.lng, to.lat] } }
-        ]);
+        _measureRecords.push({ mode: 'bearing', pts: [from, to] });
+        measureRenderOverlay();
         aiToolReply(senderId, reqId, true, {
           ok: true,
           startHeadingDeg: measureHeadingDeg(from, to),
           endHeadingDeg: (measureHeadingDeg(to, from) + 180) % 360,
           distanceMeters: measureSegmentMeters(from, to)
         });
+        return;
+      }
+      case 'measureStart': {
+        // Programmatic session for bridge/AI callers — sketch is not armed;
+        // points arrive via measureAddPoint and are committed by measureFinish.
+        const m = (args.mode === 'area') ? 'area' : 'distance';
+        _bridgeMeasure = { mode: m, pts: [] };
+        aiToolReply(senderId, reqId, true, { ok: true, mode: m });
+        return;
+      }
+      case 'measureAddPoint': {
+        if (!_bridgeMeasure) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'measureStart not called' }); return; }
+        const p = measureNormCoord(args.coord != null ? args.coord : args);
+        if (!p) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'coord {lat,lng} required' }); return; }
+        _bridgeMeasure.pts.push(p);
+        let live = 0;
+        for (let i = 0; i + 1 < _bridgeMeasure.pts.length; i++) live += measureSegmentMeters(_bridgeMeasure.pts[i], _bridgeMeasure.pts[i + 1]);
+        aiToolReply(senderId, reqId, true, { ok: true, pointCount: _bridgeMeasure.pts.length, totalMeters: live });
+        return;
+      }
+      case 'measureFinish': {
+        if (!_bridgeMeasure) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'measureStart not called' }); return; }
+        const s = _bridgeMeasure;
+        _bridgeMeasure = null;
+        if (s.mode === 'area') {
+          if (s.pts.length < 3) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'at least 3 coordinates required' }); return; }
+          _measureRecords.push({ mode: 'area', pts: s.pts });
+          measureRenderOverlay();
+          let perim = 0;
+          for (let i = 0; i < s.pts.length; i++) perim += measureSegmentMeters(s.pts[i], s.pts[(i + 1) % s.pts.length]);
+          aiToolReply(senderId, reqId, true, { ok: true, squareMeters: measureRingAreaMeters(s.pts), perimeterMeters: perim });
+        } else {
+          if (s.pts.length < 2) { aiToolReply(senderId, reqId, false, { ok: false, reason: 'at least 2 coordinates required' }); return; }
+          _measureRecords.push({ mode: 'distance', pts: s.pts });
+          measureRenderOverlay();
+          const segs = [];
+          let tot = 0;
+          for (let i = 0; i + 1 < s.pts.length; i++) { const d = measureSegmentMeters(s.pts[i], s.pts[i + 1]); segs.push(d); tot += d; }
+          aiToolReply(senderId, reqId, true, { ok: true, totalMeters: tot, segmentsMeters: segs });
+        }
+        return;
+      }
+      case 'clearMeasurements': {
+        const n = (_measureRecords || []).length;
+        _bridgeMeasure = null;
+        measureClearOverlay();
+        aiToolReply(senderId, reqId, true, { ok: true, cleared: n });
         return;
       }
       default:
@@ -14273,7 +14493,7 @@ function getInspectorTextForBaseParse() {
 // first base: as the default).
 // Config & secret lines never cross into the export (API keys, local bridge
 // endpoints, geo_suite UI switches). qgis: is expanded separately.
-const KASC_EXPORT_DROP_RE = /^(yahooappid|googlemapsapikey|geminiapikey|geminimodel|aihub|vectorhub|attrurlopen|openurlinnewtab|lang|bridge)\s*:/i;
+const KASC_EXPORT_DROP_RE = /^(yahooappid|googlemapsapikey|geminiapikey|geminimodel|aihub|vectorhub|attrurlopen|openurlinnewtab|lang|bridge|measureunits?)\s*:/i;
 const KASC_EXPORT_MAX_BYTES = 4 * 1024 * 1024; // extension ctx marshal cap
 
 function kascFieldClean(s) {
@@ -14610,6 +14830,15 @@ function processInspectorText(text) {
         try { sendLog('[processInspectorText] found lang:', _inspectorLang); } catch(e){}
         try { postLangToBasemapWidget(); } catch(e){}
       } catch(e){}
+      if (keep !== false) nonCamLines.push(line);
+      return;
+    }
+
+    // Measure display units: "measureUnits: auto | <dist>[/<area>]"
+    // dist = m|km|ft|mi, area = m2|ha|tsubo|km2. Re-renders map labels and
+    // pushes the new units to the panel iframe.
+    if (/^measureunits?\s*:/i.test(lowerLine)) {
+      try { measureSetUnitsSpec(line.substring(line.indexOf(':') + 1)); } catch (e) {}
       if (keep !== false) nonCamLines.push(line);
       return;
     }

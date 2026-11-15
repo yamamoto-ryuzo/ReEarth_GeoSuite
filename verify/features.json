@@ -922,6 +922,48 @@
    "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
   },
   {
+   "id": "ai.tool.clearMeasurements",
+   "kind": "ai_integration",
+   "name": "AI tool clearMeasurements",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "clearMeasurements(args)",
+   "summary": "計測オーバーレイ・ラベル一括消去ツール。パネル拡張の handleAiToolRequest case で実行",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-16T00:00:00+09:00",
+   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+  },
+  {
+   "id": "ai.tool.measureAddPoint",
+   "kind": "ai_integration",
+   "name": "AI tool measureAddPoint",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "measureAddPoint(args)",
+   "summary": "measureStart セッションへ頂点追加。途中合計 totalMeters を返却",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-16T00:00:00+09:00",
+   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+  },
+  {
    "id": "ai.tool.measureArea",
    "kind": "ai_integration",
    "name": "AI tool measureArea",
@@ -983,6 +1025,48 @@
    "last_result": "pass",
    "last_verified": "2026-11-15T23:39:13+09:00",
    "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+  },
+  {
+   "id": "ai.tool.measureFinish",
+   "kind": "ai_integration",
+   "name": "AI tool measureFinish",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "measureFinish(args)",
+   "summary": "measureStart セッション確定。地図へ描画+ラベル表示し合計を返却",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-16T00:00:00+09:00",
+   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+  },
+  {
+   "id": "ai.tool.measureStart",
+   "kind": "ai_integration",
+   "name": "AI tool measureStart",
+   "source": "geo_suite/src/ai-chat.ts TOOL_DECLS",
+   "signature": "measureStart(args)",
+   "summary": "プログラム駆動計測セッション開始(mode=distance|area)。sketch不使用",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
+    "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
+   },
+   "last_result": "skip",
+   "last_verified": "2026-11-16T00:00:00+09:00",
+   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
   },
   {
    "id": "ai.tool.openStreetView",

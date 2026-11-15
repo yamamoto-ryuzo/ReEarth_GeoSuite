@@ -1,5 +1,17 @@
 # Changelog
 
+## v22.19.0
+- 新規: **計測ラベルの地図上残置・複数計測の蓄積**（issue #45）
+  - 計測完了時に線分ごとの距離ラベル（辺中点）と合計 `Σ`/面積ラベルをマーカーラベルとして描画。結果は `_measureRecords` に蓄積され、sketch 計測・AI ツール・ブリッジセッションの複数計測が同一「AI Measure」オーバーレイに共存する
+  - 一括消去は Clear ボタン / `measureClear` / 新ツール `clearMeasurements`（bridge・AI tool・runCode `api.*` の全経路から到達可、`{ok,cleared}` を返す）
+- 新規: **描画中の逐次合計表示**（issue #45）
+  - 計測モード中は `reearth.on('click')` で確定頂点を、`reearth.on('mousemove')` でカーソル位置を追跡し、確定分＋カーソルまでの端部距離を `measureProgress` としてパネルへライブ通知（イベント駆動・ポーリング無し。ホストが当該イベントを発火しない環境では従来通り確定時表示のみ）
+- 新規: **ブリッジ計測 API**（issue #45）
+  - `measureStart({mode})` → `measureAddPoint({coord|lat,lng})` → `measureFinish()` を `PANEL_TOOLS`/`TOOL_DECLS`/`API_METHODS` に登録。sketch を使わないプログラム駆動セッションで、各点追加時に途中合計 `totalMeters` を返却、`measureFinish` で地図描画＋合計を返す
+- 新規: **計測表示単位の切替**（issue #45）
+  - 距離 auto|m|km|ft|mi・面積 auto|m²|ha|坪|km²。インスペクタ `measureUnits: km/ha` 形式（`measureUnit:` も可、単独トークンは属する側だけ設定、`auto` は両方リセット）と Measure パネルの単位セレクトの両経路で切替。変更時に地図ラベル（蓄積済み全計測）とパネル表記を再整形
+  - i18n キー `measureUnitsLbl` を全 20 ロケールへ追加。`measureUnits:`/`measureUnit:` 行は geo_suite 設定のため KASUGAI Canvas エクスポート（.kasc）の除外リストへ追加
+
 ## v22.18.2
 - 修正: **TOOL_DECLS 宣言済み5ツールを外部ブリッジから到達可能に**（issue #43）
   - `searchLocation` / `flyToUrl` / `flyToCurrentLocation` / `setToolMaxSteps` / `showReport` は AI チャット iframe 内実装のため `dispatchToolCall` で `unknown tool` になっていた。新たに `CHAT_UI_TOOLS` へ登録し、`aiChatSend` 系と同じ `aiChatCmd` → `aiChatResult` 往復で chat iframe へディスパッチ。bridge `describe` の `chat` グループにも列挙（chat 系ツールは AI チャットウィジェットが開いていることが前提、`note` に明記）
