@@ -1,9 +1,5 @@
 # Changelog
 
-## v22.17.0 (2026-11-15)
-
-- feat: 空間演算を移植 — 読み込み済み GeoJSON レイヤの範囲内地物選択（ビュー範囲/円/既存地物/描画ポリゴン）、ポリゴン内集計（count + sum/min/max/avg、グループ化対応）、バッファ生成（点は測地線円、線/面は turf.js 遅延ロード）を追加。SEARCH タブに Spatial ops セクションを追加し、AI ツール spatialSelect / aggregateWithin / createBuffer としても公開（kasugai_canvas web/shared/spatial-ops.js 相当）。
-
 ## v22.16.0
 - 新規: **ミニマップ（俯瞰図）**（issue #31、KASUGAI Canvas `web/shared/minimap.js` の移植）
   - basemap-widget（左下・永続 iframe）に「Map」トグルボタンを追加。ON で Leaflet 1.9.4（CDN 遅延ロード）の小地図をウィジェット内に表示。タイルは選択中ベースマップの `{z}/{x}/{y}` テンプレートを再利用し、非テンプレート/「(なし)」時は地理院淡色地図へフォールバック
