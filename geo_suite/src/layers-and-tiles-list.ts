@@ -293,7 +293,7 @@ const GEO_SUPPORTED = ['en','ja','zh-CN','zh-TW','ko','es','fr','de','it','pt','
 // that are replaced at runtime by t(key, vars). HTML-bearing values (camHelp) are
 // applied via data-i18n-html.
 const GEO_I18N = {
-  en: {
+  en: { soTitle:'Spatial ops', soView:'View extent', soCircle:'Circle', soFeature:'Feature', soDrawn:'Drawn polygon', soDraw:'Draw', soDrawing:'Click the map to add vertices — double-click to finish', soSelect:'Select', soAggregate:'Aggregate', soBuffer:'Buffer', soLng:'lng', soLat:'lat', soRadius:'radius m', soAttr:'attribute', soVal:'value', soGroup:'(group field)', soValue:'(value field)', soFeatures:'Features', soAdded:'Layer added', soRunErr:'Error',
     minimize:'Minimize', restore:'Restore', move:'Move', moveCamera:'Move Camera',
     tabLayers:'Layers', tabLegend:'Legend', tabSearch:'Search', tabCams:'Cams', tabInfo:'Info', tabShare:'Share', tabSet:'Set', tabAttr:'Attr', tabDisplay:'Display', manageTitle:'Manage', manageInspectorLbl:'Settings text', manageApply:'Apply', manageApplied:'Applied', importTitle:'File import', importAddFile:'Add files', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip', aiBridgeTitle:'AI Bridge (CANVAS)', aiHubLbl:'Bridge hub endpoint', aiHubTest:'Test', aiHubHint:'aiHub: sets the CANVAS geosuite-hub endpoint shared with the AI chat providers (Copilot/agent). Saved to the settings text.',
     layersTitle:'Layers', note:'Note', refresh:'Refresh', refreshTitle:'Force Refresh User Layers',
@@ -325,7 +325,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext', themeSelect: 'QGIS theme', pagesLabel:'Pages', pageSelect:'Apply a saved page (layer visibility)', pageNamePh:'New page name', pageSave:'Save page', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Delete page', zoomToLayer:'Zoom to layer extent', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  ja: {
+  ja: { soTitle:'空間演算', soView:'表示範囲', soCircle:'円', soFeature:'地物', soDrawn:'描画ポリゴン', soDraw:'描画', soDrawing:'地図をクリックして頂点を追加 — ダブルクリックで完了', soSelect:'選択', soAggregate:'集計', soBuffer:'バッファ', soLng:'経度', soLat:'緯度', soRadius:'半径m', soAttr:'属性', soVal:'値', soGroup:'(グループ化フィールド)', soValue:'(値フィールド)', soFeatures:'地物数', soAdded:'レイヤを追加しました', soRunErr:'エラー',
     minimize:'最小化', restore:'元に戻す', move:'移動', moveCamera:'カメラ移動',
     tabLayers:'レイヤー', tabLegend:'凡例', tabSearch:'検索', tabCams:'カメラ', tabInfo:'情報', tabShare:'共有', tabSet:'設定', tabAttr:'属性', tabDisplay:'表示', manageTitle:'管理', manageInspectorLbl:'設定テキスト', manageApply:'適用', manageApplied:'適用しました', importTitle:'ファイル取り込み', importAddFile:'ファイルを追加', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip', aiBridgeTitle:'AIブリッジ (CANVAS)', aiHubLbl:'ブリッジハブのエンドポイント', aiHubTest:'疎通確認', aiHubHint:'aiHub: は CANVAS ブリッジハブの接続先で、AIチャットのプロバイダ（Copilot/エージェント）と共有されます。設定テキストに保存されます。',
     layersTitle:'レイヤー', note:'注意', refresh:'更新', refreshTitle:'ユーザーレイヤーを強制更新',
@@ -357,7 +357,7 @@ const GEO_I18N = {
 , hubPromoExt: '拡張', themeSelect: 'QGISテーマ', pagesLabel:'ページ', pageSelect:'保存したページを適用（レイヤ表示状態）', pageNamePh:'新しいページ名', pageSave:'ページを保存', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', sqlTab:'SQL', sqlRun:'実行', sqlRunning:'実行中…', sqlAddLayer:'レイヤーとして追加', sqlTitlePh:'レイヤー名（省略可）', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm の SELECT。結果にジオメトリ列（または lon/lat 列）が必要です。:bbox は現在の表示範囲へ置換されます。ST_* 空間関数は同梱 spatial 拡張の対応範囲に依存します。', sqlErr:'エラー', sqlFeatures:'件', sqlRequested:'レイヤー追加を要求しました — レイヤータブを確認してください', pageDelete:'ページを削除', zoomToLayer:'レイヤー範囲へズーム', statsBtn:'統計', statRun:'実行', statGroupBy:'グループ化', statValue:'値フィールド', statNoGroup:'(グループ化なし)', statCountOnly:'(件数のみ)', statField:'フィールド', statKey:'キー', statCount:'件数', statNumeric:'数値', statSum:'合計', statAvg:'平均', statMin:'最小', statMax:'最大', statTruncated:'他 {n} グループ', statNoData:'データなし',
     exportBtn:'エクスポート', exportDone:'{file} を保存（{count} 地物）', exportFail:'エクスポートに失敗しました', exportFmtTitle:'出力形式'
   },
-  'zh-CN': {
+  'zh-CN': { soTitle:'空间运算', soView:'视图范围', soCircle:'圆', soFeature:'要素', soDrawn:'已绘多边形', soDraw:'绘制', soDrawing:'单击地图添加顶点——双击完成', soSelect:'选择', soAggregate:'聚合', soBuffer:'缓冲', soLng:'经度', soLat:'纬度', soRadius:'半径m', soAttr:'属性', soVal:'值', soGroup:'(分组字段)', soValue:'(值字段)', soFeatures:'要素数', soAdded:'已添加图层', soRunErr:'错误',
     minimize:'最小化', restore:'还原', move:'移动', moveCamera:'移动相机',
     tabLayers:'图层', tabLegend:'图例', tabSearch:'搜索', tabCams:'相机', tabInfo:'信息', tabShare:'分享', tabSet:'设置', tabAttr:'属性', tabDisplay:'显示', manageTitle:'管理', manageInspectorLbl:'设置文本', manageApply:'应用', manageApplied:'已应用', importTitle:'文件导入', importAddFile:'添加文件', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'图层', note:'注意', refresh:'刷新', refreshTitle:'强制刷新用户图层',
@@ -389,7 +389,7 @@ const GEO_I18N = {
 , hubPromoExt: '扩展', pagesLabel:'页面', pageSelect:'应用已保存的页面（图层可见性）', pageNamePh:'新页面名称', pageSave:'保存页面', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'删除页面', zoomToLayer:'缩放到图层范围', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  'zh-TW': {
+  'zh-TW': { soTitle:'空間運算', soView:'檢視範圍', soCircle:'圓', soFeature:'圖徵', soDrawn:'已繪多邊形', soDraw:'繪製', soDrawing:'按一下地圖新增頂點——按兩下完成', soSelect:'選取', soAggregate:'彙總', soBuffer:'緩衝', soLng:'經度', soLat:'緯度', soRadius:'半徑m', soAttr:'屬性', soVal:'值', soGroup:'(分組欄位)', soValue:'(值欄位)', soFeatures:'圖徵數', soAdded:'已新增圖層', soRunErr:'錯誤',
     minimize:'最小化', restore:'還原', move:'移動', moveCamera:'移動相機',
     tabLayers:'圖層', tabLegend:'圖例', tabSearch:'搜尋', tabCams:'相機', tabInfo:'資訊', tabShare:'分享', tabSet:'設定', tabAttr:'屬性', tabDisplay:'顯示', manageTitle:'管理', manageInspectorLbl:'設定文字', manageApply:'套用', manageApplied:'已套用', importTitle:'檔案匯入', importAddFile:'新增檔案', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'圖層', note:'注意', refresh:'重新整理', refreshTitle:'強制重新整理使用者圖層',
@@ -421,7 +421,7 @@ const GEO_I18N = {
 , hubPromoExt: '擴充', pagesLabel:'頁面', pageSelect:'套用已儲存的頁面（圖層可見性）', pageNamePh:'新頁面名稱', pageSave:'儲存頁面', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'刪除頁面', zoomToLayer:'縮放至圖層範圍', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  ko: {
+  ko: { soTitle:'공간 연산', soView:'보기 범위', soCircle:'원', soFeature:'피처', soDrawn:'그린 폴리곤', soDraw:'그리기', soDrawing:'지도를 클릭해 꼭짓점 추가 — 더블클릭 완료', soSelect:'선택', soAggregate:'집계', soBuffer:'버퍼', soLng:'경도', soLat:'위도', soRadius:'반경m', soAttr:'속성', soVal:'값', soGroup:'(그룹 필드)', soValue:'(값 필드)', soFeatures:'피처 수', soAdded:'레이어 추가됨', soRunErr:'오류',
     minimize:'최소화', restore:'복원', move:'이동', moveCamera:'카메라 이동',
     tabLayers:'레이어', tabLegend:'범례', tabSearch:'검색', tabCams:'카메라', tabInfo:'정보', tabShare:'공유', tabSet:'설정', tabAttr:'속성', tabDisplay:'표시', manageTitle:'관리', manageInspectorLbl:'설정 텍스트', manageApply:'적용', manageApplied:'적용됨', importTitle:'파일 가져오기', importAddFile:'파일 추가', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'레이어', note:'주의', refresh:'새로고침', refreshTitle:'사용자 레이어 강제 새로고침',
@@ -453,7 +453,7 @@ const GEO_I18N = {
 , hubPromoExt: '확장', pagesLabel:'페이지', pageSelect:'저장된 페이지 적용(레이어 표시 상태)', pageNamePh:'새 페이지 이름', pageSave:'페이지 저장', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'페이지 삭제', zoomToLayer:'레이어 범위로 확대', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  es: {
+  es: { soTitle:'Operaciones espaciales', soView:'Extensión de vista', soCircle:'Círculo', soFeature:'Entidad', soDrawn:'Polígono dibujado', soDraw:'Dibujar', soDrawing:'Haz clic en el mapa para añadir vértices — doble clic para terminar', soSelect:'Seleccionar', soAggregate:'Resumir', soBuffer:'Búfer', soLng:'lng', soLat:'lat', soRadius:'radio m', soAttr:'atributo', soVal:'valor', soGroup:'(campo de grupo)', soValue:'(campo de valor)', soFeatures:'Entidades', soAdded:'Capa añadida', soRunErr:'Error',
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover cámara',
     tabLayers:'Capas', tabLegend:'Leyenda', tabSearch:'Buscar', tabCams:'Cámaras', tabInfo:'Info', tabShare:'Compartir', tabSet:'Ajustes', tabAttr:'Atrib.', tabDisplay:'Vista', manageTitle:'Gestión', manageInspectorLbl:'Texto de configuración', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar archivo', importAddFile:'Agregar archivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Capas', note:'Nota', refresh:'Actualizar', refreshTitle:'Forzar actualización de capas de usuario',
@@ -485,7 +485,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar una página guardada (visibilidad de capas)', pageNamePh:'Nombre de página nueva', pageSave:'Guardar página', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Eliminar página', zoomToLayer:'Zoom a la extensión de la capa', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  fr: {
+  fr: { soTitle:'Opérations spatiales', soView:'Étendue de la vue', soCircle:'Cercle', soFeature:'Entité', soDrawn:'Polygone dessiné', soDraw:'Dessiner', soDrawing:'Cliquez sur la carte pour ajouter des sommets — double-clic pour terminer', soSelect:'Sélectionner', soAggregate:'Agréger', soBuffer:'Tampon', soLng:'lng', soLat:'lat', soRadius:'rayon m', soAttr:'attribut', soVal:'valeur', soGroup:'(champ de groupe)', soValue:'(champ de valeur)', soFeatures:'Entités', soAdded:'Couche ajoutée', soRunErr:'Erreur',
     minimize:'Réduire', restore:'Restaurer', move:'Déplacer', moveCamera:'Déplacer la caméra',
     tabLayers:'Couches', tabLegend:'Légende', tabSearch:'Recherche', tabCams:'Caméras', tabInfo:'Info', tabShare:'Partager', tabSet:'Réglages', tabAttr:'Attr.', tabDisplay:'Affichage', manageTitle:'Gestion', manageInspectorLbl:'Texte de configuration', manageApply:'Appliquer', manageApplied:'Appliqué', importTitle:'Importer un fichier', importAddFile:'Ajouter des fichiers', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Couches', note:'Note', refresh:'Actualiser', refreshTitle:'Forcer l’actualisation des couches',
@@ -517,7 +517,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext.', pagesLabel:'Pages', pageSelect:'Appliquer une page enregistrée (visibilité des couches)', pageNamePh:'Nom de la nouvelle page', pageSave:'Enregistrer la page', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Supprimer la page', zoomToLayer:'Zoom sur l’étendue de la couche', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  de: {
+  de: { soTitle:'Räumliche Operationen', soView:'Ansichtsausschnitt', soCircle:'Kreis', soFeature:'Objekt', soDrawn:'Gezeichnetes Polygon', soDraw:'Zeichnen', soDrawing:'Karte anklicken um Stützpunkte zu setzen — Doppelklick zum Abschließen', soSelect:'Auswählen', soAggregate:'Aggregieren', soBuffer:'Puffer', soLng:'Länge', soLat:'Breite', soRadius:'Radius m', soAttr:'Attribut', soVal:'Wert', soGroup:'(Gruppenfeld)', soValue:'(Wertfeld)', soFeatures:'Objekte', soAdded:'Ebene hinzugefügt', soRunErr:'Fehler',
     minimize:'Minimieren', restore:'Wiederherstellen', move:'Verschieben', moveCamera:'Kamera bewegen',
     tabLayers:'Layer', tabLegend:'Legende', tabSearch:'Suche', tabCams:'Kameras', tabInfo:'Info', tabShare:'Teilen', tabSet:'Einst.', tabAttr:'Attr.', tabDisplay:'Anzeige', manageTitle:'Verwaltung', manageInspectorLbl:'Einstellungstext', manageApply:'Anwenden', manageApplied:'Angewendet', importTitle:'Datei importieren', importAddFile:'Dateien hinzufügen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layer', note:'Hinweis', refresh:'Aktualisieren', refreshTitle:'Benutzer-Layer neu laden',
@@ -549,7 +549,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext.', pagesLabel:'Seiten', pageSelect:'Gespeicherte Seite anwenden (Ebenensichtbarkeit)', pageNamePh:'Neuer Seitenname', pageSave:'Seite speichern', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Seite löschen', zoomToLayer:'Auf die Layerausdehnung zoomen', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  it: {
+  it: { soTitle:'Operazioni spaziali', soView:'Estensione vista', soCircle:'Cerchio', soFeature:'Elemento', soDrawn:'Poligono disegnato', soDraw:'Disegna', soDrawing:'Fai clic sulla mappa per aggiungere vertici — doppio clic per finire', soSelect:'Seleziona', soAggregate:'Aggrega', soBuffer:'Buffer', soLng:'lng', soLat:'lat', soRadius:'raggio m', soAttr:'attributo', soVal:'valore', soGroup:'(campo gruppo)', soValue:'(campo valore)', soFeatures:'Elementi', soAdded:'Layer aggiunto', soRunErr:'Errore',
     minimize:'Riduci', restore:'Ripristina', move:'Sposta', moveCamera:'Sposta camera',
     tabLayers:'Layer', tabLegend:'Legenda', tabSearch:'Cerca', tabCams:'Camere', tabInfo:'Info', tabShare:'Condividi', tabSet:'Impost.', tabAttr:'Attr.', tabDisplay:'Vista', manageTitle:'Gestione', manageInspectorLbl:'Testo di configurazione', manageApply:'Applica', manageApplied:'Applicato', importTitle:'Importa file', importAddFile:'Aggiungi file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Layer', note:'Nota', refresh:'Aggiorna', refreshTitle:'Forza aggiornamento layer utente',
@@ -581,7 +581,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext.', pagesLabel:'Pagine', pageSelect:'Applica una pagina salvata (visibilità dei layer)', pageNamePh:'Nome nuova pagina', pageSave:'Salva pagina', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Elimina pagina', zoomToLayer:'Zoom sull’estensione del layer', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  pt: {
+  pt: { soTitle:'Operações espaciais', soView:'Extensão da vista', soCircle:'Círculo', soFeature:'Feição', soDrawn:'Polígono desenhado', soDraw:'Desenhar', soDrawing:'Clique no mapa para adicionar vértices — duplo clique para concluir', soSelect:'Selecionar', soAggregate:'Agregar', soBuffer:'Buffer', soLng:'lng', soLat:'lat', soRadius:'raio m', soAttr:'atributo', soVal:'valor', soGroup:'(campo de grupo)', soValue:'(campo de valor)', soFeatures:'Feições', soAdded:'Camada adicionada', soRunErr:'Erro',
     minimize:'Minimizar', restore:'Restaurar', move:'Mover', moveCamera:'Mover câmera',
     tabLayers:'Camadas', tabLegend:'Legenda', tabSearch:'Buscar', tabCams:'Câmeras', tabInfo:'Info', tabShare:'Partilhar', tabSet:'Ajustes', tabAttr:'Atr.', tabDisplay:'Exibição', manageTitle:'Gestão', manageInspectorLbl:'Texto de configuração', manageApply:'Aplicar', manageApplied:'Aplicado', importTitle:'Importar arquivo', importAddFile:'Adicionar arquivos', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Camadas', note:'Nota', refresh:'Atualizar', refreshTitle:'Forçar atualização das camadas',
@@ -613,7 +613,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext.', pagesLabel:'Páginas', pageSelect:'Aplicar uma página guardada (visibilidade das camadas)', pageNamePh:'Nome da nova página', pageSave:'Guardar página', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Eliminar página', zoomToLayer:'Zoom para a extensão da camada', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  ru: {
+  ru: { soTitle:'Пространственные операции', soView:'Экстент вида', soCircle:'Круг', soFeature:'Объект', soDrawn:'Нарисованный полигон', soDraw:'Рисовать', soDrawing:'Кликайте по карте, чтобы добавить вершины — двойной клик для завершения', soSelect:'Выбрать', soAggregate:'Агрегировать', soBuffer:'Буфер', soLng:'долг.', soLat:'шир.', soRadius:'радиус м', soAttr:'атрибут', soVal:'значение', soGroup:'(поле группы)', soValue:'(поле значения)', soFeatures:'Объекты', soAdded:'Слой добавлен', soRunErr:'Ошибка',
     minimize:'Свернуть', restore:'Восстановить', move:'Переместить', moveCamera:'Переместить камеру',
     tabLayers:'Слои', tabLegend:'Легенда', tabSearch:'Поиск', tabCams:'Камеры', tabInfo:'Инфо', tabShare:'Поделиться', tabSet:'Настр.', tabAttr:'Атр.', tabDisplay:'Вид', manageTitle:'Управление', manageInspectorLbl:'Текст настроек', manageApply:'Применить', manageApplied:'Применено', importTitle:'Импорт файла', importAddFile:'Добавить файлы', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Слои', note:'Примечание', refresh:'Обновить', refreshTitle:'Принудительно обновить слои',
@@ -645,7 +645,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Расш.', pagesLabel:'Страницы', pageSelect:'Применить сохранённую страницу (видимость слоёв)', pageNamePh:'Имя новой страницы', pageSave:'Сохранить страницу', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Удалить страницу', zoomToLayer:'Масштабировать до границ слоя', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  nl: {
+  nl: { soTitle:'Ruimtelijke bewerkingen', soView:'Weergave-extent', soCircle:'Cirkel', soFeature:'Object', soDrawn:'Getekende polygoon', soDraw:'Tekenen', soDrawing:'Klik op de kaart om hoekpunten toe te voegen — dubbelklik om te voltooien', soSelect:'Selecteren', soAggregate:'Aggregeren', soBuffer:'Buffer', soLng:'lengte', soLat:'breedte', soRadius:'straal m', soAttr:'attribuut', soVal:'waarde', soGroup:'(groepveld)', soValue:'(waardeveld)', soFeatures:'Objecten', soAdded:'Laag toegevoegd', soRunErr:'Fout',
     minimize:'Minimaliseren', restore:'Herstellen', move:'Verplaatsen', moveCamera:'Camera verplaatsen',
     tabLayers:'Lagen', tabLegend:'Legenda', tabSearch:'Zoeken', tabCams:'Camera’s', tabInfo:'Info', tabShare:'Delen', tabSet:'Inst.', tabAttr:'Attr.', tabDisplay:'Weergave', manageTitle:'Beheer', manageInspectorLbl:'Instellingentekst', manageApply:'Toepassen', manageApplied:'Toegepast', importTitle:'Bestand importeren', importAddFile:'Bestanden toevoegen', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lagen', note:'Let op', refresh:'Vernieuwen', refreshTitle:'Gebruikerslagen geforceerd vernieuwen',
@@ -677,7 +677,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Ext.', pagesLabel:'Pagina\'s', pageSelect:'Opgeslagen pagina toepassen (laagzichtbaarheid)', pageNamePh:'Nieuwe paginanaam', pageSave:'Pagina opslaan', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Pagina verwijderen', zoomToLayer:'Zoomen naar laagbereik', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  pl: {
+  pl: { soTitle:'Operacje przestrzenne', soView:'Zasięg widoku', soCircle:'Okrąg', soFeature:'Obiekt', soDrawn:'Narysowany poligon', soDraw:'Rysuj', soDrawing:'Klikaj mapę, aby dodać wierzchołki — dwuklik kończy', soSelect:'Wybierz', soAggregate:'Agreguj', soBuffer:'Bufor', soLng:'dł.', soLat:'szer.', soRadius:'promień m', soAttr:'atrybut', soVal:'wartość', soGroup:'(pole grupy)', soValue:'(pole wartości)', soFeatures:'Obiekty', soAdded:'Warstwa dodana', soRunErr:'Błąd',
     minimize:'Minimalizuj', restore:'Przywróć', move:'Przenieś', moveCamera:'Przenieś kamerę',
     tabLayers:'Warstwy', tabLegend:'Legenda', tabSearch:'Szukaj', tabCams:'Kamery', tabInfo:'Info', tabShare:'Udostępnij', tabSet:'Ustaw.', tabAttr:'Atryb.', tabDisplay:'Widok', manageTitle:'Zarządzanie', manageInspectorLbl:'Tekst ustawień', manageApply:'Zastosuj', manageApplied:'Zastosowano', importTitle:'Import pliku', importAddFile:'Dodaj pliki', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Warstwy', note:'Uwaga', refresh:'Odśwież', refreshTitle:'Wymuś odświeżenie warstw użytkownika',
@@ -709,7 +709,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Rozsz.', pagesLabel:'Strony', pageSelect:'Zastosuj zapisaną stronę (widoczność warstw)', pageNamePh:'Nazwa nowej strony', pageSave:'Zapisz stronę', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Usuń stronę', zoomToLayer:'Powiększ do zakresu warstwy', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  uk: {
+  uk: { soTitle:'Просторові операції', soView:'Екстент вигляду', soCircle:'Коло', soFeature:'Об\'єкт', soDrawn:'Намальований полігон', soDraw:'Малювати', soDrawing:'Клацайте мапу, щоб додати вершини — подвійний клік для завершення', soSelect:'Вибрати', soAggregate:'Агрегувати', soBuffer:'Буфер', soLng:'довг.', soLat:'шир.', soRadius:'радіус м', soAttr:'атрибут', soVal:'значення', soGroup:'(поле групи)', soValue:'(поле значення)', soFeatures:'Об\'єкти', soAdded:'Шар додано', soRunErr:'Помилка',
     minimize:'Згорнути', restore:'Відновити', move:'Перемістити', moveCamera:'Перемістити камеру',
     tabLayers:'Шари', tabLegend:'Легенда', tabSearch:'Пошук', tabCams:'Камери', tabInfo:'Інфо', tabShare:'Поділитися', tabSet:'Налашт.', tabAttr:'Атриб.', tabDisplay:'Вигляд', manageTitle:'Керування', manageInspectorLbl:'Текст налаштувань', manageApply:'Застосувати', manageApplied:'Застосовано', importTitle:'Імпорт файлу', importAddFile:'Додати файли', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Шари', note:'Примітка', refresh:'Оновити', refreshTitle:'Примусово оновити шари користувача',
@@ -741,7 +741,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Розш.', pagesLabel:'Сторінки', pageSelect:'Застосувати збережену сторінку (видимість шарів)', pageNamePh:'Назва нової сторінки', pageSave:'Зберегти сторінку', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Видалити сторінку', zoomToLayer:'Масштабувати до меж шару', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  tr: {
+  tr: { soTitle:'Mekânsal işlemler', soView:'Görünüm kapsamı', soCircle:'Daire', soFeature:'Nesne', soDrawn:'Çizilen poligon', soDraw:'Çiz', soDrawing:'Köşe eklemek için haritaya tıklayın — bitirmek için çift tıklayın', soSelect:'Seç', soAggregate:'Topla', soBuffer:'Tampon', soLng:'boylam', soLat:'enlem', soRadius:'yarıçap m', soAttr:'öznitelik', soVal:'değer', soGroup:'(grup alanı)', soValue:'(değer alanı)', soFeatures:'Nesneler', soAdded:'Katman eklendi', soRunErr:'Hata',
     minimize:'Küçült', restore:'Geri yükle', move:'Taşı', moveCamera:'Kamerayı taşı',
     tabLayers:'Katmanlar', tabLegend:'Lejant', tabSearch:'Ara', tabCams:'Kameralar', tabInfo:'Bilgi', tabShare:'Paylaş', tabSet:'Ayarlar', tabAttr:'Özellik', tabDisplay:'Görünüm', manageTitle:'Yönetim', manageInspectorLbl:'Ayar metni', manageApply:'Uygula', manageApplied:'Uygulandı', importTitle:'Dosya içe aktar', importAddFile:'Dosya ekle', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Katmanlar', note:'Not', refresh:'Yenile', refreshTitle:'Kullanıcı katmanlarını zorla yenile',
@@ -773,7 +773,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Eklenti', pagesLabel:'Sayfalar', pageSelect:'Kayıtlı sayfayı uygula (katman görünürlüğü)', pageNamePh:'Yeni sayfa adı', pageSave:'Sayfayı kaydet', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Sayfayı sil', zoomToLayer:'Katman kapsamına yakınlaştır', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  ar: {
+  ar: { soTitle:'عمليات مكانية', soView:'مدى العرض', soCircle:'دائرة', soFeature:'ميزة', soDrawn:'مضلع مرسوم', soDraw:'ارسم', soDrawing:'انقر على الخريطة لإضافة رؤوس — نقرة مزدوجة للإنهاء', soSelect:'تحديد', soAggregate:'تجميع', soBuffer:'منطقة عازلة', soLng:'خط الطول', soLat:'خط العرض', soRadius:'نصف القطر م', soAttr:'خاصية', soVal:'قيمة', soGroup:'(حقل التجميع)', soValue:'(حقل القيمة)', soFeatures:'الميزات', soAdded:'تمت إضافة طبقة', soRunErr:'خطأ',
     minimize:'تصغير', restore:'استعادة', move:'تحريك', moveCamera:'تحريك الكاميرا',
     tabLayers:'الطبقات', tabLegend:'المفتاح', tabSearch:'بحث', tabCams:'كاميرات', tabInfo:'معلومات', tabShare:'مشاركة', tabSet:'إعدادات', tabAttr:'خصائص', tabDisplay:'عرض', manageTitle:'إدارة', manageInspectorLbl:'نص الإعدادات', manageApply:'تطبيق', manageApplied:'تم التطبيق', importTitle:'استيراد ملف', importAddFile:'إضافة ملفات', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'الطبقات', note:'ملاحظة', refresh:'تحديث', refreshTitle:'فرض تحديث طبقات المستخدم',
@@ -805,7 +805,7 @@ const GEO_I18N = {
 , hubPromoExt: 'إضافة', pagesLabel:'صفحات', pageSelect:'تطبيق صفحة محفوظة (رؤية الطبقات)', pageNamePh:'اسم الصفحة الجديدة', pageSave:'حفظ الصفحة', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'حذف الصفحة', zoomToLayer:'تكبير إلى نطاق الطبقة', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  hi: {
+  hi: { soTitle:'स्थानिक संक्रियाएँ', soView:'दृश्य सीमा', soCircle:'वृत्त', soFeature:'फ़ीचर', soDrawn:'बनाया बहुभुज', soDraw:'बनाएँ', soDrawing:'शीर्ष जोड़ने के लिए मानचित्र पर क्लिक करें — समाप्त करने के लिए डबल-क्लिक', soSelect:'चुनें', soAggregate:'एकत्रित', soBuffer:'बफ़र', soLng:'देशांतर', soLat:'अक्षांश', soRadius:'त्रिज्या m', soAttr:'विशेषता', soVal:'मान', soGroup:'(समूह फ़ील्ड)', soValue:'(मान फ़ील्ड)', soFeatures:'फ़ीचर', soAdded:'लेयर जोड़ा गया', soRunErr:'त्रुटि',
     minimize:'छोटा करें', restore:'पुनर्स्थापित', move:'स्थानांतरित', moveCamera:'कैमरा ले जाएँ',
     tabLayers:'लेयर', tabLegend:'लीजेंड', tabSearch:'खोज', tabCams:'कैमरे', tabInfo:'जानकारी', tabShare:'साझा करें', tabSet:'सेटिंग', tabAttr:'विशेषताएँ', tabDisplay:'प्रदर्शन', manageTitle:'प्रबंधन', manageInspectorLbl:'सेटिंग टेक्स्ट', manageApply:'लागू करें', manageApplied:'लागू किया गया', importTitle:'फ़ाइल आयात', importAddFile:'फ़ाइलें जोड़ें', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'लेयर', note:'नोट', refresh:'रीफ़्रेश', refreshTitle:'उपयोगकर्ता लेयर ज़बरदस्ती रीफ़्रेश',
@@ -837,7 +837,7 @@ const GEO_I18N = {
 , hubPromoExt: 'एक्स.', pagesLabel:'पेज', pageSelect:'सहेजा गया पेज लागू करें (लेयर दृश्यता)', pageNamePh:'नए पेज का नाम', pageSave:'पेज सहेजें', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'पेज हटाएँ', zoomToLayer:'परत सीमा पर ज़ूम करें', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  id: {
+  id: { soTitle:'Operasi spasial', soView:'Cakupan tampilan', soCircle:'Lingkaran', soFeature:'Fitur', soDrawn:'Poligon digambar', soDraw:'Gambar', soDrawing:'Klik peta untuk menambah simpul — klik ganda untuk selesai', soSelect:'Pilih', soAggregate:'Agregasi', soBuffer:'Buffer', soLng:'bujur', soLat:'lintang', soRadius:'radius m', soAttr:'atribut', soVal:'nilai', soGroup:'(kolom grup)', soValue:'(kolom nilai)', soFeatures:'Fitur', soAdded:'Layer ditambahkan', soRunErr:'Galat',
     minimize:'Minimalkan', restore:'Pulihkan', move:'Pindah', moveCamera:'Pindahkan kamera',
     tabLayers:'Lapisan', tabLegend:'Legenda', tabSearch:'Cari', tabCams:'Kamera', tabInfo:'Info', tabShare:'Bagikan', tabSet:'Setel', tabAttr:'Atribut', tabDisplay:'Tampilan', manageTitle:'Kelola', manageInspectorLbl:'Teks pengaturan', manageApply:'Terapkan', manageApplied:'Diterapkan', importTitle:'Impor file', importAddFile:'Tambah file', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lapisan', note:'Catatan', refresh:'Muat ulang', refreshTitle:'Paksa muat ulang lapisan pengguna',
@@ -869,7 +869,7 @@ const GEO_I18N = {
 , hubPromoExt: 'Eks.', pagesLabel:'Halaman', pageSelect:'Terapkan halaman tersimpan (visibilitas layer)', pageNamePh:'Nama halaman baru', pageSave:'Simpan halaman', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'Hapus halaman', zoomToLayer:'Zoom ke cakupan lapisan', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  th: {
+  th: { soTitle:'การดำเนินการเชิงพื้นที่', soView:'ขอบเขตมุมมอง', soCircle:'วงกลม', soFeature:'ฟีเจอร์', soDrawn:'รูปหลายเหลี่ยมที่วาด', soDraw:'วาด', soDrawing:'คลิกแผนที่เพื่อเพิ่มจุดยอด — ดับเบิลคลิกเพื่อเสร็จ', soSelect:'เลือก', soAggregate:'รวม', soBuffer:'บัฟเฟอร์', soLng:'ลองจิจูด', soLat:'ละติจูด', soRadius:'รัศมี m', soAttr:'แอตทริบิวต์', soVal:'ค่า', soGroup:'(ฟิลด์กลุ่ม)', soValue:'(ฟิลด์ค่า)', soFeatures:'ฟีเจอร์', soAdded:'เพิ่มเลเยอร์แล้ว', soRunErr:'ข้อผิดพลาด',
     minimize:'ย่อ', restore:'คืนค่า', move:'ย้าย', moveCamera:'ย้ายกล้อง',
     tabLayers:'เลเยอร์', tabLegend:'คำอธิบาย', tabSearch:'ค้นหา', tabCams:'กล้อง', tabInfo:'ข้อมูล', tabShare:'แชร์', tabSet:'ตั้งค่า', tabAttr:'คุณลักษณะ', tabDisplay:'การแสดง', manageTitle:'จัดการ', manageInspectorLbl:'ข้อความการตั้งค่า', manageApply:'ใช้', manageApplied:'ใช้แล้ว', importTitle:'นำเข้าไฟล์', importAddFile:'เพิ่มไฟล์', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'เลเยอร์', note:'หมายเหตุ', refresh:'รีเฟรช', refreshTitle:'บังคับรีเฟรชเลเยอร์ผู้ใช้',
@@ -901,7 +901,7 @@ const GEO_I18N = {
 , hubPromoExt: 'ขยาย', pagesLabel:'หน้า', pageSelect:'ใช้หน้าที่บันทึกไว้ (การมองเห็นเลเยอร์)', pageNamePh:'ชื่อหน้าใหม่', pageSave:'บันทึกหน้า', sqlTab:'SQL', sqlRun:'Run', sqlRunning:'Running…', sqlAddLayer:'Add as layer', sqlTitlePh:'Layer title (optional)', sqlQueryPh:'SELECT ...', sqlHint:'DuckDB-Wasm SELECT. The result needs a geometry (or lon/lat) column. :bbox expands to the current viewport envelope. ST_* spatial functions depend on the bundled spatial extension.', sqlErr:'Error', sqlFeatures:'features', sqlRequested:'Layer add requested — see the Layers tab', pageDelete:'ลบหน้า', zoomToLayer:'ซูมไปยังขอบเขตเลเยอร์', statsBtn:'Stats', statRun:'Run', statGroupBy:'Group by', statValue:'Value field', statNoGroup:'(no grouping)', statCountOnly:'(count only)', statField:'Field', statKey:'Key', statCount:'Count', statNumeric:'Numeric', statSum:'Sum', statAvg:'Avg', statMin:'Min', statMax:'Max', statTruncated:'+{n} more groups', statNoData:'No data',
     exportBtn:'Export', exportDone:'Saved {file} ({count} features)', exportFail:'Export failed', exportFmtTitle:'Export format'
   },
-  vi: {
+  vi: { soTitle:'Phép toán không gian', soView:'Phạm vi hiển thị', soCircle:'Hình tròn', soFeature:'Đối tượng', soDrawn:'Đa giác đã vẽ', soDraw:'Vẽ', soDrawing:'Nhấp bản đồ để thêm đỉnh — nhấp đúp để hoàn tất', soSelect:'Chọn', soAggregate:'Tổng hợp', soBuffer:'Đệm', soLng:'kinh độ', soLat:'vĩ độ', soRadius:'bán kính m', soAttr:'thuộc tính', soVal:'giá trị', soGroup:'(trường nhóm)', soValue:'(trường giá trị)', soFeatures:'Đối tượng', soAdded:'Đã thêm lớp', soRunErr:'Lỗi',
     minimize:'Thu nhỏ', restore:'Khôi phục', move:'Di chuyển', moveCamera:'Di chuyển camera',
     tabLayers:'Lớp', tabLegend:'Chú giải', tabSearch:'Tìm kiếm', tabCams:'Camera', tabInfo:'Thông tin', tabShare:'Chia sẻ', tabSet:'Cài đặt', tabAttr:'Thuộc tính', tabDisplay:'Hiển thị', manageTitle:'Quản lý', manageInspectorLbl:'Văn bản cài đặt', manageApply:'Áp dụng', manageApplied:'Đã áp dụng', importTitle:'Nhập tệp', importAddFile:'Thêm tệp', importHint:'Files: .geojson .json .fgb .parquet .gpkg .csv .tsv .kasc .zip',
     layersTitle:'Lớp', note:'Lưu ý', refresh:'Làm mới', refreshTitle:'Bắt buộc làm mới lớp người dùng',
@@ -5637,7 +5637,89 @@ function qmlStyleToReearth(xmlText, opts){
             };
 
             // Sync UI if parent sends actions (keep iframe in sync with external changes)
-            window.addEventListener('message', function(e) {
+            // ---- spatial ops UI (select / aggregate / buffer) ----
+      var _spatialReqSeq = 0;
+      window._spatialDrawnGeom = null;
+      function spatialOpsEnsure() {
+        var anchor = document.getElementById('vector-search-status');
+        if (!anchor || !anchor.parentNode) return;
+        var box = document.getElementById('spatial-ops');
+        if (!box) {
+          box = document.createElement('div');
+          box.id = 'spatial-ops';
+          box.style.cssText = 'margin-top:10px;border-top:1px solid #ddd;padding-top:8px;';
+          anchor.parentNode.insertBefore(box, anchor.nextSibling);
+        }
+        var opts = (window._vectorSearchData && window._vectorSearchData.layerOptions) || [];
+        var prevLayer = '', prevMode = 'view';
+        var ol = document.getElementById('so-layer'), om = document.getElementById('so-mode');
+        if (ol) prevLayer = ol.value; if (om) prevMode = om.value;
+        var h = '<div style="font-weight:600;margin:4px 0;">' + t('soTitle') + '</div>';
+        h += '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">';
+        h += '<select id="so-layer" style="flex:1;min-width:100px;"><option value="__all__">' + t('allSelect') + '</option>';
+        opts.forEach(function(o) { h += '<option value="' + escapeHtml(o.id) + '">' + escapeHtml(o.title || o.id) + '</option>'; });
+        h += '</select><select id="so-mode"><option value="view">' + t('soView') + '</option><option value="circle">' + t('soCircle') + '</option><option value="feature">' + t('soFeature') + '</option><option value="drawn">' + t('soDrawn') + '</option></select></div>';
+        h += '<div id="so-circle-row" style="display:none;gap:4px;margin-top:4px;"><input id="so-lng" placeholder="' + t('soLng') + '" style="width:70px;"><input id="so-lat" placeholder="' + t('soLat') + '" style="width:70px;"><input id="so-rad" placeholder="' + t('soRadius') + '" style="width:70px;"></div>';
+        h += '<div id="so-feature-row" style="display:none;gap:4px;margin-top:4px;"><input id="so-fattr" placeholder="' + t('soAttr') + '" style="width:90px;"><input id="so-fval" placeholder="' + t('soVal') + '" style="width:90px;"></div>';
+        h += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;"><select id="so-group"><option value="">' + t('soGroup') + '</option></select><select id="so-value"><option value="">' + t('soValue') + '</option></select><input id="so-buf" placeholder="' + t('soBuffer') + ' (m)" style="width:80px;"></div>';
+        h += '<div style="display:flex;gap:4px;margin-top:6px;"><button id="so-draw">' + t('soDraw') + '</button><button id="so-sel">' + t('soSelect') + '</button><button id="so-agg">' + t('soAggregate') + '</button><button id="so-bufbtn">' + t('soBuffer') + '</button></div>';
+        h += '<div id="so-out" style="margin-top:6px;font-size:0.9em;overflow:auto;max-height:200px;"></div>';
+        box.innerHTML = h;
+        spatialOpsFillFields();
+        var sm = document.getElementById('so-mode');
+        sm.value = prevMode;
+        sm.onchange = function() {
+          var m = this.value;
+          document.getElementById('so-circle-row').style.display = (m === 'circle') ? 'flex' : 'none';
+          document.getElementById('so-feature-row').style.display = (m === 'feature') ? 'flex' : 'none';
+        };
+        sm.dispatchEvent(new Event('change'));
+        document.getElementById('so-layer').onchange = spatialOpsFillFields;
+        if (prevLayer) { var sl = document.getElementById('so-layer'); var has = false; for (var i = 0; i < sl.options.length; i++) if (sl.options[i].value === prevLayer) has = true; if (has) sl.value = prevLayer; }
+        document.getElementById('so-draw').onclick = function() { document.getElementById('so-out').textContent = t('soDrawing'); try { window.parent.postMessage({ action: 'spatialDrawStart' }, '*'); } catch (e) {} };
+        document.getElementById('so-sel').onclick = function() { spatialOpsRun('select'); };
+        document.getElementById('so-agg').onclick = function() { spatialOpsRun('aggregate'); };
+        document.getElementById('so-bufbtn').onclick = function() { spatialOpsRun('buffer'); };
+      }
+      function spatialOpsFillFields() {
+        var sl = document.getElementById('so-layer'); if (!sl) return;
+        var lid = sl.value || '__all__';
+        var src = (lid === '__all__') ? ((window._vectorSearchData || {}).all) : (((window._vectorSearchData || {}).layers || {})[lid]);
+        var attrs = (src && src.attributes) || [];
+        var g = document.getElementById('so-group'), v = document.getElementById('so-value');
+        if (!g || !v) return;
+        var gp = g.value, vp = v.value;
+        g.innerHTML = '<option value="">' + t('soGroup') + '</option>' + attrs.map(function(a) { return '<option value="' + escapeHtml(a) + '">' + escapeHtml(a) + '</option>'; }).join('');
+        v.innerHTML = '<option value="">' + t('soValue') + '</option>' + attrs.map(function(a) { return '<option value="' + escapeHtml(a) + '">' + escapeHtml(a) + '</option>'; }).join('');
+        if (gp) g.value = gp; if (vp) v.value = vp;
+      }
+      function spatialOpsRun(op) {
+        var out = document.getElementById('so-out'); if (out) out.textContent = '...';
+        var lid = document.getElementById('so-layer').value;
+        var mode = document.getElementById('so-mode').value;
+        var args = { layer: (lid === '__all__') ? '' : lid };
+        if (mode === 'view') args.viewport = true;
+        else if (mode === 'circle') {
+          var clng = parseFloat(document.getElementById('so-lng').value), clat = parseFloat(document.getElementById('so-lat').value), cr = parseFloat(document.getElementById('so-rad').value);
+          if (!isFinite(clng) || !isFinite(clat) || !isFinite(cr)) { if (out) out.textContent = t('soRunErr') + ': circle lng/lat/radius'; return; }
+          args.region = { center: [clng, clat], radiusMeters: cr };
+        } else if (mode === 'feature') {
+          args.feature = { layer: args.layer, attribute: document.getElementById('so-fattr').value, value: document.getElementById('so-fval').value };
+        } else if (mode === 'drawn') {
+          if (!window._spatialDrawnGeom) { if (out) out.textContent = t('soRunErr') + ': ' + t('soDrawn'); return; }
+          args.region = window._spatialDrawnGeom;
+        }
+        if (op === 'aggregate') { args.groupField = document.getElementById('so-group').value || null; args.valueField = document.getElementById('so-value').value || null; }
+        if (op === 'buffer') {
+          var br = parseFloat(document.getElementById('so-buf').value);
+          if (!isFinite(br) || br <= 0) { if (out) out.textContent = t('soRunErr') + ': buffer m'; return; }
+          args.radiusMeters = br; args.title = 'buffer ' + br + 'm';
+        }
+        try { window.parent.postMessage({ action: 'spatialOp', reqId: 'so' + (++_spatialReqSeq), op: op, args: args }, '*'); }
+        catch (e) { if (out) out.textContent = String(e); }
+      }
+
+      window.addEventListener('message', function(e) {
               try {
                 const msg = e && e.data ? e.data : null;
                 if (!msg || !msg.action) return;
@@ -6015,6 +6097,49 @@ function qmlStyleToReearth(xmlText, opts){
                       expReport(true, { file: file, count: feats.length });
                     }).catch(function(err) { expReport(false, { error: String(err && err.message || err) }); });
                   } catch (e) { console.error('[exportLayerSource] error', e); }
+                } else if (msg.action === 'spatialOpResult') {
+                  try {
+                    var _soOut = document.getElementById('so-out'); if (!_soOut) return;
+                    var _soR = msg.result || {};
+                    if (!msg.ok) { _soOut.textContent = t('soRunErr') + ': ' + String(_soR.error || 'failed'); return; }
+                    if (msg.op === 'select') {
+                      var _sh = '<b>' + t('soFeatures') + ': ' + _soR.count + '</b>';
+                      if (_soR.added) _sh += ' — ' + t('soAdded') + ': ' + escapeHtml(_soR.added.title || '');
+                      if (_soR.sample && _soR.sample.length) {
+                        var _cols = Object.keys(_soR.sample[0].properties || {}).slice(0, 6);
+                        _sh += '<table style="margin-top:4px;border-collapse:collapse;font-size:0.85em;"><tr>' + _cols.map(function(k) { return '<th style="border:1px solid #ccc;padding:2px 4px;">' + escapeHtml(k) + '</th>'; }).join('') + '</tr>';
+                        _soR.sample.slice(0, 10).forEach(function(ff) { _sh += '<tr>' + _cols.map(function(k) { var v = ff.properties[k]; return '<td style="border:1px solid #ddd;padding:2px 4px;">' + escapeHtml(v === undefined ? '' : String(v)) + '</td>'; }).join('') + '</tr>'; });
+                        _sh += '</table>';
+                      }
+                      _soOut.innerHTML = _sh;
+                    } else if (msg.op === 'aggregate') {
+                      var _rows = _soR.rows || [];
+                      if (!_rows.length) { _soOut.textContent = t('soFeatures') + ': 0'; return; }
+                      var _ah = '<b>' + t('soFeatures') + ': ' + _soR.count + '</b><table style="margin-top:4px;border-collapse:collapse;font-size:0.85em;"><tr><th style="border:1px solid #ccc;padding:2px 4px;">key</th><th style="border:1px solid #ccc;padding:2px 4px;">count</th><th style="border:1px solid #ccc;padding:2px 4px;">sum</th><th style="border:1px solid #ccc;padding:2px 4px;">avg</th><th style="border:1px solid #ccc;padding:2px 4px;">min</th><th style="border:1px solid #ccc;padding:2px 4px;">max</th></tr>';
+                      _rows.slice(0, 100).forEach(function(r) { var fv = function(n) { return (typeof n === 'number' && isFinite(n)) ? String(Math.round(n * 1e4) / 1e4) : ''; }; _ah += '<tr><td style="border:1px solid #ddd;padding:2px 4px;">' + escapeHtml(r.key === null ? '' : String(r.key)) + '</td><td style="border:1px solid #ddd;padding:2px 4px;">' + r.count + '</td><td style="border:1px solid #ddd;padding:2px 4px;">' + fv(r.sum) + '</td><td style="border:1px solid #ddd;padding:2px 4px;">' + fv(r.avg) + '</td><td style="border:1px solid #ddd;padding:2px 4px;">' + fv(r.min) + '</td><td style="border:1px solid #ddd;padding:2px 4px;">' + fv(r.max) + '</td></tr>'; });
+                      _soOut.innerHTML = _ah + '</table>';
+                    } else {
+                      _soOut.textContent = t('soAdded') + ': ' + String(_soR.title || '') + ' (' + String(_soR.features || 0) + ')';
+                    }
+                  } catch (e) {}
+                } else if (msg.action === 'spatialDrawn') {
+                  try {
+                    window._spatialDrawnGeom = msg.geometry || null;
+                    var _dm = document.getElementById('so-mode'); if (_dm) { _dm.value = 'drawn'; _dm.dispatchEvent(new Event('change')); }
+                    var _do = document.getElementById('so-out'); if (_do) _do.textContent = t('soDrawn') + ' OK';
+                  } catch (e) {}
+                } else if (msg.action === 'spatialTurf') {
+                  try {
+                    var _spId = msg.spId;
+                    var _done = function(fc, err) { try { window.parent.postMessage({ action: 'spatialTurfResult', spId: _spId, fc: fc, error: err || null }, '*'); } catch (e) {} };
+                    import('https://cdn.jsdelivr.net/npm/@turf/turf@7.4.0/+esm').then(function(turf) {
+                      try {
+                        var _feats = ((msg.fc || {}).features) || [], _out = [];
+                        _feats.forEach(function(f) { var g = turf.buffer({ type: 'Feature', properties: (f && f.properties) || {}, geometry: f.geometry }, (Number(msg.radiusMeters) || 0) / 1000, { units: 'kilometers' }); if (g && g.geometry) _out.push({ type: 'Feature', properties: (f && f.properties) || {}, geometry: g.geometry }); });
+                        _done({ type: 'FeatureCollection', features: _out }, null);
+                      } catch (e) { _done(null, String(e && e.message || e)); }
+                    }).catch(function(e) { _done(null, 'turf load failed: ' + String(e && e.message || e)); });
+                  } catch (e) {}
                 } else if (msg.action === 'vectorFeatureIndex') {
                   try {
                     const layerSelect = document.getElementById('vector-layer');
@@ -6024,6 +6149,7 @@ function qmlStyleToReearth(xmlText, opts){
                     const statusEl = document.getElementById('vector-search-status');
 
                     window._vectorSearchData = { all: (msg.all || {}), layers: (msg.layers || {}), layerOptions: (msg.layerOptions || []) };
+                      try { spatialOpsEnsure(); } catch (e) {}
 
                     if (layerSelect) {
                       let html = '<option value="__all__">' + t('allSelect') + '</option>';
@@ -12410,6 +12536,17 @@ reearth.extension.on("message", (msg) => {
           }
           catch (e) { }
       }
+      else if (msg.action === 'spatialOp') {
+        try {
+          const sop = String(msg.op || 'select');
+          const rcb = (res, ok) => { try { postToUI({ action: 'spatialOpResult', reqId: msg.reqId, ok: ok !== false, op: sop, result: res }); } catch (e) {} };
+          if (sop === 'aggregate') spatialExec('aggregateWithin', msg.args || {}, rcb);
+          else if (sop === 'buffer') spatialExec('createBuffer', msg.args || {}, rcb);
+          else spatialExec('spatialSelect', msg.args || {}, rcb);
+        } catch (e) { try { postToUI({ action: 'spatialOpResult', reqId: msg.reqId, ok: false, result: { error: String(e) } }); } catch (e2) {} }
+      }
+      else if (msg.action === 'spatialDrawStart') { try { spatialDrawStart(); } catch (e) {} }
+      else if (msg.action === 'spatialTurfResult') { try { handleSpatialTurfResult(msg); } catch (e) {} }
       else if (msg.action === 'manageTextRequest') {
           try {
               const prop = (reearth.extension.widget && reearth.extension.widget.property) || (reearth.extension.block && reearth.extension.block.property) || {};
@@ -13104,6 +13241,282 @@ function attrStatNumeric(v) {
   if (typeof v === 'string' && v.trim() !== '' && isFinite(Number(v))) return Number(v);
   return null;
 }
+
+// __SPATIAL_OPS_BEGIN__
+// ---- Spatial ops (port of kasugai_canvas web/shared/spatial-ops.js) ----
+// Pure GeoJSON predicates + region normalization + buffer generation.
+// Point/MultiPoint buffers are geodesic circles computed here; Line/Polygon
+// buffers are forwarded to the UI iframe which lazy-loads turf.js (MIT).
+const SO_RAD = Math.PI / 180;
+const SO_A = 6378137.0;
+
+function soDestination(p, bearingDeg, distM) {
+  const d = distM / SO_A, th = bearingDeg * SO_RAD;
+  const f1 = p.lat * SO_RAD, l1 = p.lng * SO_RAD;
+  const f2 = Math.asin(Math.sin(f1) * Math.cos(d) + Math.cos(f1) * Math.sin(d) * Math.cos(th));
+  const l2 = l1 + Math.atan2(Math.sin(th) * Math.sin(d) * Math.cos(f1), Math.cos(d) - Math.sin(f1) * Math.sin(f2));
+  return { lng: ((l2 * 180 / Math.PI + 540) % 360) - 180, lat: f2 * 180 / Math.PI };
+}
+function soCirclePolygon(center, radiusMeters, steps) {
+  const n = steps || 64, ring = [];
+  for (let i = 0; i <= n; i++) { const p = soDestination(center, (360 / n) * i, radiusMeters); ring.push([p.lng, p.lat]); }
+  return { type: 'Polygon', coordinates: [ring] };
+}
+function soRectPolygon(west, south, east, north) {
+  const mid = (west + east) / 2, midLat = (south + north) / 2;
+  return { type: 'Polygon', coordinates: [[[west, south], [mid, south], [east, south], [east, midLat], [east, north], [mid, north], [west, north], [west, midLat], [west, south]]] };
+}
+function soPointInRing(lng, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function soPointInPolyCoords(lng, lat, coords) {
+  if (!coords || !coords.length || !soPointInRing(lng, lat, coords[0])) return false;
+  for (let i = 1; i < coords.length; i++) if (soPointInRing(lng, lat, coords[i])) return false;
+  return true;
+}
+function soPointInPolyGeom(lng, lat, geom) {
+  if (geom && geom.type === 'Polygon') return soPointInPolyCoords(lng, lat, geom.coordinates);
+  if (geom && geom.type === 'MultiPolygon') return geom.coordinates.some(c => soPointInPolyCoords(lng, lat, c));
+  return false;
+}
+function soSegsIntersect(a, b, c, d) {
+  const cross = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+  const d1 = cross(c, d, a), d2 = cross(c, d, b), d3 = cross(a, b, c), d4 = cross(a, b, d);
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+}
+function soRingsOf(g) {
+  if (g && g.type === 'Polygon') return g.coordinates;
+  if (g && g.type === 'MultiPolygon') return g.coordinates.flat();
+  return [];
+}
+function soLineCrossesPoly(line, poly) {
+  const rings = soRingsOf(poly);
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1], b = line[i];
+    if (soPointInPolyGeom(a[0], a[1], poly) || soPointInPolyGeom(b[0], b[1], poly)) return true;
+    for (const ring of rings) for (let j = 1; j < ring.length; j++) if (soSegsIntersect(a, b, ring[j - 1], ring[j])) return true;
+  }
+  if (line.length === 1) return soPointInPolyGeom(line[0][0], line[0][1], poly);
+  return false;
+}
+function soPolyIntersectsPoly(aGeom, bGeom) {
+  for (const ring of soRingsOf(aGeom)) if (soLineCrossesPoly(ring, bGeom)) return true;
+  const bFirst = soRingsOf(bGeom)[0] && soRingsOf(bGeom)[0][0];
+  if (bFirst && soPointInPolyGeom(bFirst[0], bFirst[1], aGeom)) return true;
+  return false;
+}
+function soGeomIntersectsPolygon(geom, poly) {
+  if (!geom || !poly) return false;
+  switch (geom.type) {
+    case 'Point': return soPointInPolyGeom(geom.coordinates[0], geom.coordinates[1], poly);
+    case 'MultiPoint': return geom.coordinates.some(c => soPointInPolyGeom(c[0], c[1], poly));
+    case 'LineString': return soLineCrossesPoly(geom.coordinates, poly);
+    case 'MultiLineString': return geom.coordinates.some(l => soLineCrossesPoly(l, poly));
+    case 'Polygon': case 'MultiPolygon': return soPolyIntersectsPoly(geom, poly);
+    case 'GeometryCollection': return (geom.geometries || []).some(g => soGeomIntersectsPolygon(g, poly));
+    default: return false;
+  }
+}
+function soSelectFeatures(fc, regionGeom) { return ((fc && fc.features) || []).filter(f => soGeomIntersectsPolygon(f && f.geometry, regionGeom)); }
+
+// Region input normalization: GeoJSON geometry/Feature/FC, [w,s,e,n] bbox,
+// [[lng,lat]...] ring, {center,radiusMeters}, JSON string of the above.
+function soNormalizeRegion(input) {
+  if (!input) return null;
+  if (Array.isArray(input) && input.length === 4 && input.every(Number.isFinite)) return soRectPolygon(input[0], input[1], input[2], input[3]);
+  if (Array.isArray(input) && input.length >= 3 && Array.isArray(input[0])) {
+    const ring = input.map(c => [Number(c[0]), Number(c[1])]).filter(c => Number.isFinite(c[0]) && Number.isFinite(c[1]));
+    return ring.length >= 3 ? { type: 'Polygon', coordinates: [[...ring, ring[0]]] } : null;
+  }
+  if (typeof input === 'string') { try { return soNormalizeRegion(JSON.parse(input)); } catch (e) { return null; } }
+  if (input.bbox && Array.isArray(input.bbox) && input.bbox.length === 4) return soNormalizeRegion(input.bbox);
+  const center = input.center && (Array.isArray(input.center)
+    ? { lng: Number(input.center[0]), lat: Number(input.center[1]) }
+    : { lng: Number(input.center.lng !== undefined ? input.center.lng : input.center.longitude), lat: Number(input.center.lat !== undefined ? input.center.lat : input.center.latitude) });
+  if (center && Number.isFinite(center.lng) && Number.isFinite(center.lat) && Number.isFinite(Number(input.radiusMeters !== undefined ? input.radiusMeters : input.radius))) {
+    return soCirclePolygon(center, Number(input.radiusMeters !== undefined ? input.radiusMeters : input.radius));
+  }
+  if (input.type === 'Feature') return soNormalizeRegion(input.geometry);
+  if (input.type === 'FeatureCollection') {
+    const f = (input.features || []).find(x => /Polygon/.test((x && x.geometry && x.geometry.type) || ''));
+    return f ? f.geometry : null;
+  }
+  if (input.type === 'Polygon' || input.type === 'MultiPolygon') return input;
+  if (input.type === 'Point') return soCirclePolygon({ lng: input.coordinates[0], lat: input.coordinates[1] }, Number(input.radiusMeters !== undefined ? input.radiusMeters : input.radius) || 0);
+  return null;
+}
+
+// Resolve a region spec from tool/UI args: region (normalized above), bbox,
+// circle, feature {layer,attribute,value}, or viewport (camera-derived rect).
+function soResolveRegion(args) {
+  try {
+    let spec = args.region !== undefined ? args.region : null;
+    if (spec == null && args.bbox) spec = args.bbox;
+    if (spec == null && args.circle) spec = args.circle;
+    if (spec == null && (args.center || args.lng !== undefined)) spec = { center: args.center || [args.lng, args.lat], radiusMeters: (args.radiusMeters !== undefined ? args.radiusMeters : args.radius) };
+    if (typeof spec === 'string' && /^(viewport|view)$/i.test(spec)) spec = null;
+    if (spec == null && args.feature) {
+      const fa = args.feature || {};
+      const coll = exportComputedGeoJson(fa.layer || '');
+      if (!coll) return { error: 'feature layer not found: ' + (fa.layer || '(all)') };
+      const attr = String(fa.attribute || fa.attr || ''), val = fa.value;
+      let hit = null;
+      for (const f of coll.fc.features) { const p = (f && f.properties) || {}; if (String(p[attr]) === String(val)) { hit = f; break; } }
+      if (!hit) {
+        const la = attr.toLowerCase(), lv = String(val).toLowerCase();
+        for (const f of coll.fc.features) {
+          const p = (f && f.properties) || {};
+          for (const k of Object.keys(p)) if (k.toLowerCase() === la && String(p[k]).toLowerCase() === lv) { hit = f; break; }
+          if (hit) break;
+        }
+      }
+      if (!hit) return { error: 'feature not found: ' + attr + '=' + val };
+      const g = hit.geometry;
+      if (!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) return { error: 'feature region must be a polygon feature' };
+      return g;
+    }
+    if (spec == null && (args.viewport === true || args.mode === 'viewport')) {
+      const pos = (reearth.camera && reearth.camera.position) || null;
+      if (!pos || !isFinite(pos.lat) || !isFinite(pos.lng)) return { error: 'camera position unavailable' };
+      const h = Math.max(1, Number(pos.height) || 1000);
+      const half = h * Math.tan((Number(pos.fov) || 60) * SO_RAD / 2);
+      const dLat = half / 110540, dLng = half / (111320 * Math.max(0.01, Math.cos(pos.lat * SO_RAD)));
+      return soRectPolygon(pos.lng - dLng, pos.lat - dLat, pos.lng + dLng, pos.lat + dLat);
+    }
+    const g = soNormalizeRegion(spec);
+    if (!g) return { error: 'region required (region / bbox / center+radiusMeters / feature / viewport)' };
+    return g;
+  } catch (e) { return { error: String((e && e.message) || e) }; }
+}
+
+// GROUP BY aggregation over feature properties (port of computeGroupStats).
+function soGroupRows(features, groupField, valueField) {
+  const num = (v) => { if (typeof v === 'number') return isFinite(v) ? v : null; if (typeof v === 'string' && v.trim() !== '') { const n = Number(v); return isFinite(n) ? n : null; } return null; };
+  const groups = new Map();
+  for (const f of features) {
+    const p = (f && f.properties) || {};
+    const key = groupField ? String(p[groupField] !== undefined ? p[groupField] : '') : null;
+    let g = groups.get(key);
+    if (!g) { g = { key: key, count: 0, sum: 0, min: null, max: null, numeric: 0 }; groups.set(key, g); }
+    g.count++;
+    if (valueField) { const n = num(p[valueField]); if (n !== null) { g.sum += n; g.numeric++; g.min = (g.min === null || n < g.min) ? n : g.min; g.max = (g.max === null || n > g.max) ? n : g.max; } }
+  }
+  return Array.from(groups.values())
+    .sort((a, b) => String(a.key).localeCompare(String(b.key), undefined, { numeric: true, sensitivity: 'base' }))
+    .map(g => ({ key: g.key, count: g.count, sum: g.numeric ? g.sum : null, min: g.min, max: g.max, avg: g.numeric ? g.sum / g.numeric : null, numeric: g.numeric }))
+    .slice(0, 500);
+}
+
+const _spatialPending = {};
+let _spatialSeq = 0;
+let _spatialDrawArmed = false, _spatialSketchHooked = false;
+
+// Shared runner for the AI tools (spatialSelect/aggregateWithin/createBuffer)
+// and the iframe 'spatialOp' action. reply(result, ok).
+function spatialExec(op, args, reply) {
+  try {
+    args = args || {};
+    const layerRef = (args.layer === undefined || args.layer === null || args.layer === '__all__') ? '' : args.layer;
+    if (op === 'createBuffer' && args.geometry && !args.layer) {
+      const fc1 = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: args.geometry }] };
+      return spatialBufferRun(fc1.features, args, reply);
+    }
+    const coll = exportComputedGeoJson(layerRef);
+    if (!coll) { reply({ error: 'no loaded vector layer features' + (layerRef ? ': ' + layerRef : ' — add a geojson/csv layer first') }, false); return; }
+    let feats = coll.fc.features;
+    const wantsRegion = (op !== 'createBuffer') || args.region !== undefined || args.bbox || args.circle || args.feature || args.viewport === true || args.center || args.lng !== undefined;
+    if (wantsRegion) {
+      const region = soResolveRegion(args);
+      if (!region || region.error) { reply({ error: (region && region.error) || 'region required' }, false); return; }
+      feats = soSelectFeatures({ type: 'FeatureCollection', features: feats }, region);
+    }
+    const layerName = (coll.layers || []).join(', ');
+    if (op === 'spatialSelect') {
+      let added = null;
+      if (args.save || args.title) {
+        const t = String(args.title || args.save || 'selection');
+        const id = addGeoJsonValueLayer({ type: 'FeatureCollection', features: feats }, t, args.visible !== false, null, 'spatialSelect', null, null);
+        added = { id: id, title: t, features: feats.length };
+      }
+      const sample = feats.slice(0, 50).map(f => ({ properties: (f && f.properties) || {} }));
+      reply({ layer: layerName, count: feats.length, sample: sample, added: added }, true);
+      return;
+    }
+    if (op === 'aggregateWithin') {
+      reply({ layer: layerName, count: feats.length, rows: soGroupRows(feats, args.groupField || args.groupBy || null, args.valueField || args.field || null) }, true);
+      return;
+    }
+    if (op === 'createBuffer') return spatialBufferRun(feats, args, reply);
+    reply({ error: 'unknown spatial op: ' + op }, false);
+  } catch (e) { reply({ error: String((e && e.message) || e) }, false); }
+}
+
+function spatialBufferRun(feats, args, reply) {
+  const r = Number(args.radiusMeters !== undefined ? args.radiusMeters : args.radius);
+  if (!isFinite(r) || r <= 0) { reply({ error: 'radiusMeters > 0 required' }, false); return; }
+  if (!feats.length) { reply({ error: 'no target features' }, false); return; }
+  const title = String(args.title || ('buffer ' + r + 'm'));
+  const allPts = feats.every(f => f && f.geometry && (f.geometry.type === 'Point' || f.geometry.type === 'MultiPoint'));
+  if (allPts) {
+    const out = feats.map(f => {
+      const g = f.geometry;
+      const geom = (g.type === 'Point') ? soCirclePolygon({ lng: g.coordinates[0], lat: g.coordinates[1] }, r)
+        : { type: 'MultiPolygon', coordinates: g.coordinates.map(c => soCirclePolygon({ lng: c[0], lat: c[1] }, r).coordinates) };
+      return { type: 'Feature', properties: (f.properties || {}), geometry: geom };
+    });
+    const id = addGeoJsonValueLayer({ type: 'FeatureCollection', features: out }, title, args.visible !== false, null, 'createBuffer', null, null);
+    reply({ id: id, title: title, features: out.length }, !!id);
+    return;
+  }
+  const fc = { type: 'FeatureCollection', features: feats.map(f => ({ type: 'Feature', properties: (f && f.properties) || {}, geometry: f.geometry })) };
+  if (geojsonMsgTooBig(fc)) { reply({ error: 'input too large for the turf bridge (>4MB) — narrow the layer/region' }, false); return; }
+  const spId = 'sp' + (++_spatialSeq);
+  _spatialPending[spId] = { reply: reply, title: title, visible: args.visible !== false };
+  try { postToUI({ action: 'spatialTurf', spId: spId, radiusMeters: r, fc: fc }); }
+  catch (e) { delete _spatialPending[spId]; reply({ error: String(e) }, false); }
+}
+
+function handleSpatialTurfResult(msg) {
+  const p = _spatialPending[msg.spId];
+  if (p === undefined) return;
+  delete _spatialPending[msg.spId];
+  if (msg.error || !msg.fc) { p.reply({ error: String(msg.error || 'buffer failed') }, false); return; }
+  if (geojsonMsgTooBig(msg.fc)) { p.reply({ error: 'buffer result too large for the extension bridge (>4MB)' }, false); return; }
+  const id = addGeoJsonValueLayer(msg.fc, p.title, p.visible, null, 'createBuffer', null, null);
+  p.reply({ id: id, title: p.title, features: ((msg.fc && msg.fc.features) || []).length }, !!id);
+}
+
+function spatialDrawStart() {
+  _spatialDrawArmed = true;
+  if (!_spatialSketchHooked && reearth.sketch && typeof reearth.sketch.on === 'function') {
+    _spatialSketchHooked = true;
+    reearth.sketch.on('create', (prop) => {
+      try {
+        if (!_spatialDrawArmed) return;
+        const g = (prop && prop.geometry) || (prop && prop.feature && prop.feature.geometry) || null;
+        if (!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) return;
+        _spatialDrawArmed = false;
+        try { reearth.sketch.setTool(undefined); } catch (e) {}
+        try { postToUI({ action: 'spatialDrawn', geometry: g }); } catch (e) {}
+      } catch (e) {}
+    });
+  }
+  try {
+    if (!reearth.sketch || typeof reearth.sketch.setTool !== 'function') throw new Error('sketch API unavailable');
+    if (typeof reearth.sketch.overrideOptions === 'function') reearth.sketch.overrideOptions({ dataOnly: true, autoResetInteractionMode: true });
+    reearth.sketch.setTool('polygon');
+  } catch (e) {
+    _spatialDrawArmed = false;
+    try { postToUI({ action: 'spatialOpResult', ok: false, op: 'draw', result: { error: 'sketch unavailable: ' + String(e) } }); } catch (e2) {}
+  }
+}
+// __SPATIAL_OPS_END__
+
 function attrStatsFields(src) {
   const attrs = (src && src.attributes) || [];
   const keep = [], all = [];
@@ -13611,6 +14024,12 @@ function handleAiToolRequest(senderId, data) {
         armPendingTtl(_exportPending, exId, 'exportLayer', true);
         try { postToUI({ action: 'exportLayerSource', exId: exId, format: fmt, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
         catch (e) { delete _exportPending[exId]; fail(String(e)); }
+        return;
+      }
+      case 'spatialSelect':
+      case 'aggregateWithin':
+      case 'createBuffer': {
+        spatialExec(name, args, (res, ok) => aiToolReply(senderId, reqId, ok !== false, res));
         return;
       }
       case 'searchPlaces': {
