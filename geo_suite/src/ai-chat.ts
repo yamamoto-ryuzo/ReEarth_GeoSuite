@@ -101,7 +101,8 @@ const LOCAL_FALLBACK = ['setLayerVisible', 'addGeoJsonLayer', 'addTileLayer', 'a
 // switch; kept in sync manually — used by the bridge "describe" catalog).
 const LOCAL_TOOLS = ['getCamera', 'flyTo', 'listLayers', 'setLayerVisible', 'focusLayer',
   'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer', 'captureView',
-  'getShareUrl', 'buildShareUrl', 'setCamera', 'lookAt', 'zoomIn', 'zoomOut', 'openUrl'];
+  'getShareUrl', 'buildShareUrl', 'setCamera', 'lookAt', 'zoomIn', 'zoomOut', 'openUrl',
+  'listInstructions', 'readInstruction', 'saveInstruction', 'deleteInstruction', 'selectAgents'];
 
 // reqIds currently forwarded to the layer panel; extensionMessage replies are routed back to the UI.
 const _pendingForward: any = {};
@@ -124,6 +125,7 @@ const AI_STORAGE_KEY = 'geminiApiKey';
 const AI_STORAGE_MODEL = 'geminiModel';
 const AI_STORAGE_PROVIDER = 'aiProvider';
 const AI_STORAGE_STEPS = 'aiToolMaxSteps';
+const AI_STORAGE_INSTR = 'aiInstructions';
 const AI_DEFAULT_MODEL = 'gemini-3.1-flash-lite';
 const AI_DEFAULT_MAX_STEPS = 10;
 let _sessionAiProvider: any = null;
@@ -151,6 +153,7 @@ async function sendConfig(pvHint?: string): Promise<void> {
     if (reearth && reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.getAsync === 'function') {
       storedProvider = await reearth.data.clientStorage.getAsync(AI_STORAGE_PROVIDER);
       storedSteps = await reearth.data.clientStorage.getAsync(AI_STORAGE_STEPS);
+      if (!_instrStore) _instrStore = aiInstrNormalize(await reearth.data.clientStorage.getAsync(AI_STORAGE_INSTR));
     }
   } catch (e) {}
   let provider: any = null;
@@ -202,7 +205,8 @@ async function sendConfig(pvHint?: string): Promise<void> {
     googleMapsApiKey: _inspectorGoogleMapsApiKey || '',
     i18n: AI_I18N,
     lang: _inspectorLang || 'auto',
-    toolMaxSteps: (isFinite(stepsN) && stepsN >= 1) ? Math.min(stepsN, 20) : AI_DEFAULT_MAX_STEPS
+    toolMaxSteps: (isFinite(stepsN) && stepsN >= 1) ? Math.min(stepsN, 20) : AI_DEFAULT_MAX_STEPS,
+    instrPrompt: aiInstrPromptText()
   });
 }
 
@@ -482,6 +486,154 @@ function aiOpenUrl(args: any): any {
   }
 }
 
+// ---------- persistent AI instructions (agents / skills) ----------
+// Ported from KASUGAI Canvas (web/shared/ai-chat.js); Canvas server files
+// are replaced by reearth.data.clientStorage so it works fully inside the
+// browser sandbox.
+//   agents … injected into the system prompt while enabled
+//   skills … only an id+summary index is injected; the model reads the
+//            full text on demand via the readInstruction tool
+const AI_INSTR_KINDS = ['agents', 'skills'];
+let _instrStore: any = null; // {agents:{id:{text,updated}}, skills:{...}, enabledAgents:[id]}
+
+function aiInstrNormalize(raw: any): any {
+  let s: any = null;
+  try { s = (typeof raw === 'string' && raw) ? JSON.parse(raw) : raw; } catch (e) { s = null; }
+  if (!s || typeof s !== 'object') s = {};
+  return {
+    agents: (s.agents && typeof s.agents === 'object') ? s.agents : {},
+    skills: (s.skills && typeof s.skills === 'object') ? s.skills : {},
+    enabledAgents: (s.enabledAgents && s.enabledAgents.length !== undefined)
+      ? s.enabledAgents.filter((v: any) => typeof v === 'string') : []
+  };
+}
+
+// Async store load on first use; afterwards tool calls stay synchronous so
+// bridge replies never depend on a stalled microtask (see execLocalTool).
+function aiInstrLoad(): any {
+  if (_instrStore) return _instrStore;
+  try {
+    if (reearth && reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.getAsync === 'function') {
+      return Promise.resolve(reearth.data.clientStorage.getAsync(AI_STORAGE_INSTR)).then((v: any) => {
+        if (!_instrStore) _instrStore = aiInstrNormalize(v);
+        return _instrStore;
+      });
+    }
+  } catch (e) {}
+  _instrStore = aiInstrNormalize(null);
+  return _instrStore;
+}
+
+function aiInstrPersist(): void {
+  try {
+    if (reearth && reearth.data && reearth.data.clientStorage && typeof reearth.data.clientStorage.setAsync === 'function') {
+      reearth.data.clientStorage.setAsync(AI_STORAGE_INSTR, JSON.stringify(_instrStore));
+    }
+  } catch (e) {}
+  // Re-push config so the chat UI picks up the updated prompt fragment.
+  try { sendConfig(); } catch (e) {}
+}
+
+// Instruction id (file-name equivalent): spaces become _, unsafe chars drop.
+function aiInstrId(name: any): string {
+  return String(name || '').trim().replace(/\s+/g, '_')
+    .replace(/[\\/:*?"<>|#%{}$!'@+`=~^&;,[\]()]/g, '')
+    .replace(/^\.+/, '').slice(0, 80);
+}
+
+function aiInstrList(kind: string): any[] {
+  const bag = (_instrStore && _instrStore[kind]) || {};
+  const enabled: any = {};
+  ((_instrStore && _instrStore.enabledAgents) || []).forEach((v: string) => { enabled[v] = true; });
+  return Object.keys(bag).sort().map((id: string) => {
+    const item: any = { id: id };
+    const t = (bag[id] && typeof bag[id].text === 'string') ? bag[id].text : '';
+    const first = t.split(/\r?\n/).filter((l: string) => l.trim())[0];
+    item.summary = (first || '').trim().slice(0, 80);
+    if (kind === 'agents') item.enabled = !!enabled[id];
+    return item;
+  });
+}
+
+function aiInstrRead(kind: string, id: string): any {
+  const item = _instrStore && _instrStore[kind] && _instrStore[kind][id];
+  return (item && typeof item.text === 'string') ? item.text : null;
+}
+
+// Fragment appended to the system prompt: enabled agents inline, skills as
+// an on-demand index only.
+function aiInstrPromptText(): string {
+  if (!_instrStore) return '';
+  const parts: string[] = [];
+  const known = Object.keys(_instrStore.agents);
+  const enabled = (_instrStore.enabledAgents || []).filter((id: string) => known.indexOf(id) >= 0);
+  if (enabled.length) {
+    const texts = enabled.map((id: string) =>
+      ('### Agent instruction "' + id + '"\n' + ((_instrStore.agents[id] && _instrStore.agents[id].text) || '')).trim());
+    parts.push('Additional instruction files (always applied):\n' + texts.join('\n\n'));
+  }
+  const skills = aiInstrList('skills');
+  if (skills.length) {
+    const list = skills.map((s: any) => '- ' + s.id + (s.summary ? ': ' + s.summary : '')).join('\n');
+    parts.push('Available skill files (read the full text on demand via the readInstruction tool with kind="skills"):\n' + list);
+  }
+  return parts.join('\n\n');
+}
+
+function aiInstrTool(name: string, args: any): any {
+  const kindRaw = String((args && args.kind) || '');
+  const kind = AI_INSTR_KINDS.indexOf(kindRaw) >= 0 ? kindRaw : null;
+  if (name !== 'selectAgents' && !kind) return { error: 'kind must be "agents" or "skills"' };
+  const k = kind as string;
+  if (name === 'listInstructions') return { items: aiInstrList(k) };
+  if (name === 'readInstruction') {
+    const id = aiInstrId(args && args.id);
+    const text = aiInstrRead(k, id) || aiInstrRead(k, String((args && args.id) || ''));
+    if (text === null) return { error: 'instruction not found: ' + String((args && args.id) || '') };
+    return { id: id || String((args && args.id) || ''), text: text };
+  }
+  if (name === 'saveInstruction') {
+    const id = aiInstrId(args && args.id);
+    if (!id) return { error: 'invalid instruction id (empty after sanitizing)' };
+    _instrStore[k][id] = { text: String((args && args.text !== undefined) ? args.text : ''), updated: Date.now() };
+    // New agents go live by default so "remember this" applies immediately;
+    // enabled:false keeps it dormant, selectAgents revises the set later.
+    if (k === 'agents' && !(args && args.enabled === false) && _instrStore.enabledAgents.indexOf(id) < 0) {
+      _instrStore.enabledAgents.push(id);
+    }
+    aiInstrPersist();
+    const r: any = { ok: true, id: id };
+    if (k === 'agents') r.enabled = _instrStore.enabledAgents.indexOf(id) >= 0;
+    return r;
+  }
+  if (name === 'deleteInstruction') {
+    const id = aiInstrId(args && args.id) || String((args && args.id) || '');
+    if (aiInstrRead(k, id) === null) return { error: 'instruction not found: ' + id };
+    delete _instrStore[k][id];
+    _instrStore.enabledAgents = _instrStore.enabledAgents.filter((v: string) => v !== id);
+    aiInstrPersist();
+    return { ok: true, id: id };
+  }
+  // selectAgents — wholesale replace of the injected agents set.
+  const known: any = {};
+  Object.keys(_instrStore.agents).forEach((v: string) => { known[v] = true; });
+  const rawIds = (args && args.ids && args.ids.length !== undefined) ? args.ids : [];
+  const ids: string[] = [];
+  rawIds.forEach((v: any) => {
+    const s = String(v);
+    if (known[s] && ids.indexOf(s) < 0) ids.push(s);
+  });
+  _instrStore.enabledAgents = ids;
+  aiInstrPersist();
+  return { ok: true, enabled: ids.slice() };
+}
+
+function aiInstrExec(name: string, args: any): any {
+  const s = aiInstrLoad();
+  if (s && typeof s.then === 'function') return s.then(() => aiInstrTool(name, args));
+  return aiInstrTool(name, args);
+}
+
 // Synchronous on purpose: microtask continuations scheduled during an
 // extensionMessage dispatch are not pumped until the next event in the
 // QuickJS host, so replying via promise .then() can stall bridge calls.
@@ -505,6 +657,11 @@ function execLocalTool(name: string, args: any): any {
       case 'zoomIn': return aiZoom(args, 'in');
       case 'zoomOut': return aiZoom(args, 'out');
       case 'openUrl': return aiOpenUrl(args);
+      case 'listInstructions':
+      case 'readInstruction':
+      case 'saveInstruction':
+      case 'deleteInstruction':
+      case 'selectAgents': return aiInstrExec(name, args);
       default: return { error: 'unknown tool: ' + name };
     }
   } catch (e) {
@@ -718,6 +875,7 @@ try {
 
 // Request inspector config once at startup (layer panel may reply asynchronously).
 try { postToLayerPanel({ action: 'requestAiConfig' }); } catch (e) {}
+try { aiInstrLoad(); } catch (e) {}
 
 // ---------- chat UI (runs in the widget iframe) ----------
 
@@ -919,16 +1077,21 @@ const html: string = `
     { name:'getInspectorText', description:'Get the plugin inspector settings text (layers, cams, routes, basemaps, legends etc.)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'applyInspectorText', description:'Replace the plugin inspector settings text and apply it. Read the current text with getInspectorText first, then modify only the needed lines.', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
     { name:'setToolMaxSteps', description:'Change the max tool-call round trips per request (1-20). Use when the user asks to raise or lower the tool step limit.', parameters:{ type:'OBJECT', properties:{ steps:{type:'NUMBER', description:'new limit (1-20)'} }, required:['steps'] } },
+    { name:'listInstructions', description:'List saved AI instruction files. kind="agents" = persistent instructions injected into every request while enabled; kind="skills" = on-demand procedure notes read via readInstruction.', parameters:{ type:'OBJECT', properties:{ kind:{type:'STRING', description:'agents | skills'} }, required:['kind'] } },
+    { name:'readInstruction', description:'Read the full text of an instruction file by id (get ids from listInstructions).', parameters:{ type:'OBJECT', properties:{ kind:{type:'STRING', description:'agents | skills'}, id:{type:'STRING'} }, required:['kind','id'] } },
+    { name:'saveInstruction', description:'Create or overwrite a named instruction file (persisted in plugin storage). kind="agents" entries are injected into the system prompt while enabled — new agents default to enabled, pass enabled:false to keep dormant. kind="skills" stores an on-demand procedure note.', parameters:{ type:'OBJECT', properties:{ kind:{type:'STRING', description:'agents | skills'}, id:{type:'STRING', description:'instruction id (no spaces or path separators)'}, text:{type:'STRING', description:'Markdown body'}, enabled:{type:'BOOLEAN'} }, required:['kind','id','text'] } },
+    { name:'deleteInstruction', description:'Delete an instruction file by id.', parameters:{ type:'OBJECT', properties:{ kind:{type:'STRING', description:'agents | skills'}, id:{type:'STRING'} }, required:['kind','id'] } },
+    { name:'selectAgents', description:'Replace the set of agents instructions injected into the system prompt (pass the ids to enable).', parameters:{ type:'OBJECT', properties:{ ids:{type:'ARRAY', items:{type:'STRING'}} }, required:['ids'] } },
     { name:'setDepthTest', description:'Enable or disable depth test against terrain', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'setGeojsonDrape', description:'Set how GeoJSON layers drape: 3dtiles | terrain | both', parameters:{ type:'OBJECT', properties:{ classification:{type:'STRING'} }, required:['classification'] } },
     { name:'setBackground', description:'Set the globe/scene background color as #rgb, #rrggbb or #rrggbbaa', parameters:{ type:'OBJECT', properties:{ color:{type:'STRING'} }, required:['color'] } },
     { name:'aiChatSend', description:'Send a message to the AI chat panel itself and return its reply (drives the chat)', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
     { name:'aiChatStatus', description:'Get the AI chat panel state (provider/model/key/busy)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'aiChatSet', description:'Configure the AI chat provider/endpoint/model/apiKey (persist:false to keep it session-only)', parameters:{ type:'OBJECT', properties:{ provider:{type:'STRING'}, endpoint:{type:'STRING'}, model:{type:'STRING'}, apiKey:{type:'STRING'}, apiVer:{type:'STRING'}, persist:{type:'BOOLEAN'} } } },
-    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText, setToolMaxSteps. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
+    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText, setToolMaxSteps, listInstructions, readInstruction, saveInstruction, deleteInstruction, selectAgents. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
 
-  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','setFlySettings','listFlyPaths','vectorSearch','searchPlaces','buildShareUrl','addFlatGeobufLayer','addParquetLayer','addDuckDbLayer','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground'];
+  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','setFlySettings','listFlyPaths','vectorSearch','searchPlaces','buildShareUrl','addFlatGeobufLayer','addParquetLayer','addDuckDbLayer','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground','listInstructions','readInstruction','saveInstruction','deleteInstruction','selectAgents'];
 
   var SYSTEM_INSTRUCTION = [
     'You are an AI assistant embedded inside a Re:Earth 3D GIS map viewer (geo_suite plugin).',
@@ -939,6 +1102,15 @@ const html: string = `
     'For multi-step or data-processing tasks, prefer runCode.',
     'Keep answers concise and respond in the same language as the user. Never claim an action succeeded when a tool returned an error.'
   ].join(' ');
+
+  // Persistent instruction files injected into every request (agents =
+  // always applied, skills = on-demand index). Pushed by the extension ctx
+  // via aiConfig.instrPrompt; kept as a var so provider paths pick up
+  // updates without rebuilding the base instruction.
+  var _instrPrompt = '';
+  function sysInstr() {
+    return _instrPrompt ? SYSTEM_INSTRUCTION + '\\n\\n' + _instrPrompt : SYSTEM_INSTRUCTION;
+  }
 
   // ---------- state ----------
   var msgsEl = document.getElementById('ai-msgs');
@@ -1844,7 +2016,7 @@ const html: string = `
       var bodyObj;
       if (responsesMode) {
         var conv = openaiMsgsToResponsesInput(
-          (req.system ? [{ role: 'system', content: SYSTEM_INSTRUCTION }] : []).concat(pxMsgsOpenAi()));
+          (req.system ? [{ role: 'system', content: sysInstr() }] : []).concat(pxMsgsOpenAi()));
         bodyObj = { model: reqModel, input: conv.input, store: false };
         if (conv.instructions) bodyObj.instructions = conv.instructions;
         var rts = responsesTools(pxToolDecls('openai'));
@@ -1852,7 +2024,7 @@ const html: string = `
       } else {
         bodyObj = {
           model: reqModel,
-          messages: (req.system ? [{ role: 'system', content: SYSTEM_INSTRUCTION }] : []).concat(pxMsgsOpenAi()),
+          messages: (req.system ? [{ role: 'system', content: sysInstr() }] : []).concat(pxMsgsOpenAi()),
           tools: pxToolDecls('openai'), tool_choice: 'auto'
         };
       }
@@ -1941,7 +2113,7 @@ const html: string = `
         'Content-Type': 'application/json', 'x-api-key': effKey(),
         'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
       }, body: JSON.stringify({
-        model: effModel(), max_tokens: 2048, system: SYSTEM_INSTRUCTION,
+        model: effModel(), max_tokens: 2048, system: sysInstr(),
         messages: pxMsgsAnthropic(), tools: pxToolDecls('anthropic')
       }) }).then(function(res) {
         return res.json().then(function(data) {
@@ -2226,7 +2398,7 @@ const html: string = `
     function next() {
       trimHistory();
       return postGemini({
-        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+        systemInstruction: { parts: [{ text: sysInstr() }] },
         contents: _history,
         tools: TOOL_DECLS
       }).then(function(data) {
@@ -2461,6 +2633,7 @@ const html: string = `
         }
         window._yahooAppId = (typeof msg.yahooAppId === 'string') ? msg.yahooAppId : '';
         window._googleMapsApiKey = (typeof msg.googleMapsApiKey === 'string') ? msg.googleMapsApiKey : '';
+        if (typeof msg.instrPrompt === 'string') _instrPrompt = msg.instrPrompt;
         if (msg.provider && typeof msg.provider === 'object') {
           var pv = msg.provider;
           if (providerSel && typeof pv.provider === 'string' && pv.provider) providerSel.value = pv.provider;

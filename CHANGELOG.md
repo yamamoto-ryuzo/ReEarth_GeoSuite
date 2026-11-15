@@ -1,5 +1,10 @@
 # Changelog
 
+## v22.9.0
+- 新規: AI チャットに**永続指示（instructions）**機能を追加（issue #38、KASUGAI Canvas `ai-chat.js` の移植）— 名前付き指示書を `agents`（有効時はシステムプロンプトへ常時注入）/ `skills`（id+要約のみ提示し readInstruction で本文をオンデマンド取得）の2種で保存・一覧・読出・削除できる。保存先は Canvas のサーバファイルの代わりに `reearth.data.clientStorage`（ブラウザ完結）
+- 新規: AI ツール `listInstructions` / `readInstruction` / `saveInstruction` / `deleteInstruction` / `selectAgents` をツールディスパッチャへ登録 — runCode の `api.*`・外部ブリッジ経由でも利用可能。agents 保存時は既定で有効化（`enabled:false` で休眠）、`selectAgents` で注入集合を全置換
+- 注入片は拡張 ctx が `aiConfig.instrPrompt` としてチャット UI へ配信し、全プロバイダ経路のシステムプロンプト末尾へ付加（指示変更のたび再配信）
+
 ## v22.8.1
 - 修正: ツール往復上限の継続確認を `window.confirm` から **チャット内ボタン（Continue / Cancel）** へ変更 — サンドボックス iframe では confirm がブロックされ常に却下され、上限到達時に継続不能だった（60秒無操作で自動中断）。i18n `continueBtn` を全言語へ追加
 - 変更: AI チャットの設定パネルを応答エリアの**上**へ移動 — 下部で見切れる問題の対策。開放中はメッセージ領域を 140px に縮めて総高を維持し、パネルは max-height 内でスクロール
