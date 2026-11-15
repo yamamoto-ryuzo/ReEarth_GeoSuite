@@ -1,5 +1,10 @@
 # Changelog
 
+## v22.13.0
+- 新規: **レイヤ範囲へズーム（zoomToExtent）**（issue #34、KASUGAI Canvas `cesium/app.js` の `zoomToExtent`→`flyToRectangle` の移植）
+  - レイヤー一覧各行に ⛶ ボタン（i18n `zoomToLayer`、全20言語）を追加。レイヤの GeoJSON/CSV 地物から `geomBbox` 相当の bbox を拡張 ctx で計算し、中心＋スパン由来の高さで `reearth.camera.flyTo`（真俯瞰）を実行
+  - AI ツール `zoomToExtent` をツールディスパッチャへ登録 — `{layer}` 指定でレイヤ範囲へ、`{west,south,east,north}` 指定で任意矩形へ移動。runCode `api.*`・外部ブリッジ経由でも利用可能
+
 ## v22.12.0
 - 新規: **SQL ダイアログ**（issue #35、KASUGAI Canvas `ui.sql_dialog` の移植）
   - Manage パネルに「SQL」サブタブを追加。任意の SELECT を入力して「Run」でプレビュー（件数＋先頭 8 件の属性テーブル）、「Add as layer」で `sql:` 行と同じ経路（`loadSqlLayer` → `ddbPost` → 永続ホスト `ddbExec`／自 iframe `ddbLoad` フォールバック → `handleDdbResult` → GeoJSON レイヤ化）でレイヤ追加

@@ -84,7 +84,7 @@ const PANEL_TOOLS = [
   'listBasemaps', 'setBasemap',
   'listFlyPaths', 'playFlyPath', 'stopFly',
   'setTerrain', 'setShadow',
-  'openStreetView', 'flyToFeature',
+  'openStreetView', 'flyToFeature', 'zoomToExtent',
   'vectorSearch', 'setFlySettings', 'searchPlaces', 'addFlatGeobufLayer', 'addParquetLayer', 'addDuckDbLayer',
   'setLayerVisible', 'addGeoJsonLayer', 'addTileLayer', 'add3dTilesLayer', 'removeLayer',
   'applyKascTheme', 'listThemes',
@@ -678,7 +678,7 @@ function bridgeToolCatalog(): any {
     panel: PANEL_TOOLS.slice(),
     bridge: ['describe', 'runCode', 'canvasApi'],
     chat: ['aiChatSend', 'aiChatStatus', 'aiChatSet'],
-    note: 'Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack.'
+    note: 'Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/zoomToExtent/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack.'
   };
 }
 
@@ -1053,6 +1053,7 @@ const html: string = `
     { name:'setShadow', description:'Enable or disable shadows', parameters:{ type:'OBJECT', properties:{ enabled:{type:'BOOLEAN'} }, required:['enabled'] } },
     { name:'openStreetView', description:'Open Google Street View at the map center in a new tab', parameters:{ type:'OBJECT', properties:{} } },
     { name:'flyToFeature', description:'Fly to a vector feature whose attribute matches a value (optionally within a named layer). Replies after the flight; pass wait:false for an immediate ack.', parameters:{ type:'OBJECT', properties:{ attribute:{type:'STRING'}, value:{type:'STRING'}, layer:{type:'STRING'}, wait:{type:'BOOLEAN'} }, required:['attribute','value'] } },
+    { name:'zoomToExtent', description:'Frame a lng/lat rectangle (west/south/east/north) or zoom the camera to a named vector layer extent', parameters:{ type:'OBJECT', properties:{ layer:{type:'STRING'}, west:{type:'NUMBER'}, south:{type:'NUMBER'}, east:{type:'NUMBER'}, north:{type:'NUMBER'} } } },
     { name:'captureView', description:'Capture a screenshot of the current map view', parameters:{ type:'OBJECT', properties:{} } },
     { name:'getShareUrl', description:'Get a permalink query string (?lat=...&lng=...) for the current view', parameters:{ type:'OBJECT', properties:{} } },
     { name:'addFlatGeobufLayer', description:'Add a FlatGeobuf (.fgb) vector layer by URL — decoded to GeoJSON in the browser and styled like a geojson layer.', parameters:{ type:'OBJECT', properties:{ url:{type:'STRING'}, title:{type:'STRING'}, visible:{type:'BOOLEAN'}, limit:{type:'NUMBER', description:'max features (default 200000)'} }, required:['url'] } },
@@ -1088,10 +1089,10 @@ const html: string = `
     { name:'aiChatSend', description:'Send a message to the AI chat panel itself and return its reply (drives the chat)', parameters:{ type:'OBJECT', properties:{ text:{type:'STRING'} }, required:['text'] } },
     { name:'aiChatStatus', description:'Get the AI chat panel state (provider/model/key/busy)', parameters:{ type:'OBJECT', properties:{} } },
     { name:'aiChatSet', description:'Configure the AI chat provider/endpoint/model/apiKey (persist:false to keep it session-only)', parameters:{ type:'OBJECT', properties:{ provider:{type:'STRING'}, endpoint:{type:'STRING'}, model:{type:'STRING'}, apiKey:{type:'STRING'}, apiVer:{type:'STRING'}, persist:{type:'BOOLEAN'} } } },
-    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText, setToolMaxSteps, listInstructions, readInstruction, saveInstruction, deleteInstruction, selectAgents. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
+    { name:'runCode', description:'Run sandboxed JavaScript for multi-step tasks. An async "api" object is available with methods: flyTo, setCamera, lookAt, zoomIn, zoomOut, getCamera, listLayers, setLayerVisible, focusLayer, addGeoJsonLayer, addTileLayer, add3dTilesLayer, addFlatGeobufLayer, addParquetLayer, addDuckDbLayer, removeLayer, searchLocation, searchPlaces, vectorSearch, listCameraPresets, flyToPreset, listBasemaps, setBasemap, setTerrain, setShadow, setDepthTest, setGeojsonDrape, setBackground, captureView, flyToFeature, showFeatureAttributes, playFlyPath, zoomToExtent, stopFly, createFlyPath, deleteFlyPath, setFlySettings, listFlyPaths, openStreetView, openUrl, getShareUrl, buildShareUrl, showReport, flyToUrl, flyToCurrentLocation, showPanel, showInfo, listLegends, getInspectorText, applyInspectorText, setToolMaxSteps, listInstructions, readInstruction, saveInstruction, deleteInstruction, selectAgents. Each takes one args object and returns a promise. fetch() is also available. Use return to produce a result.', parameters:{ type:'OBJECT', properties:{ code:{type:'STRING', description:'async function body; use await api.xxx(...)'} }, required:['code'] } }
   ] }];
 
-  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','setFlySettings','listFlyPaths','vectorSearch','searchPlaces','buildShareUrl','addFlatGeobufLayer','addParquetLayer','addDuckDbLayer','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground','listInstructions','readInstruction','saveInstruction','deleteInstruction','selectAgents'];
+  var API_METHODS = ['flyTo','getCamera','listLayers','setLayerVisible','focusLayer','addGeoJsonLayer','addTileLayer','add3dTilesLayer','removeLayer','listCameraPresets','flyToPreset','listBasemaps','setBasemap','setTerrain','setShadow','captureView','flyToFeature','zoomToExtent','playFlyPath','stopFly','openStreetView','getShareUrl','setCamera','lookAt','zoomIn','zoomOut','openUrl','createFlyPath','deleteFlyPath','setFlySettings','listFlyPaths','vectorSearch','searchPlaces','buildShareUrl','addFlatGeobufLayer','addParquetLayer','addDuckDbLayer','showPanel','showInfo','listLegends','showFeatureAttributes','getInspectorText','applyInspectorText','setDepthTest','setGeojsonDrape','setBackground','listInstructions','readInstruction','saveInstruction','deleteInstruction','selectAgents'];
 
   var SYSTEM_INSTRUCTION = [
     'You are an AI assistant embedded inside a Re:Earth 3D GIS map viewer (geo_suite plugin).',
