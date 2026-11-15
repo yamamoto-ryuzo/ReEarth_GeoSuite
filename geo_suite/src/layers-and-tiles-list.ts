@@ -13322,7 +13322,66 @@ function exportComputedGeoJson(ref) {
 // aiToolReply, and the measured geometry is drawn as a GeoJSON overlay layer
 // that each measure call replaces.
 const _MEASURE_EARTH_R = 6378137.0; // WGS84 equatorial radius (Cesium default)
+const _MEASURE_WGS84_F = 1 / 298.257223563; // WGS84 flattening
 let _measureOverlayLayerId = null;
+
+// geodesicInverse/segDistance/polygonArea — port of kasugai_canvas
+// web/shared/spatial-ops.js (issue #39). Pure {lat,lng} -> meters/degrees.
+// WGS84 Vincenty inverse; falls back to spherical haversine when the
+// iteration does not converge (near-antipodal points).
+function geodesicInverse(a, b) {
+  const rad = Math.PI / 180, deg = 180 / Math.PI;
+  const f1 = a.lat * rad, f2 = b.lat * rad;
+  const L = (b.lng - a.lng) * rad;
+  const U1 = Math.atan((1 - _MEASURE_WGS84_F) * Math.tan(f1));
+  const U2 = Math.atan((1 - _MEASURE_WGS84_F) * Math.tan(f2));
+  const sinU1 = Math.sin(U1), cosU1 = Math.cos(U1);
+  const sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
+  let lam = L;
+  for (let i = 0; i < 100; i++) {
+    const sinL = Math.sin(lam), cosL = Math.cos(lam);
+    const sinSig = Math.sqrt((cosU2 * sinL) ** 2 + (cosU1 * sinU2 - sinU1 * cosU2 * cosL) ** 2);
+    if (sinSig === 0) return { dist: 0, az1: 0, az2: 0 };
+    const cosSig = sinU1 * sinU2 + cosU1 * cosU2 * cosL;
+    const sig = Math.atan2(sinSig, cosSig);
+    const sinA = cosU1 * cosU2 * sinL / sinSig;
+    const cos2A = 1 - sinA * sinA;
+    const cos2Sm = cos2A !== 0 ? cosSig - 2 * sinU1 * sinU2 / cos2A : 0;
+    const C = _MEASURE_WGS84_F / 16 * cos2A * (4 + _MEASURE_WGS84_F * (4 - 3 * cos2A));
+    const prev = lam;
+    lam = L + (1 - C) * _MEASURE_WGS84_F * sinA * (sig + C * sinSig * (cos2Sm + C * cosSig * (-1 + 2 * cos2Sm ** 2)));
+    if (Math.abs(lam - prev) < 1e-12) {
+      const sma = _MEASURE_EARTH_R * (1 - _MEASURE_WGS84_F);
+      const u2 = cos2A * (_MEASURE_EARTH_R ** 2 - sma ** 2) / sma ** 2;
+      const A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)));
+      const B = u2 / 1024 * (256 + cos2A * (-128 + u2 * (74 - 47 * u2)));
+      const dSig = B * sinSig * (cos2Sm + B / 4 * (cosSig * (-1 + 2 * cos2Sm ** 2)
+        - B / 6 * cos2Sm * (-3 + 4 * cos2Sm ** 2) * (-3 + 4 * cos2Sm ** 2)));
+      const az1 = Math.atan2(cosU2 * Math.sin(lam), cosU1 * sinU2 - sinU1 * cosU2 * Math.cos(lam));
+      const az2 = Math.atan2(cosU1 * Math.sin(lam), -sinU1 * cosU2 + cosU1 * sinU2 * Math.cos(lam));
+      return { dist: sma * A * (sig - dSig), az1: az1 * deg, az2: az2 * deg };
+    }
+  }
+  // Non-convergent (near-antipodal): spherical haversine fallback.
+  const s = Math.sin((f2 - f1) / 2) ** 2 + Math.cos(f1) * Math.cos(f2) * Math.sin(L / 2) ** 2;
+  const dist = 2 * _MEASURE_EARTH_R * Math.asin(Math.min(1, Math.sqrt(s)));
+  const az = (x, y) => Math.atan2(
+    Math.sin((y.lng - x.lng) * rad) * Math.cos(y.lat * rad),
+    Math.cos(x.lat * rad) * Math.sin(y.lat * rad) - Math.sin(x.lat * rad) * Math.cos(y.lat * rad) * Math.cos((y.lng - x.lng) * rad)) * deg;
+  return { dist: dist, az1: az(a, b), az2: az(a, b) };
+}
+function segDistance(a, b) { return geodesicInverse(a, b).dist; }
+// Chamberlain–Duquette spherical polygon area.
+function polygonArea(pts) {
+  if (pts.length < 3) return 0;
+  const rad = Math.PI / 180;
+  let s = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    s += (q.lng - p.lng) * rad * (2 + Math.sin(p.lat * rad) + Math.sin(q.lat * rad));
+  }
+  return Math.abs(s * _MEASURE_EARTH_R * _MEASURE_EARTH_R / 2);
+}
 
 function measureNormCoord(c) {
   if (!c) return null;
@@ -13340,30 +13399,13 @@ function measureNormCoords(list) {
   return pts;
 }
 function measureSegmentMeters(a, b) {
-  const rad = Math.PI / 180;
-  const p1 = a.lat * rad, p2 = b.lat * rad;
-  const dp = p2 - p1, dl = (b.lng - a.lng) * rad;
-  const s = Math.sin(dp / 2), t = Math.sin(dl / 2);
-  const h = s * s + Math.cos(p1) * Math.cos(p2) * t * t;
-  return 2 * _MEASURE_EARTH_R * Math.asin(Math.min(1, Math.sqrt(h)));
+  return segDistance(a, b);
 }
 function measureHeadingDeg(a, b) {
-  const rad = Math.PI / 180;
-  const p1 = a.lat * rad, p2 = b.lat * rad;
-  const dl = (b.lng - a.lng) * rad;
-  const y = Math.sin(dl) * Math.cos(p2);
-  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
-  return (Math.atan2(y, x) / rad + 360) % 360;
+  return (geodesicInverse(a, b).az1 + 360) % 360;
 }
 function measureRingAreaMeters(pts) {
-  // Spherical trapezoid formula (Turf-style geodesic area approximation).
-  const rad = Math.PI / 180;
-  let sum = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    sum += (b.lng - a.lng) * rad * (2 + Math.sin(a.lat * rad) + Math.sin(b.lat * rad));
-  }
-  return Math.abs(sum * _MEASURE_EARTH_R * _MEASURE_EARTH_R / 2);
+  return polygonArea(pts);
 }
 function measureShowOverlay(features) {
   try {

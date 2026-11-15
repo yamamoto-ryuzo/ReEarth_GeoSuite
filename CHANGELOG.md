@@ -1,5 +1,10 @@
 # Changelog
 
+## v22.18.1
+- 変更: **計測基盤の測地計算を WGS84 Vincenty 化**（issue #39、KASUGAI Canvas `web/shared/spatial-ops.js` の `geodesicInverse`/`segDistance`/`polygonArea` 移植）
+  - v22.18.0（issue #40）で先行実装された計測 UI 枠組み・距離/面積モードの区間距離計算が球面ハバーシン近似だったのを、Vincenty 逆問題（非収束時ハバーシン fallback）へ置換。面積は Chamberlain–Duquette 球面公式のまま `polygonArea` として関数化、`measureHeadingDeg` も測地初方位へ統一
+  - 計測 UI・sketch 多重化・クリーンアップ・i18n は v22.18.0 で実装済みのため差分なし（#39 受け入れ条件の残差分のみ）
+
 ## v22.18.0
 - 新規: **面積計測モード**（issue #40、KASUGAI Canvas `web/cesium/geo-tools.js` の計測モード枠組みの移植）
   - タブバーに 📐 Measure パネルを追加。Distance / Area モードボタンで `reearth.sketch` の描画モードへ入り、地図上で折れ線/ポリゴンを描くと測地距離・球面面積＋閉合周長を読み取り表示（m/km・m²/km² 整形）
