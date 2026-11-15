@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.12.0
+- 新規: **SQL ダイアログ**（issue #35、KASUGAI Canvas `ui.sql_dialog` の移植）
+  - Manage パネルに「SQL」サブタブを追加。任意の SELECT を入力して「Run」でプレビュー（件数＋先頭 8 件の属性テーブル）、「Add as layer」で `sql:` 行と同じ経路（`loadSqlLayer` → `ddbPost` → 永続ホスト `ddbExec`／自 iframe `ddbLoad` フォールバック → `handleDdbResult` → GeoJSON レイヤ化）でレイヤ追加
+  - プレビューは拡張側が `SELECT * FROM (<query>) LIMIT 200` に包んで実行し、`_ddbPending` の新 kind `sqlPreview` 経由で `sqlResult` として iframe へ返送。`:bbox` は `sql:` 行と同様に現在の表示範囲へ置換される
+  - ST_Read / ST_* 空間関数は DuckDB-Wasm 側の対応範囲（同梱 spatial 拡張のロード可否）に依存する旨を UI ヒントと docs/duckdb-persistence.html に明記
+  - i18n キー 10 個を全 20 ロケールへ追加（en/ja は翻訳済み、その他は英語値）
+
 ## v22.11.0
 - 新規: **印刷・帳票出力**（issue #36、KASUGAI Canvas `web/shared/print.js` の移植）
   - SHARE タブに「Print / Report」セクションを追加。現在表示を `reearth.viewer.capture` でキャプチャし、タイトル・用紙（A4/A3・横縦）・解像度（150/300dpi）を指定して帳票画像を canvas2d で合成

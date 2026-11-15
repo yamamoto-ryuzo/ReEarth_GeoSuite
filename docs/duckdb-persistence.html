@@ -397,6 +397,10 @@
                 <li><strong>GeoParquet 1.1 の covering.bbox 付きファイルが理想</strong>:
                     <code>duckdb:</code> で自動検出され、行グループスキップ＋表示範囲連動が最大効果を発揮する。
                     無い場合は <code>covering=xmin,xmax,ymin,ymax</code> 列指定か、空間フィルタ無しの where/limit のみになる</li>
+                <li><strong>SQL ダイアログ / ST_Read・ST_* 系</strong>: Manage パネルの SQL サブタブ（v22.12.0〜）や
+                    <code>sql:</code> 行で実行できる関数は DuckDB-Wasm の対応範囲に依存する。
+                    <code>ST_Read</code>・<code>ST_Intersects</code> 等の ST_* 空間関数は同梱 spatial 拡張がロードできた場合のみ使える
+                    （未ロード環境ではエラーになる。<code>:bbox</code> 置換も spatial 拡張が必要）</li>
             </ul>
         </section>
 
