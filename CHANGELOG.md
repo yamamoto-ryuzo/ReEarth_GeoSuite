@@ -1,5 +1,13 @@
 # Changelog
 
+## v22.18.0
+- 新規: **面積計測モード**（issue #40、KASUGAI Canvas `web/cesium/geo-tools.js` の計測モード枠組みの移植）
+  - タブバーに 📐 Measure パネルを追加。Distance / Area モードボタンで `reearth.sketch` の描画モードへ入り、地図上で折れ線/ポリゴンを描くと測地距離・球面面積＋閉合周長を読み取り表示（m/km・m²/km² 整形）
+  - Area モードは `setTool('polygon')` を優先し、未対応/失敗時は polyline 描画を閉合してポリゴン化するフォールバック（Polygon でも LineString≥3点 でもリングとして処理）。面積は移植済み `measureRingAreaMeters`（球面台形公式）、周長は閉合リングの haversine 距離和
+  - 計測結果は既存の「AI Measure」オレンジオーバーレイレイヤへ描画（Clear ボタン・モード切替で消去、次回計測で置換）。モードはトグル式で描画中でも切替可能。sketch 'create' は `_measureSketchArmed` フラグで FLY ルート描画と多重化（FLY 側ハンドラは計測中イベントを無視）
+  - 前提課題 #39（計測基盤＋距離計測）が未実装だったため、計測 UI 枠組みと Distance モードも本課題内で実装
+  - `showPanel` に `measure` を追加。i18n キー 11 個を全 20 ロケールへ追加
+
 ## v22.17.0
 - 新規: **AI 計測ツール**（issue #42、KASUGAI Canvas `web/cesium/geo-tools.js` measureDistance/measureArea/measureBearing の移植）
   - AI チャットの `TOOL_DECLS` に `measureDistance({coords:[{lat,lng},...]})`・`measureArea({coords})`・`measureBearing({from,to})` を宣言し `PANEL_TOOLS` へ登録 — レイヤーパネル拡張へ `aiToolRequest` 転送
