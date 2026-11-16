@@ -1,5 +1,13 @@
 # Changelog
 
+## v22.20.0
+- 追加: **計測パネルに方位角（Bearing）モードを追加**（issue #41）
+  - Measure タブに Bearing ボタンを追加。polyline スケッチで2点を指定（ダブルクリック確定）すると `geodesicInverse` で始点方位角・終点方位角（逆方位角相当）・地表距離を算出しステータス行へ表示
+  - オーバーレイは線分＋中点の方位角ラベル（`◯◯.◯°`）＋A/B 頂点マーカーを描画。Clear・モード切替・パネル非表示時の解除は他モードと同一経路
+  - 新規 UI 文字列 `measureBearingBtn`/`measureAzimuthLbl`/`measureRevAzimuthLbl` を GEO_I18N 全20ロケールへ追加
+  - 既存の AI ツール `measureBearing` による bearing レコードもオーバーレイ描画が専用分岐で方位角ラベル表示になるよう整備（従来は距離モード扱いで Σ 表示になっていた）
+- 検証: `npx tsc --noEmit` パス、`check_inline_scripts.js` 全拡張 OK
+
 ## v22.19.3
 - 修正: **aiToolResult が拡張リロード後に黙殺され呼出側がタイムアウトする経路を強化**（issue #49 調査）
   - issue #49（`addGeoJsonLayer` が実行されるが `aiToolResult` が返らずタイムアウト、2/2 再現）は現コードで再現せず（`workbench/ai_tool_test.js` 44/44 pass）。記録時は開発中ビルドのプラグインリロードと衝突した一過性と判断
