@@ -202,7 +202,14 @@ async function main() {
 
   if (cliMode !== "serve") { console.error("unknown mode: " + cliMode); process.exit(2); }
 
-  const rl = readline.createInterface({ input: process.stdin, terminal: false });
+  // Read stdin through fs on fd 0 rather than process.stdin: on Windows,
+  // resuming the process.stdin TTY stream starts a dedicated console-reader
+  // thread that posts via uv_async_send; if that handle is closing while the
+  // WebSocket is live, libuv aborts (src\win\async.c assertion) right after
+  // startup on Node 24. The fs path reads fd 0 on the threadpool instead.
+  const stdinStream = fs.createReadStream("", { fd: 0, encoding: "utf8" });
+  stdinStream.on("error", (e) => { console.error("stdin read error:", e.message); process.exit(1); });
+  const rl = readline.createInterface({ input: stdinStream, terminal: false });
   rl.on("line", async (line) => {
     const s = line.trim();
     if (!s) return;
