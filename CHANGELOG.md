@@ -1,13 +1,5 @@
 # Changelog
 
-## v22.21.0
-- 追加: **計測パネルに標高断面（Profile）モードと AI ツール `elevationProfile` を追加**（issue #27）
-  - Measure タブに Profile ボタンを追加。polyline スケッチで線を描くと、測地距離で等間隔リサンプル（既定64点・上限256）し `reearth.viewer.tools.getTerrainHeightAsync` で標高をバッチ取得（fly ルート高度取得と同方式・16並列）
-  - 結果はパネル内 `<canvas>` に距離-標高グラフ（範囲塗り＋軸目盛＋最高/最低標高表示）として描画し、「Save PNG」で `toDataURL` 経由のPNG保存が可能。数値結果は `profile.samples[{lat,lng,dist,height}]` として保持
-  - AI ツール `elevationProfile(coords, samples?)` を TOOL_DECLS/runCode API_METHODS へ登録。`{ok,totalMeters,minHeight,maxHeight,samples}` を返し、描画線とグラフもオーバーレイ/パネルへ反映。terrain API 非対応環境では `ok:false, reason:'terrain height API unavailable'`
-  - 新規 UI 文字列 `measureProfileBtn`/`measureElevLbl`/`measureProfileSave`/`measureProfileSampling`/`measureProfileNoData` を GEO_I18N 全20ロケールへ追加
-- 検証: `npx tsc --noEmit` パス、`check_inline_scripts.js` 全拡張 OK
-
 ## v22.20.0
 - 追加: **計測パネルに方位角（Bearing）モードを追加**（issue #41）
   - Measure タブに Bearing ボタンを追加。polyline スケッチで2点を指定（ダブルクリック確定）すると `geodesicInverse` で始点方位角・終点方位角（逆方位角相当）・地表距離を算出しステータス行へ表示
