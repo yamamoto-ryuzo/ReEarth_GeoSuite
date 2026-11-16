@@ -1,5 +1,11 @@
 # Changelog
 
+## v22.19.2
+- 修正: **地形トグルが ON 表示なのに実際は OFF になる問題**
+  - 原因: `reearth.viewer.overrideProperty` は差分マージではなくその拡張のオーバーライド全体を置き換える仕様のため、init で `terrain` を有効化しても後続の部分呼出し（影トグル `scene.shadow`・深度テスト `globe.depthTestAgainstTerrain`・`background:` インスペクタ行・`setBackground`/`setShadow`/`setDepthTest` AI ツール等、計12箇所）で `terrain` キーごと消えて地形が無効に戻っていた
+  - 対応: 拡張内でマージ済みオーバーライドを保持する `_viewerOverride` + `applyViewerOverride(partial)`（deep-merge 後に常にフルオブジェクトを送信）を新設し、同拡張内の全 `overrideProperty` 呼出しを切替
+- 検証: `workbench/terrain_probe.js` 追加。headless Chrome (CDP) から `window.reearth.viewer.property` を読み、activateShadow / deactivateShadow / toggleDepthTest 各発火後も `terrain.enabled:true, type:"reearth_terrain"` が維持されることを確認（修正前はこれらの操作で消滅）
+
 ## v22.19.1
 - 修正: **属性・値一覧エクスポートが1ソースの URL 失敗で全体 "Failed to fetch" になる問題**（issue #48）
   - `exportLayerSource` の `Promise.all` をソース個別 settle へ変更。成功分だけをマージして出力し、失敗ソースは `skipped: ["<レイヤ名>: <理由>"]` として `exportLayerDone`・UI ステータスへ列挙（1件の死んだ URL が「全選択」エクスポート全体を殺さない）
