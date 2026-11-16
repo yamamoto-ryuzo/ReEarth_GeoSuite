@@ -749,6 +749,8 @@ const html: string = `
       var _mm = { on: false, state: null, timer: null, cam: null };
       var MM_LEAFLET = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4';
       var MM_TILE_FALLBACK = 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png';
+      // Minimap shows ~MM_CONTEXT_AREA_RATIO x the view area (wide-area context).
+      var MM_CONTEXT_AREA_RATIO = 20;
       var _mmLeafletP = null;
       function mmLoadLeaflet() {
         if (window.L) return Promise.resolve(window.L);
@@ -834,7 +836,16 @@ const html: string = `
             if (!_mm.state.rect._map) _mm.state.rect.addTo(_mm.state.map);
             if (_mm.state.marker._map) _mm.state.marker.remove();
             _mm.state.rect.setBounds(b);
-            _mm.state.map.fitBounds(b, { animate: false, padding: [24, 24] });
+            // Wide-area context: fit bounds expanded to MM_CONTEXT_AREA_RATIO x area.
+            var ws = b[0][0], ww = b[0][1], wn = b[1][0], we = b[1][1];
+            if (we < ww) { ww = -180; we = 180; }
+            var wk = (Math.sqrt(MM_CONTEXT_AREA_RATIO) - 1) / 2;
+            var wdLat = Math.max(wn - ws, 1e-6) * wk;
+            var wdLng = Math.max(we - ww, 1e-6) * wk;
+            _mm.state.map.fitBounds(
+              [[Math.max(-85.0511, ws - wdLat), Math.max(-180, ww - wdLng)],
+               [Math.min(85.0511, wn + wdLat), Math.min(180, we + wdLng)]],
+              { animate: false, padding: [4, 4] });
           } else {
             if (_mm.state.rect._map) _mm.state.rect.remove();
             if (!_mm.state.marker._map) _mm.state.marker.addTo(_mm.state.map);
