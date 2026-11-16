@@ -2463,8 +2463,12 @@ const html: string = `
     return next();
   }
 
+  function chatReplyError(msg) {
+    if (_chatReplyCb) { var cb = _chatReplyCb; _chatReplyCb = null; cb({ error: msg }); }
+  }
+
   function submit(text) {
-    if (_busy) return;
+    if (_busy) { chatReplyError('busy'); return; }
     _busy = true;
     sendBtn.disabled = true;
     var thinking = addMsg('sys', '…');
@@ -2504,17 +2508,17 @@ const html: string = `
 
   function doSend() {
     var text = (inputEl.value || '').trim();
-    if (!text) return;
+    if (!text) { chatReplyError('empty message'); return; }
     inputEl.value = '';
     addMsg('user', text);
     var needKey = (_provider !== 'copilot' && _provider !== 'agent');
     // Copilot API needs the GitHub token specifically — the server's Gemini
     // key must not let an unauthenticated submission through.
-    if (_provider === 'copilotapi' && !effKey()) { addMsg('sys', t('capiNoToken')); return; }
+    if (_provider === 'copilotapi' && !effKey()) { addMsg('sys', t('capiNoToken')); chatReplyError(t('capiNoToken')); return; }
     if (needKey && _provider !== 'copilotapi' && !effKey() && !_serverHasKey) {
       ensureServerKey().then(function() {
         if (_serverHasKey || _apiKey) submit(text);
-        else addMsg('sys', t('noKey'));
+        else { addMsg('sys', t('noKey')); chatReplyError(t('noKey')); }
       });
       return;
     }
