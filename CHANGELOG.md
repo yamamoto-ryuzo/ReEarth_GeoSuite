@@ -1,5 +1,12 @@
 # Changelog
 
+## v22.19.3
+- 修正: **aiToolResult が拡張リロード後に黙殺され呼出側がタイムアウトする経路を強化**（issue #49 調査）
+  - issue #49（`addGeoJsonLayer` が実行されるが `aiToolResult` が返らずタイムアウト、2/2 再現）は現コードで再現せず（`workbench/ai_tool_test.js` 44/44 pass）。記録時は開発中ビルドのプラグインリロードと衝突した一過性と判断
+  - ただし潜伏するドロップ経路を残置していたため強化: ai-chat 拡張コンテキストが dispatch〜返信の間に再ロードされると `_pendingForward` が失われ、panel からの `aiToolResult` が「pending なし」で丸ごと破棄されていた。pending 不在でも `postToUI` へフォワードするよう変更（chat iframe 側は reqId 照合のため未知 id は無害、ドロップは永遠にハングする）
+  - panel 側 `aiToolReply` は `senderId`/`postMessage` 不在で返信を捨てる際に `sendError` ログを出すよう変更（従来は完全サイレント）
+- 検証: `workbench/aitool_repro.js` 追加（addGeoJsonLayer + listBasemaps/listLayers 対照の最小再現＋全ターゲット console 捕捉）、`ai_tool_test.js` 44/44 pass
+
 ## v22.19.2
 - 修正: **地形トグルが ON 表示なのに実際は OFF になる問題**
   - 原因: `reearth.viewer.overrideProperty` は差分マージではなくその拡張のオーバーライド全体を置き換える仕様のため、init で `terrain` を有効化しても後続の部分呼出し（影トグル `scene.shadow`・深度テスト `globe.depthTestAgainstTerrain`・`background:` インスペクタ行・`setBackground`/`setShadow`/`setDepthTest` AI ツール等、計12箇所）で `terrain` キーごと消えて地形が無効に戻っていた

@@ -13151,6 +13151,8 @@ function aiToolReply(senderId, reqId, ok, result) {
     } catch (e) { ok = false; result = { error: 'result not serializable' }; }
     if (senderId && reearth.extension && typeof reearth.extension.postMessage === 'function') {
       reearth.extension.postMessage(senderId, { action: 'aiToolResult', reqId: reqId, ok: ok, result: result });
+    } else if (reqId) {
+      sendError('[aiToolReply] dropped reply: senderId=' + senderId + ' reqId=' + reqId);
     }
   } catch (e) {}
 }

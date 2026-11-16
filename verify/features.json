@@ -10,7 +10,7 @@
   "control": "CDP via workbench/test.js",
   "detected_from": "workbench/package.json scripts + AGENTS.md"
  },
- "updated": "2026-11-16T19:40:00+09:00",
+ "updated": "2026-11-16T20:05:00+09:00",
  "features": [
   {
    "id": "compile.tsc_noemit",
@@ -246,8 +246,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-16T19:00:00+09:00",
-   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
+   "last_verified": "2026-11-16T21:20:00+09:00",
+   "note": "再検証で再現せず (ai_tool_test.js 44/44 pass)。fail時は拡張リロードと _pendingForward 喪失が疑われ、aiToolResult の unmatched フォワード + dropped-reply ログを v22.19.3 で追加"
   },
   {
    "id": "ai.tool.addParquetLayer",
@@ -539,9 +539,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "pass",
-   "last_verified": "2026-11-16T19:00:00+09:00",
-   "note": "bridge call → Sample Points.geojson ダウンロード応答(count=2)"
+   "last_result": "fail",
+   "last_verified": "2026-11-16T20:05:00+09:00",
+   "note": "成功経路は実機検証済（url/value両ソース・csv/geojson DL・count正）だが、ソースURLが取れないと computed.features にデータがあっても \"Failed to fetch\" で全滅（Promise.all 全滅方式 + computed フォールバック無し）。issue #48 / workbench/export_verify.js"
   },
   {
    "id": "ai.tool.flyTo",
@@ -1976,6 +1976,28 @@
    "last_result": "pass",
    "last_verified": "2026-11-16T19:00:00+09:00",
    "note": "POST /vector/query SELECT geom→FeatureCollection(geom列必須の仕様も確認)"
+  },
+  {
+   "id": "ui.vectorAttrExport",
+   "kind": "ui_control",
+   "name": "属性・値一覧 エクスポートバー（形式select+実行ボタン）",
+   "source": "geo_suite/src/layers-and-tiles-list.ts L2251-2259 HTML / L9603-9615 click handler / L5895-6038 exportLayerSource",
+   "signature": "#vector-attr-export-run click -> exportLayerRequest -> exportLayerSource -> fetch+convert+<a download>",
+   "summary": "形式(geojson/csv/tsv/kml)選択→エクスポートボタンでUI iframe内fetch→変換→<a download>保存。status欄に成否表示",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "Re:Earth Visualizer",
+    "geo_suite extension",
+    "レイヤの l.data.url/value"
+   ],
+   "verify": {
+    "standalone": "不可（extension 橋渡し必須）",
+    "integrated": "workbench + synthetic exportLayerSource dispatch / 実 exportLayerRequest ボタン押下（workbench/export_verify.js）"
+   },
+   "last_result": "fail",
+   "last_verified": "2026-11-16T20:05:00+09:00",
+   "note": "auto-added by feature-verify。変換・DL・status表示・全4形式は単体検証OK。実パイプラインでも失敗経路を確認：URL不可ソースが1件あると全エクスポート \"Failed to fetch\"。issue #48"
   }
  ]
 }

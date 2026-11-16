@@ -840,9 +840,9 @@ try {
       try {
         const data = (msg && msg.data !== undefined) ? msg.data : msg;
         if (!data || !data.action) return;
-        if (data.action === 'aiToolResult' && data.reqId && _pendingForward[data.reqId]) {
+        if (data.action === 'aiToolResult' && data.reqId) {
           const meta = _pendingForward[data.reqId];
-          delete _pendingForward[data.reqId];
+          if (meta) delete _pendingForward[data.reqId];
           try {
             const r = data.result;
             if (meta && meta.name === 'removeLayer') {
@@ -851,6 +851,10 @@ try {
               if (r && r.id) _aiAddedLayerIds.add(r.id);
             }
           } catch (e) {}
+          // Still forward when the pending entry is gone (e.g. this extension
+          // context was reloaded between dispatch and the panel's reply):
+          // chat-iframe callers resolve by reqId and ignore unknown ids, so an
+          // extra aiToolResult is harmless while a dropped one hangs forever.
           if (meta && typeof meta.reply === 'function') meta.reply(capToolResult(data.result));
           else postToUI({ action: 'aiToolResult', reqId: data.reqId, result: capToolResult(data.result) });
         } else if (data.action === 'bridgeCall') {
