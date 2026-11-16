@@ -5906,7 +5906,12 @@ function qmlStyleToReearth(xmlText, opts){
                       try {
                         if (expExId.indexOf('ui') === 0) {
                           var stEl = document.getElementById('vector-attr-export-status');
-                          if (stEl) stEl.textContent = ok ? t('exportDone', { file: (extra && extra.file) || '', count: (extra && extra.count) || 0 }) : (t('exportFail') + ': ' + ((extra && extra.error) || ''));
+                          if (stEl) {
+                            var expTxt = ok ? t('exportDone', { file: (extra && extra.file) || '', count: (extra && extra.count) || 0 }) : (t('exportFail') + ': ' + ((extra && extra.error) || ''));
+                            if (ok && extra && extra.fallback && extra.fallback.length) expTxt += ' — loaded: ' + extra.fallback.join(', ');
+                            if (ok && extra && extra.skipped && extra.skipped.length) expTxt += ' — skipped: ' + extra.skipped.join('; ');
+                            stEl.textContent = expTxt;
+                          }
                         }
                       } catch (e9) {}
                       var res = { action: 'exportLayerDone', exId: expExId, ok: ok };
@@ -5985,10 +5990,34 @@ function qmlStyleToReearth(xmlText, opts){
                       if (Array.isArray(g)) return { type: 'FeatureCollection', features: g };
                       return null;
                     };
+                    var expSrcName = function(s) { return String((s && (s.title || s.id)) || (s && s.url) || '?'); };
                     var expSrcToFc = function(s) {
-                      return new Promise(function(resolve, reject) {
-                        var fail = function(e) { reject(e instanceof Error ? e : new Error(String(e && e.message || e))); };
-                        var done = function(g) { try { resolve(expAsFc(g)); } catch (e2) { resolve(null); } };
+                      // Always resolves ({fc,via} or {error}) so one dead
+                      // source cannot kill the whole export via Promise.all.
+                      return new Promise(function(resolve) {
+                        var doneF = false;
+                        var finish = function(fc, via, err) { if (doneF) return; doneF = true; resolve({ s: s, fc: fc || null, via: via || null, error: err || null }); };
+                        var useComputed = function(fetchErr) {
+                          // Loaded layers keep their engine-computed features
+                          // even after the source URL dies or turns
+                          // CORS-hostile. Request them lazily (only on fetch
+                          // failure) so the normal path never hauls feature
+                          // data over the extension bridge.
+                          if (!s.id) { finish(null, null, fetchErr); return; }
+                          var doneC = false;
+                          var finC = function(fc, err) { if (doneC) return; doneC = true; try { window.removeEventListener('message', onC); } catch (e9) {} clearTimeout(toC); finish(fc, fc ? 'computed' : null, err); };
+                          var onC = function(ev) {
+                            var d = ev && ev.data;
+                            if (!d || d.action !== 'exportComputedSource' || String(d.exId) !== expExId || String(d.srcId) !== String(s.id)) return;
+                            if (d.features && d.features.length) finC({ type: 'FeatureCollection', features: d.features }, null);
+                            else finC(null, fetchErr + (d && d.error ? ' (computed: ' + d.error + ')' : ' (no computed features)'));
+                          };
+                          var toC = setTimeout(function() { finC(null, fetchErr + ' (computed fallback timed out)'); }, 10000);
+                          try { window.addEventListener('message', onC); window.parent.postMessage({ action: 'exportComputedRequest', exId: expExId, srcId: s.id }, '*'); }
+                          catch (e9) { finC(null, fetchErr); }
+                        };
+                        var fail = function(e) { useComputed(String(e && e.message || e)); };
+                        var done = function(g) { var fc = null; try { fc = expAsFc(g); } catch (e2) {} if (fc) finish(fc, 'source', null); else finish(null, null, 'source produced no features'); };
                         try {
                           if (s.value !== undefined && s.value !== null) {
                             if (typeof s.value === 'string') {
@@ -6003,24 +6032,36 @@ function qmlStyleToReearth(xmlText, opts){
                                 else { try { done(JSON.parse(text)); } catch (e2) { fail(e2); } }
                               })
                               .catch(fail);
-                          } else resolve(null);
+                          } else finish(null, null, 'no url/value source');
                         } catch (e) { fail(e); }
                       });
                     };
                     var expSources = (msg.sources || []).slice();
                     if (!expSources.length) { expReport(false, { error: 'no exportable vector source' }); }
-                    else Promise.all(expSources.map(expSrcToFc)).then(function(fcs) {
-                      var feats = [];
-                      fcs.forEach(function(fc) { if (fc && fc.features) fc.features.forEach(function(f) { if (f) feats.push(f); }); });
+                    else Promise.all(expSources.map(expSrcToFc)).then(function(rs) {
+                      // Per-source settle: merge the features that resolved
+                      // and report dead sources by name instead of failing
+                      // the whole export.
+                      var feats = [], failed = [], viaComputed = [];
+                      rs.forEach(function(r) {
+                        if (r.fc && r.fc.features) {
+                          if (r.via === 'computed') viaComputed.push(expSrcName(r.s));
+                          r.fc.features.forEach(function(f) { if (f) feats.push(f); });
+                        } else failed.push(expSrcName(r.s) + ': ' + (r.error || 'no features'));
+                      });
                       var fc = { type: 'FeatureCollection', features: feats };
+                      var notes = {};
+                      if (failed.length) notes.skipped = failed;
+                      if (viaComputed.length) notes.fallback = viaComputed;
                       if (msg.wantGeoJson) {
                         var raw = '';
                         try { raw = JSON.stringify(fc); } catch (e7) { expReport(false, { error: 'geojson not serializable' }); return; }
                         if (raw.length > 4 * 1024 * 1024) { expReport(false, { error: 'geojson exceeds the 4MB extension bridge limit (' + feats.length + ' features) — use exportLayer to download it instead' }); return; }
-                        expReport(true, { count: feats.length, geojson: fc });
+                        var gj = { count: feats.length, geojson: fc }; for (var gk in notes) gj[gk] = notes[gk];
+                        expReport(true, gj);
                         return;
                       }
-                      if (!feats.length) { expReport(false, { error: 'no exportable features' }); return; }
+                      if (!feats.length) { expReport(false, { error: failed.join('; ') || 'no exportable features' }); return; }
                       var out = null;
                       if (expFmt === 'csv') out = { data: expToDelimited(fc, ','), ext: 'csv', mime: 'text/csv;charset=utf-8' };
                       else if (expFmt === 'tsv') out = { data: expToDelimited(fc, '\\t'), ext: 'tsv', mime: 'text/tab-separated-values;charset=utf-8' };
@@ -6033,7 +6074,8 @@ function qmlStyleToReearth(xmlText, opts){
                       a.href = u; a.download = file;
                       document.body.appendChild(a); a.click();
                       setTimeout(function() { try { a.remove(); URL.revokeObjectURL(u); } catch (e8) {} }, 1000);
-                      expReport(true, { file: file, count: feats.length });
+                      var rep = { file: file, count: feats.length }; for (var rk in notes) rep[rk] = notes[rk];
+                      expReport(true, rep);
                     }).catch(function(err) { expReport(false, { error: String(err && err.message || err) }); });
                   } catch (e) { console.error('[exportLayerSource] error', e); }
                 } else if (msg.action === 'vectorFeatureIndex') {
@@ -12152,18 +12194,45 @@ reearth.extension.on("message", (msg) => {
         try {
           const ref = (msg.layerId && msg.layerId !== '__all__') ? msg.layerId : null;
           const srcs = exportSourcesFor(ref);
-          postToUI({ action: 'exportLayerSource', exId: String(msg.exId || ''), format: String(msg.format || 'geojson'), sources: srcs, baseName: (srcs.length === 1 ? srcs[0].title : 'layers') });
+          const exId = String(msg.exId || '');
+          // Track as an ownReq so a mid-flight iframe recreate re-posts the
+          // export instead of dropping it (same self-heal as _ddbPending).
+          _exportPending[exId] = {};
+          armPendingTtl(_exportPending, exId, 'exportLayer', true);
+          postToOwnIframeTracked(_exportPending, exId, { action: 'exportLayerSource', exId: exId, format: String(msg.format || 'geojson'), sources: srcs, baseName: (srcs.length === 1 ? srcs[0].title : 'layers') });
         } catch (e) { try { sendError('[exportLayerRequest] error:', e); } catch(_) {} }
       } else if (msg.action === 'exportLayerDone') {
         try {
           const p = _exportPending[msg.exId];
           if (p !== undefined) {
             delete _exportPending[msg.exId];
-            if (msg.ok && p.geojson) aiToolReply(p.senderId, p.reqId, true, { features: msg.count || 0, geojson: msg.geojson });
-            else if (msg.ok) aiToolReply(p.senderId, p.reqId, true, { file: msg.file, count: msg.count });
-            else aiToolReply(p.senderId, p.reqId, false, { error: String(msg.error || 'export failed') });
+            if (p.senderId) {
+              if (msg.ok && p.geojson) aiToolReply(p.senderId, p.reqId, true, { features: msg.count || 0, geojson: msg.geojson, skipped: msg.skipped || undefined, fallback: msg.fallback || undefined });
+              else if (msg.ok) aiToolReply(p.senderId, p.reqId, true, { file: msg.file, count: msg.count, skipped: msg.skipped || undefined, fallback: msg.fallback || undefined });
+              else aiToolReply(p.senderId, p.reqId, false, { error: String(msg.error || 'export failed') });
+            }
           }
         } catch (e) { try { sendError('[exportLayerDone] error:', e); } catch(_) {} }
+      } else if (msg.action === 'exportComputedRequest') {
+        // exportLayerSource fallback: the iframe's source fetch failed, so
+        // it asks for that layer's engine-computed features (lazy — the
+        // normal path never sends feature data over the bridge).
+        try {
+          const exId = String(msg.exId || '');
+          const srcId = String(msg.srcId || '');
+          const sendC = (features, err) => { try { postToUI({ action: 'exportComputedSource', exId: exId, srcId: srcId, features: features || null, error: err || null }); } catch (e) {} };
+          if (!srcId) sendC(null, 'no source id');
+          else {
+            const c = exportComputedGeoJson(srcId);
+            if (!c) sendC(null, null);
+            else {
+              let size = 0;
+              try { size = JSON.stringify(c.fc.features).length; } catch (e) {}
+              if (size > 3 * 1024 * 1024) sendC(null, 'computed features exceed the bridge limit');
+              else sendC(c.fc.features, null);
+            }
+          }
+        } catch (e) { try { sendError('[exportComputedRequest] error:', e); } catch(_) {} }
       } else if (msg.action === 'flyToLatLng') {
         try {
           if (typeof msg.lat === 'number' && typeof msg.lng === 'number') {
@@ -12188,7 +12257,7 @@ reearth.extension.on("message", (msg) => {
           // re-post them so decodes/compiles self-heal across re-renders
           // instead of hanging until the pending TTL.
           try {
-            [_ddbPending, _gpkgPending, _fgPending, _pqPending, _geoPending, _qmlPending, _hubPending].forEach(function(map) {
+            [_ddbPending, _gpkgPending, _fgPending, _pqPending, _geoPending, _qmlPending, _hubPending, _exportPending].forEach(function(map) {
               Object.keys(map).forEach(function(id) {
                 const req = map[id] && map[id].ownReq;
                 // Reset the pending TTL too — the first arming predates the
@@ -14081,7 +14150,7 @@ function handleAiToolRequest(senderId, data) {
         const gjId = 'ex' + (++_exportSeq);
         _exportPending[gjId] = { senderId: senderId, reqId: reqId, geojson: true };
         armPendingTtl(_exportPending, gjId, 'getLayerGeoJson', true);
-        try { postToUI({ action: 'exportLayerSource', exId: gjId, wantGeoJson: true, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
+        try { postToOwnIframeTracked(_exportPending, gjId, { action: 'exportLayerSource', exId: gjId, wantGeoJson: true, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
         catch (e) { delete _exportPending[gjId]; fail(String(e)); }
         return;
       }
@@ -14096,7 +14165,7 @@ function handleAiToolRequest(senderId, data) {
         const exId = 'ex' + (++_exportSeq);
         _exportPending[exId] = { senderId: senderId, reqId: reqId };
         armPendingTtl(_exportPending, exId, 'exportLayer', true);
-        try { postToUI({ action: 'exportLayerSource', exId: exId, format: fmt, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
+        try { postToOwnIframeTracked(_exportPending, exId, { action: 'exportLayerSource', exId: exId, format: fmt, sources: sources, baseName: sources.length === 1 ? sources[0].title : 'layers' }); }
         catch (e) { delete _exportPending[exId]; fail(String(e)); }
         return;
       }

@@ -1,5 +1,13 @@
 # Changelog
 
+## v22.19.1
+- 修正: **属性・値一覧エクスポートが1ソースの URL 失敗で全体 "Failed to fetch" になる問題**（issue #48）
+  - `exportLayerSource` の `Promise.all` をソース個別 settle へ変更。成功分だけをマージして出力し、失敗ソースは `skipped: ["<レイヤ名>: <理由>"]` として `exportLayerDone`・UI ステータスへ列挙（1件の死んだ URL が「全選択」エクスポート全体を殺さない）
+  - fetch 失敗時のフォールバックを追加: iframe が `exportComputedRequest` を投げると拡張側がそのレイヤのエンジン computed features（`computed.originalFeatures`/`computed.features`）を `exportComputedSource` で返す。**遅延2段方式**（fetch 失敗時のみ要求、3MB ブリッジ上限チェック付き）のため通常経路で地物データをブリッジへ送らない。URL 死後もロード済みレイヤはそのままエクスポート可能になり、使用時は `fallback: ["<レイヤ名>"]` で報告
+  - エラーメッセージに失敗したソース名を含める（例: `ExpNC: Failed to fetch (no computed features)`）
+  - `exportLayerSource` を `_exportPending[].ownReq` 追跡（`postToOwnIframeTracked`）へ切替え、iframe 再生成時の `requestRestoreState` 再送リストに `_exportPending` を追加。ロード失敗レイヤによる iframe チャーンで進行中エクスポートが消えてタイムアウトする問題を自己修復
+- 検証: `workbench/export_verify.js` の期待値を新仕様へ更新（stale URL→computed フォールバック成功・混在ソースの部分成功＋skipped 列挙）、20/20 pass
+
 ## v22.19.0
 - 新規: **計測ラベルの地図上残置・複数計測の蓄積**（issue #45）
   - 計測完了時に線分ごとの距離ラベル（辺中点）と合計 `Σ`/面積ラベルをマーカーラベルとして描画。結果は `_measureRecords` に蓄積され、sketch 計測・AI ツール・ブリッジセッションの複数計測が同一「AI Measure」オーバーレイに共存する
