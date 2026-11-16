@@ -1,0 +1,622 @@
+{
+  "at": "2026-11-16T09:51:50.206Z",
+  "url": "http://localhost:8787/",
+  "results": [
+    {
+      "name": "describe",
+      "args": {},
+      "result": {
+        "plugin": "geo_suite",
+        "local": [
+          "getCamera",
+          "flyTo",
+          "listLayers",
+          "setLayerVisible",
+          "focusLayer",
+          "addGeoJsonLayer",
+          "addTileLayer",
+          "add3dTilesLayer",
+          "removeLayer",
+          "captureView",
+          "getShareUrl",
+          "buildShareUrl",
+          "setCamera",
+          "lookAt",
+          "zoomIn",
+          "zoomOut",
+          "openUrl",
+          "listInstructions",
+          "readInstruction",
+          "saveInstruction",
+          "deleteInstruction",
+          "selectAgents"
+        ],
+        "panel": [
+          "listCameraPresets",
+          "flyToPreset",
+          "listBasemaps",
+          "setBasemap",
+          "listFlyPaths",
+          "playFlyPath",
+          "stopFly",
+          "setTerrain",
+          "setShadow",
+          "openStreetView",
+          "flyToFeature",
+          "zoomToExtent",
+          "attrStats",
+          "getLayerGeoJson",
+          "exportLayer",
+          "vectorSearch",
+          "setFlySettings",
+          "searchPlaces",
+          "addFlatGeobufLayer",
+          "addParquetLayer",
+          "addDuckDbLayer",
+          "setLayerVisible",
+          "addGeoJsonLayer",
+          "addTileLayer",
+          "add3dTilesLayer",
+          "removeLayer",
+          "applyKascTheme",
+          "listThemes",
+          "createFlyPath",
+          "deleteFlyPath",
+          "showPanel",
+          "showInfo",
+          "listLegends",
+          "showFeatureAttributes",
+          "getInspectorText",
+          "applyInspectorText",
+          "setDepthTest",
+          "setGeojsonDrape",
+          "setBackground",
+          "measureDistance",
+          "measureArea",
+          "measureBearing",
+          "clearMeasurements",
+          "measureStart",
+          "measureAddPoint",
+          "measureFinish"
+        ],
+        "bridge": [
+          "describe",
+          "runCode",
+          "canvasApi"
+        ],
+        "chat": [
+          "aiChatSend",
+          "aiChatStatus",
+          "aiChatSet",
+          "searchLocation",
+          "flyToUrl",
+          "flyToCurrentLocation",
+          "setToolMaxSteps",
+          "showReport"
+        ],
+        "note": "Arg schemas match the Gemini functionDeclarations (TOOL_DECLS). Flight tools (flyToPreset/flyToFeature/zoomToExtent/showFeatureAttributes) reply after arrival; pass wait:false for an immediate ack. chat-group tools execute inside the AI chat widget — open the AI chat panel before calling them."
+      }
+    },
+    {
+      "name": "runCode",
+      "args": {
+        "code": "var l=await api.listLayers(); return l.count;"
+      },
+      "result": {
+        "result": 5
+      }
+    },
+    {
+      "name": "listLayers",
+      "args": {},
+      "result": {
+        "layers": [
+          {
+            "id": "workbench-sample-points",
+            "title": "Sample Points",
+            "type": "geojson",
+            "visible": true,
+            "isBasemap": false
+          },
+          {
+            "id": "0323bc87-4e68-4ea5-8e32-9c70c3c81e28",
+            "title": "東京都/千代田区（建築物LOD1）",
+            "type": "3dtiles",
+            "visible": true,
+            "isBasemap": false
+          },
+          {
+            "id": "a31d742b-70bc-44f5-8a34-7f3e8d9483c7",
+            "title": "東京都/行政区域",
+            "type": "geojson",
+            "visible": true,
+            "isBasemap": false
+          },
+          {
+            "id": "390bff09-1a68-480d-8643-72d9e0c8681b",
+            "title": "東京都//千代田区（建築物LOD1）",
+            "type": "3dtiles",
+            "visible": true,
+            "isBasemap": false
+          },
+          {
+            "id": "3adaa315-9681-44fa-8e7f-270b01b61169",
+            "title": "東京都//行政区域",
+            "type": "geojson",
+            "visible": true,
+            "isBasemap": false
+          }
+        ],
+        "count": 5
+      }
+    },
+    {
+      "name": "listThemes",
+      "args": {},
+      "result": {
+        "themes": [
+          {
+            "name": "テーマ",
+            "layers": []
+          },
+          {
+            "name": "テーマ2",
+            "layers": [
+              "サンプル/DM（スタイルサンプル）/DM_C",
+              "サンプル/DM（スタイルサンプル）/DM_1",
+              "サンプル/DM（スタイルサンプル）/DM_3",
+              "国土数値情報/政策区域/行政地域/行政区域",
+              "国土数値情報/政策区域/行政地域/表示・非表示/都道府県名",
+              "国土数値情報/政策区域/行政地域/表示・非表示/市区町村名"
+            ]
+          },
+          {
+            "name": "検索前",
+            "layers": [
+              "国土数値情報/政策区域/行政地域/行政区域",
+              "国土数値情報/政策区域/行政地域/表示・非表示/都道府県名",
+              "国土数値情報/政策区域/行政地域/表示・非表示/市区町村名"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "applyKascTheme",
+      "args": {
+        "name": "テーマ"
+      },
+      "result": {
+        "name": "テーマ"
+      }
+    },
+    {
+      "name": "attrStats",
+      "args": {},
+      "result": {
+        "layer": "__all__",
+        "fields": {
+          "all": [
+            "N03_001",
+            "N03_004",
+            "N03_007",
+            "OBJECTID",
+            "Shape_Area",
+            "Shape_Leng",
+            "description",
+            "fid",
+            "title"
+          ],
+          "numeric": [
+            "N03_007",
+            "OBJECTID",
+            "Shape_Area",
+            "Shape_Leng",
+            "fid"
+          ]
+        }
+      }
+    },
+    {
+      "name": "attrStats",
+      "args": {
+        "layer": "Sample Points",
+        "groupBy": "N03_001"
+      },
+      "result": {
+        "error": "group field not found: N03_001"
+      }
+    },
+    {
+      "name": "zoomToExtent",
+      "args": {
+        "west": 139.6,
+        "south": 35.6,
+        "east": 139.9,
+        "north": 35.8
+      },
+      "result": {
+        "bbox": {
+          "west": 139.6,
+          "south": 35.6,
+          "east": 139.9,
+          "north": 35.8
+        }
+      }
+    },
+    {
+      "name": "getLayerGeoJson",
+      "args": {
+        "layer": "Sample Points"
+      },
+      "result": {
+        "layers": [
+          "Sample Points"
+        ],
+        "features": 2,
+        "geojson": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "properties": {
+                "title": "Tokyo Station",
+                "description": "Sample point for plugin development."
+              },
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  139.7671,
+                  35.6812
+                ]
+              }
+            },
+            {
+              "type": "Feature",
+              "properties": {
+                "title": "Tokyo Tower",
+                "description": "Sample point for plugin development."
+              },
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  139.7454,
+                  35.6586
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "exportLayer",
+      "args": {
+        "layer": "Sample Points",
+        "format": "geojson"
+      },
+      "result": {
+        "file": "Sample Points.geojson",
+        "count": 2
+      }
+    },
+    {
+      "name": "add3dTilesLayer",
+      "args": {
+        "title": "vfy-3d",
+        "url": "https://assets.cms.plateau.reearth.io/assets/0e/e5948a-e95c-4e31-be85-1f8c066ed996/13101_chiyoda-ku_pref_2023_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod1/tileset.json"
+      },
+      "result": {
+        "id": "1dc9a14e-8942-42a8-949c-ebf2a851d05b",
+        "title": "vfy-3d"
+      }
+    },
+    {
+      "name": "removeLayer",
+      "args": {
+        "layer": "vfy-3d"
+      },
+      "result": {
+        "id": "1dc9a14e-8942-42a8-949c-ebf2a851d05b"
+      }
+    },
+    {
+      "name": "searchLocation",
+      "args": {
+        "query": "東京駅",
+        "limit": 3
+      },
+      "result": {
+        "results": [
+          {
+            "name": "北海道札幌市東区",
+            "address": "北海道札幌市東区",
+            "lng": 141.363617,
+            "lat": 43.076111
+          },
+          {
+            "name": "北海道東神楽町東",
+            "address": "北海道東神楽町東",
+            "lng": 142.432129,
+            "lat": 43.681801
+          },
+          {
+            "name": "北海道佐呂間町東",
+            "address": "北海道佐呂間町東",
+            "lng": 143.788956,
+            "lat": 43.999634
+          }
+        ]
+      }
+    },
+    {
+      "name": "flyToUrl",
+      "args": {
+        "url": "?lat=35.68&lng=139.75&height=2000"
+      },
+      "result": {
+        "ok": true,
+        "lat": 35.68,
+        "lng": 139.75,
+        "height": 2000
+      }
+    },
+    {
+      "name": "flyToCurrentLocation",
+      "args": {},
+      "result": {
+        "error": "geolocation failed: Geolocation has been disabled in this document by permissions policy."
+      }
+    },
+    {
+      "name": "setToolMaxSteps",
+      "args": {
+        "steps": 10
+      },
+      "result": {
+        "ok": true,
+        "steps": 10
+      }
+    },
+    {
+      "name": "aiChatStatus",
+      "args": {},
+      "result": {
+        "provider": "gemini",
+        "model": "gemini-3.1-flash-lite",
+        "hasKey": false,
+        "busy": false,
+        "maxSteps": 10,
+        "endpoint": ""
+      }
+    },
+    {
+      "name": "aiChatSet",
+      "args": {
+        "provider": "gemini",
+        "model": "gemini-2.0-flash",
+        "persist": false
+      },
+      "result": {
+        "ok": true,
+        "provider": "gemini"
+      }
+    },
+    {
+      "name": "aiChatSend",
+      "args": {
+        "text": "ping"
+      },
+      "result": {
+        "error": "bridge timeout"
+      }
+    },
+    {
+      "name": "showReport",
+      "args": {
+        "title": "verify",
+        "markdown": "# verify\nok"
+      },
+      "result": {
+        "ok": true,
+        "title": "verify",
+        "format": "markdown",
+        "chars": 11
+      }
+    },
+    {
+      "name": "measureDistance",
+      "args": {
+        "coords": [
+          {
+            "lat": 35.68,
+            "lng": 139.75
+          },
+          {
+            "lat": 35.69,
+            "lng": 139.76
+          }
+        ]
+      },
+      "result": {
+        "ok": true,
+        "totalMeters": 1431.9949005851436,
+        "segmentsMeters": [
+          1431.9949005851436
+        ]
+      }
+    },
+    {
+      "name": "measureArea",
+      "args": {
+        "coords": [
+          {
+            "lat": 35.68,
+            "lng": 139.75
+          },
+          {
+            "lat": 35.681,
+            "lng": 139.751
+          },
+          {
+            "lat": 35.68,
+            "lng": 139.752
+          }
+        ]
+      },
+      "result": {
+        "ok": true,
+        "squareMeters": 10065.823138619722,
+        "perimeterMeters": 467.4410194249903
+      }
+    },
+    {
+      "name": "measureBearing",
+      "args": {
+        "from": {
+          "lat": 35.68,
+          "lng": 139.75
+        },
+        "to": {
+          "lat": 35.75,
+          "lng": 139.8
+        }
+      },
+      "result": {
+        "ok": true,
+        "startHeadingDeg": 30.207371734716276,
+        "endHeadingDeg": 30.236559431120554,
+        "distanceMeters": 8989.413134236514
+      }
+    },
+    {
+      "name": "measureStart",
+      "args": {
+        "mode": "distance"
+      },
+      "result": {
+        "ok": true,
+        "mode": "distance"
+      }
+    },
+    {
+      "name": "measureAddPoint",
+      "args": {
+        "lat": 35.68,
+        "lng": 139.75
+      },
+      "result": {
+        "ok": true,
+        "pointCount": 1,
+        "totalMeters": 0
+      }
+    },
+    {
+      "name": "measureAddPoint",
+      "args": {
+        "lat": 35.69,
+        "lng": 139.76
+      },
+      "result": {
+        "ok": true,
+        "pointCount": 2,
+        "totalMeters": 1431.9949005851436
+      }
+    },
+    {
+      "name": "measureAddPoint",
+      "args": {
+        "lat": 35.7,
+        "lng": 139.75
+      },
+      "result": {
+        "ok": true,
+        "pointCount": 3,
+        "totalMeters": 2863.919625008688
+      }
+    },
+    {
+      "name": "measureFinish",
+      "args": {},
+      "result": {
+        "ok": true,
+        "totalMeters": 2863.919625008688,
+        "segmentsMeters": [
+          1431.9949005851436,
+          1431.9247244235441
+        ]
+      }
+    },
+    {
+      "name": "clearMeasurements",
+      "args": {},
+      "result": {
+        "ok": true,
+        "cleared": 4
+      }
+    },
+    {
+      "name": "listInstructions",
+      "args": {
+        "kind": "agents"
+      },
+      "result": {
+        "items": []
+      }
+    },
+    {
+      "name": "listInstructions",
+      "args": {
+        "kind": "skills"
+      },
+      "result": {
+        "items": []
+      }
+    },
+    {
+      "name": "saveInstruction",
+      "args": {
+        "kind": "skills",
+        "id": "verify_tmp",
+        "text": "verify note",
+        "enabled": false
+      },
+      "result": {
+        "ok": true,
+        "id": "verify_tmp"
+      }
+    },
+    {
+      "name": "readInstruction",
+      "args": {
+        "kind": "skills",
+        "id": "verify_tmp"
+      },
+      "result": {
+        "id": "verify_tmp",
+        "text": "verify note"
+      }
+    },
+    {
+      "name": "deleteInstruction",
+      "args": {
+        "kind": "skills",
+        "id": "verify_tmp"
+      },
+      "result": {
+        "ok": true,
+        "id": "verify_tmp"
+      }
+    },
+    {
+      "name": "selectAgents",
+      "args": {
+        "ids": []
+      },
+      "result": {
+        "ok": true,
+        "enabled": []
+      }
+    }
+  ]
+}

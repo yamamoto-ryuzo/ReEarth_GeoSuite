@@ -1,7 +1,7 @@
 {
  "component": "ReEarth_GeoSuite",
  "component_type": "reearth_plugin",
- "version": "22.18.1",
+ "version": "22.19.0",
  "driver": {
   "type": "npm_script",
   "detect": "curl http://localhost:8787/",
@@ -10,7 +10,7 @@
   "control": "CDP via workbench/test.js",
   "detected_from": "workbench/package.json scripts + AGENTS.md"
  },
- "updated": "2026-11-15T23:39:13+09:00",
+ "updated": "2026-11-16T19:40:00+09:00",
  "features": [
   {
    "id": "compile.tsc_noemit",
@@ -27,8 +27,8 @@
     "integrated": ""
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
-   "note": "0 errors"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "npx tsc -p geo_suite/tsconfig.json --noEmit → 0 errors"
   },
   {
    "id": "compile.hub_cargo",
@@ -45,8 +45,8 @@
     "integrated": ""
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
-   "note": "Finished 7.01s"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "cargo check → Finished 6.59s"
   },
   {
    "id": "build.inline_scripts",
@@ -63,8 +63,8 @@
     "integrated": ""
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
-   "note": "basemap-widget/navigation-toolbar/layers-and-tiles-list/ai-chat 全てOK（mock-sandbox note は情報）"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "basemap/navigation/layers/ai-chat 全てOK(mock-sandbox noteは情報)"
   },
   {
    "id": "wb.loaded",
@@ -83,7 +83,7 @@
     "integrated": "node workbench/test.js"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
+   "last_verified": "2026-11-16T19:00:00+09:00",
    "note": "PASS workbench loaded — Re:Earth Visualizer Workbench"
   },
   {
@@ -103,7 +103,7 @@
     "integrated": "node workbench/test.js"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
+   "last_verified": "2026-11-16T19:00:00+09:00",
    "note": "PASS live status (SSE connected)"
   },
   {
@@ -123,7 +123,7 @@
     "integrated": "node workbench/test.js"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
+   "last_verified": "2026-11-16T19:00:00+09:00",
    "note": "PASS widget iframes exist — 4 iframes"
   },
   {
@@ -143,7 +143,7 @@
     "integrated": "node workbench/test.js"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
+   "last_verified": "2026-11-16T19:00:00+09:00",
    "note": "PASS widget contexts reachable — 4 targets"
   },
   {
@@ -163,7 +163,7 @@
     "integrated": "node workbench/test.js"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
+   "last_verified": "2026-11-16T19:00:00+09:00",
    "note": "PASS clicked a widget tab — 検索"
   },
   {
@@ -183,8 +183,8 @@
     "integrated": "node workbench/test.js"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T22:55:19+09:00",
-   "note": "PASS auto reload on save (SSE)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "PASS auto reload on save (SSE) 18:43:27→18:44:17"
   },
   {
    "id": "ai.tool.addDuckDbLayer",
@@ -203,9 +203,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.addFlatGeobufLayer",
@@ -224,9 +224,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.addGeoJsonLayer",
@@ -245,9 +245,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.addParquetLayer",
@@ -266,9 +266,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.addTileLayer",
@@ -287,9 +287,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.aiChatSend",
@@ -308,9 +308,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:40:00+09:00",
+   "note": "Issue #46 修正確認: noKey時に即時 {error:\"No API key — open settings (gear) to add one.\"} 返却(serve JSONL往復)"
   },
   {
    "id": "ai.tool.aiChatSet",
@@ -329,9 +329,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.aiChatStatus",
@@ -350,9 +350,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.applyInspectorText",
@@ -371,9 +371,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.applyKascTheme",
@@ -392,9 +392,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → listThemesの先頭テーマを適用"
   },
   {
    "id": "ai.tool.attrStats",
@@ -413,9 +413,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → fields列挙+groupBy(title)集計OK(layer/field名解決も確認)"
   },
   {
    "id": "ai.tool.buildShareUrl",
@@ -435,8 +435,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.captureView",
@@ -455,9 +455,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.createFlyPath",
@@ -477,8 +477,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.deleteFlyPath",
@@ -498,8 +498,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.deleteInstruction",
@@ -518,9 +518,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.exportLayer",
@@ -539,9 +539,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → Sample Points.geojson ダウンロード応答(count=2)"
   },
   {
    "id": "ai.tool.flyTo",
@@ -560,9 +560,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.flyToCurrentLocation",
@@ -581,9 +581,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "fail",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → 権限拒否を構造化エラーで返却(ヘッドレスでは実位置取得不可・エラーパス検証)"
   },
   {
    "id": "ai.tool.flyToFeature",
@@ -602,9 +602,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.flyToPreset",
@@ -624,8 +624,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.flyToUrl",
@@ -644,9 +644,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "fail",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.focusLayer",
@@ -665,9 +665,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.getCamera",
@@ -687,8 +687,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.getInspectorText",
@@ -708,8 +708,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.getLayerGeoJson",
@@ -728,9 +728,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → FeatureCollection(features=2)"
   },
   {
    "id": "ai.tool.getShareUrl",
@@ -750,8 +750,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.listBasemaps",
@@ -771,8 +771,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.listCameraPresets",
@@ -792,8 +792,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.listFlyPaths",
@@ -813,8 +813,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.listInstructions",
@@ -834,8 +834,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → kind=agents/skills 両方応答"
   },
   {
    "id": "ai.tool.listLayers",
@@ -855,8 +855,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.listLegends",
@@ -876,8 +876,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.listThemes",
@@ -897,8 +897,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.lookAt",
@@ -917,9 +917,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.clearMeasurements",
@@ -938,9 +938,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-16T00:00:00+09:00",
-   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.measureAddPoint",
@@ -959,9 +959,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-16T00:00:00+09:00",
-   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.measureArea",
@@ -981,8 +981,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.measureBearing",
@@ -1002,8 +1002,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.measureDistance",
@@ -1023,8 +1023,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.measureFinish",
@@ -1043,9 +1043,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-16T00:00:00+09:00",
-   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.measureStart",
@@ -1064,9 +1064,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-16T00:00:00+09:00",
-   "note": "issue #45 新規追加(declaration→handler照合のみ、integrated未検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.openStreetView",
@@ -1085,9 +1085,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall → NO_KEY 時 plain url 返却を確認"
   },
   {
    "id": "ai.tool.openUrl",
@@ -1106,9 +1106,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.playFlyPath",
@@ -1127,9 +1127,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.readInstruction",
@@ -1148,9 +1148,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.removeLayer",
@@ -1169,9 +1169,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.runCode",
@@ -1190,9 +1190,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "__geoBridge runCode → api.listLayers()=5 往復OK"
   },
   {
    "id": "ai.tool.saveInstruction",
@@ -1211,9 +1211,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.searchLocation",
@@ -1232,9 +1232,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "fail",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.searchPlaces",
@@ -1253,9 +1253,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall → googleMapsApiKey 未設定の明確なエラー返却を確認(キー設定時の実検索は未検証)"
   },
   {
    "id": "ai.tool.selectAgents",
@@ -1274,9 +1274,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setBackground",
@@ -1295,9 +1295,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setBasemap",
@@ -1316,9 +1316,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setCamera",
@@ -1337,9 +1337,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setDepthTest",
@@ -1358,9 +1358,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setFlySettings",
@@ -1379,9 +1379,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setGeojsonDrape",
@@ -1400,9 +1400,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setLayerVisible",
@@ -1421,9 +1421,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setShadow",
@@ -1442,9 +1442,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setTerrain",
@@ -1464,8 +1464,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.setToolMaxSteps",
@@ -1484,9 +1484,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "fail",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.showFeatureAttributes",
@@ -1505,9 +1505,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.showInfo",
@@ -1527,8 +1527,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.showPanel",
@@ -1548,8 +1548,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.showReport",
@@ -1568,9 +1568,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "fail",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge describe catalog 未収録・call→unknown tool (Issue #43)。TOOL_DECLS には宣言あり"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.stopFly",
@@ -1589,9 +1589,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.vectorSearch",
@@ -1611,8 +1611,8 @@
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
    "last_result": "pass",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "bridge call 実呼出で構造化応答確認(2026-11-15 headless workbench経由)"
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.zoomIn",
@@ -1631,9 +1631,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.zoomOut",
@@ -1652,9 +1652,9 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
   },
   {
    "id": "ai.tool.zoomToExtent",
@@ -1673,9 +1673,309 @@
     "standalone": "TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合",
     "integrated": "workbench + aiToolCall/bridgeCall で実呼出"
    },
-   "last_result": "skip",
-   "last_verified": "2026-11-15T23:39:13+09:00",
-   "note": "declaration→handler一致(standalone)。integrated未実行(引数/副作用要のため代表のみ検証)"
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)"
+  },
+  {
+   "id": "ai.tool.add3dTilesLayer",
+   "kind": "ai_integration",
+   "name": "AI tool add3dTilesLayer",
+   "source": "geo_suite/src/ai-chat.ts:1052",
+   "signature": "add3dTilesLayer({title?,url})",
+   "summary": "OGC 3D Tiles tileset.json URL レイヤー追加",
+   "needs_runtime": true,
+   "standalone_ok": true,
+   "depends": [
+    "workbench"
+   ],
+   "verify": {
+    "standalone": "TOOL_DECLS宣言とハンドラ存在の静的照合",
+    "integrated": "bridge call add3dTilesLayer → レイヤ追加応答"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "bridge call → id付き追加+removeLayer往復 OK"
+  },
+  {
+   "id": "hub.route.health",
+   "kind": "api_route",
+   "name": "route.health",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "GET /health",
+   "summary": "ハブ稼働確認",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /health → {ok:true, hub:true, providers} 200"
+  },
+  {
+   "id": "hub.route.status_page",
+   "kind": "api_route",
+   "name": "route.status_page",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "GET /",
+   "summary": "ステータスHTMLページ",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET / → 200 ステータスHTML"
+  },
+  {
+   "id": "hub.route.models",
+   "kind": "api_route",
+   "name": "route.models",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "GET /models",
+   "summary": "AIプロバイダモデル一覧",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /models?provider=copilot → モデル一覧応答(devinはpending構造)"
+  },
+  {
+   "id": "hub.route.agent",
+   "kind": "api_route",
+   "name": "route.agent",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "POST /agent",
+   "summary": "エージェント問い合わせ(LLM)",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "POST /agent → provider応答テキスト返却(devin provider)"
+  },
+  {
+   "id": "hub.route.setup",
+   "kind": "api_route",
+   "name": "route.setup",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "GET/POST /setup",
+   "summary": "初期セットアップ状態/実行",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /setup → provider検出状態JSON(POST install は副作用のため未実行)"
+  },
+  {
+   "id": "hub.route.setup_job",
+   "kind": "api_route",
+   "name": "route.setup_job",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "GET /setup/job/{id}",
+   "summary": "セットアップジョブ進捗",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /setup/job/{id} → 不正idで job not found 構造化エラー"
+  },
+  {
+   "id": "hub.route.mcp",
+   "kind": "api_route",
+   "name": "route.mcp",
+   "source": "hub/src/bridge/mod.rs",
+   "signature": "POST/DELETE /mcp・/mcp/{project}",
+   "summary": "MCP エンドポイント",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "POST /mcp initialize → JSON-RPC protocolVersion/capabilities 応答"
+  },
+  {
+   "id": "hub.route.canvas_status",
+   "kind": "api_route",
+   "name": "route.canvas_status",
+   "source": "hub/src/bridge/canvas.rs",
+   "signature": "GET /canvas/status",
+   "summary": "KASUGAI Canvas 検出状態",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /canvas/status → {canvas:true, installed:true}"
+  },
+  {
+   "id": "hub.route.canvas_open",
+   "kind": "api_route",
+   "name": "route.canvas_open",
+   "source": "hub/src/bridge/canvas.rs",
+   "signature": "POST /canvas/open",
+   "summary": ".kasc 書き出し＋Canvas 起動/登録",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "POST /canvas/open {} → \"kasc is empty\" バリデーション応答(実起動は副作用のため未実行)"
+  },
+  {
+   "id": "hub.route.vector_status",
+   "kind": "api_route",
+   "name": "route.vector_status",
+   "source": "hub/src/bridge/vector.rs",
+   "signature": "GET /vector/status",
+   "summary": "ベクターサービス状態",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /vector/status → ok+登録ソース一覧+duckdb検出"
+  },
+  {
+   "id": "hub.route.vector_sources",
+   "kind": "api_route",
+   "name": "route.vector_sources",
+   "source": "hub/src/bridge/vector.rs",
+   "signature": "GET/POST /vector/sources・DELETE /vector/sources/{name}",
+   "summary": "ベクターソース登録/一覧/削除",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "POST register→features=5 materialize→DELETE ok 往復"
+  },
+  {
+   "id": "hub.route.vector_geojson",
+   "kind": "api_route",
+   "name": "route.vector_geojson",
+   "source": "hub/src/bridge/vector.rs",
+   "signature": "GET /vector/geojson/{name}",
+   "summary": "登録ソースの GeoJSON 配信",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /vector/geojson/gs_1ejt0hs → FeatureCollection 実データ"
+  },
+  {
+   "id": "hub.route.vector_probe",
+   "kind": "api_route",
+   "name": "route.vector_probe",
+   "source": "hub/src/bridge/vector.rs",
+   "signature": "GET /vector/probe.geojson",
+   "summary": "プローブ用 GeoJSON",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "GET /vector/probe.geojson → FeatureCollection"
+  },
+  {
+   "id": "hub.route.vector_query",
+   "kind": "api_route",
+   "name": "route.vector_query",
+   "source": "hub/src/bridge/vector.rs",
+   "signature": "POST /vector/query",
+   "summary": "ベクタークエリ実行",
+   "needs_runtime": true,
+   "standalone_ok": false,
+   "depends": [
+    "geosuite-hub :8514"
+   ],
+   "verify": {
+    "standalone": "",
+    "integrated": "curl http://127.0.0.1:8514<route> → 応答構造assert"
+   },
+   "last_result": "pass",
+   "last_verified": "2026-11-16T19:00:00+09:00",
+   "note": "POST /vector/query SELECT geom→FeatureCollection(geom列必須の仕様も確認)"
   }
  ]
 }

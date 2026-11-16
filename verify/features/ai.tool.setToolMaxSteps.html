@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><title>ai.tool.setToolMaxSteps</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true});</script>
+<body style="font-family:sans-serif;max-width:900px;margin:2em auto">
+<h1>AI tool setToolMaxSteps</h1>
+<p><b>id:</b> ai.tool.setToolMaxSteps<br><b>kind:</b> ai_integration<br>
+<b>source:</b> geo_suite/src/ai-chat.ts TOOL_DECLS<br><b>signature:</b> <code>setToolMaxSteps(args)</code></p>
+<p><b>summary:</b> AIチャット/bridgeCall から呼べるツール宣言。dispatchToolCall/execLocalTool/ウィジェット側ハンドラで実行</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant AI as AI/ハーネス
+  participant BR as __geoBridge (nav-toolbar iframe)
+  participant EXT as ai-chat 拡張ctx (dispatchToolCall)
+  participant PNL as layer panel / chat iframe
+  AI->>BR: call(name,args)
+  BR->>EXT: bridgeCall
+  EXT->>PNL: aiToolRequest / aiChatCmd (転送ツールのみ)
+  PNL-->>EXT: result
+  EXT-->>BR: bridgeResult
+  BR-->>AI: result
+</pre>
+<p><b>result:</b> <span style="color:#2e7d32;font-weight:bold">pass</span><br>
+<b>verified:</b> 2026-11-16T19:00:00+09:00<br><b>note:</b> bridge/aiToolCall 経路で実呼出→構造化応答assert (ai_tool_test.js 44/44 / run_bridge_batch.js)</p>
+<p><b>verify:</b> standalone=<code>TOOL_DECLS の name が dispatch ハンドラ(case/if)へ解決するか静的照合</code><br>
+integrated=<code>workbench + aiToolCall/bridgeCall で実呼出</code></p>
+<p><a href="../index.html">← index</a></p>

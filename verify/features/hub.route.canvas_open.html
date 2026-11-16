@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>hub.route.canvas_open</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true});</script>
+<body style="font-family:sans-serif;max-width:900px;margin:2em auto">
+<h1>route.canvas_open</h1>
+<p><b>id:</b> hub.route.canvas_open<br><b>kind:</b> api_route<br>
+<b>source:</b> hub/src/bridge/canvas.rs<br><b>signature:</b> <code>POST /canvas/open</code></p>
+<p><b>summary:</b> .kasc 書き出し＋Canvas 起動/登録</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant C as client
+  participant H as geosuite-hub :8514
+  participant S as duckdb.exe / provider CLI / canvas
+  C->>H: HTTP request
+  H->>S: 処理委譲 (種別による)
+  S-->>H: result
+  H-->>C: HTTP response
+</pre>
+<p><b>result:</b> <span style="color:#2e7d32;font-weight:bold">pass</span><br>
+<b>verified:</b> 2026-11-16T19:00:00+09:00<br><b>note:</b> POST /canvas/open {} → &quot;kasc is empty&quot; バリデーション応答(実起動は副作用のため未実行)</p>
+<p><b>verify:</b> standalone=<code></code><br>
+integrated=<code>curl http://127.0.0.1:8514&lt;route&gt; → 応答構造assert</code></p>
+<p><a href="../index.html">← index</a></p>

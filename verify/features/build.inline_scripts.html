@@ -1,11 +1,17 @@
 <!doctype html><meta charset="utf-8"><title>build.inline_scripts</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true});</script>
 <body style="font-family:sans-serif;max-width:900px;margin:2em auto">
 <h1>インラインスクリプト構文検証</h1>
 <p><b>id:</b> build.inline_scripts<br><b>kind:</b> logic_fn<br>
 <b>source:</b> workbench/check_inline_scripts.js<br><b>signature:</b> <code>node workbench/check_inline_scripts.js</code></p>
 <p><b>summary:</b> widget template 内 &lt;script&gt; の構文チェック</p>
+<pre class="mermaid">
+flowchart LR
+  A[compiler/checker] --> B[src tree] --> C[0 errors assert]
+</pre>
 <p><b>result:</b> <span style="color:#2e7d32;font-weight:bold">pass</span><br>
-<b>verified:</b> 2026-11-15T22:55:19+09:00<br><b>note:</b> basemap-widget/navigation-toolbar/layers-and-tiles-list/ai-chat 全てOK（mock-sandbox note は情報）</p>
-<p><b>verify:</b> standalone=<code>node workbench/check_inline_scripts.js</code>
- integrated=<code></code></p>
+<b>verified:</b> 2026-11-16T19:00:00+09:00<br><b>note:</b> basemap/navigation/layers/ai-chat 全てOK(mock-sandbox noteは情報)</p>
+<p><b>verify:</b> standalone=<code>node workbench/check_inline_scripts.js</code><br>
+integrated=<code></code></p>
 <p><a href="../index.html">← index</a></p>
